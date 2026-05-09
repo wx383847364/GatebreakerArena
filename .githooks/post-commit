@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "${GATEBREAKER_POST_COMMIT_AMEND:-}" == "1" ]]; then
+  exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+REGISTRY_RELATIVE_PATH="doc/长期主文档/协作与执行/状态登记/commit_module_sequences.json"
+
+python3 "${REPO_ROOT}/tools/doc_maintenance/update_project_docs.py" \
+  --doc-root "${REPO_ROOT}/doc" \
+  sync-commit-sequences \
+  --stage
+
+if git -C "${REPO_ROOT}" diff --cached --quiet -- "${REGISTRY_RELATIVE_PATH}"; then
+  exit 0
+fi
+
+GATEBREAKER_POST_COMMIT_AMEND=1 git -C "${REPO_ROOT}" commit \
+  --amend \
+  --no-edit \
+  --no-verify \
+  --only "${REGISTRY_RELATIVE_PATH}"

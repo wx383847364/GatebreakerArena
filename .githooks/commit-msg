@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+python3 "${REPO_ROOT}/tools/doc_maintenance/update_project_docs.py" \
+  --doc-root "${REPO_ROOT}/doc" \
+  validate-commit-message \
+  --message-file "$1"

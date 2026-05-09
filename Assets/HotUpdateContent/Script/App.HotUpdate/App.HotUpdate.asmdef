@@ -1,0 +1,17 @@
+{
+    "name": "App.HotUpdate",
+    "rootNamespace": "App.HotUpdate",
+    "references": [
+        "App.Shared",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

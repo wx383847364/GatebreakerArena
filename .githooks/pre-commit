@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# 提交前自动检查当前提交内容，并执行文档维护检查。
+# 这层不负责替你生成“本轮做了什么”的摘要，
+# 但会防止实现完成后忘记补迭代记录，并顺手自动同步索引。
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+python3 "${REPO_ROOT}/tools/repo_maintenance/check_unity_guid_integrity.py" --staged
+python3 "${REPO_ROOT}/tools/doc_maintenance/check_doc_maintenance.py"
