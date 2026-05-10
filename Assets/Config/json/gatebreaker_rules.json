@@ -1,0 +1,119 @@
+{
+  "DT_AIRule": [
+    {
+      "AILevelId": "AI_NORMAL",
+      "AILevelName": "普通",
+      "AggressionWeight": 0.55,
+      "AimAccuracy": 0.6,
+      "DefenseWeight": 0.7,
+      "MultiBallPriority": 0.65,
+      "PredictError": 0.25,
+      "ReactionDelay": 0.18,
+      "ServeDecisionInterval": 0.6,
+      "TargetSwitchFrequency": 0.5
+    }
+  ],
+  "DT_BallRule": [
+    {
+      "BallTypeId": "BALL_NORMAL",
+      "BallTypeName": "普通球",
+      "ColorTag": "Neutral",
+      "DangerPromptThreshold": 1.2,
+      "GoalReboundFactor": 1.0,
+      "InitialSpeed": 7.5,
+      "MaxSpeed": 14.0,
+      "MinVerticalVelocity": 2.0,
+      "PaddleBounceFactor": 1.0,
+      "SpeedGainOnPaddleHit": 0.15,
+      "TrailStyle": "Default",
+      "WallBounceFactor": 1.0
+    }
+  ],
+  "DT_MapRule": [
+    {
+      "BallSpeedModifier": 0.0,
+      "GoalSizeModifier": 0.0,
+      "HasObstacle": false,
+      "InitialBallsModifier": 0,
+      "MapId": "MAP_ARENA_01",
+      "MapName": "标准四边场",
+      "MaxBallsModifier": 0,
+      "ServeCooldownModifier": 0.0,
+      "SpawnLayoutType": "FourSide",
+      "SupportedPlayerCount": [
+        2,
+        3,
+        4
+      ]
+    }
+  ],
+  "DT_ModeRule": [
+    {
+      "AllowAimServe": false,
+      "BaseServeCooldown": 6.0,
+      "EnableOvertime": true,
+      "FinalPhaseBallSpeedScale": 1.05,
+      "FinalPhaseCooldownScale": 0.95,
+      "FinalPhaseStartTime": 30,
+      "GoalPauseTime": 0.4,
+      "InitialBallsInMatch": 1,
+      "InitialServeAmmo": 1,
+      "MatchDuration": 150,
+      "MaxBallsInMatch": 4,
+      "MaxOwnedBallsInField": 1,
+      "MaxServeAmmo": 2,
+      "ModeId": "PVE_STANDARD",
+      "ModeName": "PVE标准",
+      "OvertimeDuration": 60,
+      "OvertimeEligibleOnly": true,
+      "OvertimeRuleType": "SuddenDeath",
+      "OvertimeWinScore": 1,
+      "ScoreRuleType": "AddScore"
+    },
+    {
+      "AllowAimServe": false,
+      "BaseServeCooldown": 6.0,
+      "EnableOvertime": true,
+      "FinalPhaseBallSpeedScale": 1.1,
+      "FinalPhaseCooldownScale": 0.9,
+      "FinalPhaseStartTime": 30,
+      "GoalPauseTime": 0.4,
+      "InitialBallsInMatch": 1,
+      "InitialServeAmmo": 1,
+      "MatchDuration": 150,
+      "MaxBallsInMatch": 4,
+      "MaxOwnedBallsInField": 1,
+      "MaxServeAmmo": 2,
+      "ModeId": "PVP_FFA",
+      "ModeName": "PVP乱斗",
+      "OvertimeDuration": 60,
+      "OvertimeEligibleOnly": true,
+      "OvertimeRuleType": "SuddenDeath",
+      "OvertimeWinScore": 1,
+      "ScoreRuleType": "AddScore"
+    },
+    {
+      "AllowAimServe": false,
+      "BaseServeCooldown": 6.5,
+      "EnableOvertime": true,
+      "FinalPhaseBallSpeedScale": 1.1,
+      "FinalPhaseCooldownScale": 0.92,
+      "FinalPhaseStartTime": 30,
+      "GoalPauseTime": 0.4,
+      "InitialBallsInMatch": 1,
+      "InitialServeAmmo": 1,
+      "MatchDuration": 180,
+      "MaxBallsInMatch": 4,
+      "MaxOwnedBallsInField": 1,
+      "MaxServeAmmo": 2,
+      "ModeId": "PVP_TEAM",
+      "ModeName": "PVP组队乱斗",
+      "OvertimeDuration": 60,
+      "OvertimeEligibleOnly": true,
+      "OvertimeRuleType": "SuddenDeath",
+      "OvertimeWinScore": 1,
+      "ScoreRuleType": "TeamScore"
+    }
+  ],
+  "Version": 1
+}

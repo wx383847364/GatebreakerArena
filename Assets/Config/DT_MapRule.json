@@ -1,0 +1,14 @@
+[
+  {
+    "MapId": "MAP_ARENA_01",
+    "MapName": "标准四边场",
+    "SupportedPlayerCount": [2, 3, 4],
+    "SpawnLayoutType": "FourSide",
+    "HasObstacle": false,
+    "InitialBallsModifier": 0,
+    "MaxBallsModifier": 0,
+    "ServeCooldownModifier": 0.0,
+    "BallSpeedModifier": 0.0,
+    "GoalSizeModifier": 0.0
+  }
+]

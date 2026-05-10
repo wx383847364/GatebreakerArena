@@ -1,0 +1,16 @@
+[
+  {
+    "BallTypeId": "BALL_NORMAL",
+    "BallTypeName": "普通球",
+    "InitialSpeed": 7.5,
+    "MaxSpeed": 14.0,
+    "PaddleBounceFactor": 1.0,
+    "WallBounceFactor": 1.0,
+    "GoalReboundFactor": 1.0,
+    "SpeedGainOnPaddleHit": 0.15,
+    "MinVerticalVelocity": 2.0,
+    "DangerPromptThreshold": 1.2,
+    "TrailStyle": "Default",
+    "ColorTag": "Neutral"
+  }
+]

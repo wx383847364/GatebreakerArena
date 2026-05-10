@@ -1,0 +1,22 @@
+{
+    "name": "Gatebreaker.Tests",
+    "rootNamespace": "Gatebreaker.Tests",
+    "references": [
+        "App.Shared",
+        "App.HotUpdate"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}

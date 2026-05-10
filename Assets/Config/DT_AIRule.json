@@ -1,0 +1,14 @@
+[
+  {
+    "AILevelId": "AI_NORMAL",
+    "AILevelName": "普通",
+    "ReactionDelay": 0.18,
+    "PredictError": 0.25,
+    "ServeDecisionInterval": 0.6,
+    "AggressionWeight": 0.55,
+    "DefenseWeight": 0.70,
+    "MultiBallPriority": 0.65,
+    "AimAccuracy": 0.60,
+    "TargetSwitchFrequency": 0.50
+  }
+]
