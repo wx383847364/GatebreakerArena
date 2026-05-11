@@ -28,10 +28,34 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(1, snapshot.LocalPlayerId);
             Assert.AreEqual(1, snapshot.CurrentServeAmmo);
             Assert.AreEqual(2, snapshot.MaxServeAmmo);
-            Assert.AreEqual(1, snapshot.OwnedBallsInField);
+            Assert.AreEqual(0, snapshot.OwnedBallsInField);
             Assert.AreEqual(1, snapshot.MaxOwnedBallsInField);
             Assert.AreEqual(2, snapshot.PlayerScores.Count);
             Assert.IsFalse(snapshot.HasDanger);
+            Assert.IsFalse(snapshot.HasWinner);
+            Assert.AreEqual(0, snapshot.WinnerPlayerId);
+        }
+
+        [Test]
+        public void HudSnapshotExposesResultWinner()
+        {
+            var runtime = new GatebreakerMatchRuntime(
+                GatebreakerModeCatalog.CreateDefault(),
+                new BallSimulationSystem(),
+                new ServeResourceSystem(),
+                new GoalJudgeSystem(),
+                new ScoreSystem(),
+                null);
+            runtime.StartLocalPrototype(aiCount: 1);
+            runtime.FindPlayer(1).Score = 7;
+            runtime.FindPlayer(2).Score = 3;
+            runtime.Tick(200f);
+            var presenter = new GatebreakerArenaHudPresenter(runtime);
+
+            GatebreakerHudSnapshot snapshot = presenter.BuildSnapshot(1);
+
+            Assert.IsTrue(snapshot.HasWinner);
+            Assert.AreEqual(1, snapshot.WinnerPlayerId);
         }
     }
 }

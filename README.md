@@ -1,11 +1,12 @@
 # GatebreakerArena
 
-Gatebreaker Arena is a Unity multiplayer arcade arena project built on the shared AOT / Shared / HotUpdate architecture, with HybridCLR and YooAssets as the runtime update and asset pipeline foundation.
+Gatebreaker Arena 是一个基于 Unity 的多人弹球攻防竞技项目。
 
-Current focus:
+项目当前复用 `App.AOT / App.Shared / App.HotUpdate` 三层架构，并以 HybridCLR 和 YooAssets 作为热更新与资源管线基础。
 
-- keep the Unity project skeleton clean and compilable
-- preserve clear `App.AOT / App.Shared / App.HotUpdate` boundaries
-- use YooAssets for formal runtime assets
-- use the project document maintenance flow for iteration records and commit suggestions
+当前重点：
 
+- 保持 Unity 工程骨架干净、可打开、可编译
+- 保持清晰的 `App.AOT / App.Shared / App.HotUpdate` 分层边界
+- 正式运行时资源统一通过 YooAssets 加载
+- 使用项目文档维护流程记录迭代、生成提交建议和维护长期文档

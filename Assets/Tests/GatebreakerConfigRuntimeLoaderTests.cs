@@ -1,0 +1,213 @@
+using System.Threading.Tasks;
+using App.HotUpdate.GatebreakerArena.Core;
+using App.HotUpdate.GatebreakerArena.Mode;
+using App.Shared.Contracts;
+using NUnit.Framework;
+using UnityEngine;
+
+namespace Gatebreaker.Tests
+{
+    public sealed class GatebreakerConfigRuntimeLoaderTests
+    {
+        [Test]
+        public async Task LoadAsync_LoadsRulesBytesThroughAssetsRuntime()
+        {
+            var handle = new FakeAssetHandle(new TextAsset(CreateRulesJson("TeamScore", "FourSide")));
+            var assetsRuntime = new FakeAssetsRuntime(handle);
+            var loader = new GatebreakerConfigRuntimeLoader();
+
+            GatebreakerConfigLoadResult result = await loader.LoadAsync(assetsRuntime);
+
+            Assert.IsTrue(result.Succeeded, result.Message);
+            Assert.AreEqual(GatebreakerConfigRuntimeLoader.RulesAssetLocation, assetsRuntime.LoadedLocation);
+            Assert.AreEqual(7, result.Version);
+            Assert.IsTrue(handle.Released);
+
+            ModeRuleDefinition mode = result.Catalog.GetMode("PVP_TEAM");
+            BallRuleDefinition ball = result.Catalog.GetBall("BALL_FAST");
+            AiRuleDefinition ai = result.Catalog.GetAi("AI_HARD");
+            MapRuleDefinition map = result.Catalog.GetMap("MAP_RING");
+            EffectiveMatchRule effective = result.Catalog.BuildEffectiveRule("PVP_TEAM", "MAP_RING");
+
+            Assert.AreEqual(ScoreRuleType.TeamScore, mode.ScoreRuleType);
+            Assert.AreEqual(OvertimeRuleType.TimedScore, mode.OvertimeRuleType);
+            Assert.AreEqual(9.25f, ball.InitialSpeed);
+            Assert.AreEqual(0.1f, ai.ReactionDelay);
+            Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
+            CollectionAssert.AreEqual(new[] { 2, 4 }, map.SupportedPlayerCount);
+            Assert.AreEqual(3, effective.InitialBallsInMatch);
+            Assert.AreEqual(7, effective.MaxBallsInMatch);
+            Assert.AreEqual(4.75f, effective.BaseServeCooldown);
+        }
+
+        [Test]
+        public void ParseJson_AcceptsNumericEnumsAndStringNumbers()
+        {
+            GatebreakerConfigLoadResult result = GatebreakerConfigRuntimeLoader.ParseJson(CreateRulesJson("1", 1));
+
+            Assert.IsTrue(result.Succeeded, result.Message);
+            Assert.AreEqual(ScoreRuleType.TeamScore, result.Catalog.GetMode("PVP_TEAM").ScoreRuleType);
+            Assert.AreEqual(SpawnLayoutType.Ring, result.Catalog.GetMap("MAP_RING").SpawnLayoutType);
+            CollectionAssert.AreEqual(new[] { 2, 4 }, result.Catalog.GetMap("MAP_RING").SupportedPlayerCount);
+        }
+
+        [Test]
+        public async Task LoadAsync_ReturnsFallbackInfoWhenAssetIsMissing()
+        {
+            var loader = new GatebreakerConfigRuntimeLoader();
+
+            GatebreakerConfigLoadResult result = await loader.LoadAsync(new FakeAssetsRuntime(null));
+
+            Assert.IsFalse(result.Succeeded);
+            Assert.AreEqual(GatebreakerConfigLoadFailureReason.AssetLoadFailed, result.FailureReason);
+            Assert.IsTrue(result.CanUseDefaultCatalogFallback);
+            Assert.AreEqual(GatebreakerConfigRuntimeLoader.RulesAssetLocation, result.Source);
+            StringAssert.Contains("Failed to load", result.Message);
+        }
+
+        [Test]
+        public async Task LoadAsync_ReturnsParseFailureForInvalidJson()
+        {
+            var handle = new FakeAssetHandle(new TextAsset("{\"DT_ModeRule\": ["));
+            var loader = new GatebreakerConfigRuntimeLoader();
+
+            GatebreakerConfigLoadResult result = await loader.LoadAsync(new FakeAssetsRuntime(handle));
+
+            Assert.IsFalse(result.Succeeded);
+            Assert.AreEqual(GatebreakerConfigLoadFailureReason.ParseFailed, result.FailureReason);
+            Assert.IsTrue(result.CanUseDefaultCatalogFallback);
+            Assert.IsTrue(handle.Released);
+        }
+
+        private static string CreateRulesJson(object scoreRuleType, object spawnLayoutType)
+        {
+            return string.Format(
+                @"{{
+  ""Version"": 7,
+  ""DT_ModeRule"": [
+    {{
+      ""ModeId"": ""PVP_TEAM"",
+      ""ModeName"": ""Team"",
+      ""MatchDuration"": ""180"",
+      ""InitialBallsInMatch"": 2,
+      ""MaxBallsInMatch"": 6,
+      ""BaseServeCooldown"": ""5.25"",
+      ""InitialServeAmmo"": 1,
+      ""MaxServeAmmo"": 3,
+      ""MaxOwnedBallsInField"": 2,
+      ""GoalPauseTime"": 0.5,
+      ""ScoreRuleType"": {0},
+      ""EnableOvertime"": ""true"",
+      ""OvertimeRuleType"": ""TimedScore"",
+      ""OvertimeDuration"": 45,
+      ""OvertimeEligibleOnly"": false,
+      ""OvertimeWinScore"": 2,
+      ""AllowAimServe"": true,
+      ""FinalPhaseStartTime"": 20,
+      ""FinalPhaseBallSpeedScale"": 1.2,
+      ""FinalPhaseCooldownScale"": 0.8
+    }}
+  ],
+  ""DT_BallRule"": [
+    {{
+      ""BallTypeId"": ""BALL_FAST"",
+      ""BallTypeName"": ""Fast"",
+      ""InitialSpeed"": 9.25,
+      ""MaxSpeed"": 16.5,
+      ""PaddleBounceFactor"": 1.1,
+      ""WallBounceFactor"": 1.0,
+      ""GoalReboundFactor"": 0.9,
+      ""SpeedGainOnPaddleHit"": 0.2,
+      ""MinVerticalVelocity"": 2.5,
+      ""DangerPromptThreshold"": 1.1,
+      ""TrailStyle"": ""Fast"",
+      ""ColorTag"": ""Red""
+    }}
+  ],
+  ""DT_AIRule"": [
+    {{
+      ""AILevelId"": ""AI_HARD"",
+      ""AILevelName"": ""Hard"",
+      ""ReactionDelay"": 0.1,
+      ""PredictError"": 0.15,
+      ""ServeDecisionInterval"": 0.4,
+      ""AggressionWeight"": 0.8,
+      ""DefenseWeight"": 0.7,
+      ""MultiBallPriority"": 0.9,
+      ""AimAccuracy"": 0.75,
+      ""TargetSwitchFrequency"": 0.6
+    }}
+  ],
+  ""DT_MapRule"": [
+    {{
+      ""MapId"": ""MAP_RING"",
+      ""MapName"": ""Ring"",
+      ""SupportedPlayerCount"": [""2"", 4],
+      ""SpawnLayoutType"": {1},
+      ""HasObstacle"": true,
+      ""InitialBallsModifier"": 1,
+      ""MaxBallsModifier"": 1,
+      ""ServeCooldownModifier"": -0.5,
+      ""BallSpeedModifier"": 0.2,
+      ""GoalSizeModifier"": -0.1
+    }}
+  ]
+}}",
+                FormatJsonValue(scoreRuleType),
+                FormatJsonValue(spawnLayoutType));
+        }
+
+        private static string FormatJsonValue(object value)
+        {
+            return value is string text ? $"\"{text}\"" : value.ToString();
+        }
+
+        private sealed class FakeAssetsRuntime : IAssetsRuntime
+        {
+            private readonly IAssetHandle _handle;
+
+            public FakeAssetsRuntime(IAssetHandle handle)
+            {
+                _handle = handle;
+            }
+
+            public string LoadedLocation { get; private set; }
+
+            public Task InitializeAsync()
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task<bool> RunPatchFlowAsync(string packageVersion = null)
+            {
+                return Task.FromResult(true);
+            }
+
+            public Task<IAssetHandle> LoadAssetAsync(string location)
+            {
+                LoadedLocation = location;
+                return Task.FromResult(_handle);
+            }
+
+            public void Shutdown()
+            {
+            }
+        }
+
+        private sealed class FakeAssetHandle : IAssetHandle
+        {
+            public FakeAssetHandle(Object assetObject)
+            {
+                AssetObject = assetObject;
+            }
+
+            public Object AssetObject { get; }
+            public bool Released { get; private set; }
+
+            public void Release()
+            {
+                Released = true;
+            }
+        }
+    }
+}

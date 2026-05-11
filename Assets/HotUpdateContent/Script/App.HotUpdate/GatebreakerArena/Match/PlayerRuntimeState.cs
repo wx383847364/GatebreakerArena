@@ -1,4 +1,6 @@
+using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.Serve;
+using App.HotUpdate.GatebreakerArena.Zone;
 
 namespace App.HotUpdate.GatebreakerArena.Match
 {
@@ -11,5 +13,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public bool IsDisabled { get; set; }
         public int Score { get; set; }
         public ServeResourceState ServeResource { get; set; }
+        public PaddleRuntimeState Paddle { get; set; }
+        public ZoneRuntimeState Zone { get; set; }
     }
 }

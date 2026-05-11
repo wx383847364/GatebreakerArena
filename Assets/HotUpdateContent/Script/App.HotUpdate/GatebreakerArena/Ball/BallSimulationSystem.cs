@@ -47,7 +47,7 @@ namespace App.HotUpdate.GatebreakerArena.Ball
             for (int i = 0; i < balls.Count; i++)
             {
                 BallRuntimeState ball = balls[i];
-                if (ball == null || ball.BallState != BallState.Flying)
+                if (ball == null || (ball.BallState != BallState.Flying && ball.BallState != BallState.GoalRebound))
                 {
                     continue;
                 }

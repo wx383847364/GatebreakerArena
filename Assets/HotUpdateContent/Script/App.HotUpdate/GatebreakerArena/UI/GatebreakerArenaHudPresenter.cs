@@ -24,6 +24,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 RemainingTime = scoreboard.RemainingTime,
                 PlayerScores = scoreboard.PlayerScores,
                 LocalPlayerId = localPlayerId,
+                HasWinner = scoreboard.HasWinner,
+                WinnerPlayerId = scoreboard.WinnerPlayerId,
                 CurrentServeAmmo = localPlayer?.ServeResource?.CurrentServeAmmo ?? 0,
                 MaxServeAmmo = localPlayer?.ServeResource?.MaxServeAmmo ?? 0,
                 OwnedBallsInField = localPlayer?.ServeResource?.OwnedBallsInField ?? 0,
@@ -42,6 +44,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public float RemainingTime { get; set; }
         public System.Collections.Generic.IReadOnlyList<PlayerScoreSnapshot> PlayerScores { get; set; }
         public int LocalPlayerId { get; set; }
+        public bool HasWinner { get; set; }
+        public int WinnerPlayerId { get; set; }
         public int CurrentServeAmmo { get; set; }
         public int MaxServeAmmo { get; set; }
         public int OwnedBallsInField { get; set; }
