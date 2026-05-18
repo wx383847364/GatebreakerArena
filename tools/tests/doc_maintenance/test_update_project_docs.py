@@ -374,6 +374,42 @@ class UpdateProjectDocsTests(unittest.TestCase):
 
             self.assertIn("[已完成] Gatebreaker Arena v1 长期成长表方案", index_text)
 
+    def test_markdown_link_to_uses_source_file_relative_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = write_file(root, "doc/长期主文档/主文档索引.md", "# 索引\n")
+            same_area = write_file(root, "doc/长期主文档/项目总览.md", "# 项目总览\n")
+            child_area = write_file(root, "doc/长期主文档/方案与数据/Gatebreaker Arena v1 方案.md", "# 方案\n")
+            sibling_area = write_file(root, "doc/临时/Gatebreaker Arena 热更新链路测试与收口计划.md", "# 计划\n")
+
+            self.assertEqual(update_project_docs.markdown_link_to(same_area, source), "项目总览.md")
+            self.assertEqual(
+                update_project_docs.markdown_link_to(child_area, source),
+                "方案与数据/Gatebreaker%20Arena%20v1%20方案.md",
+            )
+            self.assertEqual(
+                update_project_docs.markdown_link_to(sibling_area, source),
+                "../临时/Gatebreaker%20Arena%20热更新链路测试与收口计划.md",
+            )
+
+    def test_write_long_index_generates_relative_links(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            write_file(root, "doc/长期主文档/架构与边界/热更新边界规范_v1.md", "# 热更新边界规范 v1\n")
+            write_file(root, "doc/临时/Gatebreaker Arena 热更新链路测试与收口计划.md", "# Gatebreaker Arena 热更新链路测试与收口计划\n")
+
+            update_project_docs.write_long_index(doc_root)
+            index_text = (doc_root / "长期主文档" / "主文档索引.md").read_text(encoding="utf-8")
+
+            self.assertIn("[项目总览](项目总览.md)", index_text)
+            self.assertIn("[热更新边界规范 v1](架构与边界/热更新边界规范_v1.md)", index_text)
+            self.assertIn(
+                "[Gatebreaker Arena 热更新链路测试与收口计划](../临时/Gatebreaker%20Arena%20热更新链路测试与收口计划.md)",
+                index_text,
+            )
+            self.assertNotIn(str(doc_root), index_text)
+
     def test_write_long_index_falls_back_to_unstarted_when_plan_progress_missing(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -638,6 +674,46 @@ class UpdateProjectDocsTests(unittest.TestCase):
             self.assertIn("updated iteration log", completed.stdout)
             self.assertIn("这仍属于半收尾", completed.stdout)
             self.assertIn("suggest-handoff", completed.stdout)
+
+    def test_check_portable_paths_fails_project_private_paths_but_warns_generic_paths(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            private_path = "/" + "Users/bruce/work/" + "GatebreakerArena/Client/doc/长期主文档/项目总览.md"
+            write_file(root, "doc/长期主文档/路径说明.md", f"旧链接：{private_path}\n")
+            generic_path = "/" + "Users/alice/work/GatebreakerArena/Client"
+            write_file(root, "tools/README.md", f"示例：{generic_path}\n")
+
+            report = update_project_docs.check_portable_paths(doc_root)
+
+            self.assertTrue(report["hard_failures"])
+            self.assertTrue(report["warnings"])
+            self.assertIn("路径说明.md", report["hard_failures"][0][0])
+
+    def test_check_portable_paths_cli_exits_nonzero_on_project_private_paths(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_tools_dir = install_doc_maintenance_tools(root)
+            create_doc_root(root)
+            private_path = "/" + "Users/bruce/work/" + "GatebreakerArena/Client/doc/长期主文档/项目总览.md"
+            write_file(root, "doc/长期主文档/路径说明.md", f"旧链接：{private_path}\n")
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(doc_tools_dir / "update_project_docs.py"),
+                    "--doc-root",
+                    str(root / "doc"),
+                    "check-portable-paths",
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("found project-private absolute paths", completed.stdout)
 
     def test_append_iteration_clears_cached_last_finalize_report(self):
         with tempfile.TemporaryDirectory() as temp_dir:

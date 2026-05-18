@@ -140,8 +140,13 @@ def relative_markdown_link(path: Path, root: Path) -> str:
     return path.relative_to(root).as_posix()
 
 
-def absolute_doc_link(path: Path, root: Path) -> str:
-    return f"{root.as_posix()}/{relative_markdown_link(path, root)}"
+def encode_markdown_link_destination(path: str) -> str:
+    return path.replace(" ", "%20")
+
+
+def markdown_link_to(target: Path, from_file: Path) -> str:
+    relative = os.path.relpath(target.resolve(), from_file.resolve().parent)
+    return encode_markdown_link_destination(Path(relative).as_posix())
 
 
 def extract_section_bullets(path: Path, heading: str):
@@ -1771,6 +1776,7 @@ def write_project_overview(doc_root: Path):
 
 def write_long_index(doc_root: Path):
     long_dir, _ = ensure_dirs(doc_root)
+    index_path = long_dir / LONG_INDEX_NAME
     long_docs = scan_long_docs(doc_root)
     context = latest_iteration_context(doc_root)
     overview_path = next((p for p in long_docs if p.name == "项目总览.md"), None)
@@ -1818,7 +1824,7 @@ def write_long_index(doc_root: Path):
         "",
         "### 如果你是第一次接手项目",
         "",
-        f"- [ ] 先读 [{markdown_title(overview_path) if overview_path else '项目总览'}]({absolute_doc_link(overview_path, doc_root) if overview_path else f'{doc_root.as_posix()}/{LONG_DIR_NAME}/项目总览.md'})",
+        f"- [ ] 先读 [{markdown_title(overview_path) if overview_path else '项目总览'}]({markdown_link_to(overview_path, index_path) if overview_path else '项目总览.md'})",
         "- [ ] 再读方案与数据目录中的主方案文档",
         "- [ ] 再读协作与执行目录中的配对与任务模板文档",
         "",
@@ -1838,8 +1844,7 @@ def write_long_index(doc_root: Path):
     else:
         for path in grouped["项目总览"]:
             title = markdown_title(path)
-            rel = relative_markdown_link(path, doc_root)
-            lines.append(f"- [ ] [{title}]({absolute_doc_link(path, doc_root)})")
+            lines.append(f"- [ ] [{title}]({markdown_link_to(path, index_path)})")
     lines += [
         "",
         "### B. 方案与数据",
@@ -1850,12 +1855,12 @@ def write_long_index(doc_root: Path):
             lines.append("- [ ] 暂无")
     else:
         if ui_system_overview is not None:
-            lines.append(f"- [ ] [UI 自动生成系统专区]({absolute_doc_link(ui_system_overview, doc_root)})")
+            lines.append(f"- [ ] [UI 自动生成系统专区]({markdown_link_to(ui_system_overview, index_path)})")
         for path in grouped["方案与数据"]:
             title = markdown_title(path)
             plan_progress = extract_plan_progress(path)
             label = f"[{plan_progress['status']}] {title}"
-            lines.append(f"- [ ] [{label}]({absolute_doc_link(path, doc_root)})")
+            lines.append(f"- [ ] [{label}]({markdown_link_to(path, index_path)})")
     lines += [
         "",
         "### C. 架构与边界",
@@ -1866,8 +1871,7 @@ def write_long_index(doc_root: Path):
     else:
         for path in grouped["架构与边界"]:
             title = markdown_title(path)
-            rel = relative_markdown_link(path, doc_root)
-            lines.append(f"- [ ] [{title}]({absolute_doc_link(path, doc_root)})")
+            lines.append(f"- [ ] [{title}]({markdown_link_to(path, index_path)})")
     lines += [
         "",
         "### D. 协作与执行",
@@ -1880,8 +1884,7 @@ def write_long_index(doc_root: Path):
     else:
         for path in grouped["协作与执行"]:
             title = markdown_title(path)
-            rel = relative_markdown_link(path, doc_root)
-            lines.append(f"- [ ] [{title}]({absolute_doc_link(path, doc_root)})")
+            lines.append(f"- [ ] [{title}]({markdown_link_to(path, index_path)})")
     lines += [
         "",
         "## 最近更新",
@@ -1892,8 +1895,7 @@ def write_long_index(doc_root: Path):
     else:
         for path in latest_docs:
             title = markdown_title(path)
-            rel = relative_markdown_link(path, doc_root)
-            lines.append(f"- [{title}]({absolute_doc_link(path, doc_root)})")
+            lines.append(f"- [{title}]({markdown_link_to(path, index_path)})")
     lines += [
         "",
         "## 维护建议",
@@ -1903,11 +1905,12 @@ def write_long_index(doc_root: Path):
         "- 稳定边界变化时，优先更新“稳定决策速览”",
         "- 新增长期文档时，再补“文档分区”",
     ]
-    (long_dir / LONG_INDEX_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    index_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_iteration_index(doc_root: Path):
     _, iter_dir = ensure_dirs(doc_root)
+    index_path = iter_dir / ITER_INDEX_NAME
     iteration_docs = scan_iteration_docs(doc_root)
     latest = iteration_docs[-1] if iteration_docs else None
     context = latest_iteration_context(doc_root)
@@ -1971,8 +1974,7 @@ def write_iteration_index(doc_root: Path):
     else:
         for path in latest_updates:
             title = markdown_title(path)
-            rel = relative_markdown_link(path, doc_root)
-            lines.append(f"- [{title}]({absolute_doc_link(path, doc_root)})")
+            lines.append(f"- [{title}]({markdown_link_to(path, index_path)})")
     lines += [
         "",
         "## 记录清单",
@@ -1995,8 +1997,7 @@ def write_iteration_index(doc_root: Path):
             lines.append("")
             for seq, path in grouped[date_pretty]:
                 title = markdown_title(path)
-                rel = relative_markdown_link(path, doc_root)
-                lines.append(f"- [ ] {seq} / [{title}]({absolute_doc_link(path, doc_root)})")
+                lines.append(f"- [ ] {seq} / [{title}]({markdown_link_to(path, index_path)})")
             lines.append("")
 
         if others:
@@ -2004,9 +2005,8 @@ def write_iteration_index(doc_root: Path):
             lines.append("")
             for path in others:
                 title = markdown_title(path)
-                rel = relative_markdown_link(path, doc_root)
-                lines.append(f"- [ ] [{title}]({absolute_doc_link(path, doc_root)})")
-    (iter_dir / ITER_INDEX_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+                lines.append(f"- [ ] [{title}]({markdown_link_to(path, index_path)})")
+    index_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def sync_indexes(doc_root: Path):
@@ -2037,7 +2037,7 @@ def create_iteration(doc_root: Path, title: str, goal: str, status: str):
     previous = previous_files[-1] if previous_files else None
     previous_label = markdown_title(previous) if previous else "无"
     previous_link = (
-        f"[{previous_label}]({absolute_doc_link(previous, doc_root)})"
+        f"[{previous_label}]({markdown_link_to(previous, path)})"
         if previous
         else "无"
     )
@@ -2567,6 +2567,134 @@ def backfill_agent_status(doc_root: Path, from_date: str):
     return updated
 
 
+PORTABLE_PATH_SKIP_DIRS = {
+    ".git",
+    "Library",
+    "Temp",
+    "Logs",
+    "obj",
+    "bin",
+    "Build",
+    "Builds",
+    "HybridCLRData",
+    "HybridCLRGenerate",
+    "UserSettings",
+}
+PORTABLE_PATH_SCAN_ROOTS = (
+    "doc",
+    "tools",
+    "Assets/Tools",
+    ".vscode",
+)
+PORTABLE_PATH_TEXT_SUFFIXES = {
+    ".md",
+    ".txt",
+    ".py",
+    ".sh",
+    ".command",
+    ".bat",
+    ".html",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".xml",
+    ".asmdef",
+    ".csproj",
+    ".sln",
+}
+PORTABLE_PATH_TEXT_NAMES = {
+    ".gitignore",
+    ".gitattributes",
+    "README",
+}
+
+
+def project_private_path_patterns():
+    workspace_root = "/" + "Users/bruce/work/" + "GatebreakerArena"
+    return (
+        workspace_root + "/Client/Client",
+        workspace_root + "/Client",
+        workspace_root + "/doc",
+        workspace_root + "/Assets",
+        workspace_root + "/tools",
+        workspace_root,
+    )
+
+
+def portable_path_warning_patterns():
+    return (
+        "/" + "Users/",
+        "/" + "home/",
+        "C:" + "\\",
+    )
+
+
+def is_portable_path_text_file(path: Path) -> bool:
+    return path.suffix in PORTABLE_PATH_TEXT_SUFFIXES or path.name in PORTABLE_PATH_TEXT_NAMES
+
+
+def iter_portable_path_scan_files(repo_root: Path):
+    for relative_root in PORTABLE_PATH_SCAN_ROOTS:
+        scan_root = repo_root / relative_root
+        if not scan_root.exists():
+            continue
+        if scan_root.is_file():
+            if is_portable_path_text_file(scan_root):
+                yield scan_root
+            continue
+        for path in scan_root.rglob("*"):
+            if path.is_dir():
+                continue
+            relative_parts = path.relative_to(repo_root).parts
+            if any(part in PORTABLE_PATH_SKIP_DIRS for part in relative_parts):
+                continue
+            if is_portable_path_text_file(path):
+                yield path
+
+
+def check_portable_paths(doc_root: Path):
+    repo_root = repo_root_for_doc_root(doc_root)
+    hard_patterns = project_private_path_patterns()
+    warning_patterns = portable_path_warning_patterns()
+    hard_failures = []
+    warnings = []
+    for path in iter_portable_path_scan_files(repo_root):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            continue
+        relative = path.relative_to(repo_root).as_posix()
+        for line_number, line in enumerate(lines, start=1):
+            if any(pattern in line for pattern in hard_patterns):
+                hard_failures.append((relative, line_number, line.strip()))
+                continue
+            if any(pattern in line for pattern in warning_patterns):
+                warnings.append((relative, line_number, line.strip()))
+    return {
+        "hard_failures": hard_failures,
+        "warnings": warnings,
+    }
+
+
+def format_portable_path_report(report) -> str:
+    lines = []
+    hard_failures = report["hard_failures"]
+    warnings = report["warnings"]
+    if hard_failures:
+        lines.append("[error] found project-private absolute paths:")
+        for relative, line_number, text in hard_failures:
+            lines.append(f"- {relative}:{line_number}: {text}")
+    else:
+        lines.append("[ok] no project-private absolute paths found.")
+
+    if warnings:
+        lines.append("[warn] found generic local absolute path patterns:")
+        for relative, line_number, text in warnings:
+            lines.append(f"- {relative}:{line_number}: {text}")
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Maintain long-term docs and iteration logs for this project.")
     parser.add_argument("--doc-root", default="doc", help="Project doc root directory")
@@ -2649,6 +2777,7 @@ def main():
 
     sub.add_parser("show-last-finalize", help="Show the latest cached complete finalize report")
     sub.add_parser("check-last-finalize", help="Validate whether the latest complete finalize report still matches the current repo state")
+    sub.add_parser("check-portable-paths", help="Validate docs and tooling do not contain project-private absolute paths")
 
     record_finalize = sub.add_parser("record-last-finalize", help="Record the latest complete finalize report")
     record_finalize.add_argument("--summary", required=True, help="Round summary used for finalize")
@@ -2796,6 +2925,13 @@ def main():
         print(f"summary: {payload.get('summary', '')}")
         print(f"created_at: {payload.get('created_at', '')}")
         print(f"head_commit: {payload.get('head_commit', '')}")
+        return
+
+    if args.command == "check-portable-paths":
+        report = check_portable_paths(doc_root)
+        print(format_portable_path_report(report))
+        if report["hard_failures"]:
+            raise SystemExit(1)
         return
 
     if args.command == "record-last-finalize":
