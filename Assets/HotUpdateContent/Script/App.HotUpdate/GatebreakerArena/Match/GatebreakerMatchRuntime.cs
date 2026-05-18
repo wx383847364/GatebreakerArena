@@ -19,6 +19,10 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private const int MaxCollisionIterations = 12;
         private const float CollisionEpsilon = 0.0001f;
         private const float CollisionSkin = 0.02f;
+        private const int DefaultPlayerCount = 4;
+        private const int MaxPlayerCount = 4;
+        private const uint ChecksumOffsetBasis = 2166136261u;
+        private const uint ChecksumPrime = 16777619u;
 
         private readonly GatebreakerModeCatalog _modeCatalog;
         private readonly BallSimulationSystem _ballSimulation;
@@ -34,9 +38,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private readonly List<BallRuntimeState> _balls = new List<BallRuntimeState>();
         private readonly List<int> _overtimeEligiblePlayerIds = new List<int>();
         private readonly Dictionary<int, PlayerInputFrame> _inputFrames = new Dictionary<int, PlayerInputFrame>();
+        private readonly Dictionary<int, List<GatebreakerFrameInput>> _stepInputBuffer = new Dictionary<int, List<GatebreakerFrameInput>>();
         private int _nextBallId = 1;
         private bool _hasWinner;
         private int _winnerPlayerId;
+        private float _localPrototypeFrameAccumulator;
 
         public GatebreakerMatchRuntime(
             GatebreakerModeCatalog modeCatalog,
@@ -64,6 +70,15 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public BallRuleDefinition BallRule { get; private set; }
         public ArenaGeometry Arena { get; private set; }
         public PaddleBounceTuning BounceTuning { get; }
+        public string MatchId { get; private set; }
+        public int Seed { get; private set; }
+        public int SimulationFps { get; private set; } = GatebreakerMatchStartConfig.DefaultSimulationFps;
+        public int InputDelayFrames { get; private set; }
+        public int LocalPlayerId { get; private set; } = 1;
+        public string ConfigHash { get; private set; }
+        public string TuningHash { get; private set; }
+        public int LastFrameIndex { get; private set; } = -1;
+        public float FrameDelta => 1f / Math.Max(1, SimulationFps);
         public float RemainingTime { get; private set; }
         public IReadOnlyList<PlayerRuntimeState> Players => _players;
         public IReadOnlyList<PaddleRuntimeState> Paddles => _paddles;
@@ -78,35 +93,87 @@ namespace App.HotUpdate.GatebreakerArena.Match
             string mapId = "MAP_ARENA_01",
             string ballTypeId = "BALL_NORMAL")
         {
-            EffectiveRule = _modeCatalog.BuildEffectiveRule(modeId, mapId);
-            BallRule = _modeCatalog.GetBall(ballTypeId);
+            int playerCount = Mathf.Clamp(aiCount + 1, 1, MaxPlayerCount);
+            var activeSlots = new List<int>(playerCount);
+            for (int i = 0; i < playerCount; i++)
+            {
+                activeSlots.Add(i + 1);
+            }
+
+            StartMatch(new GatebreakerMatchStartConfig
+            {
+                MatchId = "LOCAL_PROTOTYPE",
+                ModeId = modeId,
+                MapId = mapId,
+                BallTypeId = ballTypeId,
+                ActiveSlots = activeSlots,
+                LocalPlayerId = 1,
+                SimulationFps = GatebreakerMatchStartConfig.DefaultSimulationFps,
+                InputDelayFrames = 0,
+            });
+
+            for (int i = 0; i < _players.Count; i++)
+            {
+                PlayerRuntimeState player = _players[i];
+                bool isLocalPlayer = player.PlayerId == LocalPlayerId;
+                player.IsLocalPlayer = isLocalPlayer;
+                player.IsAi = !isLocalPlayer;
+            }
+
+            _logger?.LogInfo("GatebreakerMatchRuntime: 本地原型开局完成。players={0}, balls={1}", _players.Count, _balls.Count);
+        }
+
+        public void StartMatch(GatebreakerMatchStartConfig config)
+        {
+            if (config == null)
+            {
+                throw new ArgumentNullException(nameof(config));
+            }
+
+            List<int> activePlayerIds = ResolveActivePlayerIds(config);
+            EffectiveRule = _modeCatalog.BuildEffectiveRule(
+                string.IsNullOrEmpty(config.ModeId) ? "PVE_STANDARD" : config.ModeId,
+                string.IsNullOrEmpty(config.MapId) ? "MAP_ARENA_01" : config.MapId);
+            BallRule = _modeCatalog.GetBall(string.IsNullOrEmpty(config.BallTypeId) ? "BALL_NORMAL" : config.BallTypeId);
+            MatchId = config.MatchId ?? string.Empty;
+            Seed = config.Seed;
+            SimulationFps = config.SimulationFps > 0
+                ? config.SimulationFps
+                : GatebreakerMatchStartConfig.DefaultSimulationFps;
+            InputDelayFrames = Math.Max(0, config.InputDelayFrames);
+            LocalPlayerId = config.LocalPlayerId > 0 && activePlayerIds.Contains(config.LocalPlayerId)
+                ? config.LocalPlayerId
+                : activePlayerIds[0];
+            ConfigHash = config.ConfigHash ?? string.Empty;
+            TuningHash = config.TuningHash ?? string.Empty;
             RemainingTime = EffectiveRule.Mode.MatchDuration;
             Phase = MatchPhase.Playing;
             _hasWinner = false;
             _winnerPlayerId = 0;
+            _localPrototypeFrameAccumulator = 0f;
+            LastFrameIndex = -1;
             _overtimeEligiblePlayerIds.Clear();
             _players.Clear();
             _paddles.Clear();
             _zones.Clear();
             _balls.Clear();
             _inputFrames.Clear();
+            _stepInputBuffer.Clear();
             _nextBallId = 1;
             Arena = ArenaGeometry.CreateDefault();
+            ApplyTuningValues(config.TuningValues);
 
-            AddPlayer(1, 1, true, false);
-            for (int i = 0; i < aiCount; i++)
+            for (int i = 0; i < activePlayerIds.Count; i++)
             {
-                int playerId = i + 2;
-                AddPlayer(playerId, playerId, false, true);
+                int playerId = activePlayerIds[i];
+                AddPlayer(playerId, playerId, playerId == LocalPlayerId, false);
             }
 
             for (int i = 0; i < EffectiveRule.InitialBallsInMatch; i++)
             {
                 PlayerRuntimeState owner = _players[i % _players.Count];
-                SpawnBallForPlayer(owner, "Initial", GetServePosition(owner), GetServeDirection(owner, Vector2.zero), false);
+                SpawnBallForPlayer(owner, "Initial", GetServePosition(owner), GetInitialBallDirection(owner, i), false);
             }
-
-            _logger?.LogInfo("GatebreakerMatchRuntime: 本地原型开局完成。players={0}, balls={1}", _players.Count, _balls.Count);
         }
 
         public void Tick(float deltaTime)
@@ -121,7 +188,33 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         public void TickLocalPrototype(float deltaTime)
         {
-            TickInternal(deltaTime, true);
+            if (deltaTime <= 0f)
+            {
+                TickInternal(deltaTime, true);
+                return;
+            }
+
+            _localPrototypeFrameAccumulator += deltaTime;
+            int stepCount = Mathf.FloorToInt(_localPrototypeFrameAccumulator / FrameDelta);
+            if (stepCount <= 0)
+            {
+                return;
+            }
+
+            _localPrototypeFrameAccumulator -= stepCount * FrameDelta;
+            for (int i = 0; i < stepCount; i++)
+            {
+                StepFrame(LastFrameIndex + 1, BuildLocalPrototypeFrameInputs());
+            }
+        }
+
+        public void StepFrame(int frameIndex, IReadOnlyList<GatebreakerFrameInput> inputs)
+        {
+            BufferStepInputs(frameIndex, inputs);
+            PrepareStepInputs(GetBufferedInputs(frameIndex - InputDelayFrames));
+            TrimStepInputBuffer(frameIndex - InputDelayFrames);
+            LastFrameIndex = frameIndex;
+            TickInternal(FrameDelta, false);
         }
 
         private void TickInternal(float deltaTime, bool includeAi)
@@ -216,6 +309,64 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 _winnerPlayerId);
         }
 
+        public GatebreakerMatchChecksum CreateChecksum(int frameIndex)
+        {
+            uint hash = ChecksumOffsetBasis;
+            HashInt(ref hash, frameIndex);
+            HashInt(ref hash, (int)Phase);
+            HashInt(ref hash, Mathf.RoundToInt(RemainingTime * SimulationFps));
+            HashInt(ref hash, QuantizeFloat(RemainingTime));
+            HashInt(ref hash, _hasWinner ? 1 : 0);
+            HashInt(ref hash, _winnerPlayerId);
+            HashInt(ref hash, BounceTuning.HitOffsetInfluenceValue);
+            HashInt(ref hash, BounceTuning.PaddleVelocityInfluenceValue);
+            HashInt(ref hash, BounceTuning.MinimumOutwardShareValue);
+
+            HashInt(ref hash, _players.Count);
+            foreach (PlayerRuntimeState player in _players.OrderBy(player => player.PlayerId))
+            {
+                HashInt(ref hash, player.PlayerId);
+                HashInt(ref hash, player.TeamId);
+                HashInt(ref hash, player.Score);
+                HashInt(ref hash, player.IsDisabled ? 1 : 0);
+                if (player.ServeResource != null)
+                {
+                    HashInt(ref hash, player.ServeResource.CurrentServeAmmo);
+                    HashInt(ref hash, player.ServeResource.MaxServeAmmo);
+                    HashInt(ref hash, player.ServeResource.OwnedBallsInField);
+                    HashInt(ref hash, player.ServeResource.MaxOwnedBallsInField);
+                    HashInt(ref hash, QuantizeFloat(player.ServeResource.ServeCooldownRemaining));
+                    HashInt(ref hash, (int)player.ServeResource.LastBlockReason);
+                }
+                else
+                {
+                    HashInt(ref hash, 0);
+                    HashInt(ref hash, 0);
+                    HashInt(ref hash, 0);
+                    HashInt(ref hash, 0);
+                    HashInt(ref hash, 0);
+                    HashInt(ref hash, 0);
+                }
+
+                PaddleRuntimeState paddle = player.Paddle;
+                HashInt(ref hash, QuantizeFloat(paddle != null ? paddle.AxisPosition : 0f));
+                HashInt(ref hash, QuantizeFloat(paddle != null ? paddle.MoveAxis : 0f));
+            }
+
+            HashInt(ref hash, _balls.Count);
+            foreach (BallRuntimeState ball in _balls.OrderBy(ball => ball.BallId))
+            {
+                HashInt(ref hash, ball.BallId);
+                HashInt(ref hash, ball.OwnerPlayerId);
+                HashInt(ref hash, ball.OwnerTeamId);
+                HashInt(ref hash, (int)ball.BallState);
+                HashVector(ref hash, ball.Position);
+                HashVector(ref hash, ball.Velocity);
+            }
+
+            return new GatebreakerMatchChecksum(frameIndex, hash);
+        }
+
         public PlayerRuntimeState FindPlayer(int playerId)
         {
             return _players.FirstOrDefault(player => player.PlayerId == playerId);
@@ -238,6 +389,221 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             return true;
+        }
+
+        private static List<int> ResolveActivePlayerIds(GatebreakerMatchStartConfig config)
+        {
+            if (config?.PlayerSlots != null && config.PlayerSlots.Count > 0)
+            {
+                if (config.PlayerSlots.Count > MaxPlayerCount)
+                {
+                    throw new ArgumentException("Gatebreaker match supports up to four active slots.");
+                }
+
+                var playerSlots = config.PlayerSlots
+                    .Where(slot => slot != null)
+                    .OrderBy(slot => slot.SideOrder >= 0 ? slot.SideOrder : slot.SlotIndex)
+                    .ToArray();
+                var playerIds = new List<int>(playerSlots.Length);
+                for (int i = 0; i < playerSlots.Length; i++)
+                {
+                    int playerId = playerSlots[i].PlayerId;
+                    if (playerId <= 0)
+                    {
+                        throw new ArgumentException("Player slot ids must be positive.");
+                    }
+
+                    if (playerIds.Contains(playerId))
+                    {
+                        throw new ArgumentException("Player slot ids must be unique.");
+                    }
+
+                    playerIds.Add(playerId);
+                }
+
+                if (playerIds.Count > 0)
+                {
+                    return playerIds;
+                }
+            }
+
+            IReadOnlyList<int> activeSlots = config?.ActiveSlots;
+            int playerCount = activeSlots != null && activeSlots.Count > 0
+                ? activeSlots.Count
+                : DefaultPlayerCount;
+            if (playerCount > MaxPlayerCount)
+            {
+                throw new ArgumentException("Gatebreaker match supports up to four active slots.");
+            }
+
+            var result = new List<int>(playerCount);
+            bool zeroBasedSlots = false;
+            if (activeSlots != null)
+            {
+                for (int i = 0; i < activeSlots.Count; i++)
+                {
+                    if (activeSlots[i] == 0)
+                    {
+                        zeroBasedSlots = true;
+                        break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < playerCount; i++)
+            {
+                int playerId = activeSlots != null && activeSlots.Count > 0
+                    ? activeSlots[i] + (zeroBasedSlots ? 1 : 0)
+                    : i + 1;
+                if (playerId <= 0)
+                {
+                    throw new ArgumentException("Active slot player ids must be positive.");
+                }
+
+                if (result.Contains(playerId))
+                {
+                    throw new ArgumentException("Active slot player ids must be unique.");
+                }
+
+                result.Add(playerId);
+            }
+
+            return result;
+        }
+
+        private void ApplyTuningValues(IReadOnlyDictionary<string, int> tuningValues)
+        {
+            BounceTuning.ResetToDefaults();
+            if (tuningValues == null)
+            {
+                return;
+            }
+
+            if (TryGetTuningValue(tuningValues, out int hitOffsetValue, "HitOffsetInfluenceValue", "hitOffsetInfluenceValue", "hitOffsetInfluence"))
+            {
+                BounceTuning.SetHitOffsetInfluenceValue(hitOffsetValue);
+            }
+
+            if (TryGetTuningValue(tuningValues, out int paddleVelocityValue, "PaddleVelocityInfluenceValue", "paddleVelocityInfluenceValue", "paddleVelocityInfluence"))
+            {
+                BounceTuning.SetPaddleVelocityInfluenceValue(paddleVelocityValue);
+            }
+
+            if (TryGetTuningValue(tuningValues, out int minimumOutwardValue, "MinimumOutwardShareValue", "minimumOutwardShareValue", "minimumOutwardShare"))
+            {
+                BounceTuning.SetMinimumOutwardShareValue(minimumOutwardValue);
+            }
+        }
+
+        private static bool TryGetTuningValue(IReadOnlyDictionary<string, int> values, out int value, params string[] keys)
+        {
+            for (int i = 0; i < keys.Length; i++)
+            {
+                if (values.TryGetValue(keys[i], out value))
+                {
+                    return true;
+                }
+            }
+
+            foreach (KeyValuePair<string, int> item in values)
+            {
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    if (string.Equals(item.Key, keys[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = item.Value;
+                        return true;
+                    }
+                }
+            }
+
+            value = 0;
+            return false;
+        }
+
+        private IReadOnlyList<GatebreakerFrameInput> BuildLocalPrototypeFrameInputs()
+        {
+            var inputs = new List<GatebreakerFrameInput>(_players.Count);
+            for (int i = 0; i < _players.Count; i++)
+            {
+                PlayerRuntimeState player = _players[i];
+                PlayerInputFrame frame = player.IsAi
+                    ? _aiService.BuildFrame(player, this)
+                    : GetControlFrame(player, false);
+                inputs.Add(new GatebreakerFrameInput(frame.PlayerId, frame.MoveAxis, frame.ServePressed, frame.AimDirection));
+            }
+
+            return inputs;
+        }
+
+        private void PrepareStepInputs(IReadOnlyList<GatebreakerFrameInput> inputs)
+        {
+            _inputFrames.Clear();
+            if (inputs == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                GatebreakerFrameInput input = inputs[i];
+                if (FindPlayer(input.PlayerId) == null)
+                {
+                    continue;
+                }
+
+                _inputFrames[input.PlayerId] = new PlayerInputFrame(
+                    input.PlayerId,
+                    Mathf.Clamp(input.MoveAxis, -1f, 1f),
+                    input.ServePressed,
+                    input.AimDirection);
+            }
+        }
+
+        private void BufferStepInputs(int frameIndex, IReadOnlyList<GatebreakerFrameInput> inputs)
+        {
+            if (inputs == null || inputs.Count <= 0)
+            {
+                _stepInputBuffer[frameIndex] = new List<GatebreakerFrameInput>();
+                return;
+            }
+
+            var bufferedInputs = new List<GatebreakerFrameInput>(inputs.Count);
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                bufferedInputs.Add(inputs[i]);
+            }
+
+            _stepInputBuffer[frameIndex] = bufferedInputs;
+        }
+
+        private IReadOnlyList<GatebreakerFrameInput> GetBufferedInputs(int frameIndex)
+        {
+            return _stepInputBuffer.TryGetValue(frameIndex, out List<GatebreakerFrameInput> inputs)
+                ? inputs
+                : null;
+        }
+
+        private void TrimStepInputBuffer(int lastAppliedFrameIndex)
+        {
+            if (_stepInputBuffer.Count <= 0)
+            {
+                return;
+            }
+
+            var framesToRemove = new List<int>();
+            foreach (int frameIndex in _stepInputBuffer.Keys)
+            {
+                if (frameIndex < lastAppliedFrameIndex)
+                {
+                    framesToRemove.Add(frameIndex);
+                }
+            }
+
+            for (int i = 0; i < framesToRemove.Count; i++)
+            {
+                _stepInputBuffer.Remove(framesToRemove[i]);
+            }
         }
 
         private void AddPlayer(int playerId, int teamId, bool isLocalPlayer, bool isAi)
@@ -965,6 +1331,19 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 : InitialDirectionFor(player != null ? player.PlayerId : 1);
         }
 
+        private Vector2 GetInitialBallDirection(PlayerRuntimeState player, int spawnIndex)
+        {
+            if (Seed == 0 || player?.Paddle == null)
+            {
+                return GetServeDirection(player, Vector2.zero);
+            }
+
+            uint mixed = MixSeed(Seed, player.PlayerId, spawnIndex);
+            float normalized = (mixed & 0xffff) / 65535f;
+            float tangentOffset = 0.1f + (normalized - 0.5f) * 0.24f;
+            return (player.Paddle.Normal + player.Paddle.Tangent * tangentOffset).normalized;
+        }
+
         private Vector2 GetZoneCenter(Vector2 normal)
         {
             if (Mathf.Abs(normal.y) > 0.5f)
@@ -1024,6 +1403,51 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return RemainingTime <= EffectiveRule.Mode.FinalPhaseStartTime
                 ? EffectiveRule.Mode.FinalPhaseCooldownScale
                 : 1f;
+        }
+
+        private static int QuantizeFloat(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return 0;
+            }
+
+            return Mathf.RoundToInt(value * 10000f);
+        }
+
+        private static void HashVector(ref uint hash, Vector2 value)
+        {
+            HashInt(ref hash, QuantizeFloat(value.x));
+            HashInt(ref hash, QuantizeFloat(value.y));
+        }
+
+        private static void HashInt(ref uint hash, int value)
+        {
+            unchecked
+            {
+                hash ^= (byte)value;
+                hash *= ChecksumPrime;
+                hash ^= (byte)(value >> 8);
+                hash *= ChecksumPrime;
+                hash ^= (byte)(value >> 16);
+                hash *= ChecksumPrime;
+                hash ^= (byte)(value >> 24);
+                hash *= ChecksumPrime;
+            }
+        }
+
+        private static uint MixSeed(int seed, int playerId, int spawnIndex)
+        {
+            unchecked
+            {
+                uint value = (uint)seed;
+                value ^= (uint)(playerId * 374761393);
+                value = (value << 13) | (value >> 19);
+                value ^= (uint)(spawnIndex * 668265263);
+                value *= 2246822519u;
+                value ^= value >> 15;
+                return value;
+            }
         }
 
         private enum SweepHitType

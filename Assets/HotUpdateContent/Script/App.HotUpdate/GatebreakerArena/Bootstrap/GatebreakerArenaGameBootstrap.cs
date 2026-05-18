@@ -4,6 +4,7 @@ using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
+using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Prototype;
 using App.HotUpdate.GatebreakerArena.Serve;
 using App.HotUpdate.GatebreakerArena.UI;
@@ -79,6 +80,12 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             var aiService = new GatebreakerAiService();
             var hudPresenter = new GatebreakerArenaHudPresenter(matchRuntime);
             var sceneBindingService = new GatebreakerArenaSceneBindingService();
+            var lanRoomService = new LanRoomService(logger);
+            ILanTransport lanTransport = serviceContainer.Get<ILanTransport>();
+            LanRoomTransportBridge lanRoomTransportBridge = lanTransport != null
+                ? new LanRoomTransportBridge(lanRoomService, lanTransport)
+                : null;
+            var networkMatchController = new GatebreakerNetworkMatchController(lanRoomService, matchRuntime);
 
             serviceContainer.RegisterSingleton(configLoader);
             serviceContainer.RegisterSingleton(modeCatalog);
@@ -91,6 +98,14 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             serviceContainer.RegisterSingleton(aiService);
             serviceContainer.RegisterSingleton(hudPresenter);
             serviceContainer.RegisterSingleton(sceneBindingService);
+            serviceContainer.RegisterSingleton(lanRoomService);
+            serviceContainer.RegisterSingleton(networkMatchController);
+            if (lanRoomTransportBridge != null)
+            {
+                serviceContainer.RegisterSingleton(lanRoomTransportBridge);
+            }
+            tickManager.Register(networkMatchController);
+            tickManager.Register(lanRoomService);
 
             Context = new GatebreakerArenaApplicationContext(
                 serviceContainer,
@@ -103,7 +118,10 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
                 inputService,
                 aiService,
                 hudPresenter,
-                sceneBindingService);
+                sceneBindingService,
+                lanRoomService,
+                lanRoomTransportBridge,
+                networkMatchController);
 
             matchRuntime.StartLocalPrototype();
             CreatePrototypeRunner(Context);

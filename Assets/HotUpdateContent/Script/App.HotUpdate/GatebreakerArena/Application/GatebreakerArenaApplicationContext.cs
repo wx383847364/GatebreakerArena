@@ -1,6 +1,7 @@
 using App.HotUpdate.GatebreakerArena.AI;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
+using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.UI;
 using App.Shared.Contracts;
 
@@ -19,7 +20,10 @@ namespace App.HotUpdate.GatebreakerArena.Application
             GatebreakerInputService inputService,
             GatebreakerAiService aiService,
             GatebreakerArenaHudPresenter hudPresenter,
-            GatebreakerArenaSceneBindingService sceneBindingService)
+            GatebreakerArenaSceneBindingService sceneBindingService,
+            LanRoomService lanRoomService,
+            LanRoomTransportBridge lanRoomTransportBridge,
+            GatebreakerNetworkMatchController networkMatchController)
         {
             Services = services;
             Logger = logger;
@@ -32,6 +36,9 @@ namespace App.HotUpdate.GatebreakerArena.Application
             AiService = aiService;
             HudPresenter = hudPresenter;
             SceneBindingService = sceneBindingService;
+            LanRoomService = lanRoomService;
+            LanRoomTransportBridge = lanRoomTransportBridge;
+            NetworkMatchController = networkMatchController;
         }
 
         public IServiceContainer Services { get; }
@@ -45,5 +52,8 @@ namespace App.HotUpdate.GatebreakerArena.Application
         public GatebreakerAiService AiService { get; }
         public GatebreakerArenaHudPresenter HudPresenter { get; }
         public GatebreakerArenaSceneBindingService SceneBindingService { get; }
+        public LanRoomService LanRoomService { get; }
+        public LanRoomTransportBridge LanRoomTransportBridge { get; }
+        public GatebreakerNetworkMatchController NetworkMatchController { get; }
     }
 }

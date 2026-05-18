@@ -4,8 +4,10 @@ using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.UI;
+using App.Shared.Contracts;
 using UnityEngine;
 
 namespace App.HotUpdate.GatebreakerArena.Prototype
@@ -32,6 +34,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private GatebreakerMatchRuntime _runtime;
         private GatebreakerInputService _inputService;
         private GatebreakerArenaHudPresenter _hudPresenter;
+        private LanRoomService _lanRoomService;
+        private ILanTransport _lanTransport;
         private Transform _visualRoot;
         private Material _arenaMaterial;
         private Material _wallMaterial;
@@ -51,6 +55,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private bool _initialized;
         private bool _guiServePressed;
         private Vector2 _tuningScrollPosition;
+        private ulong _lanClientInstanceId;
+        private string _lanPlayerName = "Player";
+        private string _lanRoomCodeInput = string.Empty;
+        private float _lanInputAccumulator;
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
         private float ArenaHalfHeight => _runtime?.Arena != null ? _runtime.Arena.HalfHeight : 5f;
@@ -63,6 +71,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             Initialize(context.MatchRuntime, context.InputService, context.HudPresenter, DefaultLocalPlayerId);
+            _lanRoomService = context.LanRoomService;
+            _lanTransport = context.Services?.Get<ILanTransport>();
+            EnsureLanIdentity();
             context.SceneBindingService?.MarkBound();
         }
 
@@ -99,12 +110,28 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 _guiServePressed = false;
             }
 
-            HandleLocalPlayerSelection();
+            if (IsLanPlaying())
+            {
+                SyncLanLocalPlayer();
+            }
+            else
+            {
+                HandleLocalPlayerSelection();
+            }
 
             float moveAxis = ReadMoveAxis() * GetLocalMoveAxisSign();
             bool servePressed = Input.GetKeyDown(KeyCode.Space) || _guiServePressed;
             _guiServePressed = false;
             var frame = new PlayerInputFrame(_localPlayerId, moveAxis, servePressed, GetLocalViewUp());
+            if (IsLanPlaying())
+            {
+                SubmitLanInputAtFixedRate(frame);
+                SyncPlayerViews();
+                SyncBallViews();
+                return;
+            }
+
+            _lanInputAccumulator = 0f;
             _inputService.SetFrame(frame);
             _runtime.ApplyInputFrame(frame);
             _runtime.TickLocalPrototype(Time.deltaTime);
@@ -116,6 +143,62 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             SyncPlayerViews();
             SyncBallViews();
+        }
+
+        private bool IsLanPlaying()
+        {
+            return _lanRoomService != null &&
+                   _lanRoomService.CurrentSnapshot.State == LanRoomState.Playing;
+        }
+
+        private void SyncLanLocalPlayer()
+        {
+            RoomSnapshot snapshot = _lanRoomService?.CurrentSnapshot;
+            if (snapshot?.Players == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < snapshot.Players.Length; i++)
+            {
+                RoomPlayerSnapshot player = snapshot.Players[i];
+                if (player.SlotIndex != snapshot.LocalSlotIndex || player.PlayerId <= 0)
+                {
+                    continue;
+                }
+
+                if (player.PlayerId != _localPlayerId && _runtime.SetLocalPlayer(player.PlayerId))
+                {
+                    _localPlayerId = player.PlayerId;
+                    _lastServeBlockReason = ServeBlockReason.None;
+                    ConfigurePrototypeCamera();
+                }
+
+                return;
+            }
+        }
+
+        private void SubmitLanInputAtFixedRate(PlayerInputFrame frame)
+        {
+            float frameDelta = 1f / Mathf.Max(1, LockstepSession.SimulationFps);
+            _lanInputAccumulator += Mathf.Max(0f, Time.deltaTime);
+            int submitCount = Mathf.FloorToInt(_lanInputAccumulator / frameDelta);
+            if (submitCount <= 0)
+            {
+                return;
+            }
+
+            submitCount = Mathf.Min(submitCount, 4);
+            _lanInputAccumulator -= submitCount * frameDelta;
+            short moveAxisQ = GatebreakerLockstepInputConverter.QuantizeSignedUnit(frame.MoveAxis);
+            short aimXQ = GatebreakerLockstepInputConverter.QuantizeSignedUnit(frame.AimDirection.x);
+            short aimYQ = GatebreakerLockstepInputConverter.QuantizeSignedUnit(frame.AimDirection.y);
+            ushort buttons = frame.ServePressed ? GatebreakerLockstepInputConverter.ServeButton : (ushort)0;
+            for (int i = 0; i < submitCount; i++)
+            {
+                _lanRoomService.Lockstep.SubmitLocalInput(moveAxisQ, aimXQ, aimYQ, buttons);
+                buttons = 0;
+            }
         }
 
         private void LateUpdate()
@@ -166,6 +249,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             GUILayout.EndArea();
             DrawServeButton(snapshot);
             DrawBounceTuningPanel(snapshot);
+            DrawLanRoomPanel();
             DrawResultPanel(snapshot);
         }
 
@@ -582,6 +666,170 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             GUILayout.FlexibleSpace();
             GUILayout.Label("按 R 重新开始", _resultBodyStyle);
             GUILayout.EndArea();
+        }
+
+        private void DrawLanRoomPanel()
+        {
+            if (_lanRoomService == null)
+            {
+                return;
+            }
+
+            RoomSnapshot snapshot = _lanRoomService.CurrentSnapshot;
+            float panelX = Mathf.Max(16f, Screen.width - 326f);
+            float panelY = Screen.width < 740f ? 376f : 16f;
+            Rect panel = new Rect(panelX, panelY, 310f, 240f);
+            GUI.Box(panel, GUIContent.none);
+            GUILayout.BeginArea(new Rect(panel.x + 12f, panel.y + 10f, panel.width - 24f, panel.height - 20f));
+            GUILayout.Label("LAN 房间", _hudStyle);
+            GUILayout.Label($"状态：{FormatLanRoomState(snapshot.State)}", _hudStyle);
+            GUILayout.Label($"房间号：{(string.IsNullOrEmpty(snapshot.RoomCode) ? "-" : snapshot.RoomCode)}", _hudStyle);
+            GUILayout.Label($"玩家：{snapshot.Players.Length}/{Mathf.Max(1, snapshot.MaxPlayers)}", _hudStyle);
+            _lanPlayerName = GUILayout.TextField(_lanPlayerName, 18);
+            _lanRoomCodeInput = GUILayout.TextField(_lanRoomCodeInput, 12);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("创建"))
+            {
+                CreateLanHost();
+            }
+
+            if (GUILayout.Button("发现"))
+            {
+                StartLanDiscovery();
+            }
+
+            if (GUILayout.Button("加入"))
+            {
+                JoinLanRoom();
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("准备"))
+            {
+                ToggleLanReady(snapshot);
+            }
+
+            GUI.enabled = snapshot.CanStart;
+            if (GUILayout.Button("开始"))
+            {
+                _lanRoomService.StartLoading();
+            }
+
+            GUI.enabled = true;
+            if (GUILayout.Button("离开"))
+            {
+                _lanRoomService.Leave("ui");
+            }
+
+            GUILayout.EndHorizontal();
+
+            if (snapshot.State == LanRoomState.Loading && !snapshot.IsHost)
+            {
+                if (GUILayout.Button("确认加载完成"))
+                {
+                    _lanRoomService.AcknowledgeStart();
+                }
+            }
+
+            if (!string.IsNullOrEmpty(snapshot.Error))
+            {
+                GUILayout.Label(TruncateLanStatus(snapshot.Error), _dangerStyle);
+            }
+
+            GUILayout.EndArea();
+        }
+
+        private void EnsureLanIdentity()
+        {
+            if (_lanClientInstanceId != 0UL)
+            {
+                return;
+            }
+
+            unchecked
+            {
+                _lanClientInstanceId = (ulong)System.DateTime.UtcNow.Ticks ^ (ulong)UnityEngine.Random.Range(1, int.MaxValue);
+            }
+        }
+
+        private void CreateLanHost()
+        {
+            EnsureLanIdentity();
+            _lanTransport?.StartDiscovery();
+            _lanTransport?.StartTcpHost();
+            int tcpPort = _lanTransport?.TcpListenEndpoint.Port ?? 0;
+            RoomSnapshot snapshot = _lanRoomService.CreateHost(_lanPlayerName, _lanClientInstanceId, tcpPort: tcpPort);
+            _lanRoomCodeInput = snapshot.RoomCode;
+        }
+
+        private void StartLanDiscovery()
+        {
+            EnsureLanIdentity();
+            _lanTransport?.StartDiscovery();
+            _lanRoomService.StartDiscovery(_lanClientInstanceId, _lanPlayerName);
+        }
+
+        private void JoinLanRoom()
+        {
+            if (string.IsNullOrWhiteSpace(_lanRoomCodeInput))
+            {
+                return;
+            }
+
+            _lanRoomService.JoinDiscoveredRoom(_lanRoomCodeInput);
+        }
+
+        private void ToggleLanReady(RoomSnapshot snapshot)
+        {
+            RoomPlayerSnapshot local = null;
+            for (int i = 0; i < snapshot.Players.Length; i++)
+            {
+                if (snapshot.Players[i].IsLocal)
+                {
+                    local = snapshot.Players[i];
+                    break;
+                }
+            }
+
+            bool nextReady = local == null || !local.IsReady;
+            _lanRoomService.SetReady(nextReady);
+        }
+
+        private static string TruncateLanStatus(string value)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length <= 44)
+            {
+                return value;
+            }
+
+            return value.Substring(0, 41) + "...";
+        }
+
+        private static string FormatLanRoomState(LanRoomState state)
+        {
+            switch (state)
+            {
+                case LanRoomState.Discovering:
+                    return "发现中";
+                case LanRoomState.Lobby:
+                    return "大厅";
+                case LanRoomState.Joining:
+                    return "加入中";
+                case LanRoomState.Loading:
+                    return "加载";
+                case LanRoomState.Playing:
+                    return "对战";
+                case LanRoomState.Left:
+                    return "已离开";
+                case LanRoomState.Aborted:
+                    return "已中止";
+                case LanRoomState.Idle:
+                default:
+                    return "空闲";
+            }
         }
 
         private static string BuildWinnerText(GatebreakerHudSnapshot snapshot)

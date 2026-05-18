@@ -9,6 +9,7 @@ using App.AOT.Infrastructure.Persistence;
 using App.AOT.YooRuntimeAssets;
 using App.AOT.HotUpdate;
 using App.AOT.Networking;
+using App.AOT.Networking.Lan;
 using App.AOT.Platform.WeChat;
 
 namespace App.AOT.Bootstrap
@@ -29,6 +30,7 @@ namespace App.AOT.Bootstrap
         private YooAssetsRuntime _yooAssets;
         private HybridClrLoader _hybridClrLoader;
         private NetClient _netClient;
+        private LanTransport _lanTransport;
         private WeChatBridge _weChatBridge;
 
         private async void Start()
@@ -111,6 +113,11 @@ namespace App.AOT.Bootstrap
             _netClient.SetLogger(_logger);
             _netClient.Initialize();
             _serviceContainer.RegisterSingleton<INetClient>(_netClient);
+            _lanTransport = new LanTransport();
+            _lanTransport.SetLogger(_logger);
+            _lanTransport.Initialize();
+            _serviceContainer.RegisterSingleton<ILanTransport>(_lanTransport);
+            _serviceContainer.RegisterSingleton<LanTransport>(_lanTransport);
             _logger.LogInfo("网络客户端初始化完成");
         }
 
@@ -137,12 +144,14 @@ namespace App.AOT.Bootstrap
             var deltaTime = Time.deltaTime;
             _tickManager?.Update(deltaTime);
             _netClient?.Update(deltaTime);
+            _lanTransport?.Update(deltaTime);
         }
 
         private void OnDestroy()
         {
             _hybridClrLoader?.Shutdown();
             _yooAssets?.Shutdown();
+            _lanTransport?.Shutdown();
             _netClient?.Shutdown();
             _weChatBridge?.Shutdown();
             _tickManager?.Shutdown();
