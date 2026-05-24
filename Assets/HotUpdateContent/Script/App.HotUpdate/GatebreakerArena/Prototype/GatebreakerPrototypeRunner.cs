@@ -23,6 +23,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const float ServeButtonHeight = 50f;
         private const float TuningPanelPreferredHeight = 180f;
         private const float TuningPanelMinimumHeight = 118f;
+        private const float LanRoomButtonWidth = 112f;
+        private const float LanRoomButtonHeight = 42f;
+        private const float LanRoomPanelWidth = 310f;
+        private const float LanRoomPanelPreferredHeight = 240f;
 
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, Renderer> _ballRenderers = new Dictionary<int, Renderer>();
@@ -59,6 +63,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private string _lanPlayerName = "Player";
         private string _lanRoomCodeInput = string.Empty;
         private float _lanInputAccumulator;
+        private bool _isLanRoomPanelExpanded;
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
         private float ArenaHalfHeight => _runtime?.Arena != null ? _runtime.Arena.HalfHeight : 5f;
@@ -676,9 +681,19 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             RoomSnapshot snapshot = _lanRoomService.CurrentSnapshot;
-            float panelX = Mathf.Max(16f, Screen.width - 326f);
-            float panelY = Screen.width < 740f ? 376f : 16f;
-            Rect panel = new Rect(panelX, panelY, 310f, 240f);
+            Rect toggleButton = CalculateLanRoomToggleButtonRect();
+            string buttonText = _isLanRoomPanelExpanded ? "隐藏 LAN" : "LAN 房间";
+            if (GUI.Button(toggleButton, buttonText))
+            {
+                _isLanRoomPanelExpanded = !_isLanRoomPanelExpanded;
+            }
+
+            if (!_isLanRoomPanelExpanded)
+            {
+                return;
+            }
+
+            Rect panel = CalculateLanRoomPanelRect(toggleButton);
             GUI.Box(panel, GUIContent.none);
             GUILayout.BeginArea(new Rect(panel.x + 12f, panel.y + 10f, panel.width - 24f, panel.height - 20f));
             GUILayout.Label("LAN 房间", _hudStyle);
@@ -740,6 +755,26 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             GUILayout.EndArea();
+        }
+
+        private Rect CalculateLanRoomToggleButtonRect()
+        {
+            float maxWidth = Mathf.Max(1f, Screen.width - ScreenPadding * 2f);
+            float width = Mathf.Min(LanRoomButtonWidth, maxWidth);
+            float height = Mathf.Min(LanRoomButtonHeight, Mathf.Max(1f, Screen.height - ScreenPadding * 2f));
+            float x = ScreenPadding;
+            float y = Mathf.Max(ScreenPadding, Screen.height - ScreenPadding - height);
+            return new Rect(x, y, width, height);
+        }
+
+        private Rect CalculateLanRoomPanelRect(Rect toggleButton)
+        {
+            float width = Mathf.Min(LanRoomPanelWidth, Mathf.Max(1f, Screen.width - ScreenPadding * 2f));
+            float maxHeight = Mathf.Max(1f, toggleButton.y - ScreenPadding - ControlGap);
+            float height = Mathf.Min(LanRoomPanelPreferredHeight, maxHeight);
+            float x = ScreenPadding;
+            float y = Mathf.Max(ScreenPadding, toggleButton.y - ControlGap - height);
+            return new Rect(x, y, width, height);
         }
 
         private void EnsureLanIdentity()

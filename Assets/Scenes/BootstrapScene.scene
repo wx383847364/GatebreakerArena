@@ -533,7 +533,6 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   _cameras:
   - {fileID: 202}
-  - {fileID: 401}
   _updateEveryFrame: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
