@@ -3,11 +3,15 @@
 ## 当前项目
 
 - 项目名称：Gatebreaker Arena
-- 当前 Git 仓库根、Unity 工程根、工具命令执行根：`Client/`
-- 本机路径示例：`<workspace>/GatebreakerArena/Client`
+- 当前工作区根：`<workspace>/GatebreakerArena`
+- Git 仓库根、Unity 工程根、默认工具命令执行根：`Client/`
+- 本机 Unity 工程路径示例：`<workspace>/GatebreakerArena/Client`
+- 本文中未特别说明的工程路径，均以 `Client/` 为根。
 - 当前阶段：Unity + HybridCLR + YooAssets 独立工程骨架
 
 ## 必读文档
+
+以下链接均以本文所在目录 `Client/doc/长期主文档/协作与执行/` 为基准：
 
 - [项目总览](../项目总览.md)
 - [热更新边界规范 v1](../架构与边界/热更新边界规范_v1.md)
@@ -21,8 +25,8 @@
 每轮实现功能前，主线程必须自行判断任务属于哪类，不要把分类问题丢回给用户：
 
 - `纯逻辑`：只改服务、模型、配置、算法、验证脚本，不触碰 UI 文件、prefab、场景绑定或页面流程。
-- `UI 相关`：涉及 UGUI、prefab、HUD、View、Presenter、Controller、binding、页面流转、按钮、图片、文本、布局、动画、安全区，或路径包含 `App.HotUpdate.GatebreakerArena/UI`、`Assets/Res`、`Assets/Scenes` 中的 UI 绑定。
-- `工程/边界`：涉及 `App.AOT / App.Shared / App.HotUpdate` 分层、HybridCLR、YooAssets、跨层 DTO、入口和组合层。
+- `UI 相关`：涉及 UGUI、prefab、HUD、View、Presenter、Controller、binding、页面流转、按钮、图片、文本、布局、动画、安全区，或路径包含 `Assets/HotUpdateContent/Script/App.HotUpdate/GatebreakerArena/UI`、`Assets/HotUpdateContent/Res`、`Assets/Scenes` 中的 UI 绑定。
+- `工程/边界`：涉及 `Assets/Scripts/App.AOT`、`Assets/Scripts/App.Shared`、`Assets/HotUpdateContent/Script/App.HotUpdate` 分层，或 HybridCLR、YooAssets、跨层 DTO、入口和组合层。
 
 执行门禁：
 
@@ -32,7 +36,7 @@
 
 ## 固定边界
 
-- `App.AOT` 只做宿主基础设施。
-- `App.Shared` 只放稳定跨层契约。
-- `App.HotUpdate.GatebreakerArena` 承载玩法。
+- `App.AOT`：宿主基础设施，代码根为 `Assets/Scripts/App.AOT`。
+- `App.Shared`：稳定跨层契约，代码根为 `Assets/Scripts/App.Shared`。
+- `App.HotUpdate.GatebreakerArena`：正式玩法，代码根为 `Assets/HotUpdateContent/Script/App.HotUpdate/GatebreakerArena`。
 - 正式资源走 YooAssets。
