@@ -159,6 +159,17 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void CreateHostGeneratesNumericRoomCodeByDefault()
+        {
+            var host = new LanRoomService();
+
+            RoomSnapshot snapshot = host.CreateHost("Host", 1001UL);
+
+            Assert.AreEqual(6, snapshot.RoomCode.Length);
+            Assert.IsTrue(snapshot.RoomCode.All(char.IsDigit));
+        }
+
+        [Test]
         public void LockstepLocalInputTargetAdvancesSequentiallyAfterStartupBundles()
         {
             var session = new LockstepSession();

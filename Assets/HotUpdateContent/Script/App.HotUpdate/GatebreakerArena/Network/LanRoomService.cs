@@ -927,13 +927,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private static string CreateRoomCode(ulong sessionId)
         {
-            const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-            char[] chars = new char[6];
-            ulong value = sessionId;
+            const int roomCodeLength = 6;
+            char[] chars = new char[roomCodeLength];
+            ulong value = sessionId % 1000000UL;
             for (int i = 0; i < chars.Length; i++)
             {
-                chars[i] = alphabet[(int)(value % (ulong)alphabet.Length)];
-                value /= (ulong)alphabet.Length;
+                chars[chars.Length - 1 - i] = (char)('0' + value % 10UL);
+                value /= 10UL;
             }
 
             return new string(chars);
