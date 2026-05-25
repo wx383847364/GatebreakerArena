@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
 using App.HotUpdate.GatebreakerArena.Core;
@@ -9,6 +12,7 @@ using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.UI;
 using App.Shared.Contracts;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace App.HotUpdate.GatebreakerArena.Prototype
 {
@@ -20,32 +24,60 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const float CameraMargin = 0.9f;
         private const float ScreenPadding = 16f;
         private const float ControlGap = 10f;
+        private const float HudBarHeight = 86f;
+        private const float HudTopPadding = 10f;
         private const float ServeButtonHeight = 50f;
         private const float TuningPanelPreferredHeight = 180f;
         private const float TuningPanelMinimumHeight = 118f;
         private const float LanRoomButtonWidth = 112f;
         private const float LanRoomButtonHeight = 42f;
-        private const float LanRoomPanelWidth = 310f;
+        private const float LanRoomPanelWidth = 430f;
         private const float LanRoomPanelPreferredHeight = 240f;
+        private const float LanRoomInfoHeight = 84f;
+        private const string ArenaRootName = "ArenaRoot";
+        private const string ObjPoolRootName = "ObjPool";
+        private const string DebugCollisionOverlayName = "DebugCollisionOverlay";
+        private const string SceneInstanceName = "Scene3v3";
+        private const float Scene3v3HalfWidth = 2.81f;
+        private const float Scene3v3HalfHeight = 2.456f;
+        private const float DebugOverlayPrefabDepth = -0.08f;
+        private const float DebugOverlayFallbackHeight = 0.08f;
+        private const int DebugOverlaySortingOrder = 1200;
+
+        private static readonly Color[] PlayerPalette =
+        {
+            new Color(0.20f, 0.68f, 1.00f),
+            new Color(1.00f, 0.55f, 0.18f),
+            new Color(0.45f, 0.88f, 0.38f),
+            new Color(0.84f, 0.42f, 1.00f),
+        };
 
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
-        private readonly Dictionary<int, Renderer> _ballRenderers = new Dictionary<int, Renderer>();
+        private readonly Dictionary<int, Renderer[]> _ballRenderers = new Dictionary<int, Renderer[]>();
         private readonly Dictionary<int, Transform> _paddleViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, Renderer> _paddleRenderers = new Dictionary<int, Renderer>();
         private readonly Dictionary<int, Renderer> _guardRenderers = new Dictionary<int, Renderer>();
+        private readonly List<LineRenderer> _debugCollisionLines = new List<LineRenderer>();
         private readonly HashSet<int> _liveBallIds = new HashSet<int>();
+        private readonly Stack<GameObject> _ballViewPool = new Stack<GameObject>();
 
         private GatebreakerMatchRuntime _runtime;
         private GatebreakerInputService _inputService;
         private GatebreakerArenaHudPresenter _hudPresenter;
         private LanRoomService _lanRoomService;
         private ILanTransport _lanTransport;
+        private GatebreakerVisualAssetService _visualAssetService;
+        private GatebreakerVisualAssetSet _visualAssets;
         private Transform _visualRoot;
+        private Transform _poolRoot;
+        private Transform _debugCollisionOverlayRoot;
+        private GameObject _sceneInstance;
         private Material _arenaMaterial;
         private Material _wallMaterial;
         private Material _localMaterial;
         private Material _dangerMaterial;
         private Material _paddleMaterial;
+        private Material _debugOverlayMaterial;
         private Material[] _playerMaterials;
         private Camera _prototypeCamera;
         private GUIStyle _hudStyle;
@@ -62,27 +94,46 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private ulong _lanClientInstanceId;
         private string _lanPlayerName = "Player";
         private string _lanRoomCodeInput = string.Empty;
+        private string _cachedLocalLanAddress = "-";
         private float _lanInputAccumulator;
+        private float _nextLocalLanAddressRefreshTime;
         private bool _isLanRoomPanelExpanded;
+        private bool _usePrefabVisuals;
+        private bool _ownsVisualRoot;
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
         private float ArenaHalfHeight => _runtime?.Arena != null ? _runtime.Arena.HalfHeight : 5f;
 
         public void Initialize(GatebreakerArenaApplicationContext context)
         {
+            InitializeAsync(context).GetAwaiter().GetResult();
+        }
+
+        public async Task InitializeAsync(GatebreakerArenaApplicationContext context)
+        {
             if (context == null)
             {
                 throw new ArgumentNullException(nameof(context));
             }
 
-            Initialize(context.MatchRuntime, context.InputService, context.HudPresenter, DefaultLocalPlayerId);
+            _visualAssetService = context.VisualAssetService;
             _lanRoomService = context.LanRoomService;
             _lanTransport = context.Services?.Get<ILanTransport>();
+            await InitializeAsync(context.MatchRuntime, context.InputService, context.HudPresenter, DefaultLocalPlayerId);
             EnsureLanIdentity();
             context.SceneBindingService?.MarkBound();
         }
 
         public void Initialize(
+            GatebreakerMatchRuntime runtime,
+            GatebreakerInputService inputService,
+            GatebreakerArenaHudPresenter hudPresenter,
+            int localPlayerId = DefaultLocalPlayerId)
+        {
+            InitializeAsync(runtime, inputService, hudPresenter, localPlayerId).GetAwaiter().GetResult();
+        }
+
+        public async Task InitializeAsync(
             GatebreakerMatchRuntime runtime,
             GatebreakerInputService inputService,
             GatebreakerArenaHudPresenter hudPresenter,
@@ -94,7 +145,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _localPlayerId = localPlayerId;
             _runtime.SetLocalPlayer(_localPlayerId);
 
-            EnsureScene();
+            await EnsureSceneAsync();
             SyncPlayerViews();
             SyncBallViews();
             _initialized = true;
@@ -113,6 +164,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 _runtime.SetLocalPlayer(_localPlayerId);
                 _lastServeBlockReason = ServeBlockReason.None;
                 _guiServePressed = false;
+                RebuildDebugCollisionOverlay();
             }
 
             if (IsLanPlaying())
@@ -225,33 +277,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             EnsureHudStyles();
             GatebreakerHudSnapshot snapshot = _hudPresenter.BuildSnapshot(_localPlayerId);
-            Rect panel = new Rect(16f, 16f, 390f, snapshot.HasDanger ? 344f : 316f);
-            GUI.Box(panel, GUIContent.none);
-
-            GUILayout.BeginArea(new Rect(panel.x + 14f, panel.y + 10f, panel.width - 28f, panel.height - 20f));
-            GUILayout.Label("Gatebreaker Arena 原型", _hudStyle);
-            GUILayout.Label("A/D 或方向键：移动    空格：发球    R：重开", _hudStyle);
-            GUILayout.Label("1-4：切换本地玩家视角/控制", _hudStyle);
-            GUILayout.Space(4f);
-            GUILayout.Label($"阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}", _hudStyle);
-            GUILayout.Label("比分：", _hudStyle);
-            DrawScoreRows(snapshot);
-            GUILayout.Label(
-                $"弹药：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}    冷却：{snapshot.ServeCooldownRemaining:0.0}秒",
-                _hudStyle);
-            GUILayout.Label(
-                $"己方在场球：{snapshot.OwnedBallsInField}/{snapshot.MaxOwnedBallsInField}",
-                _hudStyle);
-            GUILayout.Label(
-                $"发球限制：{FormatServeBlockReason(snapshot.ServeBlockReason)}    上次空格：{FormatServeBlockReason(_lastServeBlockReason)}",
-                _hudStyle);
-            if (snapshot.HasDanger)
-            {
-                GUILayout.Space(4f);
-                GUILayout.Label("危险：场上有敌方球", _dangerStyle);
-            }
-
-            GUILayout.EndArea();
+            Rect arenaRect = CalculateArenaGuiRect();
+            DrawHudBar(snapshot, arenaRect);
             DrawServeButton(snapshot);
             DrawBounceTuningPanel(snapshot);
             DrawLanRoomPanel();
@@ -260,11 +287,28 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void OnDestroy()
         {
+            _visualAssets?.Dispose();
+            DestroyBallViewCache();
+            ClearDebugCollisionOverlay();
+            if (_debugCollisionOverlayRoot != null)
+            {
+                Destroy(_debugCollisionOverlayRoot.gameObject);
+                _debugCollisionOverlayRoot = null;
+            }
+
+            if (_ownsVisualRoot && _visualRoot != null)
+            {
+                Destroy(_visualRoot.gameObject);
+                _visualRoot = null;
+                _ownsVisualRoot = false;
+            }
+
             DestroyMaterial(_arenaMaterial);
             DestroyMaterial(_wallMaterial);
             DestroyMaterial(_localMaterial);
             DestroyMaterial(_dangerMaterial);
             DestroyMaterial(_paddleMaterial);
+            DestroyMaterial(_debugOverlayMaterial);
             if (_playerMaterials == null)
             {
                 return;
@@ -276,15 +320,30 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
-        private void EnsureScene()
+        private async Task EnsureSceneAsync()
         {
             if (_visualRoot != null)
             {
                 return;
             }
 
-            _visualRoot = new GameObject("Gatebreaker Prototype Visuals").transform;
-            _visualRoot.SetParent(transform, false);
+            ResolveArenaRoot();
+            _visualAssets = _visualAssetService != null
+                ? await _visualAssetService.LoadAsync(_runtime?.EffectiveRule, _runtime?.BallRule)
+                : null;
+
+            if (_visualAssets != null && _visualAssets.IsComplete)
+            {
+                _usePrefabVisuals = true;
+                CreatePrefabScene();
+                RebuildDebugCollisionOverlay();
+                ConfigurePrototypeCamera();
+                return;
+            }
+
+            _visualAssets?.Dispose();
+            _visualAssets = null;
+            _usePrefabVisuals = false;
             CreateMaterials();
             ConfigurePrototypeCamera();
             CreateLightIfNeeded();
@@ -292,7 +351,247 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             CreateWalls();
             CreateGuardZones();
             CreatePaddles();
+            RebuildDebugCollisionOverlay();
             ConfigurePrototypeCamera();
+        }
+
+        private void CreatePrefabScene()
+        {
+            _sceneInstance = Instantiate(_visualAssets.Scene.Prefab, _visualRoot, false);
+            _sceneInstance.name = SceneInstanceName;
+            _sceneInstance.transform.localPosition = Vector3.zero;
+            _sceneInstance.transform.localRotation = Quaternion.identity;
+            _sceneInstance.transform.localScale = Vector3.one;
+        }
+
+        private void RebuildDebugCollisionOverlay()
+        {
+            ClearDebugCollisionOverlay();
+            if (_visualRoot == null || _runtime?.Arena == null)
+            {
+                return;
+            }
+
+            EnsureDebugCollisionOverlayRoot();
+            IReadOnlyList<GatebreakerCollisionOverlayLine> lines =
+                GatebreakerCollisionOverlayGeometry.BuildLines(_runtime.Arena, _runtime.Players.Count);
+            for (int i = 0; i < lines.Count; i++)
+            {
+                GatebreakerCollisionOverlayLine line = lines[i];
+                AddDebugCollisionLine(
+                    ToDebugOverlayPosition(line.Start),
+                    ToDebugOverlayPosition(line.End),
+                    line.Kind);
+            }
+
+            AddPrefabBoxColliderOverlayLines();
+        }
+
+        private void EnsureDebugCollisionOverlayRoot()
+        {
+            if (_debugCollisionOverlayRoot != null)
+            {
+                return;
+            }
+
+            var overlayObject = new GameObject(DebugCollisionOverlayName);
+            _debugCollisionOverlayRoot = overlayObject.transform;
+            _debugCollisionOverlayRoot.SetParent(_visualRoot, false);
+            _debugCollisionOverlayRoot.localPosition = Vector3.zero;
+            _debugCollisionOverlayRoot.localRotation = Quaternion.identity;
+            _debugCollisionOverlayRoot.localScale = Vector3.one;
+        }
+
+        private void ClearDebugCollisionOverlay()
+        {
+            for (int i = 0; i < _debugCollisionLines.Count; i++)
+            {
+                LineRenderer line = _debugCollisionLines[i];
+                if (line != null)
+                {
+                    Destroy(line.gameObject);
+                }
+            }
+
+            _debugCollisionLines.Clear();
+        }
+
+        private void AddPrefabBoxColliderOverlayLines()
+        {
+            if (!_usePrefabVisuals || _sceneInstance == null || _debugCollisionOverlayRoot == null)
+            {
+                return;
+            }
+
+            BoxCollider2D[] colliders = _sceneInstance.GetComponentsInChildren<BoxCollider2D>(false);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                BoxCollider2D collider = colliders[i];
+                if (collider == null || !collider.enabled)
+                {
+                    continue;
+                }
+
+                Vector2 halfSize = collider.size * 0.5f;
+                Vector2 offset = collider.offset;
+                Vector2[] colliderCorners =
+                {
+                    offset + new Vector2(-halfSize.x, -halfSize.y),
+                    offset + new Vector2(-halfSize.x, halfSize.y),
+                    offset + new Vector2(halfSize.x, halfSize.y),
+                    offset + new Vector2(halfSize.x, -halfSize.y),
+                    offset + new Vector2(-halfSize.x, -halfSize.y),
+                };
+                var overlayCorners = new Vector3[colliderCorners.Length];
+                for (int cornerIndex = 0; cornerIndex < colliderCorners.Length; cornerIndex++)
+                {
+                    Vector3 world = collider.transform.TransformPoint(colliderCorners[cornerIndex]);
+                    Vector3 overlayLocal = _debugCollisionOverlayRoot.InverseTransformPoint(world);
+                    overlayLocal.z = DebugOverlayPrefabDepth * 0.5f;
+                    overlayCorners[cornerIndex] = overlayLocal;
+                }
+
+                AddDebugCollisionLine(overlayCorners, new Color(1f, 1f, 1f, 0.42f), 0.012f);
+            }
+        }
+
+        private void AddDebugCollisionLine(
+            Vector3 start,
+            Vector3 end,
+            GatebreakerCollisionOverlayLineKind kind)
+        {
+            GetDebugOverlayStyle(kind, out Color color, out float width);
+            AddDebugCollisionLine(new[] { start, end }, color, width);
+        }
+
+        private void AddDebugCollisionLine(Vector3[] positions, Color color, float width)
+        {
+            if (positions == null || positions.Length < 2)
+            {
+                return;
+            }
+
+            var lineObject = new GameObject("Debug Collision Line");
+            Transform lineTransform = lineObject.transform;
+            lineTransform.SetParent(_debugCollisionOverlayRoot, false);
+            lineTransform.localPosition = Vector3.zero;
+            lineTransform.localRotation = Quaternion.identity;
+            lineTransform.localScale = Vector3.one;
+
+            LineRenderer line = lineObject.AddComponent<LineRenderer>();
+            line.useWorldSpace = false;
+            line.positionCount = positions.Length;
+            line.SetPositions(positions);
+            line.material = GetDebugOverlayMaterial();
+            line.startColor = color;
+            line.endColor = color;
+            line.startWidth = width;
+            line.endWidth = width;
+            line.numCornerVertices = 2;
+            line.numCapVertices = 2;
+            line.textureMode = LineTextureMode.Stretch;
+            line.alignment = LineAlignment.View;
+            line.sortingOrder = DebugOverlaySortingOrder;
+            _debugCollisionLines.Add(line);
+        }
+
+        private Vector3 ToDebugOverlayPosition(Vector2 position)
+        {
+            Vector3 visual = ToVisualPosition(position, DebugOverlayFallbackHeight);
+            if (_usePrefabVisuals)
+            {
+                visual.z = DebugOverlayPrefabDepth;
+            }
+            else
+            {
+                visual.y = DebugOverlayFallbackHeight;
+            }
+
+            return visual;
+        }
+
+        private Material GetDebugOverlayMaterial()
+        {
+            if (_debugOverlayMaterial != null)
+            {
+                return _debugOverlayMaterial;
+            }
+
+            Shader shader = Shader.Find("Sprites/Default") ??
+                            Shader.Find("Universal Render Pipeline/Unlit") ??
+                            Shader.Find("Unlit/Color") ??
+                            Shader.Find("Standard") ??
+                            Shader.Find("Diffuse");
+            _debugOverlayMaterial = new Material(shader);
+            _debugOverlayMaterial.color = Color.white;
+            return _debugOverlayMaterial;
+        }
+
+        private static void GetDebugOverlayStyle(
+            GatebreakerCollisionOverlayLineKind kind,
+            out Color color,
+            out float width)
+        {
+            switch (kind)
+            {
+                case GatebreakerCollisionOverlayLineKind.GoalTrigger:
+                    color = new Color(0.10f, 1.00f, 0.95f, 1f);
+                    width = 0.026f;
+                    break;
+                case GatebreakerCollisionOverlayLineKind.GoalBand:
+                    color = new Color(1.00f, 0.92f, 0.10f, 0.78f);
+                    width = 0.018f;
+                    break;
+                case GatebreakerCollisionOverlayLineKind.Wall:
+                default:
+                    color = new Color(1.00f, 0.08f, 0.04f, 1f);
+                    width = 0.034f;
+                    break;
+            }
+        }
+
+        private void ResolveArenaRoot()
+        {
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (activeScene.IsValid())
+            {
+                GameObject[] roots = activeScene.GetRootGameObjects();
+                for (int i = 0; i < roots.Length; i++)
+                {
+                    if (roots[i] != null && roots[i].name == ArenaRootName)
+                    {
+                        _visualRoot = roots[i].transform;
+                        ResolveObjPoolRoot();
+                        _ownsVisualRoot = false;
+                        return;
+                    }
+                }
+            }
+
+            GameObject arenaRootObject = new GameObject(ArenaRootName);
+            _visualRoot = arenaRootObject.transform;
+            ResolveObjPoolRoot();
+            _ownsVisualRoot = true;
+        }
+
+        private void ResolveObjPoolRoot()
+        {
+            if (_visualRoot == null)
+            {
+                _poolRoot = null;
+                return;
+            }
+
+            Transform existing = _visualRoot.Find(ObjPoolRootName);
+            if (existing != null)
+            {
+                _poolRoot = existing;
+                return;
+            }
+
+            var poolObject = new GameObject(ObjPoolRootName);
+            _poolRoot = poolObject.transform;
+            _poolRoot.SetParent(_visualRoot, false);
         }
 
         private void CreateMaterials()
@@ -304,10 +603,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _paddleMaterial = CreateMaterial(new Color(0.01f, 0.01f, 0.01f));
             _playerMaterials = new[]
             {
-                CreateMaterial(new Color(0.20f, 0.68f, 1.00f)),
-                CreateMaterial(new Color(1.00f, 0.55f, 0.18f)),
-                CreateMaterial(new Color(0.45f, 0.88f, 0.38f)),
-                CreateMaterial(new Color(0.84f, 0.42f, 1.00f)),
+                CreateMaterial(PlayerPalette[0]),
+                CreateMaterial(PlayerPalette[1]),
+                CreateMaterial(PlayerPalette[2]),
+                CreateMaterial(PlayerPalette[3]),
             };
         }
 
@@ -341,8 +640,13 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             for (int playerId = 1; playerId <= 4; playerId++)
             {
-                Transform paddle = EnsurePaddleView(playerId);
                 PlayerRuntimeState player = _runtime?.FindPlayer(playerId);
+                if (player?.Paddle == null || player.IsDisabled)
+                {
+                    continue;
+                }
+
+                Transform paddle = EnsurePaddleView(playerId);
                 paddle.localPosition = GetPaddlePosition(player);
                 paddle.localRotation = GetPaddleRotation(player?.Paddle);
             }
@@ -378,18 +682,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             for (int i = 0; i < players.Count; i++)
             {
                 PlayerRuntimeState player = players[i];
+                if (player == null || player.Paddle == null || player.IsDisabled)
+                {
+                    RemovePaddleView(player != null ? player.PlayerId : 0);
+                    continue;
+                }
+
                 Transform paddle = EnsurePaddleView(player.PlayerId);
                 paddle.localPosition = GetPaddlePosition(player);
                 paddle.localRotation = GetPaddleRotation(player.Paddle);
-                if (player.Paddle != null)
-                {
-                    bool horizontal = Mathf.Abs(player.Paddle.Normal.y) > 0.5f;
-                    paddle.localScale = horizontal
-                        ? new Vector3(player.Paddle.Length, 0.35f, player.Paddle.Thickness)
-                        : new Vector3(player.Paddle.Thickness, 0.35f, player.Paddle.Length);
-                }
+                paddle.localScale = GetPaddleVisualScale(player.Paddle);
 
-                if (_paddleRenderers.TryGetValue(player.PlayerId, out Renderer renderer))
+                if (!_usePrefabVisuals && _paddleRenderers.TryGetValue(player.PlayerId, out Renderer renderer))
                 {
                     renderer.material.color = _paddleMaterial.color;
                 }
@@ -411,41 +715,94 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return paddle;
             }
 
-            GameObject paddleObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject paddleObject = _usePrefabVisuals && _visualAssets?.Paddle?.Prefab != null
+                ? Instantiate(_visualAssets.Paddle.Prefab)
+                : GameObject.CreatePrimitive(PrimitiveType.Cube);
             paddleObject.name = $"Player {playerId} Paddle";
             paddleObject.transform.SetParent(_visualRoot, false);
-            paddleObject.transform.localScale = playerId <= 2
-                ? new Vector3(2.2f, 0.35f, 0.35f)
-                : new Vector3(0.35f, 0.35f, 2.2f);
-            SetMaterial(paddleObject, _paddleMaterial);
+            paddleObject.transform.localScale = Vector3.one;
+            if (!_usePrefabVisuals)
+            {
+                SetMaterial(paddleObject, _paddleMaterial);
+                _paddleRenderers[playerId] = paddleObject.GetComponent<Renderer>();
+            }
+
             _paddleViews[playerId] = paddleObject.transform;
-            _paddleRenderers[playerId] = paddleObject.GetComponent<Renderer>();
             return paddleObject.transform;
+        }
+
+        private void RemovePaddleView(int playerId)
+        {
+            if (playerId <= 0)
+            {
+                return;
+            }
+
+            if (_paddleViews.TryGetValue(playerId, out Transform paddle) && paddle != null)
+            {
+                Destroy(paddle.gameObject);
+            }
+
+            _paddleViews.Remove(playerId);
+            _paddleRenderers.Remove(playerId);
+            if (_guardRenderers.TryGetValue(playerId, out Renderer guard) && guard != null)
+            {
+                Destroy(guard.gameObject);
+            }
+
+            _guardRenderers.Remove(playerId);
         }
 
         private Vector3 GetPaddlePosition(PlayerRuntimeState player)
         {
             if (player?.Paddle != null)
             {
-                return new Vector3(player.Paddle.Position.x, 0.35f, player.Paddle.Position.y);
+                return ToVisualPosition(player.Paddle.Position, 0.35f);
             }
 
             switch (player != null ? player.PlayerId : 1)
             {
                 case 1:
-                    return new Vector3(0f, 0.35f, -ArenaHalfHeight + 0.55f);
+                    return ToVisualPosition(new Vector2(0f, -ArenaHalfHeight + 0.55f), 0.35f);
                 case 2:
-                    return new Vector3(0f, 0.35f, ArenaHalfHeight - 0.55f);
+                    return ToVisualPosition(new Vector2(0f, ArenaHalfHeight - 0.55f), 0.35f);
                 case 3:
-                    return new Vector3(ArenaHalfWidth - 0.55f, 0.35f, 0f);
+                    return ToVisualPosition(new Vector2(ArenaHalfWidth - 0.55f, 0f), 0.35f);
                 default:
-                    return new Vector3(-ArenaHalfWidth + 0.55f, 0.35f, 0f);
+                    return ToVisualPosition(new Vector2(-ArenaHalfWidth + 0.55f, 0f), 0.35f);
             }
         }
 
-        private static Quaternion GetPaddleRotation(PaddleRuntimeState paddle)
+        private Quaternion GetPaddleRotation(PaddleRuntimeState paddle)
         {
+            if (paddle == null)
+            {
+                return Quaternion.identity;
+            }
+
+            if (_usePrefabVisuals)
+            {
+                Vector3 visualTangent = GetVisualDirection(paddle.Tangent);
+                float angle = Mathf.Atan2(visualTangent.y, visualTangent.x) * Mathf.Rad2Deg;
+                return Quaternion.Euler(0f, 0f, angle);
+            }
+
             return Quaternion.identity;
+        }
+
+        private Vector3 GetPaddleVisualScale(PaddleRuntimeState paddle)
+        {
+            if (_usePrefabVisuals)
+            {
+                float tangentScale = GetPrefabAxisScale(paddle.Tangent);
+                float normalScale = GetPrefabAxisScale(paddle.Normal);
+                return new Vector3(paddle.Length * tangentScale, paddle.Thickness * normalScale, 1f);
+            }
+
+            bool horizontal = Mathf.Abs(paddle.Normal.y) > 0.5f;
+            return horizontal
+                ? new Vector3(paddle.Length, 0.35f, paddle.Thickness)
+                : new Vector3(paddle.Thickness, 0.35f, paddle.Length);
         }
 
         private void SyncBallViews()
@@ -462,14 +819,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
                 _liveBallIds.Add(ball.BallId);
                 Transform ballView = EnsureBallView(ball.BallId);
-                ballView.localPosition = new Vector3(ball.Position.x, 0.35f, ball.Position.y);
+                ballView.localPosition = ToVisualPosition(ball.Position, 0.35f);
                 ballView.localScale = GetCompensatedVisualScale(0.45f);
-                if (_ballRenderers.TryGetValue(ball.BallId, out Renderer renderer))
-                {
-                    renderer.material.color = ball.OwnerPlayerId == _localPlayerId
-                        ? _localMaterial.color
-                        : _dangerMaterial.color;
-                }
+                ApplyBallOwnerColor(ball);
             }
 
             RemoveStaleBallViews();
@@ -482,14 +834,49 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return ballView;
             }
 
-            GameObject ballObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject ballObject = AcquireBallViewObject();
             ballObject.name = $"Ball {ballId}";
             ballObject.transform.SetParent(_visualRoot, false);
+            ballObject.SetActive(true);
             ballObject.transform.localScale = GetCompensatedVisualScale(0.45f);
-            SetMaterial(ballObject, _dangerMaterial);
+            if (!_usePrefabVisuals)
+            {
+                SetMaterial(ballObject, _dangerMaterial);
+            }
+
+            _ballRenderers[ballId] = ballObject.GetComponentsInChildren<Renderer>(true);
             _ballViews[ballId] = ballObject.transform;
-            _ballRenderers[ballId] = ballObject.GetComponent<Renderer>();
             return ballObject.transform;
+        }
+
+        private void ApplyBallOwnerColor(BallRuntimeState ball)
+        {
+            if (ball == null || !_ballRenderers.TryGetValue(ball.BallId, out Renderer[] renderers))
+            {
+                return;
+            }
+
+            Color ownerColor = GetPlayerColor(ball.OwnerPlayerId);
+            if (ball.OwnerPlayerId == _localPlayerId)
+            {
+                ownerColor = Color.Lerp(ownerColor, Color.white, 0.18f);
+            }
+
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                Material material = renderer.material;
+                material.color = ownerColor;
+                if (material.HasProperty("_BaseColor"))
+                {
+                    material.SetColor("_BaseColor", ownerColor);
+                }
+            }
         }
 
         private void RemoveStaleBallViews()
@@ -508,11 +895,57 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 int ballId = staleIds[i];
                 if (_ballViews.TryGetValue(ballId, out Transform ballView))
                 {
-                    Destroy(ballView.gameObject);
+                    ReleaseBallViewObject(ballView.gameObject);
                 }
 
                 _ballViews.Remove(ballId);
                 _ballRenderers.Remove(ballId);
+            }
+        }
+
+        private GameObject AcquireBallViewObject()
+        {
+            if (_ballViewPool.Count > 0)
+            {
+                return _ballViewPool.Pop();
+            }
+
+            return _usePrefabVisuals && _visualAssets?.Ball?.Prefab != null
+                ? Instantiate(_visualAssets.Ball.Prefab)
+                : GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        }
+
+        private void ReleaseBallViewObject(GameObject ballObject)
+        {
+            if (ballObject == null)
+            {
+                return;
+            }
+
+            ballObject.SetActive(false);
+            ballObject.transform.SetParent(_poolRoot != null ? _poolRoot : _visualRoot, false);
+            _ballViewPool.Push(ballObject);
+        }
+
+        private void DestroyBallViewCache()
+        {
+            foreach (Transform ballView in _ballViews.Values)
+            {
+                if (ballView != null)
+                {
+                    Destroy(ballView.gameObject);
+                }
+            }
+
+            _ballViews.Clear();
+            _ballRenderers.Clear();
+            while (_ballViewPool.Count > 0)
+            {
+                GameObject pooled = _ballViewPool.Pop();
+                if (pooled != null)
+                {
+                    Destroy(pooled);
+                }
             }
         }
 
@@ -635,6 +1068,45 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
+        private void DrawHudBar(GatebreakerHudSnapshot snapshot, Rect arenaRect)
+        {
+            float y = HudTopPadding;
+            Rect panel = new Rect(arenaRect.x, y, arenaRect.width, HudBarHeight);
+            DrawSolidRect(panel, new Color(0.02f, 0.02f, 0.025f, 1f));
+            GUI.Box(panel, GUIContent.none);
+
+            Rect content = new Rect(panel.x + 12f, panel.y + 8f, panel.width - 24f, panel.height - 16f);
+            GUILayout.BeginArea(content);
+            GUILayout.Label(
+                $"Gatebreaker Arena 原型    阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}",
+                _hudStyle);
+            GUILayout.Label(
+                $"比分：{FormatScoreLine(snapshot)}    弹药：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}    冷却：{snapshot.ServeCooldownRemaining:0.0}秒",
+                _hudStyle);
+            GUILayout.Label(
+                $"场上球：{snapshot.OwnedBallsInField}/{snapshot.MaxOwnedBallsInField}    发球限制：{FormatServeBlockReason(snapshot.ServeBlockReason)}    上次空格：{FormatServeBlockReason(_lastServeBlockReason)}",
+                snapshot.HasDanger ? _dangerStyle : _hudStyle);
+            GUILayout.EndArea();
+        }
+
+        private static string FormatScoreLine(GatebreakerHudSnapshot snapshot)
+        {
+            if (snapshot.PlayerScores == null || snapshot.PlayerScores.Count == 0)
+            {
+                return "无玩家";
+            }
+
+            var parts = new List<string>(snapshot.PlayerScores.Count);
+            for (int i = 0; i < snapshot.PlayerScores.Count; i++)
+            {
+                PlayerScoreSnapshot score = snapshot.PlayerScores[i];
+                string marker = score.PlayerId == snapshot.LocalPlayerId ? "*" : string.Empty;
+                parts.Add($"P{score.PlayerId}{marker}:{score.Score}");
+            }
+
+            return string.Join("  ", parts);
+        }
+
         private void DrawScoreRows(GatebreakerHudSnapshot snapshot)
         {
             if (snapshot.PlayerScores == null || snapshot.PlayerScores.Count == 0)
@@ -694,12 +1166,35 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             Rect panel = CalculateLanRoomPanelRect(toggleButton);
+            Rect content = new Rect(panel.x + 12f, panel.y + 10f, panel.width - 24f, panel.height - 20f);
+            float summaryWidth = Mathf.Min(190f, content.width * 0.48f);
+            Rect summaryRect = new Rect(content.x, content.y, summaryWidth, LanRoomInfoHeight);
+            Rect endpointRect = new Rect(
+                content.x + summaryRect.width + 10f,
+                content.y,
+                Mathf.Max(1f, content.width - summaryRect.width - 10f),
+                LanRoomInfoHeight);
+            Rect controlsRect = new Rect(
+                content.x,
+                content.y + LanRoomInfoHeight,
+                content.width,
+                Mathf.Max(1f, content.height - LanRoomInfoHeight));
+
+            DrawSolidRect(panel, new Color(0.02f, 0.02f, 0.025f, 1f));
             GUI.Box(panel, GUIContent.none);
-            GUILayout.BeginArea(new Rect(panel.x + 12f, panel.y + 10f, panel.width - 24f, panel.height - 20f));
+            GUILayout.BeginArea(summaryRect);
             GUILayout.Label("LAN 房间", _hudStyle);
             GUILayout.Label($"状态：{FormatLanRoomState(snapshot.State)}", _hudStyle);
             GUILayout.Label($"房间号：{(string.IsNullOrEmpty(snapshot.RoomCode) ? "-" : snapshot.RoomCode)}", _hudStyle);
-            GUILayout.Label($"玩家：{snapshot.Players.Length}/{Mathf.Max(1, snapshot.MaxPlayers)}", _hudStyle);
+            GUILayout.EndArea();
+
+            GUILayout.BeginArea(endpointRect);
+            GUILayout.Label($"本机：{GetLocalLanAddress()}", _hudStyle);
+            GUILayout.Label($"房间：{GetRoomLanAddress(snapshot)}", _hudStyle);
+            GUILayout.Label($"人数：{snapshot.Players.Length}/{Mathf.Max(1, snapshot.MaxPlayers)}", _hudStyle);
+            GUILayout.EndArea();
+
+            GUILayout.BeginArea(controlsRect);
             _lanPlayerName = GUILayout.TextField(_lanPlayerName, 18);
             _lanRoomCodeInput = GUILayout.TextField(_lanRoomCodeInput, 12);
 
@@ -757,6 +1252,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             GUILayout.EndArea();
         }
 
+        private static void DrawSolidRect(Rect rect, Color color)
+        {
+            Color previousColor = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = previousColor;
+        }
+
         private Rect CalculateLanRoomToggleButtonRect()
         {
             float maxWidth = Mathf.Max(1f, Screen.width - ScreenPadding * 2f);
@@ -775,6 +1278,96 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             float x = ScreenPadding;
             float y = Mathf.Max(ScreenPadding, toggleButton.y - ControlGap - height);
             return new Rect(x, y, width, height);
+        }
+
+        private string GetRoomLanAddress(RoomSnapshot snapshot)
+        {
+            if (snapshot != null && snapshot.IsHost)
+            {
+                return GetLocalLanAddress();
+            }
+
+            string roomCode = snapshot != null && !string.IsNullOrWhiteSpace(snapshot.RoomCode)
+                ? snapshot.RoomCode
+                : _lanRoomCodeInput;
+            DiscoveredRoom room = FindDiscoveredRoom(roomCode);
+            if (room == null && _lanRoomService != null && _lanRoomService.DiscoveredRooms.Count == 1)
+            {
+                room = _lanRoomService.DiscoveredRooms[0];
+            }
+
+            LanEndpoint endpoint = ExtractLanEndpoint(room?.ReliableEndpoint ?? room?.DiscoveryEndpoint);
+            return !string.IsNullOrEmpty(endpoint.Address) ? endpoint.Address : "-";
+        }
+
+        private DiscoveredRoom FindDiscoveredRoom(string roomCode)
+        {
+            if (_lanRoomService == null || string.IsNullOrWhiteSpace(roomCode))
+            {
+                return null;
+            }
+
+            IReadOnlyList<DiscoveredRoom> rooms = _lanRoomService.DiscoveredRooms;
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                DiscoveredRoom room = rooms[i];
+                if (string.Equals(room.Advertise.RoomCode, roomCode.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return room;
+                }
+            }
+
+            return null;
+        }
+
+        private static LanEndpoint ExtractLanEndpoint(object endpoint)
+        {
+            return endpoint is LanEndpoint lanEndpoint ? lanEndpoint : default(LanEndpoint);
+        }
+
+        private string GetLocalLanAddress()
+        {
+            float now = Time.realtimeSinceStartup;
+            if (now < _nextLocalLanAddressRefreshTime)
+            {
+                return _cachedLocalLanAddress;
+            }
+
+            _cachedLocalLanAddress = ResolveLocalLanAddress();
+            _nextLocalLanAddressRefreshTime = now + 2f;
+            return _cachedLocalLanAddress;
+        }
+
+        private static string ResolveLocalLanAddress()
+        {
+            try
+            {
+                IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
+                IPAddress fallback = null;
+                for (int i = 0; i < host.AddressList.Length; i++)
+                {
+                    IPAddress address = host.AddressList[i];
+                    if (address.AddressFamily != AddressFamily.InterNetwork || IPAddress.IsLoopback(address))
+                    {
+                        continue;
+                    }
+
+                    byte[] bytes = address.GetAddressBytes();
+                    if (bytes.Length == 4 && bytes[0] == 169 && bytes[1] == 254)
+                    {
+                        fallback = fallback ?? address;
+                        continue;
+                    }
+
+                    return address.ToString();
+                }
+
+                return fallback != null ? fallback.ToString() : "-";
+            }
+            catch (Exception)
+            {
+                return "-";
+            }
         }
 
         private void EnsureLanIdentity()
@@ -1031,10 +1624,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             Vector3[] corners =
             {
-                new Vector3(-ArenaHalfWidth, 0f, -ArenaHalfHeight),
-                new Vector3(-ArenaHalfWidth, 0f, ArenaHalfHeight),
-                new Vector3(ArenaHalfWidth, 0f, -ArenaHalfHeight),
-                new Vector3(ArenaHalfWidth, 0f, ArenaHalfHeight),
+                ToVisualPosition(new Vector2(-ArenaHalfWidth, -ArenaHalfHeight), 0f),
+                ToVisualPosition(new Vector2(-ArenaHalfWidth, ArenaHalfHeight), 0f),
+                ToVisualPosition(new Vector2(ArenaHalfWidth, -ArenaHalfHeight), 0f),
+                ToVisualPosition(new Vector2(ArenaHalfWidth, ArenaHalfHeight), 0f),
             };
 
             float minX = float.MaxValue;
@@ -1062,7 +1655,43 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private Color GetPlayerColor(int playerId)
         {
-            return GetPlayerMaterial(playerId).color;
+            int index = Mathf.Abs(playerId - 1) % PlayerPalette.Length;
+            return PlayerPalette[index];
+        }
+
+        private Vector3 ToVisualPosition(Vector2 position, float height)
+        {
+            return _usePrefabVisuals
+                ? new Vector3(position.x * GetPrefabVisualXScale(), position.y * GetPrefabVisualYScale(), 0f)
+                : new Vector3(position.x, height, position.y);
+        }
+
+        private float GetPrefabVisualXScale()
+        {
+            return Scene3v3HalfWidth / Mathf.Max(0.001f, ArenaHalfWidth);
+        }
+
+        private float GetPrefabVisualYScale()
+        {
+            return Scene3v3HalfHeight / Mathf.Max(0.001f, ArenaHalfHeight);
+        }
+
+        private float GetPrefabVisualUniformScale()
+        {
+            return Mathf.Min(GetPrefabVisualXScale(), GetPrefabVisualYScale());
+        }
+
+        private float GetPrefabAxisScale(Vector2 axis)
+        {
+            if (axis.sqrMagnitude <= 0.0001f)
+            {
+                return GetPrefabVisualUniformScale();
+            }
+
+            Vector2 normalized = axis.normalized;
+            return new Vector2(
+                normalized.x * GetPrefabVisualXScale(),
+                normalized.y * GetPrefabVisualYScale()).magnitude;
         }
 
         private Material GetPlayerMaterial(int playerId)
@@ -1180,8 +1809,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             Vector2 viewUp2D = GetLocalViewUp();
             Vector2 viewRight2D = GetLocalViewRight();
             Vector3 screenUp = GetVisualDirection(viewUp2D);
-            _prototypeCamera.transform.position = new Vector3(0f, CameraHeight, 0f);
-            _prototypeCamera.transform.rotation = Quaternion.LookRotation(Vector3.down, screenUp);
+            _prototypeCamera.transform.position = _usePrefabVisuals
+                ? new Vector3(0f, 0f, -CameraHeight)
+                : new Vector3(0f, CameraHeight, 0f);
+            _prototypeCamera.transform.rotation = _usePrefabVisuals
+                ? Quaternion.LookRotation(Vector3.forward, screenUp)
+                : Quaternion.LookRotation(Vector3.down, screenUp);
             _prototypeCamera.orthographic = true;
             CalculateViewExtents(viewUp2D, viewRight2D, out float viewHalfHeight, out float viewHalfWidth);
             _prototypeCamera.orthographicSize = Mathf.Max(
@@ -1208,12 +1841,23 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private Vector3 GetPrototypeVisualScale()
         {
+            if (_usePrefabVisuals)
+            {
+                return Vector3.one;
+            }
+
             float depthScale = ArenaHalfHeight > 0.001f ? ArenaHalfWidth / ArenaHalfHeight : 1f;
             return new Vector3(1f, 1f, depthScale);
         }
 
         private Vector3 GetCompensatedVisualScale(float worldSize)
         {
+            if (_usePrefabVisuals)
+            {
+                float prefabScale = GetPrefabVisualUniformScale();
+                return new Vector3(worldSize * prefabScale, worldSize * prefabScale, 1f);
+            }
+
             Vector3 scale = GetPrototypeVisualScale();
             return new Vector3(
                 worldSize / Mathf.Max(0.001f, scale.x),
@@ -1223,6 +1867,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private Vector3 GetVisualDirection(Vector2 direction)
         {
+            if (_usePrefabVisuals)
+            {
+                Vector3 xyDirection = new Vector3(direction.x * GetPrefabVisualXScale(), direction.y * GetPrefabVisualYScale(), 0f);
+                return xyDirection.sqrMagnitude > 0.0001f ? xyDirection.normalized : Vector3.up;
+            }
+
             Vector3 scale = GetPrototypeVisualScale();
             Vector3 visualDirection = new Vector3(direction.x * scale.x, 0f, direction.y * scale.z);
             return visualDirection.sqrMagnitude > 0.0001f ? visualDirection.normalized : Vector3.forward;
@@ -1232,6 +1882,26 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             halfHeight = 0f;
             halfWidth = 0f;
+            if (_usePrefabVisuals)
+            {
+                Vector2[] prefabCorners =
+                {
+                    new Vector2(-Scene3v3HalfWidth, -Scene3v3HalfHeight),
+                    new Vector2(-Scene3v3HalfWidth, Scene3v3HalfHeight),
+                    new Vector2(Scene3v3HalfWidth, -Scene3v3HalfHeight),
+                    new Vector2(Scene3v3HalfWidth, Scene3v3HalfHeight),
+                };
+                Vector2 prefabUp = viewUp.sqrMagnitude > 0.0001f ? viewUp.normalized : Vector2.up;
+                Vector2 prefabRight = viewRight.sqrMagnitude > 0.0001f ? viewRight.normalized : Vector2.right;
+                for (int i = 0; i < prefabCorners.Length; i++)
+                {
+                    halfHeight = Mathf.Max(halfHeight, Mathf.Abs(Vector2.Dot(prefabCorners[i], prefabUp)));
+                    halfWidth = Mathf.Max(halfWidth, Mathf.Abs(Vector2.Dot(prefabCorners[i], prefabRight)));
+                }
+
+                return;
+            }
+
             Vector3 scale = GetPrototypeVisualScale();
             Vector2[] corners =
             {

@@ -80,6 +80,7 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             var aiService = new GatebreakerAiService();
             var hudPresenter = new GatebreakerArenaHudPresenter(matchRuntime);
             var sceneBindingService = new GatebreakerArenaSceneBindingService();
+            var visualAssetService = new GatebreakerVisualAssetService(assetsRuntime, logger);
             var lanRoomService = new LanRoomService(logger);
             ILanTransport lanTransport = serviceContainer.Get<ILanTransport>();
             LanRoomTransportBridge lanRoomTransportBridge = lanTransport != null
@@ -98,6 +99,7 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             serviceContainer.RegisterSingleton(aiService);
             serviceContainer.RegisterSingleton(hudPresenter);
             serviceContainer.RegisterSingleton(sceneBindingService);
+            serviceContainer.RegisterSingleton(visualAssetService);
             serviceContainer.RegisterSingleton(lanRoomService);
             serviceContainer.RegisterSingleton(networkMatchController);
             if (lanRoomTransportBridge != null)
@@ -119,21 +121,22 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
                 aiService,
                 hudPresenter,
                 sceneBindingService,
+                visualAssetService,
                 lanRoomService,
                 lanRoomTransportBridge,
                 networkMatchController);
 
             matchRuntime.StartLocalPrototype();
-            CreatePrototypeRunner(Context);
+            await CreatePrototypeRunnerAsync(Context);
             logger.LogInfo("GatebreakerArenaGameBootstrap: 本地可玩原型业务骨架启动完成。");
         }
 
-        private static void CreatePrototypeRunner(GatebreakerArenaApplicationContext context)
+        private static async Task CreatePrototypeRunnerAsync(GatebreakerArenaApplicationContext context)
         {
             var runnerObject = new GameObject("Gatebreaker Prototype Runner");
             UnityEngine.Object.DontDestroyOnLoad(runnerObject);
             GatebreakerPrototypeRunner runner = runnerObject.AddComponent<GatebreakerPrototypeRunner>();
-            runner.Initialize(context);
+            await runner.InitializeAsync(context);
         }
     }
 }

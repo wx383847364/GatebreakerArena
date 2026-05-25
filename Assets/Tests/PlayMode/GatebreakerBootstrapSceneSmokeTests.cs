@@ -69,10 +69,15 @@ namespace Gatebreaker.Tests.PlayMode
                 var context = GatebreakerArenaGameBootstrap.Context;
                 Assert.IsNotNull(context.MatchRuntime, "Prototype runner signal: MatchRuntime should be registered.");
                 Assert.IsNotNull(context.SceneBindingService, "Arena signal: scene binding service should be registered.");
+                Assert.IsTrue(context.SceneBindingService.IsBound, "Arena signal: scene binding service should be marked bound after runner startup.");
+                Assert.IsNotNull(context.VisualAssetService, "Arena signal: visual asset service should be registered.");
                 Assert.IsNotNull(context.HudPresenter, "HUD signal: HUD presenter should be registered.");
                 Assert.IsNotNull(GameObject.Find("Gatebreaker Prototype Runner"), "Prototype runner GameObject should be created.");
-                Assert.IsNotNull(GameObject.Find("Arena Floor"), "Runtime-generated arena floor should be visible.");
-                Assert.IsNotNull(GameObject.Find("Player 1 Paddle"), "Local paddle primitive should be visible.");
+                Assert.IsNotNull(GameObject.Find("ArenaRoot"), "Static arena root should contain configured gameplay visuals.");
+                Assert.IsTrue(
+                    GameObject.Find("Scene3v3") != null || GameObject.Find("Arena Floor") != null,
+                    "Configured scene prefab or procedural fallback arena should be visible.");
+                Assert.IsNotNull(GameObject.Find("Player 1 Paddle"), "Local paddle view should be visible.");
 
                 Assert.AreEqual(MatchPhase.Playing, context.MatchRuntime.Phase);
                 Assert.GreaterOrEqual(context.MatchRuntime.Players.Count, 2);
