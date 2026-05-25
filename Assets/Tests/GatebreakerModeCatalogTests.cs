@@ -24,10 +24,13 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(2, pve.MaxServeAmmo);
             Assert.AreEqual(1, pve.MaxOwnedBallsInField);
             Assert.AreEqual(OvertimeRuleType.SuddenDeath, pve.OvertimeRuleType);
-            Assert.AreEqual(7.5f, ball.InitialSpeed);
-            Assert.AreEqual(14.0f, ball.MaxSpeed);
+            Assert.AreEqual(6.0f, ball.InitialSpeed);
+            Assert.AreEqual(11.0f, ball.MaxSpeed);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball01.prefab", ball.PrefabLocation);
             Assert.AreEqual(0.18f, ai.ReactionDelay);
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(1, effective.InitialBallsInMatch);
             Assert.AreEqual(4, effective.MaxBallsInMatch);
             Assert.AreEqual(6.0f, effective.BaseServeCooldown);

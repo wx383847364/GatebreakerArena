@@ -41,6 +41,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float DangerPromptThreshold { get; set; }
         public string TrailStyle { get; set; }
         public string ColorTag { get; set; }
+        public string PrefabLocation { get; set; }
     }
 
     public sealed class AiRuleDefinition
@@ -69,5 +70,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float ServeCooldownModifier { get; set; }
         public float BallSpeedModifier { get; set; }
         public float GoalSizeModifier { get; set; }
+        public string ScenePrefabLocation { get; set; }
+        public string PaddlePrefabLocation { get; set; }
     }
 }

@@ -38,8 +38,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     {
                         BallTypeId = "BALL_NORMAL",
                         BallTypeName = "普通球",
-                        InitialSpeed = 7.5f,
-                        MaxSpeed = 14.0f,
+                        InitialSpeed = 6.0f,
+                        MaxSpeed = 11.0f,
                         PaddleBounceFactor = 1.0f,
                         WallBounceFactor = 1.0f,
                         GoalReboundFactor = 1.0f,
@@ -48,6 +48,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         DangerPromptThreshold = 1.2f,
                         TrailStyle = "Default",
                         ColorTag = "Neutral",
+                        PrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
                     },
                 },
                 new[]
@@ -80,6 +81,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         ServeCooldownModifier = 0f,
                         BallSpeedModifier = 0f,
                         GoalSizeModifier = 0f,
+                        ScenePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
+                        PaddlePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
                     },
                 });
         }

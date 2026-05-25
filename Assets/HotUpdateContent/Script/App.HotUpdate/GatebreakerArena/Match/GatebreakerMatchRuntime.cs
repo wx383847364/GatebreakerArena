@@ -160,7 +160,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             _inputFrames.Clear();
             _stepInputBuffer.Clear();
             _nextBallId = 1;
-            Arena = ArenaGeometry.CreateDefault();
+            Arena = ArenaGeometry.CreateForMap(EffectiveRule.Map);
             ApplyTuningValues(config.TuningValues);
 
             for (int i = 0; i < activePlayerIds.Count; i++)
@@ -376,6 +376,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
         {
             PlayerRuntimeState localPlayer = FindPlayer(playerId);
             if (localPlayer == null)
+            {
+                return false;
+            }
+
+            if (localPlayer.IsDisabled || localPlayer.Paddle == null)
             {
                 return false;
             }
@@ -609,6 +614,29 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private void AddPlayer(int playerId, int teamId, bool isLocalPlayer, bool isAi)
         {
             int playerIndex = _players.Count;
+            bool hasPlayableGoal = !Arena.HasCustomBoundary || Arena.TryGetGoalSegmentForPlayer(playerIndex, out _);
+            if (!hasPlayableGoal)
+            {
+                var disabledPlayer = new PlayerRuntimeState
+                {
+                    PlayerId = playerId,
+                    TeamId = teamId,
+                    IsLocalPlayer = isLocalPlayer,
+                    IsAi = isAi,
+                    IsDisabled = true,
+                    Score = 0,
+                    ServeResource = _serveResourceSystem.CreateState(
+                        EffectiveRule.Mode.InitialServeAmmo,
+                        EffectiveRule.Mode.MaxServeAmmo,
+                        EffectiveRule.Mode.MaxOwnedBallsInField,
+                        EffectiveRule.BaseServeCooldown),
+                    Paddle = null,
+                    Zone = null,
+                };
+                _players.Add(disabledPlayer);
+                return;
+            }
+
             Vector2 normal = Arena.GetSideNormal(EffectiveRule.Map.SpawnLayoutType, playerIndex);
             Vector2 tangent = Arena.GetSideTangent(normal);
             var paddle = new PaddleRuntimeState
@@ -946,10 +974,21 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 }
             }
 
-            TryAddBoundarySweepHit(start, end, -Arena.HalfHeight, true, Vector2.up, ref bestHit);
-            TryAddBoundarySweepHit(start, end, Arena.HalfHeight, true, Vector2.down, ref bestHit);
-            TryAddBoundarySweepHit(start, end, -Arena.HalfWidth, false, Vector2.right, ref bestHit);
-            TryAddBoundarySweepHit(start, end, Arena.HalfWidth, false, Vector2.left, ref bestHit);
+            if (Arena.HasCustomBoundary)
+            {
+                for (int i = 0; i < Arena.BoundarySegments.Count; i++)
+                {
+                    TryAddBoundarySegmentSweepHit(start, end, Arena.BoundarySegments[i], ref bestHit);
+                }
+            }
+            else
+            {
+                TryAddBoundarySweepHit(start, end, -Arena.HalfHeight, true, Vector2.up, ref bestHit);
+                TryAddBoundarySweepHit(start, end, Arena.HalfHeight, true, Vector2.down, ref bestHit);
+                TryAddBoundarySweepHit(start, end, -Arena.HalfWidth, false, Vector2.right, ref bestHit);
+                TryAddBoundarySweepHit(start, end, Arena.HalfWidth, false, Vector2.left, ref bestHit);
+            }
+
             return bestHit.Type != SweepHitType.None;
         }
 
@@ -1057,6 +1096,88 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
         }
 
+        private void TryAddBoundarySegmentSweepHit(
+            Vector2 start,
+            Vector2 end,
+            ArenaBoundarySegment boundary,
+            ref SweepHit bestHit)
+        {
+            Vector2 movement = end - start;
+            if (Vector2.Dot(movement, boundary.InwardNormal) >= -CollisionEpsilon)
+            {
+                return;
+            }
+
+            if (boundary.GoalPlayerIndex >= 0 && boundary.GoalPlayerIndex < _players.Count)
+            {
+                TryAddGoalTriggerSweepHit(start, end, boundary, ref bestHit);
+            }
+
+            Vector2 edge = boundary.End - boundary.Start;
+            float denominator = Cross(movement, edge);
+            if (Mathf.Abs(denominator) <= CollisionEpsilon)
+            {
+                return;
+            }
+
+            Vector2 offset = boundary.Start - start;
+            float hitTime = Cross(offset, edge) / denominator;
+            float edgeTime = Cross(offset, movement) / denominator;
+            if (hitTime < -CollisionEpsilon ||
+                hitTime > 1f + CollisionEpsilon ||
+                edgeTime < -CollisionEpsilon ||
+                edgeTime > 1f + CollisionEpsilon)
+            {
+                return;
+            }
+
+            hitTime = Mathf.Clamp01(hitTime);
+            Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
+            if (boundary.GoalPlayerIndex >= 0 &&
+                boundary.GoalPlayerIndex < _players.Count &&
+                boundary.IsPastGoalLine(hitPoint))
+            {
+                ChooseEarlierHit(SweepHit.Goal(hitTime, hitPoint, boundary.GoalPlayerIndex), ref bestHit);
+            }
+            else
+            {
+                ChooseEarlierHit(SweepHit.Wall(hitTime, hitPoint, boundary.InwardNormal), ref bestHit);
+            }
+        }
+
+        private void TryAddGoalTriggerSweepHit(
+            Vector2 start,
+            Vector2 end,
+            ArenaBoundarySegment boundary,
+            ref SweepHit bestHit)
+        {
+            Vector2 movement = end - start;
+            Vector2 triggerEdge = boundary.GoalTriggerEnd - boundary.GoalTriggerStart;
+            float denominator = Cross(movement, triggerEdge);
+            if (Mathf.Abs(denominator) <= CollisionEpsilon)
+            {
+                return;
+            }
+
+            Vector2 offset = boundary.GoalTriggerStart - start;
+            float hitTime = Cross(offset, triggerEdge) / denominator;
+            float edgeTime = Cross(offset, movement) / denominator;
+            if (hitTime < -CollisionEpsilon ||
+                hitTime > 1f + CollisionEpsilon ||
+                edgeTime < -CollisionEpsilon ||
+                edgeTime > 1f + CollisionEpsilon)
+            {
+                return;
+            }
+
+            hitTime = Mathf.Clamp01(hitTime);
+            Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
+            if (boundary.IsPastGoalLine(hitPoint))
+            {
+                ChooseEarlierHit(SweepHit.Goal(hitTime, hitPoint, boundary.GoalPlayerIndex), ref bestHit);
+            }
+        }
+
         private static void ChooseEarlierHit(SweepHit candidate, ref SweepHit bestHit)
         {
             if (candidate.Type == SweepHitType.None)
@@ -1079,6 +1200,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             ball.Position = hit.PaddleMotion.GetPosition(hit.GlobalTime)
                             + paddle.Tangent * hit.TangentDistance
                             + paddle.Normal * (paddle.Thickness + CollisionSkin);
+            TransferBallOwnerToPaddle(ball, paddle);
             ball.Velocity = _paddleBounceCalculator.CalculateBounce(
                 ball.Velocity,
                 hitOffset,
@@ -1191,6 +1313,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 ball.Position = paddle.Position
                                 + paddle.Tangent * tangentDistance
                                 + paddle.Normal * (paddle.Thickness + 0.02f);
+                TransferBallOwnerToPaddle(ball, paddle);
                 ball.Velocity = _paddleBounceCalculator.CalculateBounce(
                     ball.Velocity,
                     hitOffset,
@@ -1202,6 +1325,29 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 _ballSimulation.ClampSpeed(ball, BallRule);
                 return;
             }
+        }
+
+        private void TransferBallOwnerToPaddle(BallRuntimeState ball, PaddleRuntimeState paddle)
+        {
+            if (ball == null || paddle == null || ball.OwnerPlayerId == paddle.PlayerId)
+            {
+                return;
+            }
+
+            PlayerRuntimeState previousOwner = FindPlayer(ball.OwnerPlayerId);
+            if (previousOwner?.ServeResource != null)
+            {
+                _serveResourceSystem.OnOwnedBallRemoved(previousOwner.ServeResource);
+            }
+
+            PlayerRuntimeState nextOwner = FindPlayer(paddle.PlayerId);
+            if (nextOwner?.ServeResource != null)
+            {
+                nextOwner.ServeResource.OwnedBallsInField += 1;
+            }
+
+            ball.OwnerPlayerId = paddle.PlayerId;
+            ball.OwnerTeamId = paddle.TeamId;
         }
 
         private static float GetNormalizedPaddleVelocity(PaddleRuntimeState paddle)
@@ -1226,6 +1372,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private void ResolveUnownedWallBounce(BallRuntimeState ball)
         {
+            if (Arena.HasCustomBoundary)
+            {
+                ResolveCustomBoundaryWallBounce(ball);
+                return;
+            }
+
             Vector2 position = ball.Position;
             Vector2 velocity = ball.Velocity;
             bool bounced = false;
@@ -1253,6 +1405,48 @@ namespace App.HotUpdate.GatebreakerArena.Match
             {
                 position.x = Arena.HalfWidth;
                 velocity.x = -Mathf.Abs(velocity.x) * BallRule.WallBounceFactor;
+                bounced = true;
+            }
+
+            if (!bounced)
+            {
+                return;
+            }
+
+            ball.Position = position;
+            ball.Velocity = velocity;
+            _ballSimulation.ClampSpeed(ball, BallRule);
+        }
+
+        private void ResolveCustomBoundaryWallBounce(BallRuntimeState ball)
+        {
+            Vector2 position = ball.Position;
+            Vector2 velocity = ball.Velocity;
+            bool bounced = false;
+            for (int i = 0; i < Arena.BoundarySegments.Count; i++)
+            {
+                ArenaBoundarySegment segment = Arena.BoundarySegments[i];
+                bool activeGoal = segment.GoalPlayerIndex >= 0 &&
+                                  segment.GoalPlayerIndex < _players.Count &&
+                                  segment.ContainsGoalPoint(position);
+                if (activeGoal)
+                {
+                    continue;
+                }
+
+                float distanceInside = Vector2.Dot(position - segment.Start, segment.InwardNormal);
+                if (distanceInside >= 0f)
+                {
+                    continue;
+                }
+
+                position += segment.InwardNormal * -distanceInside;
+                float normalSpeed = Vector2.Dot(velocity, segment.InwardNormal);
+                if (normalSpeed < 0f)
+                {
+                    velocity -= segment.InwardNormal * normalSpeed * (1f + BallRule.WallBounceFactor);
+                }
+
                 bounced = true;
             }
 
@@ -1306,10 +1500,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private bool IsInsideArena(Vector2 position)
         {
-            return position.x >= -Arena.HalfWidth &&
-                   position.x <= Arena.HalfWidth &&
-                   position.y >= -Arena.HalfHeight &&
-                   position.y <= Arena.HalfHeight;
+            return Arena.Contains(position);
+        }
+
+        private static float Cross(Vector2 left, Vector2 right)
+        {
+            return left.x * right.y - left.y * right.x;
         }
 
         private Vector2 GetServePosition(PlayerRuntimeState player)
@@ -1346,12 +1542,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private Vector2 GetZoneCenter(Vector2 normal)
         {
-            if (Mathf.Abs(normal.y) > 0.5f)
-            {
-                return new Vector2(0f, normal.y > 0f ? -Arena.HalfHeight : Arena.HalfHeight);
-            }
-
-            return new Vector2(normal.x > 0f ? -Arena.HalfWidth : Arena.HalfWidth, 0f);
+            return Arena.GetZoneCenter(normal);
         }
 
         private void HandleTimeExpired()

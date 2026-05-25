@@ -20,10 +20,11 @@
       "ColorTag": "Neutral",
       "DangerPromptThreshold": 1.2,
       "GoalReboundFactor": 1.0,
-      "InitialSpeed": 7.5,
-      "MaxSpeed": 14.0,
+      "InitialSpeed": 6.0,
+      "MaxSpeed": 11.0,
       "MinVerticalVelocity": 2.0,
       "PaddleBounceFactor": 1.0,
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
       "SpeedGainOnPaddleHit": 0.15,
       "TrailStyle": "Default",
       "WallBounceFactor": 1.0
@@ -38,6 +39,8 @@
       "MapId": "MAP_ARENA_01",
       "MapName": "标准四边场",
       "MaxBallsModifier": 0,
+      "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+      "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
       "ServeCooldownModifier": 0.0,
       "SpawnLayoutType": "FourSide",
       "SupportedPlayerCount": [

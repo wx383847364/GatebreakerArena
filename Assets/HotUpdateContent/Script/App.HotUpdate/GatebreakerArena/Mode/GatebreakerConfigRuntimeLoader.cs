@@ -135,6 +135,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 DangerPromptThreshold = ReadFloat(item, "DangerPromptThreshold"),
                 TrailStyle = ReadString(item, "TrailStyle"),
                 ColorTag = ReadString(item, "ColorTag"),
+                PrefabLocation = ReadOptionalString(item, "PrefabLocation"),
             };
         }
 
@@ -169,6 +170,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 ServeCooldownModifier = ReadFloat(item, "ServeCooldownModifier"),
                 BallSpeedModifier = ReadFloat(item, "BallSpeedModifier"),
                 GoalSizeModifier = ReadFloat(item, "GoalSizeModifier"),
+                ScenePrefabLocation = ReadOptionalString(item, "ScenePrefabLocation"),
+                PaddlePrefabLocation = ReadOptionalString(item, "PaddlePrefabLocation"),
             };
         }
 
@@ -199,6 +202,14 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         private static string ReadString(Dictionary<string, object> item, string key)
         {
             object value = ReadRequired(item, key);
+            return value as string ?? Convert.ToString(value, CultureInfo.InvariantCulture);
+        }
+
+        private static string ReadOptionalString(Dictionary<string, object> item, string key)
+        {
+            if (!item.TryGetValue(key, out object value) || value == null)
+                return string.Empty;
+
             return value as string ?? Convert.ToString(value, CultureInfo.InvariantCulture);
         }
 

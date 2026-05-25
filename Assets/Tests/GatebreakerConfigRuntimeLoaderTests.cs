@@ -32,9 +32,12 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(ScoreRuleType.TeamScore, mode.ScoreRuleType);
             Assert.AreEqual(OvertimeRuleType.TimedScore, mode.OvertimeRuleType);
             Assert.AreEqual(9.25f, ball.InitialSpeed);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball02.prefab", ball.PrefabLocation);
             Assert.AreEqual(0.1f, ai.ReactionDelay);
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
             CollectionAssert.AreEqual(new[] { 2, 4 }, map.SupportedPlayerCount);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(3, effective.InitialBallsInMatch);
             Assert.AreEqual(7, effective.MaxBallsInMatch);
             Assert.AreEqual(4.75f, effective.BaseServeCooldown);
@@ -121,7 +124,8 @@ namespace Gatebreaker.Tests
       ""MinVerticalVelocity"": 2.5,
       ""DangerPromptThreshold"": 1.1,
       ""TrailStyle"": ""Fast"",
-      ""ColorTag"": ""Red""
+      ""ColorTag"": ""Red"",
+      ""PrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Ball02.prefab""
     }}
   ],
   ""DT_AIRule"": [
@@ -149,7 +153,9 @@ namespace Gatebreaker.Tests
       ""MaxBallsModifier"": 1,
       ""ServeCooldownModifier"": -0.5,
       ""BallSpeedModifier"": 0.2,
-      ""GoalSizeModifier"": -0.1
+      ""GoalSizeModifier"": -0.1,
+      ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab"",
+      ""PaddlePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Baffle.prefab""
     }}
   ]
 }}",
