@@ -40,9 +40,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const string SceneInstanceName = "Scene3v3";
         private const float Scene3v3HalfWidth = 2.81f;
         private const float Scene3v3HalfHeight = 2.456f;
+        private const float Scene3v3PaddlePrefabNormalScale = 0.14f;
         private const float DebugOverlayPrefabDepth = -0.08f;
         private const float DebugOverlayFallbackHeight = 0.08f;
         private const int DebugOverlaySortingOrder = 1200;
+        private const string SceneDebugLayerName = "SceneDebug";
+        private const int SceneDebugLayerFallback = 6;
 
         private static readonly Color[] PlayerPalette =
         {
@@ -53,17 +56,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         };
 
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
-        private readonly Dictionary<int, Renderer[]> _ballRenderers = new Dictionary<int, Renderer[]>();
+        private readonly Dictionary<int, int> _ballViewSlots = new Dictionary<int, int>();
         private readonly Dictionary<int, Transform> _paddleViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, Renderer> _paddleRenderers = new Dictionary<int, Renderer>();
         private readonly Dictionary<int, Renderer> _guardRenderers = new Dictionary<int, Renderer>();
         private readonly List<LineRenderer> _debugCollisionLines = new List<LineRenderer>();
         private readonly HashSet<int> _liveBallIds = new HashSet<int>();
-        private readonly Stack<GameObject> _ballViewPool = new Stack<GameObject>();
+        private readonly Dictionary<int, Stack<GameObject>> _ballViewPools = new Dictionary<int, Stack<GameObject>>();
 
         private GatebreakerMatchRuntime _runtime;
         private GatebreakerInputService _inputService;
         private GatebreakerArenaHudPresenter _hudPresenter;
+        private GatebreakerArenaSceneBindingService _sceneBindingService;
         private LanRoomService _lanRoomService;
         private ILanTransport _lanTransport;
         private GatebreakerVisualAssetService _visualAssetService;
@@ -119,9 +123,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _visualAssetService = context.VisualAssetService;
             _lanRoomService = context.LanRoomService;
             _lanTransport = context.Services?.Get<ILanTransport>();
+            _sceneBindingService = context.SceneBindingService;
             await InitializeAsync(context.MatchRuntime, context.InputService, context.HudPresenter, DefaultLocalPlayerId);
+            _sceneBindingService?.Bind(
+                ResolveSceneUiBinding(context.Services),
+                RequestGuiServe,
+                context.Logger);
+            RefreshBoundHud();
             EnsureLanIdentity();
-            context.SceneBindingService?.MarkBound();
         }
 
         public void Initialize(
@@ -179,12 +188,13 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             float moveAxis = ReadMoveAxis() * GetLocalMoveAxisSign();
             bool servePressed = Input.GetKeyDown(KeyCode.Space) || _guiServePressed;
             _guiServePressed = false;
-            var frame = new PlayerInputFrame(_localPlayerId, moveAxis, servePressed, GetLocalViewUp());
+            var frame = new PlayerInputFrame(_localPlayerId, moveAxis, servePressed, BuildServeAimDirection(moveAxis));
             if (IsLanPlaying())
             {
                 SubmitLanInputAtFixedRate(frame);
                 SyncPlayerViews();
                 SyncBallViews();
+                RefreshBoundHud();
                 return;
             }
 
@@ -200,6 +210,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             SyncPlayerViews();
             SyncBallViews();
+            RefreshBoundHud();
         }
 
         private bool IsLanPlaying()
@@ -309,6 +320,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             DestroyMaterial(_dangerMaterial);
             DestroyMaterial(_paddleMaterial);
             DestroyMaterial(_debugOverlayMaterial);
+            _sceneBindingService?.Clear();
             if (_playerMaterials == null)
             {
                 return;
@@ -395,6 +407,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             var overlayObject = new GameObject(DebugCollisionOverlayName);
+            overlayObject.layer = GetSceneDebugLayer();
             _debugCollisionOverlayRoot = overlayObject.transform;
             _debugCollisionOverlayRoot.SetParent(_visualRoot, false);
             _debugCollisionOverlayRoot.localPosition = Vector3.zero;
@@ -472,6 +485,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             var lineObject = new GameObject("Debug Collision Line");
+            lineObject.layer = GetSceneDebugLayer();
             Transform lineTransform = lineObject.transform;
             lineTransform.SetParent(_debugCollisionOverlayRoot, false);
             lineTransform.localPosition = Vector3.zero;
@@ -541,6 +555,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 case GatebreakerCollisionOverlayLineKind.GoalBand:
                     color = new Color(1.00f, 0.92f, 0.10f, 0.78f);
                     width = 0.018f;
+                    break;
+                case GatebreakerCollisionOverlayLineKind.PaddleContact:
+                    color = new Color(1.00f, 0.10f, 1.00f, 1f);
+                    width = 0.020f;
                     break;
                 case GatebreakerCollisionOverlayLineKind.Wall:
                 default:
@@ -796,7 +814,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 float tangentScale = GetPrefabAxisScale(paddle.Tangent);
                 float normalScale = GetPrefabAxisScale(paddle.Normal);
-                return new Vector3(paddle.Length * tangentScale, paddle.Thickness * normalScale, 1f);
+                float visualNormalSize = _runtime?.Arena != null && _runtime.Arena.HasCustomBoundary
+                    ? Mathf.Max(paddle.Thickness, Scene3v3PaddlePrefabNormalScale)
+                    : paddle.Thickness;
+                return new Vector3(paddle.Length * tangentScale, visualNormalSize * normalScale, 1f);
             }
 
             bool horizontal = Mathf.Abs(paddle.Normal.y) > 0.5f;
@@ -818,65 +839,58 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 }
 
                 _liveBallIds.Add(ball.BallId);
-                Transform ballView = EnsureBallView(ball.BallId);
+                Transform ballView = EnsureBallView(ball);
                 ballView.localPosition = ToVisualPosition(ball.Position, 0.35f);
                 ballView.localScale = GetCompensatedVisualScale(0.45f);
-                ApplyBallOwnerColor(ball);
             }
 
             RemoveStaleBallViews();
         }
 
-        private Transform EnsureBallView(int ballId)
+        private Transform EnsureBallView(BallRuntimeState ball)
         {
+            int ballId = ball != null ? ball.BallId : 0;
             if (_ballViews.TryGetValue(ballId, out Transform ballView))
             {
                 return ballView;
             }
 
-            GameObject ballObject = AcquireBallViewObject();
+            int playerSlot = ResolveBallPlayerSlot(ball);
+            GameObject ballObject = AcquireBallViewObject(playerSlot);
             ballObject.name = $"Ball {ballId}";
             ballObject.transform.SetParent(_visualRoot, false);
             ballObject.SetActive(true);
             ballObject.transform.localScale = GetCompensatedVisualScale(0.45f);
-            if (!_usePrefabVisuals)
-            {
-                SetMaterial(ballObject, _dangerMaterial);
-            }
 
-            _ballRenderers[ballId] = ballObject.GetComponentsInChildren<Renderer>(true);
+            _ballViewSlots[ballId] = playerSlot;
             _ballViews[ballId] = ballObject.transform;
             return ballObject.transform;
         }
 
-        private void ApplyBallOwnerColor(BallRuntimeState ball)
+        private int ResolveBallPlayerSlot(BallRuntimeState ball)
         {
-            if (ball == null || !_ballRenderers.TryGetValue(ball.BallId, out Renderer[] renderers))
+            if (ball == null || _runtime == null)
             {
-                return;
+                return 1;
             }
 
-            Color ownerColor = GetPlayerColor(ball.OwnerPlayerId);
-            if (ball.OwnerPlayerId == _localPlayerId)
+            int slot = 0;
+            for (int i = 0; i < _runtime.Players.Count; i++)
             {
-                ownerColor = Color.Lerp(ownerColor, Color.white, 0.18f);
-            }
-
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                Renderer renderer = renderers[i];
-                if (renderer == null)
+                PlayerRuntimeState player = _runtime.Players[i];
+                if (player == null || player.IsDisabled || player.Paddle == null)
                 {
                     continue;
                 }
 
-                Material material = renderer.material;
-                material.color = ownerColor;
-                if (material.HasProperty("_BaseColor"))
+                slot += 1;
+                if (player.PlayerId == ball.OwnerPlayerId)
                 {
-                    material.SetColor("_BaseColor", ownerColor);
+                    return Mathf.Clamp(slot, 1, 3);
                 }
             }
+
+            return 1;
         }
 
         private void RemoveStaleBallViews()
@@ -895,27 +909,30 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 int ballId = staleIds[i];
                 if (_ballViews.TryGetValue(ballId, out Transform ballView))
                 {
-                    ReleaseBallViewObject(ballView.gameObject);
+                    ReleaseBallViewObject(ballId, ballView.gameObject);
                 }
 
                 _ballViews.Remove(ballId);
-                _ballRenderers.Remove(ballId);
+                _ballViewSlots.Remove(ballId);
             }
         }
 
-        private GameObject AcquireBallViewObject()
+        private GameObject AcquireBallViewObject(int playerSlot)
         {
-            if (_ballViewPool.Count > 0)
+            int safeSlot = Mathf.Clamp(playerSlot, 1, 3);
+            Stack<GameObject> pool = GetBallViewPool(safeSlot);
+            if (pool.Count > 0)
             {
-                return _ballViewPool.Pop();
+                return pool.Pop();
             }
 
-            return _usePrefabVisuals && _visualAssets?.Ball?.Prefab != null
-                ? Instantiate(_visualAssets.Ball.Prefab)
+            GatebreakerLoadedPrefab ballPrefab = _visualAssets?.GetBallForPlayerSlot(safeSlot);
+            return _usePrefabVisuals && ballPrefab?.Prefab != null
+                ? Instantiate(ballPrefab.Prefab)
                 : GameObject.CreatePrimitive(PrimitiveType.Sphere);
         }
 
-        private void ReleaseBallViewObject(GameObject ballObject)
+        private void ReleaseBallViewObject(int ballId, GameObject ballObject)
         {
             if (ballObject == null)
             {
@@ -924,7 +941,20 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             ballObject.SetActive(false);
             ballObject.transform.SetParent(_poolRoot != null ? _poolRoot : _visualRoot, false);
-            _ballViewPool.Push(ballObject);
+            int playerSlot = _ballViewSlots.TryGetValue(ballId, out int slot) ? slot : 1;
+            GetBallViewPool(playerSlot).Push(ballObject);
+        }
+
+        private Stack<GameObject> GetBallViewPool(int playerSlot)
+        {
+            int safeSlot = Mathf.Clamp(playerSlot, 1, 3);
+            if (!_ballViewPools.TryGetValue(safeSlot, out Stack<GameObject> pool))
+            {
+                pool = new Stack<GameObject>();
+                _ballViewPools[safeSlot] = pool;
+            }
+
+            return pool;
         }
 
         private void DestroyBallViewCache()
@@ -938,15 +968,20 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _ballViews.Clear();
-            _ballRenderers.Clear();
-            while (_ballViewPool.Count > 0)
+            _ballViewSlots.Clear();
+            foreach (Stack<GameObject> pool in _ballViewPools.Values)
             {
-                GameObject pooled = _ballViewPool.Pop();
-                if (pooled != null)
+                while (pool.Count > 0)
                 {
-                    Destroy(pooled);
+                    GameObject pooled = pool.Pop();
+                    if (pooled != null)
+                    {
+                        Destroy(pooled);
+                    }
                 }
             }
+
+            _ballViewPools.Clear();
         }
 
         private static float ReadMoveAxis()
@@ -963,6 +998,29 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             return Mathf.Clamp(moveAxis, -1f, 1f);
+        }
+
+        private Vector2 BuildServeAimDirection(float moveAxis)
+        {
+            Vector2 viewUp = GetLocalViewUp();
+            if (Mathf.Abs(moveAxis) < 0.01f)
+            {
+                return viewUp;
+            }
+
+            Vector2 viewRight = GetLocalViewRight();
+            return (viewUp + viewRight * Mathf.Sign(moveAxis)).normalized;
+        }
+
+        private void RequestGuiServe()
+        {
+            _guiServePressed = true;
+        }
+
+        private static IGatebreakerArenaSceneUiBinding ResolveSceneUiBinding(IServiceContainer services)
+        {
+            return services?.Get<IGatebreakerArenaSceneUiBinding>() ??
+                   GatebreakerArenaSceneUiBindingRegistry.Current;
         }
 
         private void HandleLocalPlayerSelection()
@@ -1056,7 +1114,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 case ServeBlockReason.PlayerDisabled:
                     return "玩家已出局";
                 case ServeBlockReason.CoolingDown:
-                    return "冷却中";
+                    return "库存回复中";
                 case ServeBlockReason.NoAmmo:
                     return "弹药不足";
                 case ServeBlockReason.OwnedBallLimit:
@@ -1081,7 +1139,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 $"Gatebreaker Arena 原型    阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}",
                 _hudStyle);
             GUILayout.Label(
-                $"比分：{FormatScoreLine(snapshot)}    弹药：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}    冷却：{snapshot.ServeCooldownRemaining:0.0}秒",
+                $"比分：{FormatScoreLine(snapshot)}    弹药：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}    回复：{snapshot.ServeCooldownRemaining:0.0}秒",
                 _hudStyle);
             GUILayout.Label(
                 $"场上球：{snapshot.OwnedBallsInField}/{snapshot.MaxOwnedBallsInField}    发球限制：{FormatServeBlockReason(snapshot.ServeBlockReason)}    上次空格：{FormatServeBlockReason(_lastServeBlockReason)}",
@@ -1653,6 +1711,16 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             return $"发射子弹：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}";
         }
 
+        private void RefreshBoundHud()
+        {
+            if (_sceneBindingService == null || _hudPresenter == null)
+            {
+                return;
+            }
+
+            _sceneBindingService.UpdateBallCount(_hudPresenter.BuildSnapshot(_localPlayerId));
+        }
+
         private Color GetPlayerColor(int playerId)
         {
             int index = Mathf.Abs(playerId - 1) % PlayerPalette.Length;
@@ -1822,8 +1890,15 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 (viewHalfWidth + CameraMargin) / aspect);
             _prototypeCamera.nearClipPlane = 0.1f;
             _prototypeCamera.farClipPlane = CameraHeight + 10f;
+            _prototypeCamera.cullingMask &= ~(1 << GetSceneDebugLayer());
             _prototypeCamera.clearFlags = CameraClearFlags.SolidColor;
             _prototypeCamera.backgroundColor = new Color(0.03f, 0.04f, 0.05f);
+        }
+
+        private static int GetSceneDebugLayer()
+        {
+            int layer = LayerMask.NameToLayer(SceneDebugLayerName);
+            return layer >= 0 ? layer : SceneDebugLayerFallback;
         }
 
         private static Rect CalculateSquareCameraViewport()

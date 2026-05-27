@@ -24,7 +24,33 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             result.Scene = await LoadPrefabAsync(map?.ScenePrefabLocation, "scene");
             result.Paddle = await LoadPrefabAsync(map?.PaddlePrefabLocation, "paddle");
             result.Ball = await LoadPrefabAsync(ballRule?.PrefabLocation, "ball");
+            result.SetPlayerBall(1, result.Ball);
+            GatebreakerLoadedPrefab player2Ball = await LoadOptionalPrefabAsync(ResolveSiblingBallPrefabLocation(ballRule?.PrefabLocation, 2), "ball-player-2");
+            GatebreakerLoadedPrefab player3Ball = await LoadOptionalPrefabAsync(ResolveSiblingBallPrefabLocation(ballRule?.PrefabLocation, 3), "ball-player-3");
+            result.SetPlayerBall(2, player2Ball ?? result.Ball);
+            result.SetPlayerBall(3, player3Ball ?? result.Ball);
             return result;
+        }
+
+        private Task<GatebreakerLoadedPrefab> LoadOptionalPrefabAsync(string location, string role)
+        {
+            return string.IsNullOrWhiteSpace(location)
+                ? Task.FromResult<GatebreakerLoadedPrefab>(null)
+                : LoadPrefabAsync(location, role);
+        }
+
+        private static string ResolveSiblingBallPrefabLocation(string baseLocation, int index)
+        {
+            if (string.IsNullOrWhiteSpace(baseLocation) || index <= 1)
+            {
+                return baseLocation;
+            }
+
+            const string ball01 = "Ball01.prefab";
+            int suffixIndex = baseLocation.LastIndexOf(ball01, StringComparison.OrdinalIgnoreCase);
+            return suffixIndex >= 0
+                ? baseLocation.Substring(0, suffixIndex) + $"Ball{index:00}.prefab"
+                : null;
         }
 
         private async Task<GatebreakerLoadedPrefab> LoadPrefabAsync(string location, string role)
@@ -72,16 +98,49 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
     public sealed class GatebreakerVisualAssetSet : IDisposable
     {
+        private readonly GatebreakerLoadedPrefab[] _playerBalls = new GatebreakerLoadedPrefab[3];
+
         public GatebreakerLoadedPrefab Scene { get; internal set; }
         public GatebreakerLoadedPrefab Paddle { get; internal set; }
         public GatebreakerLoadedPrefab Ball { get; internal set; }
 
         public bool IsComplete => Scene != null && Paddle != null && Ball != null;
 
+        public GatebreakerLoadedPrefab GetBallForPlayerSlot(int playerSlot)
+        {
+            if (playerSlot > 0 && playerSlot <= _playerBalls.Length && _playerBalls[playerSlot - 1] != null)
+            {
+                return _playerBalls[playerSlot - 1];
+            }
+
+            return Ball;
+        }
+
+        internal void SetPlayerBall(int playerSlot, GatebreakerLoadedPrefab prefab)
+        {
+            if (playerSlot <= 0 || playerSlot > _playerBalls.Length)
+            {
+                return;
+            }
+
+            _playerBalls[playerSlot - 1] = prefab;
+        }
+
         public void Dispose()
         {
             Scene?.Dispose();
             Paddle?.Dispose();
+            for (int i = 0; i < _playerBalls.Length; i++)
+            {
+                GatebreakerLoadedPrefab playerBall = _playerBalls[i];
+                if (playerBall != null && playerBall != Ball)
+                {
+                    playerBall.Dispose();
+                }
+
+                _playerBalls[i] = null;
+            }
+
             Ball?.Dispose();
             Scene = null;
             Paddle = null;

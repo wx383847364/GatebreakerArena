@@ -43,16 +43,66 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void OwnedBallLimitBlocksConsecutiveServe()
+        public void OwnedBallLimitBlocksServeWhenOwnedFieldIsFull()
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 1);
-            Assert.IsTrue(runtime.TryServe(1, out ServeBlockReason firstServeReason), firstServeReason.ToString());
+            PlayerRuntimeState player = runtime.FindPlayer(1);
+            player.ServeResource.CurrentServeAmmo = 1;
+            player.ServeResource.OwnedBallsInField = player.ServeResource.MaxOwnedBallsInField;
 
-            bool servedAgain = runtime.TryServe(1, out ServeBlockReason reason);
+            bool served = runtime.TryServe(1, out ServeBlockReason reason);
 
-            Assert.IsFalse(servedAgain);
+            Assert.IsFalse(served);
             Assert.AreEqual(ServeBlockReason.OwnedBallLimit, reason);
+        }
+
+        [Test]
+        public void ServeUsesPureNormalWhenAimDirectionIsMissing()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartMatch(new GatebreakerMatchStartConfig
+            {
+                MatchId = "serve-direction-test",
+                ModeId = "PVE_STANDARD",
+                MapId = "MAP_ARENA_01",
+                BallTypeId = "BALL_NORMAL",
+                ActiveSlots = new[] { 1, 2 },
+                LocalPlayerId = 1,
+                SimulationFps = GatebreakerMatchStartConfig.DefaultSimulationFps,
+                InputDelayFrames = 0,
+            });
+            PlayerRuntimeState player = runtime.FindPlayer(1);
+            Vector2 normal = player.Paddle.Normal.normalized;
+
+            runtime.StepFrame(0, new[] { new GatebreakerFrameInput(1, 0f, true, Vector2.zero) });
+
+            BallRuntimeState servedBall = runtime.Balls.OrderBy(ball => ball.BallId).Last();
+            Assert.Less(Vector2.Distance(normal, servedBall.Velocity.normalized), 0.001f);
+        }
+
+        [Test]
+        public void ServeUsesAimDirectionWhenProvided()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartMatch(new GatebreakerMatchStartConfig
+            {
+                MatchId = "serve-aim-test",
+                ModeId = "PVE_STANDARD",
+                MapId = "MAP_ARENA_01",
+                BallTypeId = "BALL_NORMAL",
+                ActiveSlots = new[] { 1, 2 },
+                LocalPlayerId = 1,
+                SimulationFps = GatebreakerMatchStartConfig.DefaultSimulationFps,
+                InputDelayFrames = 0,
+            });
+            PlayerRuntimeState player = runtime.FindPlayer(1);
+            Vector2 aimDirection = (player.Paddle.Normal + player.Paddle.Tangent).normalized;
+
+            runtime.StepFrame(0, new[] { new GatebreakerFrameInput(1, 0f, true, aimDirection) });
+
+            BallRuntimeState servedBall = runtime.Balls.OrderBy(ball => ball.BallId).Last();
+            Assert.Less(Vector2.Distance(aimDirection, servedBall.Velocity.normalized), 0.001f);
         }
 
         [Test]
@@ -105,6 +155,7 @@ namespace Gatebreaker.Tests
             runtime.StartLocalPrototype(aiCount: 3);
 
             AssertPaddleAlignedWithSegment(runtime.FindPlayer(1).Paddle, runtime.Arena.BoundarySegments[5], runtime.Arena.PaddleInset);
+            Assert.AreEqual(0.05f, runtime.FindPlayer(1).Paddle.Thickness, 0.001f);
             Assert.IsTrue(runtime.FindPlayer(2).IsDisabled);
             Assert.IsNull(runtime.FindPlayer(2).Paddle);
             AssertPaddleAlignedWithSegment(runtime.FindPlayer(3).Paddle, runtime.Arena.BoundarySegments[1], runtime.Arena.PaddleInset);
@@ -170,8 +221,12 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(9, lines.Count(line => line.Kind == GatebreakerCollisionOverlayLineKind.Wall));
             Assert.AreEqual(3, lines.Count(line => line.Kind == GatebreakerCollisionOverlayLineKind.GoalTrigger));
             Assert.AreEqual(9, lines.Count(line => line.Kind == GatebreakerCollisionOverlayLineKind.GoalBand));
+            Assert.AreEqual(3, lines.Count(line => line.Kind == GatebreakerCollisionOverlayLineKind.PaddleContact));
             Assert.IsTrue(lines.Any(line =>
                 line.Kind == GatebreakerCollisionOverlayLineKind.GoalTrigger &&
+                line.GoalPlayerIndex == arena.BoundarySegments[5].GoalPlayerIndex));
+            Assert.IsTrue(lines.Any(line =>
+                line.Kind == GatebreakerCollisionOverlayLineKind.PaddleContact &&
                 line.GoalPlayerIndex == arena.BoundarySegments[5].GoalPlayerIndex));
         }
 
@@ -348,8 +403,11 @@ namespace Gatebreaker.Tests
             runtime.TickLocalPrototype(0f);
 
             Assert.AreEqual(0, runtime.FindPlayer(3).Score);
-            Assert.AreEqual(BallState.GoalRebound, ball.BallState);
+            Assert.AreEqual(BallState.Flying, ball.BallState);
             Assert.Less(ball.Velocity.x, 0f);
+            Assert.Greater(
+                Vector2.Dot(ball.Position - runtime.FindPlayer(3).Paddle.Position, runtime.FindPlayer(3).Paddle.Normal),
+                runtime.FindPlayer(3).Paddle.Thickness);
         }
 
         [Test]
@@ -384,8 +442,11 @@ namespace Gatebreaker.Tests
             runtime.TickLocalPrototype(0f);
 
             Assert.AreEqual(0, runtime.FindPlayer(1).Score);
-            Assert.AreEqual(BallState.GoalRebound, ball.BallState);
+            Assert.AreEqual(BallState.Flying, ball.BallState);
             Assert.Greater(ball.Velocity.y, 0f);
+            Assert.Greater(
+                Vector2.Dot(ball.Position - runtime.FindPlayer(1).Paddle.Position, runtime.FindPlayer(1).Paddle.Normal),
+                runtime.FindPlayer(1).Paddle.Thickness);
         }
 
         [Test]
@@ -461,22 +522,99 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void PaddleHitTransfersBallOwnershipToLastHitter()
+        public void BottomPaddleEmbeddedStartStillReboundsBeforeGoal()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 1);
+            PlayerRuntimeState player = runtime.FindPlayer(1);
+            BallRuntimeState ball = runtime.Balls[0];
+            ball.OwnerPlayerId = 2;
+            ball.OwnerTeamId = 2;
+            ball.Position = player.Paddle.Position + player.Paddle.Normal * (player.Paddle.Thickness * 0.5f);
+            ball.Velocity = -player.Paddle.Normal * runtime.BallRule.InitialSpeed;
+
+            runtime.Tick(0.2f);
+
+            Assert.AreEqual(0, runtime.FindPlayer(2).Score);
+            Assert.AreEqual(BallState.Flying, ball.BallState);
+            Assert.Greater(Vector2.Dot(ball.Velocity, player.Paddle.Normal), 0f);
+            Assert.Greater(Vector2.Dot(ball.Position - player.Paddle.Position, player.Paddle.Normal), player.Paddle.Thickness);
+        }
+
+        [Test]
+        public void PaddleHitKeepsOriginalBallOwnership()
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 3);
             PlayerRuntimeState player = runtime.FindPlayer(3);
+            PlayerRuntimeState owner = runtime.FindPlayer(1);
             BallRuntimeState ball = runtime.Balls[0];
             ball.OwnerPlayerId = 1;
             ball.OwnerTeamId = 1;
+            owner.ServeResource.OwnedBallsInField = 1;
+            player.ServeResource.OwnedBallsInField = 0;
             ball.Position = player.Paddle.Position + player.Paddle.Normal * (player.Paddle.Thickness + 0.6f);
             ball.Velocity = -player.Paddle.Normal * runtime.BallRule.InitialSpeed;
 
             runtime.Tick(0.2f);
 
-            Assert.AreEqual(player.PlayerId, ball.OwnerPlayerId);
-            Assert.AreEqual(player.TeamId, ball.OwnerTeamId);
-            Assert.AreEqual(1, player.ServeResource.OwnedBallsInField);
+            Assert.AreEqual(owner.PlayerId, ball.OwnerPlayerId);
+            Assert.AreEqual(owner.TeamId, ball.OwnerTeamId);
+            Assert.AreEqual(1, owner.ServeResource.OwnedBallsInField);
+            Assert.AreEqual(0, player.ServeResource.OwnedBallsInField);
+            Assert.Greater(Vector2.Dot(ball.Velocity, player.Paddle.Normal), 0f);
+        }
+
+        [Test]
+        public void BallHitByOpponentStillScoresForOriginalOwner()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 3);
+            PlayerRuntimeState owner = runtime.FindPlayer(1);
+            PlayerRuntimeState defender = runtime.FindPlayer(3);
+            ArenaBoundarySegment defenderGoal = runtime.Arena.BoundarySegments[1];
+            BallRuntimeState ball = runtime.Balls[0];
+            ball.OwnerPlayerId = owner.PlayerId;
+            ball.OwnerTeamId = owner.TeamId;
+            ball.Position = defender.Paddle.Position + defender.Paddle.Normal * (defender.Paddle.Thickness + 0.6f);
+            ball.Velocity = -defender.Paddle.Normal * runtime.BallRule.InitialSpeed;
+
+            runtime.Tick(0.2f);
+            ball.Position = defenderGoal.GoalCenter - defenderGoal.InwardNormal * 0.2f;
+            ball.Velocity = -defenderGoal.InwardNormal * runtime.BallRule.InitialSpeed;
+            runtime.TickLocalPrototype(0f);
+
+            Assert.AreEqual(1, owner.Score);
+            Assert.AreEqual(0, defender.Score);
+            Assert.AreEqual(0, runtime.Balls.Count);
+        }
+
+        [Test]
+        public void BallHitByOpponentEnteringOwnGoalStillReboundsAsOwnBall()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 3);
+            PlayerRuntimeState owner = runtime.FindPlayer(1);
+            PlayerRuntimeState defender = runtime.FindPlayer(3);
+            ArenaBoundarySegment ownerGoal = runtime.Arena.BoundarySegments[5];
+            BallRuntimeState ball = runtime.Balls[0];
+            ball.OwnerPlayerId = owner.PlayerId;
+            ball.OwnerTeamId = owner.TeamId;
+            ball.Position = defender.Paddle.Position + defender.Paddle.Normal * (defender.Paddle.Thickness + 0.6f);
+            ball.Velocity = -defender.Paddle.Normal * runtime.BallRule.InitialSpeed;
+
+            runtime.Tick(0.2f);
+            ball.Position = ownerGoal.GoalCenter - ownerGoal.InwardNormal * 0.2f;
+            ball.Velocity = -ownerGoal.InwardNormal * runtime.BallRule.InitialSpeed;
+            runtime.TickLocalPrototype(0f);
+
+            Assert.AreEqual(owner.PlayerId, ball.OwnerPlayerId);
+            Assert.AreEqual(owner.TeamId, ball.OwnerTeamId);
+            Assert.AreEqual(0, owner.Score);
+            Assert.AreEqual(0, defender.Score);
+            Assert.AreEqual(BallState.Flying, ball.BallState);
+            Assert.AreEqual(1, runtime.Balls.Count);
+            Assert.Greater(Vector2.Dot(ball.Velocity, owner.Paddle.Normal), 0f);
         }
 
         [Test]
