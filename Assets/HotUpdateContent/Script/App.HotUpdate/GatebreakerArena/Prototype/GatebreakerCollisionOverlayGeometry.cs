@@ -10,6 +10,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         Wall,
         GoalTrigger,
         GoalBand,
+        PaddleContact,
     }
 
     public readonly struct GatebreakerCollisionOverlayLine
@@ -45,13 +46,13 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return Array.Empty<GatebreakerCollisionOverlayLine>();
             }
 
-            var lines = new List<GatebreakerCollisionOverlayLine>(arena.BoundarySegments.Count * 4);
+            var lines = new List<GatebreakerCollisionOverlayLine>(arena.BoundarySegments.Count * 5);
             for (int i = 0; i < arena.BoundarySegments.Count; i++)
             {
                 ArenaBoundarySegment segment = arena.BoundarySegments[i];
                 if (IsActiveGoalSegment(segment, activePlayerCount))
                 {
-                    AddActiveGoalLines(segment, lines);
+                    AddActiveGoalLines(arena, segment, lines);
                 }
                 else
                 {
@@ -71,6 +72,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         }
 
         private static void AddActiveGoalLines(
+            ArenaGeometry arena,
             ArenaBoundarySegment segment,
             List<GatebreakerCollisionOverlayLine> lines)
         {
@@ -97,6 +99,15 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalOuterEnd, segment.GoalPlayerIndex);
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalTriggerStart, segment.GoalPlayerIndex);
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterEnd, goalTriggerEnd, segment.GoalPlayerIndex);
+
+            Vector2 paddleCenter = segment.GoalCenter + segment.InwardNormal * arena.PaddleInset;
+            Vector2 paddleContactCenter = paddleCenter + segment.InwardNormal * arena.PaddleThickness;
+            AddLine(
+                lines,
+                GatebreakerCollisionOverlayLineKind.PaddleContact,
+                paddleContactCenter - tangent * (arena.PaddleLength * 0.5f),
+                paddleContactCenter + tangent * (arena.PaddleLength * 0.5f),
+                segment.GoalPlayerIndex);
         }
 
         private static void AddWallSpan(
