@@ -168,6 +168,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 InitialBallsModifier = ReadInt(item, "InitialBallsModifier"),
                 MaxBallsModifier = ReadInt(item, "MaxBallsModifier"),
                 ServeCooldownModifier = ReadFloat(item, "ServeCooldownModifier"),
+                MaxServeAmmo = ReadOptionalInt(item, "MaxServeAmmo"),
+                MaxOwnedBallsInField = ReadOptionalInt(item, "MaxOwnedBallsInField"),
+                ServeRechargeSeconds = ReadOptionalFloat(item, "ServeRechargeSeconds"),
                 BallSpeedModifier = ReadFloat(item, "BallSpeedModifier"),
                 GoalSizeModifier = ReadFloat(item, "GoalSizeModifier"),
                 ScenePrefabLocation = ReadOptionalString(item, "ScenePrefabLocation"),
@@ -231,6 +234,14 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 return null;
 
             return ReadInt(item, key);
+        }
+
+        private static float? ReadOptionalFloat(Dictionary<string, object> item, string key)
+        {
+            if (!item.ContainsKey(key) || item[key] == null)
+                return null;
+
+            return ReadFloat(item, key);
         }
 
         private static float ReadFloat(Dictionary<string, object> item, string key)

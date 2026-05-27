@@ -3,7 +3,8 @@
     "rootNamespace": "App.HotUpdate",
     "references": [
         "App.Shared",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

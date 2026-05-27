@@ -11,14 +11,17 @@ namespace App.HotUpdate.GatebreakerArena.Serve
             int maxOwnedBallsInField,
             float baseServeCooldown)
         {
+            int safeMaxAmmo = Math.Max(0, maxAmmo);
+            int safeInitialAmmo = Math.Max(0, Math.Min(initialAmmo, safeMaxAmmo));
+            float safeCooldown = Math.Max(0f, baseServeCooldown);
             return new ServeResourceState
             {
-                CurrentServeAmmo = Math.Max(0, Math.Min(initialAmmo, maxAmmo)),
-                MaxServeAmmo = Math.Max(0, maxAmmo),
+                CurrentServeAmmo = safeInitialAmmo,
+                MaxServeAmmo = safeMaxAmmo,
                 OwnedBallsInField = 0,
                 MaxOwnedBallsInField = Math.Max(0, maxOwnedBallsInField),
-                ServeCooldownRemaining = 0f,
-                BaseServeCooldown = Math.Max(0f, baseServeCooldown),
+                ServeCooldownRemaining = safeInitialAmmo < safeMaxAmmo ? safeCooldown : 0f,
+                BaseServeCooldown = safeCooldown,
                 LastBlockReason = ServeBlockReason.None,
             };
         }
@@ -38,10 +41,6 @@ namespace App.HotUpdate.GatebreakerArena.Serve
             if (playerDisabled)
             {
                 reason = ServeBlockReason.PlayerDisabled;
-            }
-            else if (state.ServeCooldownRemaining > 0f)
-            {
-                reason = ServeBlockReason.CoolingDown;
             }
             else if (state.CurrentServeAmmo <= 0)
             {
@@ -80,8 +79,8 @@ namespace App.HotUpdate.GatebreakerArena.Serve
 
             state.CurrentServeAmmo -= 1;
             state.OwnedBallsInField += 1;
-            state.ServeCooldownRemaining = state.BaseServeCooldown * Math.Max(0f, cooldownScale);
-            state.LastBlockReason = ServeBlockReason.CoolingDown;
+            StartRechargeIfNeeded(state, cooldownScale);
+            state.LastBlockReason = ServeBlockReason.None;
             return true;
         }
 
@@ -92,15 +91,38 @@ namespace App.HotUpdate.GatebreakerArena.Serve
                 throw new ArgumentNullException(nameof(state));
             }
 
-            if (state.ServeCooldownRemaining <= 0f)
+            if (state.CurrentServeAmmo >= state.MaxServeAmmo)
             {
+                state.ServeCooldownRemaining = 0f;
                 return;
             }
 
-            state.ServeCooldownRemaining = Math.Max(0f, state.ServeCooldownRemaining - Math.Max(0f, deltaTime));
-            if (state.ServeCooldownRemaining <= 0f && state.CurrentServeAmmo < state.MaxServeAmmo)
+            if (state.BaseServeCooldown <= 0f)
             {
+                state.CurrentServeAmmo = state.MaxServeAmmo;
+                state.ServeCooldownRemaining = 0f;
+                return;
+            }
+
+            if (state.ServeCooldownRemaining <= 0f)
+            {
+                state.ServeCooldownRemaining = state.BaseServeCooldown;
+            }
+
+            float remainingDelta = Math.Max(0f, deltaTime);
+            while (remainingDelta > 0f && state.CurrentServeAmmo < state.MaxServeAmmo)
+            {
+                if (remainingDelta < state.ServeCooldownRemaining)
+                {
+                    state.ServeCooldownRemaining -= remainingDelta;
+                    return;
+                }
+
+                remainingDelta -= state.ServeCooldownRemaining;
                 state.CurrentServeAmmo += 1;
+                state.ServeCooldownRemaining = state.CurrentServeAmmo < state.MaxServeAmmo
+                    ? state.BaseServeCooldown
+                    : 0f;
             }
         }
 
@@ -112,6 +134,24 @@ namespace App.HotUpdate.GatebreakerArena.Serve
             }
 
             state.OwnedBallsInField = Math.Max(0, state.OwnedBallsInField - 1);
+        }
+
+        private static void StartRechargeIfNeeded(ServeResourceState state, float cooldownScale)
+        {
+            if (state.CurrentServeAmmo >= state.MaxServeAmmo || state.ServeCooldownRemaining > 0f)
+            {
+                return;
+            }
+
+            float cooldown = state.BaseServeCooldown * Math.Max(0f, cooldownScale);
+            if (cooldown <= 0f)
+            {
+                state.CurrentServeAmmo = state.MaxServeAmmo;
+                state.ServeCooldownRemaining = 0f;
+                return;
+            }
+
+            state.ServeCooldownRemaining = cooldown;
         }
     }
 }

@@ -23,17 +23,21 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(1, pve.InitialServeAmmo);
             Assert.AreEqual(2, pve.MaxServeAmmo);
             Assert.AreEqual(1, pve.MaxOwnedBallsInField);
+            Assert.IsTrue(pve.AllowAimServe);
             Assert.AreEqual(OvertimeRuleType.SuddenDeath, pve.OvertimeRuleType);
-            Assert.AreEqual(6.0f, ball.InitialSpeed);
-            Assert.AreEqual(11.0f, ball.MaxSpeed);
+            Assert.AreEqual(5.25f, ball.InitialSpeed);
+            Assert.AreEqual(9.8f, ball.MaxSpeed);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball01.prefab", ball.PrefabLocation);
             Assert.AreEqual(0.18f, ai.ReactionDelay);
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(1, effective.InitialBallsInMatch);
-            Assert.AreEqual(4, effective.MaxBallsInMatch);
-            Assert.AreEqual(6.0f, effective.BaseServeCooldown);
+            Assert.AreEqual(20, effective.MaxBallsInMatch);
+            Assert.AreEqual(1, effective.InitialServeAmmo);
+            Assert.AreEqual(5, effective.MaxServeAmmo);
+            Assert.AreEqual(5, effective.MaxOwnedBallsInField);
+            Assert.AreEqual(5.0f, effective.ServeRechargeSeconds);
         }
     }
 }

@@ -32,6 +32,7 @@ namespace App.AOT.Bootstrap
         private NetClient _netClient;
         private LanTransport _lanTransport;
         private WeChatBridge _weChatBridge;
+        private IGatebreakerArenaSceneUiBinding _gatebreakerSceneUiBinding;
 
         private async void Start()
         {
@@ -94,6 +95,13 @@ namespace App.AOT.Bootstrap
 
             // 把容器自己也注册进去，后面 HotUpdate 业务组合层会从这里继续挂服务。
             _serviceContainer.RegisterSingleton<IServiceContainer>(_serviceContainer);
+
+            _gatebreakerSceneUiBinding = GetComponent<GatebreakerArenaSceneUiBinding>() ??
+                                         GatebreakerArenaSceneUiBindingRegistry.Current;
+            if (_gatebreakerSceneUiBinding != null)
+            {
+                _serviceContainer.RegisterSingleton<IGatebreakerArenaSceneUiBinding>(_gatebreakerSceneUiBinding);
+            }
 
             _logger.LogInfo("基础设施初始化完成");
         }

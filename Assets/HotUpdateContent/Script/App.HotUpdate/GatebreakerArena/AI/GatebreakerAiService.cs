@@ -49,7 +49,7 @@ namespace App.HotUpdate.GatebreakerArena.AI
             bool shouldServe = runtime != null &&
                                player.ServeResource != null &&
                                player.ServeResource.CurrentServeAmmo > 0 &&
-                               player.ServeResource.ServeCooldownRemaining <= 0f;
+                               player.ServeResource.OwnedBallsInField < player.ServeResource.MaxOwnedBallsInField;
             return new PlayerInputFrame(player.PlayerId, moveAxis, shouldServe, player.Paddle.Normal);
         }
     }
