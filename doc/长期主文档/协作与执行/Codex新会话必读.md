@@ -6,6 +6,9 @@
 - 当前工作区根：`<workspace>/GatebreakerArena`
 - Git 仓库根、Unity 工程根、默认工具命令执行根：`Client/`
 - 本机 Unity 工程路径示例：`<workspace>/GatebreakerArena/Client`
+- Unity Editor 版本：`2022.3.62t2 (24637c95313f)`
+- 团结 Editor 版本：`1.8.0`
+- 本机 Editor 路径：`/Applications/Tuanjie/Hub/Editor/2022.3.62t2/Tuanjie.app/Contents/MacOS/Tuanjie`
 - 本文中未特别说明的工程路径，均以 `Client/` 为根。
 - 当前阶段：Unity + HybridCLR + YooAssets 独立工程骨架
 
@@ -33,6 +36,12 @@
 - 正式功能开发、测试或审查默认先读 `$gatebreaker-hotupdate-boundary`。
 - 只要任务属于 `UI 相关`，必须再读 `$gatebreaker-ui-boundary`。
 - UI 相关任务默认保护原 prefab 视觉参数：没有明确要求时，不改颜色、透明度、tint、材质颜色或 `CanvasGroup.alpha`。
+
+验证规则：
+
+- 除非必须验证当前工程编译、场景、资源或真实绑定，优先在 `/private/tmp` 或 `/tmp` 创建临时 Unity/Tuanjie 工程验证。
+- 临时工程验证通过后，除非有必要保留现场，否则必须删除临时工程；可用 `tools/repo_maintenance/clean_hub_temp_projects.sh` 清理。
+- 删除后再检查 `/private/tmp` 和 `/tmp` 中仍残留的 Gatebreaker/Unity/Tuanjie 临时工程，并在回复里列出残留项；没有残留就说明无残留。
 
 ## 固定边界
 
