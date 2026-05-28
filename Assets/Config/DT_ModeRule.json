@@ -16,7 +16,7 @@
     "OvertimeDuration": 60,
     "OvertimeEligibleOnly": true,
     "OvertimeWinScore": 1,
-    "AllowAimServe": false,
+    "AllowAimServe": true,
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.05,
     "FinalPhaseCooldownScale": 0.95
@@ -38,7 +38,7 @@
     "OvertimeDuration": 60,
     "OvertimeEligibleOnly": true,
     "OvertimeWinScore": 1,
-    "AllowAimServe": false,
+    "AllowAimServe": true,
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.10,
     "FinalPhaseCooldownScale": 0.90
@@ -60,7 +60,7 @@
     "OvertimeDuration": 60,
     "OvertimeEligibleOnly": true,
     "OvertimeWinScore": 1,
-    "AllowAimServe": false,
+    "AllowAimServe": true,
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.10,
     "FinalPhaseCooldownScale": 0.92

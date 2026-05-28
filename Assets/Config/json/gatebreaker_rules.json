@@ -20,8 +20,8 @@
       "ColorTag": "Neutral",
       "DangerPromptThreshold": 1.2,
       "GoalReboundFactor": 1.0,
-      "InitialSpeed": 6.0,
-      "MaxSpeed": 11.0,
+      "InitialSpeed": 5.25,
+      "MaxSpeed": 9.8,
       "MinVerticalVelocity": 2.0,
       "PaddleBounceFactor": 1.0,
       "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
@@ -38,10 +38,13 @@
       "InitialBallsModifier": 0,
       "MapId": "MAP_ARENA_01",
       "MapName": "标准四边场",
-      "MaxBallsModifier": 0,
+      "MaxBallsModifier": 16,
+      "MaxOwnedBallsInField": 5,
+      "MaxServeAmmo": 5,
       "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
       "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
       "ServeCooldownModifier": 0.0,
+      "ServeRechargeSeconds": 5.0,
       "SpawnLayoutType": "FourSide",
       "SupportedPlayerCount": [
         2,
@@ -52,7 +55,7 @@
   ],
   "DT_ModeRule": [
     {
-      "AllowAimServe": false,
+      "AllowAimServe": true,
       "BaseServeCooldown": 6.0,
       "EnableOvertime": true,
       "FinalPhaseBallSpeedScale": 1.05,
@@ -74,7 +77,7 @@
       "ScoreRuleType": "AddScore"
     },
     {
-      "AllowAimServe": false,
+      "AllowAimServe": true,
       "BaseServeCooldown": 6.0,
       "EnableOvertime": true,
       "FinalPhaseBallSpeedScale": 1.1,
@@ -96,7 +99,7 @@
       "ScoreRuleType": "AddScore"
     },
     {
-      "AllowAimServe": false,
+      "AllowAimServe": true,
       "BaseServeCooldown": 6.5,
       "EnableOvertime": true,
       "FinalPhaseBallSpeedScale": 1.1,

@@ -39,6 +39,42 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public async Task LoadAsync_LoadsSiblingPlayerBallPrefabsWhenUsingBall01()
+        {
+            var assetsRuntime = new FakeAssetsRuntime();
+            string ball01 = "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab";
+            string ball02 = "Assets/HotUpdateContent/Res/prefabs/Ball02.prefab";
+            string ball03 = "Assets/HotUpdateContent/Res/prefabs/Ball03.prefab";
+            assetsRuntime.Add("scene", new GameObject("ScenePrefab"));
+            assetsRuntime.Add("paddle", new GameObject("PaddlePrefab"));
+            assetsRuntime.Add(ball01, new GameObject("Ball01Prefab"));
+            assetsRuntime.Add(ball02, new GameObject("Ball02Prefab"));
+            assetsRuntime.Add(ball03, new GameObject("Ball03Prefab"));
+            var service = new GatebreakerVisualAssetService(assetsRuntime);
+
+            GatebreakerVisualAssetSet set = await service.LoadAsync(CreateEffectiveRule(), new BallRuleDefinition
+            {
+                PrefabLocation = ball01,
+            });
+
+            CollectionAssert.AreEqual(new[] { "scene", "paddle", ball01, ball02, ball03 }, assetsRuntime.LoadedLocations);
+            Assert.AreEqual(ball01, set.GetBallForPlayerSlot(1).Location);
+            Assert.AreEqual(ball02, set.GetBallForPlayerSlot(2).Location);
+            Assert.AreEqual(ball03, set.GetBallForPlayerSlot(3).Location);
+
+            set.Dispose();
+
+            Assert.IsTrue(assetsRuntime.Handles[ball01].Released);
+            Assert.IsTrue(assetsRuntime.Handles[ball02].Released);
+            Assert.IsTrue(assetsRuntime.Handles[ball03].Released);
+            Object.DestroyImmediate(assetsRuntime.Handles["scene"].AssetObject);
+            Object.DestroyImmediate(assetsRuntime.Handles["paddle"].AssetObject);
+            Object.DestroyImmediate(assetsRuntime.Handles[ball01].AssetObject);
+            Object.DestroyImmediate(assetsRuntime.Handles[ball02].AssetObject);
+            Object.DestroyImmediate(assetsRuntime.Handles[ball03].AssetObject);
+        }
+
+        [Test]
         public async Task LoadAsync_ReturnsIncompleteSetWhenAssetIsMissing()
         {
             var assetsRuntime = new FakeAssetsRuntime();
@@ -80,7 +116,7 @@ namespace Gatebreaker.Tests
                 ScenePrefabLocation = "scene",
                 PaddlePrefabLocation = "paddle",
             };
-            return new EffectiveMatchRule(mode, map, 1, 4, 6f);
+            return new EffectiveMatchRule(mode, map, 1, 4, 1, 5, 5, 5f);
         }
 
         private static BallRuleDefinition CreateBallRule()

@@ -60,6 +60,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         {
             const float scene3v3GoalHalfLength = 1.06f;
             const float scene3v3GoalTriggerInset = 0.14f;
+            const float scene3v3PaddleThickness = 0.05f;
             // Derived from Scene3v3 Position01..06 edge-center transforms and rotations.
             var points = new[]
             {
@@ -86,7 +87,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 2.456f,
                 0.18f,
                 0.78f,
-                0.14f,
+                scene3v3PaddleThickness,
                 3.2f,
                 CreateBoundarySegments(points, goalOwners, goalCenters, scene3v3GoalHalfLength, scene3v3GoalTriggerInset));
         }

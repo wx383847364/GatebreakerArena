@@ -38,8 +38,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     {
                         BallTypeId = "BALL_NORMAL",
                         BallTypeName = "普通球",
-                        InitialSpeed = 6.0f,
-                        MaxSpeed = 11.0f,
+                        InitialSpeed = 5.25f,
+                        MaxSpeed = 9.8f,
                         PaddleBounceFactor = 1.0f,
                         WallBounceFactor = 1.0f,
                         GoalReboundFactor = 1.0f,
@@ -77,8 +77,11 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         SpawnLayoutType = SpawnLayoutType.FourSide,
                         HasObstacle = false,
                         InitialBallsModifier = 0,
-                        MaxBallsModifier = 0,
+                        MaxBallsModifier = 16,
                         ServeCooldownModifier = 0f,
+                        MaxServeAmmo = 5,
+                        MaxOwnedBallsInField = 5,
+                        ServeRechargeSeconds = 5f,
                         BallSpeedModifier = 0f,
                         GoalSizeModifier = 0f,
                         ScenePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
@@ -119,12 +122,17 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         {
             ModeRuleDefinition mode = GetMode(modeId);
             MapRuleDefinition map = GetMap(mapId);
+            float serveRechargeSeconds = map.ServeRechargeSeconds
+                ?? mode.BaseServeCooldown + map.ServeCooldownModifier;
             return new EffectiveMatchRule(
                 mode,
                 map,
                 mode.InitialBallsInMatch + map.InitialBallsModifier,
                 mode.MaxBallsInMatch + map.MaxBallsModifier,
-                mode.BaseServeCooldown + map.ServeCooldownModifier);
+                mode.InitialServeAmmo,
+                map.MaxServeAmmo ?? mode.MaxServeAmmo,
+                map.MaxOwnedBallsInField ?? mode.MaxOwnedBallsInField,
+                Math.Max(0f, serveRechargeSeconds));
         }
 
         private static ModeRuleDefinition CreateMode(
@@ -159,7 +167,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 OvertimeDuration = 60,
                 OvertimeEligibleOnly = true,
                 OvertimeWinScore = 1,
-                AllowAimServe = false,
+                AllowAimServe = true,
                 FinalPhaseStartTime = 30,
                 FinalPhaseBallSpeedScale = finalSpeedScale,
                 FinalPhaseCooldownScale = finalCooldownScale,
@@ -191,19 +199,29 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             MapRuleDefinition map,
             int initialBallsInMatch,
             int maxBallsInMatch,
-            float baseServeCooldown)
+            int initialServeAmmo,
+            int maxServeAmmo,
+            int maxOwnedBallsInField,
+            float serveRechargeSeconds)
         {
             Mode = mode;
             Map = map;
             InitialBallsInMatch = initialBallsInMatch;
             MaxBallsInMatch = maxBallsInMatch;
-            BaseServeCooldown = baseServeCooldown;
+            InitialServeAmmo = initialServeAmmo;
+            MaxServeAmmo = maxServeAmmo;
+            MaxOwnedBallsInField = maxOwnedBallsInField;
+            ServeRechargeSeconds = serveRechargeSeconds;
         }
 
         public ModeRuleDefinition Mode { get; }
         public MapRuleDefinition Map { get; }
         public int InitialBallsInMatch { get; }
         public int MaxBallsInMatch { get; }
-        public float BaseServeCooldown { get; }
+        public int InitialServeAmmo { get; }
+        public int MaxServeAmmo { get; }
+        public int MaxOwnedBallsInField { get; }
+        public float ServeRechargeSeconds { get; }
+        public float BaseServeCooldown => ServeRechargeSeconds;
     }
 }

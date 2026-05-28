@@ -4,7 +4,9 @@
     "references": [
         "App.Shared",
         "HybridCLR.Runtime",
-        "YooAsset"
+        "YooAsset",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

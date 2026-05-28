@@ -27,7 +27,8 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             self.assertTrue(result.success, "\n".join(result.errors))
             self.assertEqual(result.payload["DT_ModeRule"][0]["ModeId"], "PVE_STANDARD")
             self.assertEqual(result.payload["DT_ModeRule"][0]["MaxBallsInMatch"], 4)
-            self.assertEqual(result.payload["DT_BallRule"][0]["InitialSpeed"], 7.5)
+            self.assertEqual(result.payload["DT_BallRule"][0]["InitialSpeed"], 5.25)
+            self.assertEqual(result.payload["DT_BallRule"][0]["MaxSpeed"], 9.8)
             self.assertTrue(result.warnings)
 
     def test_export_writes_json_and_bytes(self) -> None:

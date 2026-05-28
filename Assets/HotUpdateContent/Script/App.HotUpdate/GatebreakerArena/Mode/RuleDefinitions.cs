@@ -68,6 +68,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int InitialBallsModifier { get; set; }
         public int MaxBallsModifier { get; set; }
         public float ServeCooldownModifier { get; set; }
+        public int? MaxServeAmmo { get; set; }
+        public int? MaxOwnedBallsInField { get; set; }
+        public float? ServeRechargeSeconds { get; set; }
         public float BallSpeedModifier { get; set; }
         public float GoalSizeModifier { get; set; }
         public string ScenePrefabLocation { get; set; }

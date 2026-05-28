@@ -50,6 +50,20 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(initialBallCount + 1, runtime.Balls.Count);
         }
 
+        [Test]
+        public void LocalPrototypeServeInputIsLatchedUntilFixedStepConsumesIt()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            int initialBallCount = runtime.Balls.Count;
+
+            runtime.ApplyInputFrame(new PlayerInputFrame(1, 0f, true, Vector2.up));
+            runtime.TickLocalPrototype(1f / 60f);
+            runtime.ApplyInputFrame(new PlayerInputFrame(1, 0f, false, Vector2.up));
+            runtime.TickLocalPrototype(1f / 60f);
+
+            Assert.AreEqual(initialBallCount + 1, runtime.Balls.Count);
+        }
+
         private static IReadOnlyList<GatebreakerFrameInput> BuildDeterministicInputs(int frame)
         {
             float playerOneAxis = ((frame / 17) % 2 == 0) ? 0.75f : -0.5f;

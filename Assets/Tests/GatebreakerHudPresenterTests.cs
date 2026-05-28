@@ -27,9 +27,9 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(1, snapshot.LocalPlayerId);
             Assert.AreEqual(1, snapshot.CurrentServeAmmo);
-            Assert.AreEqual(2, snapshot.MaxServeAmmo);
+            Assert.AreEqual(5, snapshot.MaxServeAmmo);
             Assert.AreEqual(0, snapshot.OwnedBallsInField);
-            Assert.AreEqual(1, snapshot.MaxOwnedBallsInField);
+            Assert.AreEqual(5, snapshot.MaxOwnedBallsInField);
             Assert.AreEqual(2, snapshot.PlayerScores.Count);
             Assert.IsFalse(snapshot.HasDanger);
             Assert.IsFalse(snapshot.HasWinner);

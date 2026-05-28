@@ -40,7 +40,10 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(3, effective.InitialBallsInMatch);
             Assert.AreEqual(7, effective.MaxBallsInMatch);
-            Assert.AreEqual(4.75f, effective.BaseServeCooldown);
+            Assert.AreEqual(1, effective.InitialServeAmmo);
+            Assert.AreEqual(5, effective.MaxServeAmmo);
+            Assert.AreEqual(4, effective.MaxOwnedBallsInField);
+            Assert.AreEqual(4.0f, effective.ServeRechargeSeconds);
         }
 
         [Test]
@@ -152,6 +155,9 @@ namespace Gatebreaker.Tests
       ""InitialBallsModifier"": 1,
       ""MaxBallsModifier"": 1,
       ""ServeCooldownModifier"": -0.5,
+      ""MaxServeAmmo"": 5,
+      ""MaxOwnedBallsInField"": 4,
+      ""ServeRechargeSeconds"": 4.0,
       ""BallSpeedModifier"": 0.2,
       ""GoalSizeModifier"": -0.1,
       ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab"",

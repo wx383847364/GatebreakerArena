@@ -104,6 +104,33 @@ namespace App.Shared.Contracts
     }
 
     /// <summary>
+    /// Gatebreaker Arena 场景 UI 引用桥，只承载宿主场景里的显式引用。
+    /// </summary>
+    public interface IGatebreakerArenaSceneUiBinding
+    {
+        UnityEngine.Object SkillButtonObject { get; }
+        UnityEngine.Object BallCountTextObject { get; }
+    }
+
+    public static class GatebreakerArenaSceneUiBindingRegistry
+    {
+        public static IGatebreakerArenaSceneUiBinding Current { get; private set; }
+
+        public static void Register(IGatebreakerArenaSceneUiBinding binding)
+        {
+            Current = binding;
+        }
+
+        public static void Clear(IGatebreakerArenaSceneUiBinding binding)
+        {
+            if (object.ReferenceEquals(Current, binding))
+            {
+                Current = null;
+            }
+        }
+    }
+
+    /// <summary>
     /// 网络客户端接口（Shared层）
     /// </summary>
     public interface INetClient : IService

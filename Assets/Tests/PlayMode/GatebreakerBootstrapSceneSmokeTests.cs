@@ -2,10 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using App.HotUpdate.GatebreakerArena.Bootstrap;
 using App.HotUpdate.GatebreakerArena.Core;
+using TMPro;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Gatebreaker.Tests.PlayMode
 {
@@ -70,6 +72,8 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.IsNotNull(context.MatchRuntime, "Prototype runner signal: MatchRuntime should be registered.");
                 Assert.IsNotNull(context.SceneBindingService, "Arena signal: scene binding service should be registered.");
                 Assert.IsTrue(context.SceneBindingService.IsBound, "Arena signal: scene binding service should be marked bound after runner startup.");
+                Assert.IsTrue(context.SceneBindingService.HasSkillButtonBinding, "Skill button should be explicitly bound.");
+                Assert.IsTrue(context.SceneBindingService.HasBallCountTextBinding, "BallCount text should be explicitly bound.");
                 Assert.IsNotNull(context.VisualAssetService, "Arena signal: visual asset service should be registered.");
                 Assert.IsNotNull(context.HudPresenter, "HUD signal: HUD presenter should be registered.");
                 Assert.IsNotNull(GameObject.Find("Gatebreaker Prototype Runner"), "Prototype runner GameObject should be created.");
@@ -87,7 +91,23 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.AreEqual(1, hud.LocalPlayerId);
                 Assert.AreEqual(MatchPhase.Playing, hud.Phase);
                 Assert.GreaterOrEqual(hud.PlayerScores.Count, 2);
-                Assert.Greater(hud.MaxServeAmmo, 0);
+                Assert.AreEqual(5, hud.MaxServeAmmo);
+
+                GameObject ballCountObject = GameObject.Find("BallCount");
+                Assert.IsNotNull(ballCountObject, "BootstrapScene should contain DownPanel/Skill_btn/BallCount.");
+                TMP_Text ballCountText = ballCountObject.GetComponent<TMP_Text>();
+                Assert.IsNotNull(ballCountText, "BallCount should use TMP_Text.");
+                Assert.AreEqual(hud.CurrentServeAmmo.ToString(), ballCountText.text);
+
+                int ballCountBeforeClick = context.MatchRuntime.Balls.Count;
+                GameObject skillButtonObject = GameObject.Find("Skill_btn");
+                Assert.IsNotNull(skillButtonObject, "BootstrapScene should contain DownPanel/Skill_btn.");
+                Button skillButton = skillButtonObject.GetComponent<Button>();
+                Assert.IsNotNull(skillButton, "Skill_btn should use Unity UI Button.");
+                skillButton.onClick.Invoke();
+                yield return null;
+                yield return null;
+                Assert.Greater(context.MatchRuntime.Balls.Count, ballCountBeforeClick, "Skill_btn click should request a serve.");
 
                 float smokeStart = Time.realtimeSinceStartup;
                 while (Time.realtimeSinceStartup - smokeStart < SmokeDurationSeconds)
