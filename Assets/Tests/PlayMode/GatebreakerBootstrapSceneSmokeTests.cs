@@ -105,8 +105,14 @@ namespace Gatebreaker.Tests.PlayMode
                 Button skillButton = skillButtonObject.GetComponent<Button>();
                 Assert.IsNotNull(skillButton, "Skill_btn should use Unity UI Button.");
                 skillButton.onClick.Invoke();
-                yield return null;
-                yield return null;
+                float serveDeadline = Time.realtimeSinceStartup + 2f;
+                while (context.MatchRuntime.Balls.Count <= ballCountBeforeClick &&
+                       Time.realtimeSinceStartup < serveDeadline)
+                {
+                    AssertNoFailures(failures);
+                    yield return null;
+                }
+
                 Assert.Greater(context.MatchRuntime.Balls.Count, ballCountBeforeClick, "Skill_btn click should request a serve.");
 
                 float smokeStart = Time.realtimeSinceStartup;

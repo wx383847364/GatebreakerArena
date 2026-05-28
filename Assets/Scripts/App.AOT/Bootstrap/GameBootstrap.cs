@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using App.Shared.Contracts;
 using App.AOT.Infrastructure.DI;
+using App.AOT.Infrastructure.Audio;
 using App.AOT.Infrastructure.Logger;
 using App.AOT.Infrastructure.Tick;
 using App.AOT.Infrastructure.EventBus;
@@ -28,6 +29,7 @@ namespace App.AOT.Bootstrap
         private EventBus _eventBus;
         private FilePersistenceProvider _persistence;
         private YooAssetsRuntime _yooAssets;
+        private UnityAudioService _audioService;
         private HybridClrLoader _hybridClrLoader;
         private NetClient _netClient;
         private LanTransport _lanTransport;
@@ -136,6 +138,12 @@ namespace App.AOT.Bootstrap
             _serviceContainer.RegisterSingleton<IAssetsRuntime>(_yooAssets);
             _serviceContainer.RegisterSingleton<YooAssetsRuntime>(_yooAssets);
             _logger.LogInfo("YooAssets初始化完成");
+
+            _audioService = new UnityAudioService(_yooAssets, _logger);
+            _audioService.Initialize();
+            _serviceContainer.RegisterSingleton<IAudioService>(_audioService);
+            _serviceContainer.RegisterSingleton<UnityAudioService>(_audioService);
+            _logger.LogInfo("音频服务初始化完成");
         }
 
         private async System.Threading.Tasks.Task InitializeHybridClrAsync()
@@ -153,11 +161,13 @@ namespace App.AOT.Bootstrap
             _tickManager?.Update(deltaTime);
             _netClient?.Update(deltaTime);
             _lanTransport?.Update(deltaTime);
+            _audioService?.Update(deltaTime);
         }
 
         private void OnDestroy()
         {
             _hybridClrLoader?.Shutdown();
+            _audioService?.Shutdown();
             _yooAssets?.Shutdown();
             _lanTransport?.Shutdown();
             _netClient?.Shutdown();

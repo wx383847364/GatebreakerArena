@@ -12,7 +12,6 @@ fi
 
 "$UNITY_EDITOR" \
   -batchmode \
-  -quit \
   -projectPath "$ROOT_DIR" \
   -runTests \
   -testPlatform PlayMode \

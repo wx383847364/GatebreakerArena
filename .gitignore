@@ -9,6 +9,7 @@ Recordings/
 HybridCLRData/
 HybridCLRGenerate/
 Assets/StreamingAssets/yoo/
+TestResults_*.xml
 
 # Auto-generated IDE and solution files
 *.csproj

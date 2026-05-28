@@ -94,6 +94,71 @@ namespace App.Shared.Contracts
     }
 
     /// <summary>
+    /// 通用音频通道。
+    /// </summary>
+    public enum AudioChannel
+    {
+        Music = 0,
+        Sfx = 1,
+    }
+
+    /// <summary>
+    /// 音频播放参数，供 prefab 挂件和 HotUpdate 业务层共用。
+    /// </summary>
+    public struct AudioPlayParameters
+    {
+        public AudioPlayParameters(bool loop, float volume)
+        {
+            Loop = loop;
+            Volume = volume;
+        }
+
+        public bool Loop { get; set; }
+        public float Volume { get; set; }
+
+        public static AudioPlayParameters Default => new AudioPlayParameters(false, 1f);
+    }
+
+    public interface IAudioPlaybackHandle
+    {
+        bool IsPlaying { get; }
+        void Stop();
+    }
+
+    /// <summary>
+    /// 通用音频服务。AOT 提供 Unity 实现，HotUpdate 只依赖这个契约。
+    /// </summary>
+    public interface IAudioService : IService
+    {
+        IAudioPlaybackHandle PlayMusic(UnityEngine.AudioClip clip, AudioPlayParameters parameters);
+        System.Threading.Tasks.Task<IAudioPlaybackHandle> PlayMusicAsync(string assetLocation, AudioPlayParameters parameters);
+        IAudioPlaybackHandle PlaySfx(UnityEngine.AudioClip clip, AudioPlayParameters parameters);
+        System.Threading.Tasks.Task<IAudioPlaybackHandle> PlaySfxAsync(string assetLocation, AudioPlayParameters parameters);
+        void StopMusic();
+        void StopAllSfx();
+        void SetVolume(AudioChannel channel, float volume);
+        float GetVolume(AudioChannel channel);
+    }
+
+    public static class AudioServiceRegistry
+    {
+        public static IAudioService Current { get; private set; }
+
+        public static void Register(IAudioService audioService)
+        {
+            Current = audioService;
+        }
+
+        public static void Clear(IAudioService audioService)
+        {
+            if (object.ReferenceEquals(Current, audioService))
+            {
+                Current = null;
+            }
+        }
+    }
+
+    /// <summary>
     /// 服务容器接口（Shared层，供AOT和HotUpdate共用）
     /// </summary>
     public interface IServiceContainer

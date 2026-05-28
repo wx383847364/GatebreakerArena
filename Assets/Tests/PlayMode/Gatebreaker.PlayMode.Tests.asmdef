@@ -3,6 +3,7 @@
     "rootNamespace": "Gatebreaker.Tests.PlayMode",
     "references": [
         "App.Shared",
+        "App.AOT",
         "App.HotUpdate",
         "Unity.TextMeshPro",
         "UnityEngine.UI"

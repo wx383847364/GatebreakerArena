@@ -3,6 +3,7 @@
     "rootNamespace": "Gatebreaker.Tests",
     "references": [
         "App.Shared",
+        "App.AOT",
         "App.HotUpdate"
     ],
     "includePlatforms": [
