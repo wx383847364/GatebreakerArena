@@ -16,6 +16,7 @@ using UnityEngine.SceneManagement;
 
 namespace App.HotUpdate.GatebreakerArena.Prototype
 {
+    [DefaultExecutionOrder(10000)]
     public sealed class GatebreakerPrototypeRunner : MonoBehaviour
     {
         private const int DefaultLocalPlayerId = 1;
@@ -29,6 +30,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const float Scene3v3HalfWidth = 2.81f;
         private const float Scene3v3HalfHeight = 2.456f;
         private const float Scene3v3PaddlePrefabNormalScale = 0.14f;
+        private const float SceneVisualBoundsPadding = 0.04f;
         private const float DebugOverlayPrefabDepth = -0.08f;
         private const float DebugOverlayFallbackHeight = 0.08f;
         private const int DebugOverlaySortingOrder = 1200;
@@ -72,6 +74,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private Material _debugOverlayMaterial;
         private Material[] _playerMaterials;
         private Camera _prototypeCamera;
+        private Bounds _sceneVisualBounds;
         private ServeBlockReason _lastServeBlockReason = ServeBlockReason.None;
         private int _localPlayerId = DefaultLocalPlayerId;
         private bool _initialized;
@@ -84,6 +87,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private float _nextLocalLanAddressRefreshTime;
         private bool _usePrefabVisuals;
         private bool _ownsVisualRoot;
+        private bool _hasSceneVisualBounds;
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
         private float ArenaHalfHeight => _runtime?.Arena != null ? _runtime.Arena.HalfHeight : 5f;
@@ -337,6 +341,82 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _sceneInstance.transform.localPosition = Vector3.zero;
             _sceneInstance.transform.localRotation = Quaternion.identity;
             _sceneInstance.transform.localScale = Vector3.one;
+            UpdateSceneVisualBounds();
+        }
+
+        private void UpdateSceneVisualBounds()
+        {
+            _hasSceneVisualBounds = false;
+            if (_sceneInstance == null)
+            {
+                return;
+            }
+
+            Renderer[] renderers = _sceneInstance.GetComponentsInChildren<Renderer>(false);
+            Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            Transform sceneTransform = _sceneInstance.transform;
+            bool hasBounds = false;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (!ShouldIncludeSceneVisualBounds(renderer))
+                {
+                    continue;
+                }
+
+                Bounds bounds = renderer.bounds;
+                Vector3 extents = bounds.extents;
+                if (extents.x <= 0.0001f && extents.y <= 0.0001f)
+                {
+                    continue;
+                }
+
+                Vector3 center = bounds.center;
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, -1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, -1f, 1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, 1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, 1f, 1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, -1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, -1f, 1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, 1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, 1f, 1f, ref min, ref max);
+                hasBounds = true;
+            }
+
+            if (!hasBounds)
+            {
+                return;
+            }
+
+            _sceneVisualBounds = new Bounds((min + max) * 0.5f, max - min);
+            _hasSceneVisualBounds = true;
+        }
+
+        private static bool ShouldIncludeSceneVisualBounds(Renderer renderer)
+        {
+            return renderer != null &&
+                   renderer.enabled &&
+                   !(renderer is ParticleSystemRenderer);
+        }
+
+        private static void AccumulateSceneBoundsCorner(
+            Transform sceneTransform,
+            Vector3 center,
+            Vector3 extents,
+            float xSign,
+            float ySign,
+            float zSign,
+            ref Vector3 min,
+            ref Vector3 max)
+        {
+            Vector3 worldCorner = new Vector3(
+                center.x + extents.x * xSign,
+                center.y + extents.y * ySign,
+                center.z + extents.z * zSign);
+            Vector3 localCorner = sceneTransform.InverseTransformPoint(worldCorner);
+            min = Vector3.Min(min, localCorner);
+            max = Vector3.Max(max, localCorner);
         }
 
         private void RebuildDebugCollisionOverlay()
@@ -1385,12 +1465,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 }
             }
 
-            _prototypeCamera.rect = CalculateSquareCameraViewport();
+            _prototypeCamera.rect = _usePrefabVisuals
+                ? new Rect(0f, 0f, 1f, 1f)
+                : CalculateSquareCameraViewport();
             float aspect = Mathf.Max(0.1f, _prototypeCamera.aspect);
-            if (_visualRoot != null)
-            {
-                _visualRoot.localScale = GetPrototypeVisualScale();
-            }
 
             Vector2 viewUp2D = GetLocalViewUp();
             Vector2 viewRight2D = GetLocalViewRight();
@@ -1403,14 +1481,37 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 : Quaternion.LookRotation(Vector3.down, screenUp);
             _prototypeCamera.orthographic = true;
             CalculateViewExtents(viewUp2D, viewRight2D, out float viewHalfHeight, out float viewHalfWidth);
-            _prototypeCamera.orthographicSize = Mathf.Max(
-                viewHalfHeight + CameraMargin,
-                (viewHalfWidth + CameraMargin) / aspect);
+            if (_visualRoot != null)
+            {
+                _visualRoot.localScale = GetPrototypeVisualScale(viewHalfHeight, viewHalfWidth, aspect);
+            }
+
+            _prototypeCamera.orthographicSize = CalculateOrthographicSize(viewHalfHeight, viewHalfWidth, aspect);
             _prototypeCamera.nearClipPlane = 0.1f;
             _prototypeCamera.farClipPlane = CameraHeight + 10f;
             _prototypeCamera.cullingMask &= ~(1 << GetSceneDebugLayer());
             _prototypeCamera.clearFlags = CameraClearFlags.SolidColor;
             _prototypeCamera.backgroundColor = new Color(0.03f, 0.04f, 0.05f);
+        }
+
+        private float CalculateOrthographicSize(float viewHalfHeight, float viewHalfWidth, float aspect)
+        {
+            float safeAspect = Mathf.Max(0.1f, aspect);
+            if (_usePrefabVisuals)
+            {
+                return Mathf.Max(0.001f, viewHalfWidth / safeAspect);
+            }
+
+            return Mathf.Max(
+                viewHalfHeight + CameraMargin,
+                (viewHalfWidth + CameraMargin) / safeAspect);
+        }
+
+        private float CalculatePrefabViewportScale(float viewHalfHeight, float viewHalfWidth, float aspect)
+        {
+            float safeHalfHeight = Mathf.Max(0.001f, viewHalfHeight);
+            float horizontalFillOrthographicSize = Mathf.Max(0.001f, viewHalfWidth / Mathf.Max(0.1f, aspect));
+            return Mathf.Min(1f, horizontalFillOrthographicSize / safeHalfHeight);
         }
 
         private static int GetSceneDebugLayer()
@@ -1441,6 +1542,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             float depthScale = ArenaHalfHeight > 0.001f ? ArenaHalfWidth / ArenaHalfHeight : 1f;
             return new Vector3(1f, 1f, depthScale);
+        }
+
+        private Vector3 GetPrototypeVisualScale(float viewHalfHeight, float viewHalfWidth, float aspect)
+        {
+            if (!_usePrefabVisuals)
+            {
+                return GetPrototypeVisualScale();
+            }
+
+            float prefabScale = CalculatePrefabViewportScale(viewHalfHeight, viewHalfWidth, aspect);
+            return new Vector3(prefabScale, prefabScale, prefabScale);
         }
 
         private Vector3 GetCompensatedVisualScale(float worldSize)
@@ -1477,6 +1589,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             halfWidth = 0f;
             if (_usePrefabVisuals)
             {
+                if (_hasSceneVisualBounds)
+                {
+                    CalculateBoundsViewExtents(_sceneVisualBounds, viewUp, viewRight, out halfHeight, out halfWidth);
+                    halfHeight += SceneVisualBoundsPadding;
+                    halfWidth += SceneVisualBoundsPadding;
+                    return;
+                }
+
                 Vector2[] prefabCorners =
                 {
                     new Vector2(-Scene3v3HalfWidth, -Scene3v3HalfHeight),
@@ -1511,6 +1631,36 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 halfHeight = Mathf.Max(halfHeight, Mathf.Abs(Vector2.Dot(corners[i], visualUp)));
                 halfWidth = Mathf.Max(halfWidth, Mathf.Abs(Vector2.Dot(corners[i], visualRight)));
             }
+        }
+
+        private static void CalculateBoundsViewExtents(
+            Bounds bounds,
+            Vector2 viewUp,
+            Vector2 viewRight,
+            out float halfHeight,
+            out float halfWidth)
+        {
+            halfHeight = 0f;
+            halfWidth = 0f;
+            Vector2 prefabUp = viewUp.sqrMagnitude > 0.0001f ? viewUp.normalized : Vector2.up;
+            Vector2 prefabRight = viewRight.sqrMagnitude > 0.0001f ? viewRight.normalized : Vector2.right;
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+            AccumulateBoundsViewCorner(new Vector2(min.x, min.y), prefabUp, prefabRight, ref halfHeight, ref halfWidth);
+            AccumulateBoundsViewCorner(new Vector2(min.x, max.y), prefabUp, prefabRight, ref halfHeight, ref halfWidth);
+            AccumulateBoundsViewCorner(new Vector2(max.x, min.y), prefabUp, prefabRight, ref halfHeight, ref halfWidth);
+            AccumulateBoundsViewCorner(new Vector2(max.x, max.y), prefabUp, prefabRight, ref halfHeight, ref halfWidth);
+        }
+
+        private static void AccumulateBoundsViewCorner(
+            Vector2 corner,
+            Vector2 prefabUp,
+            Vector2 prefabRight,
+            ref float halfHeight,
+            ref float halfWidth)
+        {
+            halfHeight = Mathf.Max(halfHeight, Mathf.Abs(Vector2.Dot(corner, prefabUp)));
+            halfWidth = Mathf.Max(halfWidth, Mathf.Abs(Vector2.Dot(corner, prefabRight)));
         }
 
         private void CreateLightIfNeeded()
