@@ -1,6 +1,9 @@
 using System.Linq;
+using App.AOT.Bootstrap;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
 
 namespace Gatebreaker.Tests
 {
@@ -21,6 +24,20 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(
                 isEnabled,
                 "BootstrapScene should be enabled in EditorBuildSettings so PlayMode smoke can load it by name.");
+        }
+
+        [Test]
+        public void BootstrapSceneGatebreakerUiBindingHasStaticReferences()
+        {
+            var scene = EditorSceneManager.OpenScene(BootstrapScenePath, OpenSceneMode.Single);
+            GatebreakerArenaSceneUiBinding binding = Resources
+                .FindObjectsOfTypeAll<GatebreakerArenaSceneUiBinding>()
+                .FirstOrDefault(item => item != null && item.gameObject.scene == scene);
+
+            Assert.IsNotNull(binding, "BootstrapScene should contain the Gatebreaker scene UI binding bridge.");
+            Assert.IsTrue(
+                binding.HasRequiredBindings,
+                "Gatebreaker scene UI binding should include Skill/BallCount, HUD, result, GM, and LAN references.");
         }
     }
 }

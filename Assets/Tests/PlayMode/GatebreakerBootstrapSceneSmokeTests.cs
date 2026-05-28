@@ -74,6 +74,8 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.IsTrue(context.SceneBindingService.IsBound, "Arena signal: scene binding service should be marked bound after runner startup.");
                 Assert.IsTrue(context.SceneBindingService.HasSkillButtonBinding, "Skill button should be explicitly bound.");
                 Assert.IsTrue(context.SceneBindingService.HasBallCountTextBinding, "BallCount text should be explicitly bound.");
+                Assert.IsTrue(context.SceneBindingService.HasGmSliderBindings, "GM bounce tuning sliders should be explicitly bound.");
+                Assert.IsTrue(context.SceneBindingService.HasLanButtonBindings, "LAN room buttons should be explicitly bound.");
                 Assert.IsNotNull(context.VisualAssetService, "Arena signal: visual asset service should be registered.");
                 Assert.IsNotNull(context.HudPresenter, "HUD signal: HUD presenter should be registered.");
                 Assert.IsNotNull(GameObject.Find("Gatebreaker Prototype Runner"), "Prototype runner GameObject should be created.");

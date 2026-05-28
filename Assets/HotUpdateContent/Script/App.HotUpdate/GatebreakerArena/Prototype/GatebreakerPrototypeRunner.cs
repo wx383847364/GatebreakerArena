@@ -22,18 +22,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const float GuardDepth = 0.55f;
         private const float CameraHeight = 20f;
         private const float CameraMargin = 0.9f;
-        private const float ScreenPadding = 16f;
-        private const float ControlGap = 10f;
-        private const float HudBarHeight = 86f;
-        private const float HudTopPadding = 10f;
-        private const float ServeButtonHeight = 50f;
-        private const float TuningPanelPreferredHeight = 180f;
-        private const float TuningPanelMinimumHeight = 118f;
-        private const float LanRoomButtonWidth = 112f;
-        private const float LanRoomButtonHeight = 42f;
-        private const float LanRoomPanelWidth = 430f;
-        private const float LanRoomPanelPreferredHeight = 240f;
-        private const float LanRoomInfoHeight = 84f;
         private const string ArenaRootName = "ArenaRoot";
         private const string ObjPoolRootName = "ObjPool";
         private const string DebugCollisionOverlayName = "DebugCollisionOverlay";
@@ -84,24 +72,16 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private Material _debugOverlayMaterial;
         private Material[] _playerMaterials;
         private Camera _prototypeCamera;
-        private GUIStyle _hudStyle;
-        private GUIStyle _dangerStyle;
-        private GUIStyle _resultTitleStyle;
-        private GUIStyle _resultBodyStyle;
-        private GUIStyle _serveButtonStyle;
-        private GUIStyle _tuningLabelStyle;
         private ServeBlockReason _lastServeBlockReason = ServeBlockReason.None;
         private int _localPlayerId = DefaultLocalPlayerId;
         private bool _initialized;
         private bool _guiServePressed;
-        private Vector2 _tuningScrollPosition;
         private ulong _lanClientInstanceId;
         private string _lanPlayerName = "Player";
         private string _lanRoomCodeInput = string.Empty;
         private string _cachedLocalLanAddress = "-";
         private float _lanInputAccumulator;
         private float _nextLocalLanAddressRefreshTime;
-        private bool _isLanRoomPanelExpanded;
         private bool _usePrefabVisuals;
         private bool _ownsVisualRoot;
 
@@ -127,7 +107,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             await InitializeAsync(context.MatchRuntime, context.InputService, context.HudPresenter, DefaultLocalPlayerId);
             _sceneBindingService?.Bind(
                 ResolveSceneUiBinding(context.Services),
-                RequestGuiServe,
+                BuildSceneUiCallbacks(),
                 context.Logger);
             RefreshBoundHud();
             EnsureLanIdentity();
@@ -277,23 +257,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             ConfigurePrototypeCamera();
-        }
-
-        private void OnGUI()
-        {
-            if (!_initialized)
-            {
-                return;
-            }
-
-            EnsureHudStyles();
-            GatebreakerHudSnapshot snapshot = _hudPresenter.BuildSnapshot(_localPlayerId);
-            Rect arenaRect = CalculateArenaGuiRect();
-            DrawHudBar(snapshot, arenaRect);
-            DrawServeButton(snapshot);
-            DrawBounceTuningPanel(snapshot);
-            DrawLanRoomPanel();
-            DrawResultPanel(snapshot);
         }
 
         private void OnDestroy()
@@ -1017,6 +980,28 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _guiServePressed = true;
         }
 
+        private GatebreakerArenaSceneUiCallbacks BuildSceneUiCallbacks()
+        {
+            return new GatebreakerArenaSceneUiCallbacks
+            {
+                ServeRequested = RequestGuiServe,
+                CreateLanHostRequested = CreateLanHost,
+                StartLanDiscoveryRequested = StartLanDiscovery,
+                JoinLanRoomRequested = JoinLanRoom,
+                ToggleLanReadyRequested = ToggleLanReady,
+                StartLanLoadingRequested = StartLanLoading,
+                LeaveLanRoomRequested = LeaveLanRoom,
+                AcknowledgeLanStartRequested = AcknowledgeLanStart,
+                LanPlayerNameChanged = SetLanPlayerName,
+                LanRoomCodeChanged = SetLanRoomCode,
+                HitOffsetInfluenceChanged = value => _runtime?.BounceTuning?.SetHitOffsetInfluenceValue(value),
+                PaddleVelocityInfluenceChanged = value => _runtime?.BounceTuning?.SetPaddleVelocityInfluenceValue(value),
+                MinimumOutwardShareChanged = value => _runtime?.BounceTuning?.SetMinimumOutwardShareValue(value),
+                InitialLanPlayerName = _lanPlayerName,
+                InitialLanRoomCode = _lanRoomCodeInput,
+            };
+        }
+
         private static IGatebreakerArenaSceneUiBinding ResolveSceneUiBinding(IServiceContainer services)
         {
             return services?.Get<IGatebreakerArenaSceneUiBinding>() ??
@@ -1076,266 +1061,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             float alignment = Vector2.Dot(localPlayer.Paddle.Tangent.normalized, GetLocalViewRight());
             return alignment >= 0f ? 1f : -1f;
-        }
-
-        private static string FormatTime(float remainingTime)
-        {
-            int totalSeconds = Mathf.CeilToInt(Mathf.Max(0f, remainingTime));
-            return $"{totalSeconds / 60:00}:{totalSeconds % 60:00}";
-        }
-
-        private static string FormatPhase(MatchPhase phase)
-        {
-            switch (phase)
-            {
-                case MatchPhase.Waiting:
-                    return "等待";
-                case MatchPhase.Countdown:
-                    return "倒计时";
-                case MatchPhase.Playing:
-                    return "进行中";
-                case MatchPhase.GoalPause:
-                    return "进球暂停";
-                case MatchPhase.Overtime:
-                    return "加时";
-                case MatchPhase.Result:
-                    return "结算";
-                default:
-                    return phase.ToString();
-            }
-        }
-
-        private static string FormatServeBlockReason(ServeBlockReason reason)
-        {
-            switch (reason)
-            {
-                case ServeBlockReason.None:
-                    return "无";
-                case ServeBlockReason.PlayerDisabled:
-                    return "玩家已出局";
-                case ServeBlockReason.CoolingDown:
-                    return "库存回复中";
-                case ServeBlockReason.NoAmmo:
-                    return "弹药不足";
-                case ServeBlockReason.OwnedBallLimit:
-                    return "己方球已达上限";
-                case ServeBlockReason.MatchBallLimit:
-                    return "全场球已达上限";
-                default:
-                    return reason.ToString();
-            }
-        }
-
-        private void DrawHudBar(GatebreakerHudSnapshot snapshot, Rect arenaRect)
-        {
-            float y = HudTopPadding;
-            Rect panel = new Rect(arenaRect.x, y, arenaRect.width, HudBarHeight);
-            DrawSolidRect(panel, new Color(0.02f, 0.02f, 0.025f, 1f));
-            GUI.Box(panel, GUIContent.none);
-
-            Rect content = new Rect(panel.x + 12f, panel.y + 8f, panel.width - 24f, panel.height - 16f);
-            GUILayout.BeginArea(content);
-            GUILayout.Label(
-                $"Gatebreaker Arena 原型    阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}",
-                _hudStyle);
-            GUILayout.Label(
-                $"比分：{FormatScoreLine(snapshot)}    弹药：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}    回复：{snapshot.ServeCooldownRemaining:0.0}秒",
-                _hudStyle);
-            GUILayout.Label(
-                $"场上球：{snapshot.OwnedBallsInField}/{snapshot.MaxOwnedBallsInField}    发球限制：{FormatServeBlockReason(snapshot.ServeBlockReason)}    上次空格：{FormatServeBlockReason(_lastServeBlockReason)}",
-                snapshot.HasDanger ? _dangerStyle : _hudStyle);
-            GUILayout.EndArea();
-        }
-
-        private static string FormatScoreLine(GatebreakerHudSnapshot snapshot)
-        {
-            if (snapshot.PlayerScores == null || snapshot.PlayerScores.Count == 0)
-            {
-                return "无玩家";
-            }
-
-            var parts = new List<string>(snapshot.PlayerScores.Count);
-            for (int i = 0; i < snapshot.PlayerScores.Count; i++)
-            {
-                PlayerScoreSnapshot score = snapshot.PlayerScores[i];
-                string marker = score.PlayerId == snapshot.LocalPlayerId ? "*" : string.Empty;
-                parts.Add($"P{score.PlayerId}{marker}:{score.Score}");
-            }
-
-            return string.Join("  ", parts);
-        }
-
-        private void DrawScoreRows(GatebreakerHudSnapshot snapshot)
-        {
-            if (snapshot.PlayerScores == null || snapshot.PlayerScores.Count == 0)
-            {
-                GUILayout.Label("  无玩家", _hudStyle);
-                return;
-            }
-
-            for (int i = 0; i < snapshot.PlayerScores.Count; i++)
-            {
-                PlayerScoreSnapshot score = snapshot.PlayerScores[i];
-                string label = score.PlayerId == snapshot.LocalPlayerId
-                    ? $"玩家{score.PlayerId}*：{score.Score}"
-                    : $"玩家{score.PlayerId}：{score.Score}";
-                GUILayout.Label($"  {label}", _hudStyle);
-            }
-        }
-
-        private void DrawResultPanel(GatebreakerHudSnapshot snapshot)
-        {
-            if (snapshot.Phase != MatchPhase.Result)
-            {
-                return;
-            }
-
-            Rect panel = new Rect((Screen.width - 360f) * 0.5f, (Screen.height - 210f) * 0.5f, 360f, 210f);
-            GUI.Box(panel, GUIContent.none);
-            GUILayout.BeginArea(new Rect(panel.x + 22f, panel.y + 18f, panel.width - 44f, panel.height - 36f));
-            GUILayout.Label("比赛结束", _resultTitleStyle);
-            GUILayout.Space(8f);
-            GUILayout.Label(BuildWinnerText(snapshot), _resultBodyStyle);
-            GUILayout.Space(8f);
-            DrawScoreRows(snapshot);
-            GUILayout.FlexibleSpace();
-            GUILayout.Label("按 R 重新开始", _resultBodyStyle);
-            GUILayout.EndArea();
-        }
-
-        private void DrawLanRoomPanel()
-        {
-            if (_lanRoomService == null)
-            {
-                return;
-            }
-
-            RoomSnapshot snapshot = _lanRoomService.CurrentSnapshot;
-            Rect toggleButton = CalculateLanRoomToggleButtonRect();
-            string buttonText = _isLanRoomPanelExpanded ? "隐藏 LAN" : "LAN 房间";
-            if (GUI.Button(toggleButton, buttonText))
-            {
-                _isLanRoomPanelExpanded = !_isLanRoomPanelExpanded;
-            }
-
-            if (!_isLanRoomPanelExpanded)
-            {
-                return;
-            }
-
-            Rect panel = CalculateLanRoomPanelRect(toggleButton);
-            Rect content = new Rect(panel.x + 12f, panel.y + 10f, panel.width - 24f, panel.height - 20f);
-            float summaryWidth = Mathf.Min(190f, content.width * 0.48f);
-            Rect summaryRect = new Rect(content.x, content.y, summaryWidth, LanRoomInfoHeight);
-            Rect endpointRect = new Rect(
-                content.x + summaryRect.width + 10f,
-                content.y,
-                Mathf.Max(1f, content.width - summaryRect.width - 10f),
-                LanRoomInfoHeight);
-            Rect controlsRect = new Rect(
-                content.x,
-                content.y + LanRoomInfoHeight,
-                content.width,
-                Mathf.Max(1f, content.height - LanRoomInfoHeight));
-
-            DrawSolidRect(panel, new Color(0.02f, 0.02f, 0.025f, 1f));
-            GUI.Box(panel, GUIContent.none);
-            GUILayout.BeginArea(summaryRect);
-            GUILayout.Label("LAN 房间", _hudStyle);
-            GUILayout.Label($"状态：{FormatLanRoomState(snapshot.State)}", _hudStyle);
-            GUILayout.Label($"房间号：{(string.IsNullOrEmpty(snapshot.RoomCode) ? "-" : snapshot.RoomCode)}", _hudStyle);
-            GUILayout.EndArea();
-
-            GUILayout.BeginArea(endpointRect);
-            GUILayout.Label($"本机：{GetLocalLanAddress()}", _hudStyle);
-            GUILayout.Label($"房间：{GetRoomLanAddress(snapshot)}", _hudStyle);
-            GUILayout.Label($"人数：{snapshot.Players.Length}/{Mathf.Max(1, snapshot.MaxPlayers)}", _hudStyle);
-            GUILayout.EndArea();
-
-            GUILayout.BeginArea(controlsRect);
-            _lanPlayerName = GUILayout.TextField(_lanPlayerName, 18);
-            _lanRoomCodeInput = GUILayout.TextField(_lanRoomCodeInput, 12);
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("创建"))
-            {
-                CreateLanHost();
-            }
-
-            if (GUILayout.Button("发现"))
-            {
-                StartLanDiscovery();
-            }
-
-            if (GUILayout.Button("加入"))
-            {
-                JoinLanRoom();
-            }
-
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("准备"))
-            {
-                ToggleLanReady(snapshot);
-            }
-
-            GUI.enabled = snapshot.CanStart;
-            if (GUILayout.Button("开始"))
-            {
-                _lanRoomService.StartLoading();
-            }
-
-            GUI.enabled = true;
-            if (GUILayout.Button("离开"))
-            {
-                _lanRoomService.Leave("ui");
-            }
-
-            GUILayout.EndHorizontal();
-
-            if (snapshot.State == LanRoomState.Loading && !snapshot.IsHost)
-            {
-                if (GUILayout.Button("确认加载完成"))
-                {
-                    _lanRoomService.AcknowledgeStart();
-                }
-            }
-
-            if (!string.IsNullOrEmpty(snapshot.Error))
-            {
-                GUILayout.Label(TruncateLanStatus(snapshot.Error), _dangerStyle);
-            }
-
-            GUILayout.EndArea();
-        }
-
-        private static void DrawSolidRect(Rect rect, Color color)
-        {
-            Color previousColor = GUI.color;
-            GUI.color = color;
-            GUI.DrawTexture(rect, Texture2D.whiteTexture);
-            GUI.color = previousColor;
-        }
-
-        private Rect CalculateLanRoomToggleButtonRect()
-        {
-            float maxWidth = Mathf.Max(1f, Screen.width - ScreenPadding * 2f);
-            float width = Mathf.Min(LanRoomButtonWidth, maxWidth);
-            float height = Mathf.Min(LanRoomButtonHeight, Mathf.Max(1f, Screen.height - ScreenPadding * 2f));
-            float x = ScreenPadding;
-            float y = Mathf.Max(ScreenPadding, Screen.height - ScreenPadding - height);
-            return new Rect(x, y, width, height);
-        }
-
-        private Rect CalculateLanRoomPanelRect(Rect toggleButton)
-        {
-            float width = Mathf.Min(LanRoomPanelWidth, Mathf.Max(1f, Screen.width - ScreenPadding * 2f));
-            float maxHeight = Mathf.Max(1f, toggleButton.y - ScreenPadding - ControlGap);
-            float height = Mathf.Min(LanRoomPanelPreferredHeight, maxHeight);
-            float x = ScreenPadding;
-            float y = Mathf.Max(ScreenPadding, toggleButton.y - ControlGap - height);
-            return new Rect(x, y, width, height);
         }
 
         private string GetRoomLanAddress(RoomSnapshot snapshot)
@@ -1443,6 +1168,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void CreateLanHost()
         {
+            if (_lanRoomService == null)
+            {
+                return;
+            }
+
             EnsureLanIdentity();
             _lanTransport?.StartDiscovery();
             _lanTransport?.StartTcpHost();
@@ -1453,6 +1183,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void StartLanDiscovery()
         {
+            if (_lanRoomService == null)
+            {
+                return;
+            }
+
             EnsureLanIdentity();
             _lanTransport?.StartDiscovery();
             _lanRoomService.StartDiscovery(_lanClientInstanceId, _lanPlayerName);
@@ -1460,7 +1195,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void JoinLanRoom()
         {
-            if (string.IsNullOrWhiteSpace(_lanRoomCodeInput))
+            if (_lanRoomService == null || string.IsNullOrWhiteSpace(_lanRoomCodeInput))
             {
                 return;
             }
@@ -1468,8 +1203,48 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _lanRoomService.JoinDiscoveredRoom(_lanRoomCodeInput);
         }
 
+        private void ToggleLanReady()
+        {
+            if (_lanRoomService == null)
+            {
+                return;
+            }
+
+            ToggleLanReady(_lanRoomService.CurrentSnapshot);
+        }
+
+        private void StartLanLoading()
+        {
+            _lanRoomService?.StartLoading();
+        }
+
+        private void LeaveLanRoom()
+        {
+            _lanRoomService?.Leave("ui");
+        }
+
+        private void AcknowledgeLanStart()
+        {
+            _lanRoomService?.AcknowledgeStart();
+        }
+
+        private void SetLanPlayerName(string value)
+        {
+            _lanPlayerName = string.IsNullOrWhiteSpace(value) ? "Player" : value.Trim();
+        }
+
+        private void SetLanRoomCode(string value)
+        {
+            _lanRoomCodeInput = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+        }
+
         private void ToggleLanReady(RoomSnapshot snapshot)
         {
+            if (_lanRoomService == null || snapshot?.Players == null)
+            {
+                return;
+            }
+
             RoomPlayerSnapshot local = null;
             for (int i = 0; i < snapshot.Players.Length; i++)
             {
@@ -1484,233 +1259,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _lanRoomService.SetReady(nextReady);
         }
 
-        private static string TruncateLanStatus(string value)
-        {
-            if (string.IsNullOrEmpty(value) || value.Length <= 44)
-            {
-                return value;
-            }
-
-            return value.Substring(0, 41) + "...";
-        }
-
-        private static string FormatLanRoomState(LanRoomState state)
-        {
-            switch (state)
-            {
-                case LanRoomState.Discovering:
-                    return "发现中";
-                case LanRoomState.Lobby:
-                    return "大厅";
-                case LanRoomState.Joining:
-                    return "加入中";
-                case LanRoomState.Loading:
-                    return "加载";
-                case LanRoomState.Playing:
-                    return "对战";
-                case LanRoomState.Left:
-                    return "已离开";
-                case LanRoomState.Aborted:
-                    return "已中止";
-                case LanRoomState.Idle:
-                default:
-                    return "空闲";
-            }
-        }
-
-        private static string BuildWinnerText(GatebreakerHudSnapshot snapshot)
-        {
-            if (!snapshot.HasWinner || snapshot.WinnerPlayerId <= 0)
-            {
-                return "本局没有胜者";
-            }
-
-            int score = FindPlayerScore(snapshot, snapshot.WinnerPlayerId);
-            return $"玩家{snapshot.WinnerPlayerId} 获胜！最终分数：{score}";
-        }
-
-        private static int FindPlayerScore(GatebreakerHudSnapshot snapshot, int playerId)
-        {
-            if (snapshot.PlayerScores == null)
-            {
-                return 0;
-            }
-
-            for (int i = 0; i < snapshot.PlayerScores.Count; i++)
-            {
-                PlayerScoreSnapshot score = snapshot.PlayerScores[i];
-                if (score.PlayerId == playerId)
-                {
-                    return score.Score;
-                }
-            }
-
-            return 0;
-        }
-
-        private void DrawServeButton(GatebreakerHudSnapshot snapshot)
-        {
-            if (snapshot.Phase == MatchPhase.Result)
-            {
-                return;
-            }
-
-            Rect arenaRect = CalculateArenaGuiRect();
-            Rect buttonRect = CalculateServeButtonRect(arenaRect);
-            if (GUI.Button(buttonRect, BuildServeButtonText(snapshot), _serveButtonStyle))
-            {
-                _guiServePressed = true;
-            }
-        }
-
-        private void DrawBounceTuningPanel(GatebreakerHudSnapshot snapshot)
-        {
-            if (snapshot.Phase == MatchPhase.Result || _runtime?.BounceTuning == null)
-            {
-                return;
-            }
-
-            Rect serveButtonRect = CalculateServeButtonRect(CalculateArenaGuiRect());
-            Rect panel = CalculateTuningPanelRect(serveButtonRect);
-            GUI.Box(panel, GUIContent.none);
-            Rect contentRect = new Rect(panel.x + 14f, panel.y + 10f, panel.width - 28f, panel.height - 20f);
-            GUILayout.BeginArea(contentRect);
-            _tuningScrollPosition = GUILayout.BeginScrollView(_tuningScrollPosition, false, true);
-            GUILayout.Label("反弹调参", _tuningLabelStyle);
-            DrawTuningSlider(
-                "命中位置影响",
-                _runtime.BounceTuning.HitOffsetInfluenceValue,
-                PaddleBounceTuning.HitOffsetInfluenceMin,
-                PaddleBounceTuning.HitOffsetInfluenceMax,
-                _runtime.BounceTuning.HitOffsetInfluence,
-                _runtime.BounceTuning.SetHitOffsetInfluenceValue,
-                _hudStyle);
-            DrawTuningSlider(
-                "板速影响",
-                _runtime.BounceTuning.PaddleVelocityInfluenceValue,
-                PaddleBounceTuning.PaddleVelocityInfluenceMin,
-                PaddleBounceTuning.PaddleVelocityInfluenceMax,
-                _runtime.BounceTuning.PaddleVelocityInfluence,
-                _runtime.BounceTuning.SetPaddleVelocityInfluenceValue,
-                _hudStyle);
-            DrawTuningSlider(
-                "最小离板分量",
-                _runtime.BounceTuning.MinimumOutwardShareValue,
-                PaddleBounceTuning.MinimumOutwardShareMin,
-                PaddleBounceTuning.MinimumOutwardShareMax,
-                _runtime.BounceTuning.MinimumOutwardShare,
-                _runtime.BounceTuning.SetMinimumOutwardShareValue,
-                _hudStyle);
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
-        }
-
-        private static void DrawTuningSlider(
-            string label,
-            int value,
-            int min,
-            int max,
-            float actualValue,
-            Action<int> setter,
-            GUIStyle labelStyle)
-        {
-            GUILayout.Label($"{label}：{value}（实际：{actualValue:0.00}）", labelStyle);
-            int nextValue = Mathf.RoundToInt(GUILayout.HorizontalSlider(value, min, max));
-            if (nextValue != value)
-            {
-                setter(nextValue);
-            }
-        }
-
-        private Rect CalculateServeButtonRect(Rect arenaRect)
-        {
-            float availableWidth = Mathf.Max(1f, Screen.width - ScreenPadding * 2f);
-            float minWidth = Mathf.Min(220f, availableWidth);
-            float maxWidth = Mathf.Min(360f, availableWidth);
-            float width = Mathf.Clamp(arenaRect.width * 0.62f, minWidth, maxWidth);
-            float x = Mathf.Clamp(
-                arenaRect.x + (arenaRect.width - width) * 0.5f,
-                ScreenPadding,
-                Mathf.Max(ScreenPadding, Screen.width - ScreenPadding - width));
-            float y = CalculateControlStartY(arenaRect, CalculateTuningPanelHeight(arenaRect));
-            return new Rect(x, y, width, ServeButtonHeight);
-        }
-
-        private Rect CalculateTuningPanelRect(Rect serveButtonRect)
-        {
-            Rect arenaRect = CalculateArenaGuiRect();
-            float height = CalculateTuningPanelHeight(arenaRect);
-            return new Rect(
-                serveButtonRect.x,
-                serveButtonRect.yMax + ControlGap,
-                serveButtonRect.width,
-                height);
-        }
-
-        private float CalculateTuningPanelHeight(Rect arenaRect)
-        {
-            float preferredStartY = arenaRect.yMax + 12f;
-            float availableBelow = Screen.height - preferredStartY - ScreenPadding - ServeButtonHeight - ControlGap;
-            if (availableBelow >= TuningPanelMinimumHeight)
-            {
-                return Mathf.Min(TuningPanelPreferredHeight, availableBelow);
-            }
-
-            float compactHeight = Mathf.Max(TuningPanelMinimumHeight, Screen.height * 0.22f);
-            return Mathf.Min(TuningPanelPreferredHeight, compactHeight);
-        }
-
-        private float CalculateControlStartY(Rect arenaRect, float tuningPanelHeight)
-        {
-            float totalControlHeight = ServeButtonHeight + ControlGap + tuningPanelHeight;
-            float preferredY = arenaRect.yMax + 12f;
-            float maxY = Screen.height - totalControlHeight - ScreenPadding;
-            if (maxY >= preferredY)
-            {
-                return preferredY;
-            }
-
-            return Mathf.Clamp(maxY, ScreenPadding, Mathf.Max(ScreenPadding, Screen.height - ServeButtonHeight - ScreenPadding));
-        }
-
-        private Rect CalculateArenaGuiRect()
-        {
-            if (_prototypeCamera == null)
-            {
-                return new Rect(Screen.width * 0.2f, Screen.height * 0.45f, Screen.width * 0.6f, Screen.height * 0.32f);
-            }
-
-            Vector3[] corners =
-            {
-                ToVisualPosition(new Vector2(-ArenaHalfWidth, -ArenaHalfHeight), 0f),
-                ToVisualPosition(new Vector2(-ArenaHalfWidth, ArenaHalfHeight), 0f),
-                ToVisualPosition(new Vector2(ArenaHalfWidth, -ArenaHalfHeight), 0f),
-                ToVisualPosition(new Vector2(ArenaHalfWidth, ArenaHalfHeight), 0f),
-            };
-
-            float minX = float.MaxValue;
-            float minY = float.MaxValue;
-            float maxX = float.MinValue;
-            float maxY = float.MinValue;
-            for (int i = 0; i < corners.Length; i++)
-            {
-                Vector3 world = _visualRoot != null ? _visualRoot.TransformPoint(corners[i]) : corners[i];
-                Vector3 screen = _prototypeCamera.WorldToScreenPoint(world);
-                float guiY = Screen.height - screen.y;
-                minX = Mathf.Min(minX, screen.x);
-                minY = Mathf.Min(minY, guiY);
-                maxX = Mathf.Max(maxX, screen.x);
-                maxY = Mathf.Max(maxY, guiY);
-            }
-
-            return new Rect(minX, minY, maxX - minX, maxY - minY);
-        }
-
-        private static string BuildServeButtonText(GatebreakerHudSnapshot snapshot)
-        {
-            return $"发射子弹：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}";
-        }
-
         private void RefreshBoundHud()
         {
             if (_sceneBindingService == null || _hudPresenter == null)
@@ -1718,7 +1266,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            _sceneBindingService.UpdateBallCount(_hudPresenter.BuildSnapshot(_localPlayerId));
+            GatebreakerHudSnapshot snapshot = _hudPresenter.BuildSnapshot(_localPlayerId);
+            _sceneBindingService.UpdateHud(snapshot, _lastServeBlockReason);
+            _sceneBindingService.UpdateResult(snapshot);
+            _sceneBindingService.UpdateBounceTuning(_runtime?.BounceTuning, snapshot?.Phase ?? MatchPhase.Waiting);
+            if (_lanRoomService != null)
+            {
+                RoomSnapshot roomSnapshot = _lanRoomService.CurrentSnapshot;
+                _sceneBindingService.UpdateLanRoom(
+                    roomSnapshot,
+                    GetLocalLanAddress(),
+                    GetRoomLanAddress(roomSnapshot));
+            }
         }
 
         private Color GetPlayerColor(int playerId)
@@ -1811,47 +1370,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 Destroy(material);
             }
-        }
-
-        private void EnsureHudStyles()
-        {
-            if (_hudStyle != null)
-            {
-                return;
-            }
-
-            _hudStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 16,
-            };
-            _hudStyle.normal.textColor = Color.white;
-            _dangerStyle = new GUIStyle(_hudStyle)
-            {
-                fontStyle = FontStyle.Bold,
-            };
-            _dangerStyle.normal.textColor = new Color(1f, 0.35f, 0.25f);
-            _resultTitleStyle = new GUIStyle(_hudStyle)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 24,
-                fontStyle = FontStyle.Bold,
-            };
-            _resultTitleStyle.normal.textColor = Color.white;
-            _resultBodyStyle = new GUIStyle(_hudStyle)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 18,
-            };
-            _resultBodyStyle.normal.textColor = Color.white;
-            _serveButtonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 20,
-                fontStyle = FontStyle.Bold,
-            };
-            _tuningLabelStyle = new GUIStyle(_hudStyle)
-            {
-                fontStyle = FontStyle.Bold,
-            };
         }
 
         private void ConfigurePrototypeCamera()

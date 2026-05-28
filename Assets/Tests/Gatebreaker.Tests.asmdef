@@ -4,7 +4,9 @@
     "references": [
         "App.Shared",
         "App.AOT",
-        "App.HotUpdate"
+        "App.HotUpdate",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [
         "Editor"

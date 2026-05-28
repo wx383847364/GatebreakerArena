@@ -12,10 +12,105 @@ namespace App.AOT.Bootstrap
     {
         [SerializeField] private Button _skillButton;
         [SerializeField] private TMP_Text _ballCountText;
+        [SerializeField] private GameObject _hudRoot;
+        [SerializeField] private TMP_Text _hudTitleText;
+        [SerializeField] private TMP_Text _hudStatusText;
+        [SerializeField] private TMP_Text _hudScoreText;
+        [SerializeField] private TMP_Text _hudServeText;
+        [SerializeField] private TMP_Text _hudBallText;
+        [SerializeField] private GameObject _resultRoot;
+        [SerializeField] private TMP_Text _resultTitleText;
+        [SerializeField] private TMP_Text _resultBodyText;
+        [SerializeField] private TMP_Text _resultScoreText;
+        [SerializeField] private GameObject _gmRoot;
+        [SerializeField] private Slider _gmHitOffsetSlider;
+        [SerializeField] private TMP_Text _gmHitOffsetValueText;
+        [SerializeField] private Slider _gmPaddleVelocitySlider;
+        [SerializeField] private TMP_Text _gmPaddleVelocityValueText;
+        [SerializeField] private Slider _gmMinimumOutwardSlider;
+        [SerializeField] private TMP_Text _gmMinimumOutwardValueText;
+        [SerializeField] private GameObject _lanRoot;
+        [SerializeField] private Button _lanCreateButton;
+        [SerializeField] private Button _lanDiscoverButton;
+        [SerializeField] private Button _lanJoinButton;
+        [SerializeField] private Button _lanReadyButton;
+        [SerializeField] private Button _lanStartButton;
+        [SerializeField] private Button _lanLeaveButton;
+        [SerializeField] private Button _lanAcknowledgeStartButton;
+        [SerializeField] private TMP_InputField _lanPlayerNameInput;
+        [SerializeField] private TMP_InputField _lanRoomCodeInput;
+        [SerializeField] private TMP_Text _lanStateText;
+        [SerializeField] private TMP_Text _lanRoomCodeText;
+        [SerializeField] private TMP_Text _lanPlayerCountText;
+        [SerializeField] private TMP_Text _lanLocalIpText;
+        [SerializeField] private TMP_Text _lanRoomIpText;
+        [SerializeField] private TMP_Text _lanErrorText;
 
         public Object SkillButtonObject => _skillButton;
         public Object BallCountTextObject => _ballCountText;
-        public bool HasRequiredBindings => _skillButton != null && _ballCountText != null;
+        public Object HudRootObject => _hudRoot;
+        public Object HudTitleTextObject => _hudTitleText;
+        public Object HudStatusTextObject => _hudStatusText;
+        public Object HudScoreTextObject => _hudScoreText;
+        public Object HudServeTextObject => _hudServeText;
+        public Object HudBallTextObject => _hudBallText;
+        public Object ResultRootObject => _resultRoot;
+        public Object ResultTitleTextObject => _resultTitleText;
+        public Object ResultBodyTextObject => _resultBodyText;
+        public Object ResultScoreTextObject => _resultScoreText;
+        public Object GmRootObject => _gmRoot;
+        public Object GmHitOffsetSliderObject => _gmHitOffsetSlider;
+        public Object GmHitOffsetValueTextObject => _gmHitOffsetValueText;
+        public Object GmPaddleVelocitySliderObject => _gmPaddleVelocitySlider;
+        public Object GmPaddleVelocityValueTextObject => _gmPaddleVelocityValueText;
+        public Object GmMinimumOutwardSliderObject => _gmMinimumOutwardSlider;
+        public Object GmMinimumOutwardValueTextObject => _gmMinimumOutwardValueText;
+        public Object LanRootObject => _lanRoot;
+        public Object LanCreateButtonObject => _lanCreateButton;
+        public Object LanDiscoverButtonObject => _lanDiscoverButton;
+        public Object LanJoinButtonObject => _lanJoinButton;
+        public Object LanReadyButtonObject => _lanReadyButton;
+        public Object LanStartButtonObject => _lanStartButton;
+        public Object LanLeaveButtonObject => _lanLeaveButton;
+        public Object LanAcknowledgeStartButtonObject => _lanAcknowledgeStartButton;
+        public Object LanPlayerNameInputObject => _lanPlayerNameInput;
+        public Object LanRoomCodeInputObject => _lanRoomCodeInput;
+        public Object LanStateTextObject => _lanStateText;
+        public Object LanRoomCodeTextObject => _lanRoomCodeText;
+        public Object LanPlayerCountTextObject => _lanPlayerCountText;
+        public Object LanLocalIpTextObject => _lanLocalIpText;
+        public Object LanRoomIpTextObject => _lanRoomIpText;
+        public Object LanErrorTextObject => _lanErrorText;
+
+        public bool HasRequiredBindings =>
+            _skillButton != null &&
+            _ballCountText != null &&
+            _hudRoot != null &&
+            _hudStatusText != null &&
+            _hudScoreText != null &&
+            _hudServeText != null &&
+            _hudBallText != null &&
+            _resultRoot != null &&
+            _gmRoot != null &&
+            _gmHitOffsetSlider != null &&
+            _gmPaddleVelocitySlider != null &&
+            _gmMinimumOutwardSlider != null &&
+            _lanRoot != null &&
+            _lanCreateButton != null &&
+            _lanDiscoverButton != null &&
+            _lanJoinButton != null &&
+            _lanReadyButton != null &&
+            _lanStartButton != null &&
+            _lanLeaveButton != null &&
+            _lanAcknowledgeStartButton != null &&
+            _lanPlayerNameInput != null &&
+            _lanRoomCodeInput != null &&
+            _lanStateText != null &&
+            _lanRoomCodeText != null &&
+            _lanPlayerCountText != null &&
+            _lanLocalIpText != null &&
+            _lanRoomIpText != null &&
+            _lanErrorText != null;
 
         private void Awake()
         {

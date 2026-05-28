@@ -175,6 +175,39 @@ namespace App.Shared.Contracts
     {
         UnityEngine.Object SkillButtonObject { get; }
         UnityEngine.Object BallCountTextObject { get; }
+        UnityEngine.Object HudRootObject { get; }
+        UnityEngine.Object HudTitleTextObject { get; }
+        UnityEngine.Object HudStatusTextObject { get; }
+        UnityEngine.Object HudScoreTextObject { get; }
+        UnityEngine.Object HudServeTextObject { get; }
+        UnityEngine.Object HudBallTextObject { get; }
+        UnityEngine.Object ResultRootObject { get; }
+        UnityEngine.Object ResultTitleTextObject { get; }
+        UnityEngine.Object ResultBodyTextObject { get; }
+        UnityEngine.Object ResultScoreTextObject { get; }
+        UnityEngine.Object GmRootObject { get; }
+        UnityEngine.Object GmHitOffsetSliderObject { get; }
+        UnityEngine.Object GmHitOffsetValueTextObject { get; }
+        UnityEngine.Object GmPaddleVelocitySliderObject { get; }
+        UnityEngine.Object GmPaddleVelocityValueTextObject { get; }
+        UnityEngine.Object GmMinimumOutwardSliderObject { get; }
+        UnityEngine.Object GmMinimumOutwardValueTextObject { get; }
+        UnityEngine.Object LanRootObject { get; }
+        UnityEngine.Object LanCreateButtonObject { get; }
+        UnityEngine.Object LanDiscoverButtonObject { get; }
+        UnityEngine.Object LanJoinButtonObject { get; }
+        UnityEngine.Object LanReadyButtonObject { get; }
+        UnityEngine.Object LanStartButtonObject { get; }
+        UnityEngine.Object LanLeaveButtonObject { get; }
+        UnityEngine.Object LanAcknowledgeStartButtonObject { get; }
+        UnityEngine.Object LanPlayerNameInputObject { get; }
+        UnityEngine.Object LanRoomCodeInputObject { get; }
+        UnityEngine.Object LanStateTextObject { get; }
+        UnityEngine.Object LanRoomCodeTextObject { get; }
+        UnityEngine.Object LanPlayerCountTextObject { get; }
+        UnityEngine.Object LanLocalIpTextObject { get; }
+        UnityEngine.Object LanRoomIpTextObject { get; }
+        UnityEngine.Object LanErrorTextObject { get; }
     }
 
     public static class GatebreakerArenaSceneUiBindingRegistry
