@@ -27,6 +27,12 @@
 ## 提交前流程
 
 1. 执行必要验证。
+   - 如提示 Git hooks 未安装，先执行：
+
+```bash
+bash tools/repo_maintenance/install_git_hooks.sh
+```
+
 2. 如果本轮包含工程级改动，补迭代记录或执行：
 
 ```bash
@@ -66,3 +72,8 @@ python3 tools/doc_maintenance/update_project_docs.py --doc-root doc sync
 - 用户要求“提交并推送”时，允许执行 `git commit` 和 `git push`。
 - 如果远端认证失败，只报告失败原因和本地提交状态，不改写历史。
 
+## Hook 约束
+
+- `core.hooksPath` 必须指向 `.githooks`；可执行 `python3 tools/repo_maintenance/check_git_hooks_installed.py` 检查。
+- `prepare-commit-msg` 会在 merge 来源时提前生成规范 merge 标题和正文。
+- `commit-msg` 会校验普通提交的八位编号；merge commit 还必须使用 `合并：` 标题前缀，并包含规范正文条目。

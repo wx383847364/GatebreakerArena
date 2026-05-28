@@ -10,12 +10,14 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 mkdir -p "${REPO_ROOT}/.githooks"
 chmod +x "${REPO_ROOT}/.githooks/pre-commit" 2>/dev/null || true
+chmod +x "${REPO_ROOT}/.githooks/prepare-commit-msg" 2>/dev/null || true
 chmod +x "${REPO_ROOT}/.githooks/commit-msg" 2>/dev/null || true
 chmod +x "${REPO_ROOT}/.githooks/post-commit" 2>/dev/null || true
 chmod +x \
     "${REPO_ROOT}/tools/doc_maintenance/finalize_task.sh" \
     "${REPO_ROOT}/tools/doc_maintenance/check_doc_maintenance.py" \
     "${REPO_ROOT}/tools/repo_maintenance/check_unity_guid_integrity.py" \
+    "${REPO_ROOT}/tools/repo_maintenance/check_git_hooks_installed.py" \
     "${REPO_ROOT}/tools/repo_maintenance/install_git_hooks.sh"
 
 git -C "${REPO_ROOT}" config core.hooksPath .githooks

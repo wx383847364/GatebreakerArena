@@ -72,6 +72,9 @@ COMMIT_MODULE_SEQUENCE_START = 1
 COMMIT_MODULE_DEFAULT = "610"
 NUMBERED_COMMIT_RE = re.compile(r"^\[(\d{8})\]\s+")
 DEFAULT_MERGE_COMMIT_MESSAGE_PREFIXES = ("Merge ",)
+MERGE_COMMIT_TITLE_PREFIX = "合并："
+MERGE_COMMIT_REQUIRED_BODY = "保持合并提交标题和正文符合 Gatebreaker Arena 八位编号规则"
+REQUIRED_GIT_HOOKS = ("pre-commit", "prepare-commit-msg", "commit-msg", "post-commit")
 DEFAULT_COMMIT_SEQUENCE_FETCH_TIMEOUT_SECONDS = 5
 DEFAULT_COMMIT_SEQUENCE_FETCH_MAX_AGE_SECONDS = 300
 DOC_MODULE_PATTERNS = [
@@ -1155,6 +1158,150 @@ def rewrite_commit_message(message_file: Path, title: str, content):
     message_file.write_text("\n".join(body_lines).rstrip() + "\n", encoding="utf-8")
 
 
+def prepare_commit_message(doc_root: Path, message_file: Path, source: str = "", fetch_latest: bool = True):
+    subject, _ = commit_message_subject_and_body(message_file)
+    is_merge_source = source == "merge" or subject.startswith(DEFAULT_MERGE_COMMIT_MESSAGE_PREFIXES)
+    if not is_merge_source:
+        return {
+            "changed": False,
+            "subject": subject,
+            "reason": "当前提交来源不是 merge。",
+        }
+
+    parsed = parse_numbered_commit_title(subject)
+    if parsed and commit_subject_text_after_number(subject).startswith(MERGE_COMMIT_TITLE_PREFIX):
+        return {
+            "changed": False,
+            "subject": subject,
+            "reason": "merge commit 消息已是规范标题，跳过 prepare 重写。",
+        }
+
+    _, title, content = merge_commit_title_and_content(doc_root, subject, fetch_latest=fetch_latest)
+    rewrite_commit_message(message_file, title, content)
+    return {
+        "changed": True,
+        "subject": title,
+        "reason": "已生成规范 merge commit 标题和正文。",
+    }
+
+
+def commit_message_subject_and_body(message_file: Path):
+    subject = ""
+    body_lines = []
+    found_subject = False
+    for line in message_file.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            continue
+        if not found_subject:
+            if stripped:
+                subject = stripped
+                found_subject = True
+            continue
+        body_lines.append(line.rstrip())
+    return subject, body_lines
+
+
+def commit_subject_text_after_number(subject: str) -> str:
+    match = NUMBERED_COMMIT_RE.match((subject or "").strip())
+    if not match:
+        return ""
+    return (subject or "").strip()[match.end():].strip()
+
+
+def validate_merge_commit_body(subject: str, body_lines):
+    title_text = commit_subject_text_after_number(subject)
+    if not title_text.startswith(MERGE_COMMIT_TITLE_PREFIX):
+        return {
+            "valid": False,
+            "reason": "merge commit 标题必须使用 `合并：` 类型前缀。",
+        }
+
+    bullets = []
+    for line in body_lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("- "):
+            bullets.append(stripped[2:].strip())
+            continue
+        return {
+            "valid": False,
+            "reason": "merge commit 正文只能使用 `- ` 开头的条目。",
+        }
+
+    if len(bullets) < 2:
+        return {
+            "valid": False,
+            "reason": "merge commit 正文至少需要两条 `- ` 条目。",
+        }
+
+    if not any("合并" in bullet and "分支" in bullet for bullet in bullets):
+        return {
+            "valid": False,
+            "reason": "merge commit 正文必须说明合并来源分支。",
+        }
+
+    if MERGE_COMMIT_REQUIRED_BODY not in bullets:
+        return {
+            "valid": False,
+            "reason": f"merge commit 正文必须包含 `{MERGE_COMMIT_REQUIRED_BODY}`。",
+        }
+
+    return {
+        "valid": True,
+        "reason": "",
+    }
+
+
+def current_head_is_merge_commit(doc_root: Path) -> bool:
+    try:
+        result = run_git(doc_root, ["rev-list", "--parents", "-n", "1", "HEAD"], timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if result.returncode != 0:
+        return False
+    return len(result.stdout.strip().split()) > 2
+
+
+def should_require_merge_rules_for_amend(doc_root: Path, parsed) -> bool:
+    if not parsed or not current_head_is_merge_commit(doc_root):
+        return False
+    head_parsed = parse_numbered_commit_title(current_head_subject(doc_root))
+    return bool(head_parsed and head_parsed["full_code"] == parsed["full_code"])
+
+
+def git_hooks_installation_problems(doc_root: Path):
+    repo_root = doc_root.resolve().parent
+    problems = []
+    try:
+        result = run_git(doc_root, ["config", "--get", "core.hooksPath"], timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        result = None
+    hooks_path = result.stdout.strip() if result and result.returncode == 0 else ""
+    if hooks_path != ".githooks":
+        problems.append("core.hooksPath 未设置为 .githooks")
+
+    hooks_dir = repo_root / ".githooks"
+    for hook_name in REQUIRED_GIT_HOOKS:
+        hook_path = hooks_dir / hook_name
+        if not hook_path.exists():
+            problems.append(f"缺少 .githooks/{hook_name}")
+        elif not os.access(hook_path, os.X_OK):
+            problems.append(f".githooks/{hook_name} 不可执行")
+    return problems
+
+
+def print_git_hooks_warning(doc_root: Path):
+    problems = git_hooks_installation_problems(doc_root)
+    if not problems:
+        return
+    print("[hook-check] Git hooks 未安装或配置不完整：", file=sys.stderr)
+    for problem in problems:
+        print(f"- {problem}", file=sys.stderr)
+    print("[hook-check] 请执行：bash tools/repo_maintenance/install_git_hooks.sh", file=sys.stderr)
+
+
 def suggest_current_commit(doc_root: Path):
     repo_check = run_git(doc_root, ["rev-parse", "--is-inside-work-tree"])
     if repo_check.returncode != 0:
@@ -1337,18 +1484,19 @@ def cached_current_commit_suggestion(doc_root: Path):
     return suggestion
 
 
-def validate_commit_message(doc_root: Path, message_file: Path, fetch_latest: bool = True, stage_registry: bool = False):
+def validate_commit_message(
+    doc_root: Path,
+    message_file: Path,
+    fetch_latest: bool = True,
+    stage_registry: bool = False,
+    merge_commit: bool = False,
+):
     fetch_info = {
         "attempted": False,
         "ok": True,
         "message": "未执行 fetch。",
     }
-    subject = ""
-    for line in message_file.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#"):
-            subject = stripped
-            break
+    subject, body_lines = commit_message_subject_and_body(message_file)
 
     if not subject:
         return {
@@ -1364,6 +1512,8 @@ def validate_commit_message(doc_root: Path, message_file: Path, fetch_latest: bo
         _, title, content = merge_commit_title_and_content(doc_root, subject, fetch_latest=fetch_latest)
         rewrite_commit_message(message_file, title, content)
         subject = title
+        body_lines = [f"- {item}" for item in content]
+        merge_commit = True
 
     parsed = parse_numbered_commit_title(subject)
     if not parsed:
@@ -1375,6 +1525,21 @@ def validate_commit_message(doc_root: Path, message_file: Path, fetch_latest: bo
             "fetch": fetch_info,
             "reason": "提交标题必须以 [TMMSSSSS] 八位编号开头。",
         }
+
+    if not merge_commit and should_require_merge_rules_for_amend(doc_root, parsed):
+        merge_commit = True
+
+    if merge_commit:
+        merge_body_result = validate_merge_commit_body(subject, body_lines)
+        if not merge_body_result["valid"]:
+            return {
+                "valid": False,
+                "skipped": False,
+                "subject": subject,
+                "expected_title": "[TMMSSSSS] 合并：同步 <来源> 分支",
+                "fetch": fetch_info,
+                "reason": merge_body_result["reason"],
+            }
 
     if fetch_latest:
         fetch_info = fetch_commit_sequence_baseline(doc_root, allow_cached=False)
@@ -2770,10 +2935,16 @@ def main():
     sync_commit_sequences.add_argument("--fetch", action="store_true", help="Fetch remote refs before recalculating sequence registry")
     sync_commit_sequences.add_argument("--stage", action="store_true", help="Stage the registry file after syncing")
 
+    prepare_commit_message_cmd = sub.add_parser("prepare-commit-message", help="Prepare a normalized commit message before the editor opens")
+    prepare_commit_message_cmd.add_argument("--message-file", required=True, help="Path to the temporary commit message file")
+    prepare_commit_message_cmd.add_argument("--source", default="", help="Git prepare-commit-msg source argument")
+    prepare_commit_message_cmd.add_argument("--no-fetch", action="store_true", help="Skip fetching remote refs before preparing a merge title")
+
     validate_commit_message_cmd = sub.add_parser("validate-commit-message", help="Validate a commit message against the latest module sequence")
     validate_commit_message_cmd.add_argument("--message-file", required=True, help="Path to the temporary commit message file")
     validate_commit_message_cmd.add_argument("--no-fetch", action="store_true", help="Skip fetching remote refs before validation")
     validate_commit_message_cmd.add_argument("--stage-registry", action="store_true", help="Stage the registry file after successful validation")
+    validate_commit_message_cmd.add_argument("--merge-commit", action="store_true", help="Require merge commit title and body rules")
 
     sub.add_parser("show-last-finalize", help="Show the latest cached complete finalize report")
     sub.add_parser("check-last-finalize", help="Validate whether the latest complete finalize report still matches the current repo state")
@@ -2865,10 +3036,12 @@ def main():
         return
 
     if args.command == "suggest-current-commit":
+        print_git_hooks_warning(doc_root)
         print(format_commit_suggestion_report(suggest_current_commit(doc_root)))
         return
 
     if args.command == "show-pending-commit":
+        print_git_hooks_warning(doc_root)
         payload = read_pending_commit_suggestion(doc_root)
         if not payload:
             raise SystemExit("未找到最近一次可直接复用的提交建议缓存。")
@@ -2883,12 +3056,26 @@ def main():
         print(f"fetch: {result['fetch']['message']}")
         return
 
+    if args.command == "prepare-commit-message":
+        result = prepare_commit_message(
+            doc_root,
+            Path(args.message_file),
+            source=args.source,
+            fetch_latest=not args.no_fetch,
+        )
+        if result["changed"]:
+            print(f"[ok] prepared commit message: {result['subject']}")
+        else:
+            print(f"[skip] {result['reason']}")
+        return
+
     if args.command == "validate-commit-message":
         result = validate_commit_message(
             doc_root,
             Path(args.message_file),
             fetch_latest=not args.no_fetch,
             stage_registry=args.stage_registry,
+            merge_commit=args.merge_commit,
         )
         if not result["valid"]:
             raise SystemExit(

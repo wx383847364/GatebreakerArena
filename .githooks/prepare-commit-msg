@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+MESSAGE_FILE="$1"
+SOURCE="${2:-}"
+
+if [[ "${SOURCE}" != "merge" ]] && ! git -C "${REPO_ROOT}" rev-parse -q --verify MERGE_HEAD >/dev/null; then
+  exit 0
+fi
+
+python3 "${REPO_ROOT}/tools/doc_maintenance/update_project_docs.py" \
+  --doc-root "${REPO_ROOT}/doc" \
+  prepare-commit-message \
+  --message-file "${MESSAGE_FILE}" \
+  --source "${SOURCE}"

@@ -3,8 +3,13 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+MERGE_ARG=""
+if git -C "${REPO_ROOT}" rev-parse -q --verify MERGE_HEAD >/dev/null; then
+  MERGE_ARG="--merge-commit"
+fi
 
 python3 "${REPO_ROOT}/tools/doc_maintenance/update_project_docs.py" \
   --doc-root "${REPO_ROOT}/doc" \
   validate-commit-message \
-  --message-file "$1"
+  --message-file "$1" \
+  ${MERGE_ARG}

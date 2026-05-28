@@ -16,7 +16,9 @@ TOOLS_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = TOOLS_ROOT / "doc_maintenance" / "update_project_docs.py"
 FINALIZE_SCRIPT = TOOLS_ROOT / "doc_maintenance" / "finalize_task.sh"
 SYNC_SKILLS_SCRIPT = TOOLS_ROOT / "repo_maintenance" / "sync_codex_skills.sh"
+CHECK_GIT_HOOKS_SCRIPT = TOOLS_ROOT / "repo_maintenance" / "check_git_hooks_installed.py"
 PRE_COMMIT_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "pre-commit"
+PREPARE_COMMIT_MSG_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "prepare-commit-msg"
 COMMIT_MSG_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "commit-msg"
 POST_COMMIT_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "post-commit"
 
@@ -88,12 +90,14 @@ def install_repo_maintenance_tools(root: Path, include_sync: bool = False) -> Pa
     repo_tools_dir.mkdir(parents=True, exist_ok=True)
     if include_sync:
         copy2(SYNC_SKILLS_SCRIPT, repo_tools_dir / "sync_codex_skills.sh")
+    copy2(CHECK_GIT_HOOKS_SCRIPT, repo_tools_dir / "check_git_hooks_installed.py")
     return repo_tools_dir
 
 
 def install_git_hooks(
     root: Path,
     include_pre_commit: bool = True,
+    include_prepare_commit_msg: bool = False,
     include_commit_msg: bool = False,
     include_post_commit: bool = False,
 ) -> Path:
@@ -102,6 +106,9 @@ def install_git_hooks(
     if include_pre_commit:
         copy2(PRE_COMMIT_HOOK, hooks_dir / "pre-commit")
         os.chmod(hooks_dir / "pre-commit", 0o755)
+    if include_prepare_commit_msg:
+        copy2(PREPARE_COMMIT_MSG_HOOK, hooks_dir / "prepare-commit-msg")
+        os.chmod(hooks_dir / "prepare-commit-msg", 0o755)
     if include_commit_msg:
         copy2(COMMIT_MSG_HOOK, hooks_dir / "commit-msg")
         os.chmod(hooks_dir / "commit-msg", 0o755)
@@ -1971,6 +1978,292 @@ class UpdateProjectDocsTests(unittest.TestCase):
             ).stdout
             staged = [chunk.decode("utf-8") for chunk in staged_output.split(b"\0") if chunk]
             self.assertIn("doc/长期主文档/协作与执行/状态登记/commit_module_sequences.json", staged)
+
+    def test_prepare_commit_message_rewrites_merge_message_before_validation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            init_git_repo(root)
+            install_doc_maintenance_tools(root)
+
+            write_file(root, "README.md", "hello\n")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True, text=True)
+            subprocess.run(["git", "commit", "-m", "[23000002] 流程：已有提交流水"], cwd=root, check=True, capture_output=True, text=True)
+
+            write_file(root, "tools/repo_maintenance/install_git_hooks.sh", "echo hooks\n")
+            subprocess.run(["git", "add", "tools/repo_maintenance/install_git_hooks.sh"], cwd=root, check=True, capture_output=True, text=True)
+            message_file = write_file(
+                root,
+                ".git/MERGE_MSG",
+                """
+                Merge remote-tracking branch 'origin/main'
+
+                # Please enter a commit message to explain why this merge is necessary.
+                """,
+            )
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(root / "tools/doc_maintenance/update_project_docs.py"),
+                    "--doc-root",
+                    str(doc_root),
+                    "prepare-commit-message",
+                    "--message-file",
+                    str(message_file),
+                    "--source",
+                    "merge",
+                    "--no-fetch",
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            rewritten = message_file.read_text(encoding="utf-8")
+            self.assertTrue(rewritten.startswith("[23000003] 合并：同步 origin/main 分支\n"), rewritten)
+            self.assertIn("- 合并 origin/main 分支并同步当前分支基线", rewritten)
+            self.assertIn("- 保持合并提交标题和正文符合 Gatebreaker Arena 八位编号规则", rewritten)
+
+    def test_prepare_commit_message_keeps_numbered_merge_message_idempotent(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            init_git_repo(root)
+            install_doc_maintenance_tools(root)
+            message_file = write_file(
+                root,
+                ".git/MERGE_MSG",
+                """
+                [23000003] 合并：同步 feature/ui 分支
+
+                - 合并 feature/ui 分支并同步当前分支基线
+                - 保持合并提交标题和正文符合 Gatebreaker Arena 八位编号规则
+                """,
+            )
+            before = message_file.read_text(encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(root / "tools/doc_maintenance/update_project_docs.py"),
+                    "--doc-root",
+                    str(doc_root),
+                    "prepare-commit-message",
+                    "--message-file",
+                    str(message_file),
+                    "--source",
+                    "merge",
+                    "--no-fetch",
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(message_file.read_text(encoding="utf-8"), before)
+            self.assertIn("跳过 prepare 重写", completed.stdout)
+
+    def test_validate_commit_message_rejects_merge_commit_with_bad_body(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            init_git_repo(root)
+            install_doc_maintenance_tools(root)
+
+            write_file(root, "README.md", "hello\n")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True, text=True)
+            subprocess.run(["git", "commit", "-m", "[23000002] 流程：已有提交流水"], cwd=root, check=True, capture_output=True, text=True)
+
+            message_file = write_file(
+                root,
+                ".git/COMMIT_EDITMSG",
+                """
+                [23000003] 合并：同步 main 分支
+
+                - 随手合一下
+                """,
+            )
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(root / "tools/doc_maintenance/update_project_docs.py"),
+                    "--doc-root",
+                    str(doc_root),
+                    "validate-commit-message",
+                    "--message-file",
+                    str(message_file),
+                    "--no-fetch",
+                    "--merge-commit",
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("merge commit 正文至少需要两条", completed.stderr)
+
+    def test_validate_commit_message_rejects_merge_commit_without_merge_prefix(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            init_git_repo(root)
+            install_doc_maintenance_tools(root)
+            message_file = write_file(
+                root,
+                ".git/COMMIT_EDITMSG",
+                """
+                [23000001] 流程：同步 main
+
+                - 合并 main 分支并同步当前分支基线
+                - 保持合并提交标题和正文符合 Gatebreaker Arena 八位编号规则
+                """,
+            )
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(root / "tools/doc_maintenance/update_project_docs.py"),
+                    "--doc-root",
+                    str(doc_root),
+                    "validate-commit-message",
+                    "--message-file",
+                    str(message_file),
+                    "--no-fetch",
+                    "--merge-commit",
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("merge commit 标题必须使用 `合并：` 类型前缀", completed.stderr)
+
+    def test_commit_msg_hook_rejects_amending_merge_commit_to_non_merge_title(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            init_git_repo(root)
+            install_doc_maintenance_tools(root)
+
+            write_file(root, "README.md", "hello\n")
+            subprocess.run(["git", "add", "."], cwd=root, check=True, capture_output=True, text=True)
+            subprocess.run(["git", "commit", "-m", "[23000001] 流程：初始化规则"], cwd=root, check=True, capture_output=True, text=True)
+            main_branch = subprocess.run(
+                ["git", "branch", "--show-current"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+            subprocess.run(["git", "checkout", "-b", "feature/audio"], cwd=root, check=True, capture_output=True, text=True)
+            write_file(root, "feature.txt", "feature\n")
+            subprocess.run(["git", "add", "feature.txt"], cwd=root, check=True, capture_output=True, text=True)
+            subprocess.run(["git", "commit", "-m", "[23000002] 流程：准备分支改动"], cwd=root, check=True, capture_output=True, text=True)
+
+            subprocess.run(["git", "checkout", main_branch], cwd=root, check=True, capture_output=True, text=True)
+            write_file(root, "main.txt", "main\n")
+            subprocess.run(["git", "add", "main.txt"], cwd=root, check=True, capture_output=True, text=True)
+            subprocess.run(["git", "commit", "-m", "[23000003] 流程：准备主线改动"], cwd=root, check=True, capture_output=True, text=True)
+            install_git_hooks(
+                root,
+                include_pre_commit=False,
+                include_prepare_commit_msg=True,
+                include_commit_msg=True,
+                include_post_commit=True,
+            )
+            subprocess.run(["git", "merge", "--no-ff", "feature/audio"], cwd=root, check=True, capture_output=True, text=True)
+
+            merge_subject = subprocess.run(
+                ["git", "show", "-s", "--format=%s", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            self.assertEqual(merge_subject, "[61000001] 合并：同步 feature/audio 分支")
+
+            completed = subprocess.run(
+                ["git", "commit", "--amend", "-m", "[61000001] 流程：bad amend"],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("merge commit 标题必须使用 `合并：` 类型前缀", completed.stderr)
+
+    def test_check_git_hooks_installed_reports_missing_and_configured_hooks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            init_git_repo(root)
+            install_repo_maintenance_tools(root)
+            checker = root / "tools/repo_maintenance/check_git_hooks_installed.py"
+
+            missing = subprocess.run(
+                ["python3", str(checker)],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertIn("core.hooksPath 未设置为 .githooks", missing.stderr)
+
+            hooks_dir = root / ".githooks"
+            hooks_dir.mkdir()
+            for hook_name in ("pre-commit", "prepare-commit-msg", "commit-msg", "post-commit"):
+                hook = hooks_dir / hook_name
+                hook.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                os.chmod(hook, 0o755)
+            subprocess.run(["git", "config", "core.hooksPath", ".githooks"], cwd=root, check=True, capture_output=True, text=True)
+
+            configured = subprocess.run(
+                ["python3", str(checker)],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(configured.returncode, 0, configured.stderr)
+            self.assertIn("Git hooks 已安装", configured.stdout)
+
+    def test_suggest_current_commit_warns_when_hooks_are_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            doc_root = create_doc_root(root)
+            init_git_repo(root)
+            install_doc_maintenance_tools(root)
+            write_file(root, "README.md", "hello\n")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True, text=True)
+
+            completed = subprocess.run(
+                [
+                    "python3",
+                    str(root / "tools/doc_maintenance/update_project_docs.py"),
+                    "--doc-root",
+                    str(doc_root),
+                    "suggest-current-commit",
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("Git hooks 未安装或配置不完整", completed.stderr)
 
     def test_merge_source_parses_remote_tracking_branch(self):
         source = update_project_docs.merge_source_from_subject("Merge remote-tracking branch 'origin/main'")

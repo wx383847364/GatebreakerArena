@@ -177,6 +177,10 @@ if [[ -z "${SUMMARY}" ]]; then
     exit 1
 fi
 
+if [[ -x "${REPO_ROOT}/tools/repo_maintenance/check_git_hooks_installed.py" ]]; then
+    python3 "${REPO_ROOT}/tools/repo_maintenance/check_git_hooks_installed.py" --warn-only
+fi
+
 if [[ "${TARGET_MODE}" == "file" && -z "${TARGET_FILE}" ]]; then
     echo "[error] 使用 --file 时必须提供目标迭代记录文件。" >&2
     exit 1

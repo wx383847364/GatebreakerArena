@@ -40,8 +40,9 @@
 验证规则：
 
 - 除非必须验证当前工程编译、场景、资源或真实绑定，优先在 `/private/tmp` 或 `/tmp` 创建临时 Unity/Tuanjie 工程验证。
+- 如果当前 `Client/` 已被打开的 Unity/Tuanjie Editor 占用，batchmode 不要停在“项目被占用”；应复制 `Client/` 到 `/tmp` 或 `/private/tmp` 的临时工程，用本文记录的 Editor 路径在临时副本跑 EditMode/PlayMode。
 - 临时工程验证通过后，除非有必要保留现场，否则必须删除临时工程；可用 `tools/repo_maintenance/clean_hub_temp_projects.sh` 清理。
-- 删除后再检查 `/private/tmp` 和 `/tmp` 中仍残留的 Gatebreaker/Unity/Tuanjie 临时工程，并在回复里列出残留项；没有残留就说明无残留。
+- 删除后再检查 `/private/tmp` 和 `/tmp` 中仍残留的 Gatebreaker/Unity/Tuanjie 临时工程；只有发现残留时才在回复里列出。
 
 ## 固定边界
 
