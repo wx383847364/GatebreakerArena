@@ -88,6 +88,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private bool _usePrefabVisuals;
         private bool _ownsVisualRoot;
         private bool _hasSceneVisualBounds;
+        private float _paddlePrefabLength = 1f;
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
         private float ArenaHalfHeight => _runtime?.Arena != null ? _runtime.Arena.HalfHeight : 5f;
@@ -315,6 +316,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 _usePrefabVisuals = true;
                 CreatePrefabScene();
+                ApplyPrefabPaddleLengthCalibration();
                 RebuildDebugCollisionOverlay();
                 ConfigurePrototypeCamera();
                 return;
@@ -352,10 +354,69 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            Renderer[] renderers = _sceneInstance.GetComponentsInChildren<Renderer>(false);
+            if (TryCalculateLocalRendererBounds(_sceneInstance, out Bounds bounds))
+            {
+                _sceneVisualBounds = bounds;
+                _hasSceneVisualBounds = true;
+            }
+        }
+
+        private void ApplyPrefabPaddleLengthCalibration()
+        {
+            _paddlePrefabLength = 1f;
+            if (_runtime?.Arena == null || !_runtime.Arena.HasCustomBoundary)
+            {
+                return;
+            }
+
+            if (!TryCalculatePrefabRendererLength(_visualAssets?.Paddle?.Prefab, out float prefabLength))
+            {
+                return;
+            }
+
+            _paddlePrefabLength = prefabLength;
+            float visualMatchedLength = _runtime.Arena.PaddleLength * prefabLength;
+            _runtime.SetArenaPaddleLength(visualMatchedLength);
+        }
+
+        private bool TryCalculatePrefabRendererLength(GameObject prefab, out float length)
+        {
+            length = 0f;
+            if (prefab == null)
+            {
+                return false;
+            }
+
+            GameObject probe = Instantiate(prefab);
+            probe.name = prefab.name + " Bounds Probe";
+            probe.hideFlags = HideFlags.HideAndDontSave;
+            probe.transform.position = Vector3.zero;
+            probe.transform.rotation = Quaternion.identity;
+            probe.transform.localScale = Vector3.one;
+
+            bool hasBounds = TryCalculateLocalRendererBounds(probe, out Bounds bounds);
+            Destroy(probe);
+            if (!hasBounds || bounds.size.x <= 0.001f)
+            {
+                return false;
+            }
+
+            length = bounds.size.x;
+            return true;
+        }
+
+        private static bool TryCalculateLocalRendererBounds(GameObject root, out Bounds localBounds)
+        {
+            localBounds = default;
+            if (root == null)
+            {
+                return false;
+            }
+
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(false);
             Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
             Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
-            Transform sceneTransform = _sceneInstance.transform;
+            Transform rootTransform = root.transform;
             bool hasBounds = false;
             for (int i = 0; i < renderers.Length; i++)
             {
@@ -373,24 +434,24 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 }
 
                 Vector3 center = bounds.center;
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, -1f, -1f, ref min, ref max);
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, -1f, 1f, ref min, ref max);
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, 1f, -1f, ref min, ref max);
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, -1f, 1f, 1f, ref min, ref max);
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, -1f, -1f, ref min, ref max);
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, -1f, 1f, ref min, ref max);
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, 1f, -1f, ref min, ref max);
-                AccumulateSceneBoundsCorner(sceneTransform, center, extents, 1f, 1f, 1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, -1f, -1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, -1f, -1f, 1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, -1f, 1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, -1f, 1f, 1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, 1f, -1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, 1f, -1f, 1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, 1f, 1f, -1f, ref min, ref max);
+                AccumulateSceneBoundsCorner(rootTransform, center, extents, 1f, 1f, 1f, ref min, ref max);
                 hasBounds = true;
             }
 
             if (!hasBounds)
             {
-                return;
+                return false;
             }
 
-            _sceneVisualBounds = new Bounds((min + max) * 0.5f, max - min);
-            _hasSceneVisualBounds = true;
+            localBounds = new Bounds((min + max) * 0.5f, max - min);
+            return true;
         }
 
         private static bool ShouldIncludeSceneVisualBounds(Renderer renderer)
@@ -860,7 +921,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 float visualNormalSize = _runtime?.Arena != null && _runtime.Arena.HasCustomBoundary
                     ? Mathf.Max(paddle.Thickness, Scene3v3PaddlePrefabNormalScale)
                     : paddle.Thickness;
-                return new Vector3(paddle.Length * tangentScale, visualNormalSize * normalScale, 1f);
+                float prefabLength = Mathf.Max(0.001f, _paddlePrefabLength);
+                return new Vector3(
+                    paddle.Length * tangentScale / prefabLength,
+                    visualNormalSize * normalScale,
+                    1f);
             }
 
             bool horizontal = Mathf.Abs(paddle.Normal.y) > 0.5f;

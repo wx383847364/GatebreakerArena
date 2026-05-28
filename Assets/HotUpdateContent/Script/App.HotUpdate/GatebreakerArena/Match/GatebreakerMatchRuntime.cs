@@ -87,6 +87,24 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public bool HasWinner => _hasWinner;
         public int WinnerPlayerId => _winnerPlayerId;
 
+        public bool SetArenaPaddleLength(float paddleLength)
+        {
+            if (Arena == null)
+            {
+                return false;
+            }
+
+            float nextPaddleLength = Math.Max(0.25f, paddleLength);
+            if (Mathf.Abs(Arena.PaddleLength - nextPaddleLength) <= 0.0001f)
+            {
+                return false;
+            }
+
+            Arena = Arena.WithPaddleLength(nextPaddleLength);
+            RefreshPaddleGeometryFromArena();
+            return true;
+        }
+
         public void StartLocalPrototype(
             int aiCount = 3,
             string modeId = "PVE_STANDARD",
@@ -297,7 +315,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 zoneOwner.PlayerId,
                 zoneOwner.TeamId,
                 BallRule,
-                reboundDirection);
+                GetOwnGoalReboundDirection(ball, reboundDirection));
             if (result.Scored)
             {
                 _scoreSystem.AddScore(_players, EffectiveRule.Mode, result.ScoringPlayerId, result.ScoringTeamId);
@@ -309,27 +327,20 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
             else if (result.Rebounded)
             {
-                FinishOwnGoalReboundAtPaddle(ball, zoneOwner);
+                ball.BallState = BallState.GoalRebound;
             }
 
             return result;
         }
 
-        private void FinishOwnGoalReboundAtPaddle(BallRuntimeState ball, PlayerRuntimeState zoneOwner)
+        private static Vector2 GetOwnGoalReboundDirection(BallRuntimeState ball, Vector2 fallbackDirection)
         {
-            PaddleRuntimeState paddle = zoneOwner?.Paddle;
-            if (ball == null || paddle == null || ball.BallState != BallState.GoalRebound)
+            if (ball != null && ball.Velocity.sqrMagnitude > 0.0001f)
             {
-                return;
+                return -ball.Velocity.normalized;
             }
 
-            float tangentDistance = Vector2.Dot(ball.Position - paddle.Position, paddle.Tangent);
-            tangentDistance = Mathf.Clamp(tangentDistance, -paddle.Length * 0.5f, paddle.Length * 0.5f);
-            ball.Position = paddle.Position
-                            + paddle.Tangent * tangentDistance
-                            + paddle.Normal * (paddle.Thickness + CollisionSkin);
-            ball.Velocity = paddle.Normal.normalized * Mathf.Clamp(ball.Velocity.magnitude, BallRule.InitialSpeed, BallRule.MaxSpeed);
-            _goalJudgeSystem.FinishRebound(ball);
+            return fallbackDirection.sqrMagnitude > 0.0001f ? fallbackDirection.normalized : Vector2.up;
         }
 
         public ScoreboardSnapshot CreateScoreboardSnapshot()
@@ -718,6 +729,37 @@ namespace App.HotUpdate.GatebreakerArena.Match
             _players.Add(player);
             _paddles.Add(paddle);
             _zones.Add(zone);
+        }
+
+        private void RefreshPaddleGeometryFromArena()
+        {
+            float lengthModifier = EffectiveRule?.Map != null
+                ? 1f + EffectiveRule.Map.GoalSizeModifier
+                : 1f;
+            for (int i = 0; i < _players.Count; i++)
+            {
+                PlayerRuntimeState player = _players[i];
+                PaddleRuntimeState paddle = player.Paddle;
+                if (paddle == null)
+                {
+                    continue;
+                }
+
+                paddle.Length = Arena.PaddleLength * lengthModifier;
+                paddle.Thickness = Arena.PaddleThickness;
+                paddle.Speed = Arena.PaddleSpeed;
+                paddle.AxisPosition = Arena.ClampPaddleAxis(paddle.Normal, paddle.AxisPosition);
+                paddle.Position = Arena.GetPaddleCenter(paddle.Normal, paddle.AxisPosition);
+
+                ZoneRuntimeState zone = player.Zone;
+                if (zone == null)
+                {
+                    continue;
+                }
+
+                zone.Center = GetZoneCenter(zone.Normal);
+                zone.HalfLength = paddle.Length * 0.5f;
+            }
         }
 
         private BallRuntimeState SpawnBallForPlayer(PlayerRuntimeState player, string sourceType, Vector2 position, Vector2 direction, bool countOwnedBall)
