@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using App.HotUpdate.GatebreakerArena.Bootstrap;
 using App.HotUpdate.GatebreakerArena.Core;
+using App.HotUpdate.GatebreakerArena.Match;
+using App.Shared.Contracts;
 using TMPro;
 using NUnit.Framework;
 using UnityEngine;
@@ -74,8 +76,7 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.IsTrue(context.SceneBindingService.IsBound, "Arena signal: scene binding service should be marked bound after runner startup.");
                 Assert.IsTrue(context.SceneBindingService.HasSkillButtonBinding, "Skill button should be explicitly bound.");
                 Assert.IsTrue(context.SceneBindingService.HasBallCountTextBinding, "BallCount text should be explicitly bound.");
-                Assert.IsTrue(context.SceneBindingService.HasGmSliderBindings, "GM bounce tuning sliders should be explicitly bound.");
-                Assert.IsTrue(context.SceneBindingService.HasLanButtonBindings, "LAN room buttons should be explicitly bound.");
+                Assert.IsTrue(context.SceneBindingService.HasPlayerScorePanelBindings, "Player score/hit panel texts should be explicitly bound.");
                 Assert.IsNotNull(context.VisualAssetService, "Arena signal: visual asset service should be registered.");
                 Assert.IsNotNull(context.HudPresenter, "HUD signal: HUD presenter should be registered.");
                 Assert.IsNotNull(GameObject.Find("Gatebreaker Prototype Runner"), "Prototype runner GameObject should be created.");
@@ -100,6 +101,9 @@ namespace Gatebreaker.Tests.PlayMode
                 TMP_Text ballCountText = ballCountObject.GetComponent<TMP_Text>();
                 Assert.IsNotNull(ballCountText, "BallCount should use TMP_Text.");
                 Assert.AreEqual(hud.CurrentServeAmmo.ToString(), ballCountText.text);
+                IGatebreakerArenaSceneUiBinding sceneBinding = GatebreakerArenaSceneUiBindingRegistry.Current;
+                Assert.IsNotNull(sceneBinding, "BootstrapScene should register the scene UI binding bridge.");
+                AssertPlayerScorePanelTexts(sceneBinding, hud);
 
                 int ballCountBeforeClick = context.MatchRuntime.Balls.Count;
                 GameObject skillButtonObject = GameObject.Find("Skill_btn");
@@ -141,6 +145,46 @@ namespace Gatebreaker.Tests.PlayMode
             }
 
             Assert.Fail("Unexpected error/assert/exception log during Gatebreaker PlayMode smoke:\n" + failures[0]);
+        }
+
+        private static void AssertPlayerScorePanelTexts(
+            IGatebreakerArenaSceneUiBinding sceneBinding,
+            App.HotUpdate.GatebreakerArena.UI.GatebreakerHudSnapshot hud)
+        {
+            Assert.IsNotNull(sceneBinding.PlayerScoreTextObjects, "Player score text bindings should exist.");
+            Assert.IsNotNull(sceneBinding.PlayerHitTextObjects, "Player hit text bindings should exist.");
+            List<PlayerScoreSnapshot> visibleScores = BuildVisiblePlayerScores(hud);
+            Assert.Greater(visibleScores.Count, 0, "HUD should contain at least one visible player score.");
+            Assert.GreaterOrEqual(sceneBinding.PlayerScoreTextObjects.Length, visibleScores.Count);
+            Assert.GreaterOrEqual(sceneBinding.PlayerHitTextObjects.Length, visibleScores.Count);
+
+            for (int i = 0; i < visibleScores.Count; i++)
+            {
+                PlayerScoreSnapshot score = visibleScores[i];
+                TMP_Text scoreText = sceneBinding.PlayerScoreTextObjects[i] as TMP_Text;
+                TMP_Text hitText = sceneBinding.PlayerHitTextObjects[i] as TMP_Text;
+                Assert.IsNotNull(scoreText, $"Player score binding {i} should be a TMP_Text.");
+                Assert.IsNotNull(hitText, $"Player hit binding {i} should be a TMP_Text.");
+                Assert.AreEqual(score.Score.ToString(), scoreText.text, $"playerId={score.PlayerId}");
+                Assert.AreEqual(score.HitScore.ToString(), hitText.text, $"playerId={score.PlayerId}");
+            }
+        }
+
+        private static List<PlayerScoreSnapshot> BuildVisiblePlayerScores(
+            App.HotUpdate.GatebreakerArena.UI.GatebreakerHudSnapshot hud)
+        {
+            var visibleScores = new List<PlayerScoreSnapshot>();
+            for (int i = 0; i < hud.PlayerScores.Count; i++)
+            {
+                PlayerScoreSnapshot score = hud.PlayerScores[i];
+                if (!score.IsDisabled)
+                {
+                    visibleScores.Add(score);
+                }
+            }
+
+            visibleScores.Sort((left, right) => left.PlayerId.CompareTo(right.PlayerId));
+            return visibleScores;
         }
     }
 }

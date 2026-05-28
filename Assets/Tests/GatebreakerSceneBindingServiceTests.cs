@@ -1,4 +1,5 @@
 using App.HotUpdate.GatebreakerArena.Core;
+using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.UI;
 using App.Shared.Contracts;
@@ -55,6 +56,35 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(1, serveRequests);
             Assert.AreEqual("3", _binding.BallCountText.text);
+        }
+
+        [Test]
+        public void PlayerScorePanelDisplaysScoreAndHitFromSnapshot()
+        {
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks(),
+                null);
+
+            _service.UpdateHud(
+                new GatebreakerHudSnapshot
+                {
+                    Phase = MatchPhase.Playing,
+                    PlayerScores = new[]
+                    {
+                        new PlayerScoreSnapshot(3, 3, false, 0, -1, 0),
+                        new PlayerScoreSnapshot(1, 1, false, 1, 0, 1),
+                        new PlayerScoreSnapshot(2, 2, true, 5, -2, 2),
+                    },
+                },
+                ServeBlockReason.None);
+
+            Assert.AreEqual("1", _binding.PlayerScoreTexts[0].text);
+            Assert.AreEqual("0", _binding.PlayerHitTexts[0].text);
+            Assert.AreEqual("0", _binding.PlayerScoreTexts[1].text);
+            Assert.AreEqual("-1", _binding.PlayerHitTexts[1].text);
+            Assert.AreEqual(string.Empty, _binding.PlayerScoreTexts[2].text);
+            Assert.AreEqual(string.Empty, _binding.PlayerHitTexts[2].text);
         }
 
         [Test]
@@ -149,6 +179,8 @@ namespace Gatebreaker.Tests
             public TMP_Text HudScoreText { get; private set; }
             public TMP_Text HudServeText { get; private set; }
             public TMP_Text HudBallText { get; private set; }
+            public TMP_Text[] PlayerScoreTexts { get; private set; }
+            public TMP_Text[] PlayerHitTexts { get; private set; }
             public GameObject ResultRoot { get; private set; }
             public TMP_Text ResultTitleText { get; private set; }
             public TMP_Text ResultBodyText { get; private set; }
@@ -185,6 +217,8 @@ namespace Gatebreaker.Tests
             public Object HudScoreTextObject => HudScoreText;
             public Object HudServeTextObject => HudServeText;
             public Object HudBallTextObject => HudBallText;
+            public Object[] PlayerScoreTextObjects => PlayerScoreTexts;
+            public Object[] PlayerHitTextObjects => PlayerHitTexts;
             public Object ResultRootObject => ResultRoot;
             public Object ResultTitleTextObject => ResultTitleText;
             public Object ResultBodyTextObject => ResultBodyText;
@@ -225,6 +259,18 @@ namespace Gatebreaker.Tests
                     HudScoreText = Add<TextMeshProUGUI>(parent, "HudScore"),
                     HudServeText = Add<TextMeshProUGUI>(parent, "HudServe"),
                     HudBallText = Add<TextMeshProUGUI>(parent, "HudBall"),
+                    PlayerScoreTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Score"),
+                        Add<TextMeshProUGUI>(parent, "Player2Score"),
+                        Add<TextMeshProUGUI>(parent, "Player3Score"),
+                    },
+                    PlayerHitTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Hit"),
+                        Add<TextMeshProUGUI>(parent, "Player2Hit"),
+                        Add<TextMeshProUGUI>(parent, "Player3Hit"),
+                    },
                     ResultRoot = CreateRoot(parent, "ResultRoot"),
                     ResultTitleText = Add<TextMeshProUGUI>(parent, "ResultTitle"),
                     ResultBodyText = Add<TextMeshProUGUI>(parent, "ResultBody"),

@@ -383,6 +383,14 @@ MonoBehaviour:
   _hudScoreText: {fileID: 0}
   _hudServeText: {fileID: 0}
   _hudBallText: {fileID: 0}
+  _playerScoreTexts:
+  - {fileID: 741093736}
+  - {fileID: 1848800883}
+  - {fileID: 2062480440}
+  _playerHitTexts:
+  - {fileID: 1242535690}
+  - {fileID: 956048238}
+  - {fileID: 355727442}
   _resultRoot: {fileID: 0}
   _resultTitleText: {fileID: 0}
   _resultBodyText: {fileID: 0}

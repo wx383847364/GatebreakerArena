@@ -52,6 +52,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private TMP_Text _hudScoreText;
         private TMP_Text _hudServeText;
         private TMP_Text _hudBallText;
+        private TMP_Text[] _playerScoreTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _playerHitTexts = Array.Empty<TMP_Text>();
         private TMP_Text _resultTitleText;
         private TMP_Text _resultBodyText;
         private TMP_Text _resultScoreText;
@@ -83,6 +85,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _gmHitOffsetSlider != null &&
             _gmPaddleVelocitySlider != null &&
             _gmMinimumOutwardSlider != null;
+
+        public bool HasPlayerScorePanelBindings =>
+            HasTextArrayBindings(_playerScoreTexts) &&
+            HasTextArrayBindings(_playerHitTexts);
 
         public bool HasLanButtonBindings =>
             _lanCreateButton != null &&
@@ -128,6 +134,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _hudScoreText = Require<TMP_Text>(binding.HudScoreTextObject, nameof(binding.HudScoreTextObject));
             _hudServeText = Require<TMP_Text>(binding.HudServeTextObject, nameof(binding.HudServeTextObject));
             _hudBallText = Require<TMP_Text>(binding.HudBallTextObject, nameof(binding.HudBallTextObject));
+            _playerScoreTexts = RequireTextArray(binding.PlayerScoreTextObjects, nameof(binding.PlayerScoreTextObjects));
+            _playerHitTexts = RequireTextArray(binding.PlayerHitTextObjects, nameof(binding.PlayerHitTextObjects));
             _resultRoot = RequireGameObject(binding.ResultRootObject, nameof(binding.ResultRootObject));
             _resultTitleText = Require<TMP_Text>(binding.ResultTitleTextObject, nameof(binding.ResultTitleTextObject));
             _resultBodyText = Require<TMP_Text>(binding.ResultBodyTextObject, nameof(binding.ResultBodyTextObject));
@@ -204,6 +212,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             SetText(_hudTitleText, "Gatebreaker Arena 原型");
             SetText(_hudStatusText, $"阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}");
             SetText(_hudScoreText, $"比分：{FormatScoreLine(snapshot)}");
+            UpdatePlayerScorePanel(snapshot);
             SetText(
                 _hudServeText,
                 $"弹药：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}    回复：{snapshot.ServeCooldownRemaining:0.0}秒");
@@ -341,6 +350,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _hudScoreText = null;
             _hudServeText = null;
             _hudBallText = null;
+            _playerScoreTexts = Array.Empty<TMP_Text>();
+            _playerHitTexts = Array.Empty<TMP_Text>();
             _resultTitleText = null;
             _resultBodyText = null;
             _resultScoreText = null;
@@ -392,6 +403,23 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             _logger?.LogWarning("GatebreakerArenaSceneBindingService: {0} is not a GameObject or Component.", bindingName);
             return null;
+        }
+
+        private TMP_Text[] RequireTextArray(UnityEngine.Object[] sources, string bindingName)
+        {
+            if (sources == null || sources.Length == 0)
+            {
+                _logger?.LogWarning("GatebreakerArenaSceneBindingService: {0} has no text bindings.", bindingName);
+                return Array.Empty<TMP_Text>();
+            }
+
+            var texts = new TMP_Text[sources.Length];
+            for (int i = 0; i < sources.Length; i++)
+            {
+                texts[i] = Require<TMP_Text>(sources[i], $"{bindingName}[{i}]");
+            }
+
+            return texts;
         }
 
         private void AddButtonListener(Button button, UnityEngine.Events.UnityAction action)
@@ -469,6 +497,66 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _callbacks?.ServeRequested?.Invoke();
         }
 
+        private void UpdatePlayerScorePanel(GatebreakerHudSnapshot snapshot)
+        {
+            if (snapshot?.PlayerScores == null)
+            {
+                ClearPlayerScorePanel();
+                return;
+            }
+
+            List<PlayerScoreSnapshot> visibleScores = BuildVisiblePlayerScoreList(snapshot.PlayerScores);
+            int rowCount = Math.Max(_playerScoreTexts.Length, _playerHitTexts.Length);
+            for (int i = 0; i < rowCount; i++)
+            {
+                if (i < visibleScores.Count)
+                {
+                    PlayerScoreSnapshot score = visibleScores[i];
+                    SetTextAt(_playerScoreTexts, i, score.Score.ToString(CultureInfo.InvariantCulture));
+                    SetTextAt(_playerHitTexts, i, FormatHitScore(score.HitScore));
+                }
+                else
+                {
+                    SetTextAt(_playerScoreTexts, i, string.Empty);
+                    SetTextAt(_playerHitTexts, i, string.Empty);
+                }
+            }
+        }
+
+        private void ClearPlayerScorePanel()
+        {
+            int rowCount = Math.Max(_playerScoreTexts.Length, _playerHitTexts.Length);
+            for (int i = 0; i < rowCount; i++)
+            {
+                SetTextAt(_playerScoreTexts, i, string.Empty);
+                SetTextAt(_playerHitTexts, i, string.Empty);
+            }
+        }
+
+        private static List<PlayerScoreSnapshot> BuildVisiblePlayerScoreList(IReadOnlyList<PlayerScoreSnapshot> playerScores)
+        {
+            var visibleScores = new List<PlayerScoreSnapshot>();
+            for (int i = 0; i < playerScores.Count; i++)
+            {
+                PlayerScoreSnapshot score = playerScores[i];
+                if (!score.IsDisabled)
+                {
+                    visibleScores.Add(score);
+                }
+            }
+
+            visibleScores.Sort((left, right) => left.PlayerId.CompareTo(right.PlayerId));
+            return visibleScores;
+        }
+
+        private static void SetTextAt(TMP_Text[] texts, int index, string value)
+        {
+            if (texts != null && index >= 0 && index < texts.Length)
+            {
+                SetText(texts[index], value);
+            }
+        }
+
         private static string FormatTime(float remainingTime)
         {
             int totalSeconds = Mathf.CeilToInt(Mathf.Max(0f, remainingTime));
@@ -529,7 +617,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             {
                 PlayerScoreSnapshot score = snapshot.PlayerScores[i];
                 string marker = score.PlayerId == snapshot.LocalPlayerId ? "*" : string.Empty;
-                parts.Add($"P{score.PlayerId}{marker}:{score.Score}");
+                parts.Add($"P{score.PlayerId}{marker}:S{score.Score}/H{FormatHitScore(score.HitScore)}/T{score.TrueScore}");
             }
 
             return string.Join("  ", parts);
@@ -547,7 +635,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             {
                 PlayerScoreSnapshot score = snapshot.PlayerScores[i];
                 string marker = score.PlayerId == snapshot.LocalPlayerId ? "*" : string.Empty;
-                rows.Add($"玩家{score.PlayerId}{marker}：{score.Score}");
+                rows.Add($"玩家{score.PlayerId}{marker}：SCORE {score.Score}  HIT {FormatHitScore(score.HitScore)}  TRUE {score.TrueScore}");
             }
 
             return string.Join("\n", rows);
@@ -560,15 +648,15 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 return "本局没有胜者";
             }
 
-            int score = FindPlayerScore(snapshot, snapshot.WinnerPlayerId);
-            return $"玩家{snapshot.WinnerPlayerId} 获胜！最终分数：{score}";
+            PlayerScoreSnapshot score = FindPlayerScore(snapshot, snapshot.WinnerPlayerId);
+            return $"玩家{snapshot.WinnerPlayerId} 获胜！SCORE {score.Score}，真实得分 {score.TrueScore}";
         }
 
-        private static int FindPlayerScore(GatebreakerHudSnapshot snapshot, int playerId)
+        private static PlayerScoreSnapshot FindPlayerScore(GatebreakerHudSnapshot snapshot, int playerId)
         {
             if (snapshot.PlayerScores == null)
             {
-                return 0;
+                return new PlayerScoreSnapshot();
             }
 
             for (int i = 0; i < snapshot.PlayerScores.Count; i++)
@@ -576,11 +664,34 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 PlayerScoreSnapshot score = snapshot.PlayerScores[i];
                 if (score.PlayerId == playerId)
                 {
-                    return score.Score;
+                    return score;
                 }
             }
 
-            return 0;
+            return new PlayerScoreSnapshot();
+        }
+
+        private static string FormatHitScore(int hitScore)
+        {
+            return hitScore.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static bool HasTextArrayBindings(TMP_Text[] texts)
+        {
+            if (texts == null || texts.Length == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < texts.Length; i++)
+            {
+                if (texts[i] == null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static string FormatTuningValue(string label, int value, float actualValue)

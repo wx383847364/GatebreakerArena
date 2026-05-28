@@ -40,6 +40,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private readonly Dictionary<int, PlayerInputFrame> _inputFrames = new Dictionary<int, PlayerInputFrame>();
         private readonly Dictionary<int, List<GatebreakerFrameInput>> _stepInputBuffer = new Dictionary<int, List<GatebreakerFrameInput>>();
         private int _nextBallId = 1;
+        private int _nextScoreReachOrder = 1;
         private bool _hasWinner;
         private int _winnerPlayerId;
         private float _localPrototypeFrameAccumulator;
@@ -178,6 +179,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             _inputFrames.Clear();
             _stepInputBuffer.Clear();
             _nextBallId = 1;
+            _nextScoreReachOrder = 1;
             Arena = ArenaGeometry.CreateForMap(EffectiveRule.Map);
             ApplyTuningValues(config.TuningValues);
 
@@ -318,7 +320,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 GetOwnGoalReboundDirection(ball, reboundDirection));
             if (result.Scored)
             {
-                _scoreSystem.AddScore(_players, EffectiveRule.Mode, result.ScoringPlayerId, result.ScoringTeamId);
+                _scoreSystem.RecordGoal(
+                    _players,
+                    result.ScoringPlayerId,
+                    result.ZoneOwnerPlayerId,
+                    ref _nextScoreReachOrder);
                 RemoveBall(ball);
                 if (Phase == MatchPhase.Overtime && IsOvertimeWinningScore(result.ScoringPlayerId))
                 {
@@ -363,6 +369,13 @@ namespace App.HotUpdate.GatebreakerArena.Match
             HashInt(ref hash, QuantizeFloat(RemainingTime));
             HashInt(ref hash, _hasWinner ? 1 : 0);
             HashInt(ref hash, _winnerPlayerId);
+            HashInt(ref hash, _nextScoreReachOrder);
+            HashInt(ref hash, _overtimeEligiblePlayerIds.Count);
+            foreach (int playerId in _overtimeEligiblePlayerIds.OrderBy(playerId => playerId))
+            {
+                HashInt(ref hash, playerId);
+            }
+
             HashInt(ref hash, BounceTuning.HitOffsetInfluenceValue);
             HashInt(ref hash, BounceTuning.PaddleVelocityInfluenceValue);
             HashInt(ref hash, BounceTuning.MinimumOutwardShareValue);
@@ -373,6 +386,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 HashInt(ref hash, player.PlayerId);
                 HashInt(ref hash, player.TeamId);
                 HashInt(ref hash, player.Score);
+                HashInt(ref hash, player.HitScore);
+                HashInt(ref hash, player.ScoreReachOrder);
                 HashInt(ref hash, player.IsDisabled ? 1 : 0);
                 if (player.ServeResource != null)
                 {
@@ -670,6 +685,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
                     IsAi = isAi,
                     IsDisabled = true,
                     Score = 0,
+                    HitScore = 0,
+                    ScoreReachOrder = 0,
                     ServeResource = _serveResourceSystem.CreateState(
                         EffectiveRule.InitialServeAmmo,
                         EffectiveRule.MaxServeAmmo,
@@ -717,6 +734,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 IsAi = isAi,
                 IsDisabled = false,
                 Score = 0,
+                HitScore = 0,
+                ScoreReachOrder = 0,
                 ServeResource = _serveResourceSystem.CreateState(
                     EffectiveRule.InitialServeAmmo,
                     EffectiveRule.MaxServeAmmo,
@@ -1641,10 +1660,10 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private void HandleTimeExpired()
         {
-            IReadOnlyList<int> highest = _scoreSystem.GetHighestScoringPlayerIds(_players);
-            if (Phase == MatchPhase.Playing && highest.Count == 1)
+            IReadOnlyList<int> topPlayers = _scoreSystem.GetTopRankedPlayerIds(_players, false);
+            if (Phase == MatchPhase.Playing && topPlayers.Count == 1)
             {
-                EndWithWinner(highest[0]);
+                EndWithWinner(topPlayers[0]);
                 return;
             }
 
@@ -1653,15 +1672,16 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 EffectiveRule.Mode.OvertimeRuleType == OvertimeRuleType.SuddenDeath)
             {
                 _overtimeEligiblePlayerIds.Clear();
-                _overtimeEligiblePlayerIds.AddRange(highest);
+                _overtimeEligiblePlayerIds.AddRange(topPlayers);
                 Phase = MatchPhase.Overtime;
                 RemainingTime = EffectiveRule.Mode.OvertimeDuration;
                 return;
             }
 
-            if (highest.Count > 0)
+            IReadOnlyList<int> stableTopPlayers = _scoreSystem.GetTopRankedPlayerIds(_players, true);
+            if (stableTopPlayers.Count > 0)
             {
-                EndWithWinner(highest[0]);
+                EndWithWinner(stableTopPlayers[0]);
             }
         }
 

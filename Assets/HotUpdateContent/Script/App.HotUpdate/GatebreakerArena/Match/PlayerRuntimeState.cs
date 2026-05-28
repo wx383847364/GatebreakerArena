@@ -12,6 +12,9 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public bool IsAi { get; set; }
         public bool IsDisabled { get; set; }
         public int Score { get; set; }
+        public int HitScore { get; set; }
+        public int TrueScore => Score + HitScore;
+        public int ScoreReachOrder { get; set; }
         public ServeResourceState ServeResource { get; set; }
         public PaddleRuntimeState Paddle { get; set; }
         public ZoneRuntimeState Zone { get; set; }

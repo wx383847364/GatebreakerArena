@@ -181,6 +181,8 @@ namespace App.Shared.Contracts
         UnityEngine.Object HudScoreTextObject { get; }
         UnityEngine.Object HudServeTextObject { get; }
         UnityEngine.Object HudBallTextObject { get; }
+        UnityEngine.Object[] PlayerScoreTextObjects { get; }
+        UnityEngine.Object[] PlayerHitTextObjects { get; }
         UnityEngine.Object ResultRootObject { get; }
         UnityEngine.Object ResultTitleTextObject { get; }
         UnityEngine.Object ResultBodyTextObject { get; }

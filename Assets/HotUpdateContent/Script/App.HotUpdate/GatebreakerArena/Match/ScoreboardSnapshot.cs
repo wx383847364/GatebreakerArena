@@ -15,15 +15,29 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
     public readonly struct PlayerScoreSnapshot
     {
-        public PlayerScoreSnapshot(int playerId, int teamId, int score)
+        public PlayerScoreSnapshot(
+            int playerId,
+            int teamId,
+            bool isDisabled,
+            int score,
+            int hitScore,
+            int scoreReachOrder)
         {
             PlayerId = playerId;
             TeamId = teamId;
+            IsDisabled = isDisabled;
             Score = score;
+            HitScore = hitScore;
+            TrueScore = score + hitScore;
+            ScoreReachOrder = scoreReachOrder;
         }
 
         public int PlayerId { get; }
         public int TeamId { get; }
+        public bool IsDisabled { get; }
         public int Score { get; }
+        public int HitScore { get; }
+        public int TrueScore { get; }
+        public int ScoreReachOrder { get; }
     }
 }

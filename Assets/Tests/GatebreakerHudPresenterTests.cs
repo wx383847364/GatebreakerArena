@@ -31,6 +31,8 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(0, snapshot.OwnedBallsInField);
             Assert.AreEqual(5, snapshot.MaxOwnedBallsInField);
             Assert.AreEqual(2, snapshot.PlayerScores.Count);
+            Assert.AreEqual(0, snapshot.PlayerScores[0].HitScore);
+            Assert.AreEqual(snapshot.PlayerScores[0].Score, snapshot.PlayerScores[0].TrueScore);
             Assert.IsFalse(snapshot.HasDanger);
             Assert.IsFalse(snapshot.HasWinner);
             Assert.AreEqual(0, snapshot.WinnerPlayerId);
@@ -48,6 +50,7 @@ namespace Gatebreaker.Tests
                 null);
             runtime.StartLocalPrototype(aiCount: 1);
             runtime.FindPlayer(1).Score = 7;
+            runtime.FindPlayer(1).HitScore = -2;
             runtime.FindPlayer(2).Score = 3;
             runtime.Tick(200f);
             var presenter = new GatebreakerArenaHudPresenter(runtime);
@@ -56,6 +59,7 @@ namespace Gatebreaker.Tests
 
             Assert.IsTrue(snapshot.HasWinner);
             Assert.AreEqual(1, snapshot.WinnerPlayerId);
+            Assert.AreEqual(5, snapshot.PlayerScores[0].TrueScore);
         }
     }
 }

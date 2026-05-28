@@ -8,7 +8,9 @@ using App.HotUpdate.GatebreakerArena.Prototype;
 using App.HotUpdate.GatebreakerArena.Serve;
 using App.HotUpdate.GatebreakerArena.Zone;
 using NUnit.Framework;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace Gatebreaker.Tests
@@ -39,7 +41,77 @@ namespace Gatebreaker.Tests
             runtime.ResolveGoalEntry(initialBallId, 2, Vector2.down);
 
             Assert.AreEqual(1, runtime.FindPlayer(1).Score);
+            Assert.AreEqual(0, runtime.FindPlayer(1).HitScore);
+            Assert.AreEqual(1, runtime.FindPlayer(1).TrueScore);
+            Assert.AreEqual(-1, runtime.FindPlayer(2).HitScore);
+            Assert.AreEqual(-1, runtime.FindPlayer(2).TrueScore);
+            Assert.AreEqual(1, runtime.FindPlayer(1).ScoreReachOrder);
             Assert.AreEqual(0, runtime.FindPlayer(1).ServeResource.OwnedBallsInField);
+        }
+
+        [Test]
+        public void TimeExpiredUsesTrueScoreAsScoreTieBreaker()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 1);
+            runtime.FindPlayer(1).Score = 2;
+            runtime.FindPlayer(1).HitScore = -2;
+            runtime.FindPlayer(1).ScoreReachOrder = 1;
+            runtime.FindPlayer(2).Score = 2;
+            runtime.FindPlayer(2).HitScore = -1;
+            runtime.FindPlayer(2).ScoreReachOrder = 2;
+
+            runtime.Tick(200f);
+
+            Assert.AreEqual(MatchPhase.Result, runtime.Phase);
+            Assert.AreEqual(2, runtime.WinnerPlayerId);
+        }
+
+        [Test]
+        public void TimeExpiredUsesEarlierScoreReachOrderWhenScoreAndTrueScoreTie()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 1);
+            runtime.FindPlayer(1).Score = 2;
+            runtime.FindPlayer(1).HitScore = -1;
+            runtime.FindPlayer(1).ScoreReachOrder = 2;
+            runtime.FindPlayer(2).Score = 2;
+            runtime.FindPlayer(2).HitScore = -1;
+            runtime.FindPlayer(2).ScoreReachOrder = 1;
+
+            runtime.Tick(200f);
+
+            Assert.AreEqual(MatchPhase.Result, runtime.Phase);
+            Assert.AreEqual(2, runtime.WinnerPlayerId);
+        }
+
+        [Test]
+        public void TimeExpiredKeepsSuddenDeathWhenRankingCannotBreakTie()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 1);
+
+            runtime.Tick(200f);
+
+            Assert.AreEqual(MatchPhase.Overtime, runtime.Phase);
+            CollectionAssert.AreEquivalent(
+                new[] { 1, 2 },
+                runtime.CreateScoreboardSnapshot().OvertimeEligiblePlayerIds);
+        }
+
+        [Test]
+        public void ChecksumIncludesOvertimeEligiblePlayers()
+        {
+            GatebreakerMatchRuntime left = CreateRuntime();
+            GatebreakerMatchRuntime right = CreateRuntime();
+            left.StartLocalPrototype(aiCount: 1);
+            right.StartLocalPrototype(aiCount: 1);
+            left.Tick(200f);
+            right.Tick(200f);
+
+            GetOvertimeEligiblePlayerIds(right).Remove(2);
+
+            Assert.AreNotEqual(left.CreateChecksum(0), right.CreateChecksum(0));
         }
 
         [Test]
@@ -873,6 +945,15 @@ namespace Gatebreaker.Tests
                 new GoalJudgeSystem(),
                 new ScoreSystem(),
                 null);
+        }
+
+        private static List<int> GetOvertimeEligiblePlayerIds(GatebreakerMatchRuntime runtime)
+        {
+            FieldInfo field = typeof(GatebreakerMatchRuntime).GetField(
+                "_overtimeEligiblePlayerIds",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field);
+            return (List<int>)field.GetValue(runtime);
         }
 
         private static void AssertPaddleAlignedWithSegment(PaddleRuntimeState paddle, ArenaBoundarySegment segment, float inset)

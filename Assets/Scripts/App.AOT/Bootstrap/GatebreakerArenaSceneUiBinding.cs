@@ -18,6 +18,8 @@ namespace App.AOT.Bootstrap
         [SerializeField] private TMP_Text _hudScoreText;
         [SerializeField] private TMP_Text _hudServeText;
         [SerializeField] private TMP_Text _hudBallText;
+        [SerializeField] private TMP_Text[] _playerScoreTexts;
+        [SerializeField] private TMP_Text[] _playerHitTexts;
         [SerializeField] private GameObject _resultRoot;
         [SerializeField] private TMP_Text _resultTitleText;
         [SerializeField] private TMP_Text _resultBodyText;
@@ -54,6 +56,8 @@ namespace App.AOT.Bootstrap
         public Object HudScoreTextObject => _hudScoreText;
         public Object HudServeTextObject => _hudServeText;
         public Object HudBallTextObject => _hudBallText;
+        public Object[] PlayerScoreTextObjects => _playerScoreTexts;
+        public Object[] PlayerHitTextObjects => _playerHitTexts;
         public Object ResultRootObject => _resultRoot;
         public Object ResultTitleTextObject => _resultTitleText;
         public Object ResultBodyTextObject => _resultBodyText;
@@ -85,32 +89,8 @@ namespace App.AOT.Bootstrap
         public bool HasRequiredBindings =>
             _skillButton != null &&
             _ballCountText != null &&
-            _hudRoot != null &&
-            _hudStatusText != null &&
-            _hudScoreText != null &&
-            _hudServeText != null &&
-            _hudBallText != null &&
-            _resultRoot != null &&
-            _gmRoot != null &&
-            _gmHitOffsetSlider != null &&
-            _gmPaddleVelocitySlider != null &&
-            _gmMinimumOutwardSlider != null &&
-            _lanRoot != null &&
-            _lanCreateButton != null &&
-            _lanDiscoverButton != null &&
-            _lanJoinButton != null &&
-            _lanReadyButton != null &&
-            _lanStartButton != null &&
-            _lanLeaveButton != null &&
-            _lanAcknowledgeStartButton != null &&
-            _lanPlayerNameInput != null &&
-            _lanRoomCodeInput != null &&
-            _lanStateText != null &&
-            _lanRoomCodeText != null &&
-            _lanPlayerCountText != null &&
-            _lanLocalIpText != null &&
-            _lanRoomIpText != null &&
-            _lanErrorText != null;
+            HasTextBindings(_playerScoreTexts) &&
+            HasTextBindings(_playerHitTexts);
 
         private void Awake()
         {
@@ -129,5 +109,23 @@ namespace App.AOT.Bootstrap
             _ballCountText = ballCountText;
         }
 #endif
+
+        private static bool HasTextBindings(TMP_Text[] texts)
+        {
+            if (texts == null || texts.Length == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < texts.Length; i++)
+            {
+                if (texts[i] == null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }

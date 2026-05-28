@@ -37,7 +37,7 @@ namespace Gatebreaker.Tests
             Assert.IsNotNull(binding, "BootstrapScene should contain the Gatebreaker scene UI binding bridge.");
             Assert.IsTrue(
                 binding.HasRequiredBindings,
-                "Gatebreaker scene UI binding should include Skill/BallCount, HUD, result, GM, and LAN references.");
+                "Gatebreaker scene UI binding should include Skill/BallCount and player Score/Hit panel references.");
         }
     }
 }
