@@ -75,6 +75,7 @@ DEFAULT_MERGE_COMMIT_MESSAGE_PREFIXES = ("Merge ",)
 MERGE_COMMIT_TITLE_PREFIX = "合并："
 MERGE_COMMIT_REQUIRED_BODY = "保持合并提交标题和正文符合 Gatebreaker Arena 八位编号规则"
 REQUIRED_GIT_HOOKS = ("pre-commit", "prepare-commit-msg", "commit-msg", "post-commit")
+REQUIRED_GIT_HOOK_SUPPORT_FILES = ("_common",)
 DEFAULT_COMMIT_SEQUENCE_FETCH_TIMEOUT_SECONDS = 5
 DEFAULT_COMMIT_SEQUENCE_FETCH_MAX_AGE_SECONDS = 300
 DOC_MODULE_PATTERNS = [
@@ -118,14 +119,18 @@ def repo_root_for_doc_root(doc_root: Path) -> Path:
 def run_git(doc_root: Path, args, timeout: int = 20):
     env = os.environ.copy()
     env.setdefault("GIT_TERMINAL_PROMPT", "0")
-    return subprocess.run(
-        ["git", "-C", str(repo_root_for_doc_root(doc_root)), *args],
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=timeout,
-        env=env,
-    )
+    command = ["git", "-C", str(repo_root_for_doc_root(doc_root)), *args]
+    try:
+        return subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+            env=env,
+        )
+    except FileNotFoundError:
+        return subprocess.CompletedProcess(command, 127, "", "git command not found")
 
 
 def markdown_title(path: Path) -> str:
@@ -1274,20 +1279,26 @@ def should_require_merge_rules_for_amend(doc_root: Path, parsed) -> bool:
 def git_hooks_installation_problems(doc_root: Path):
     repo_root = doc_root.resolve().parent
     problems = []
-    try:
-        result = run_git(doc_root, ["config", "--get", "core.hooksPath"], timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        result = None
+    result = run_git(doc_root, ["config", "--get", "core.hooksPath"], timeout=10)
+    if result.returncode == 127:
+        problems.append("未找到 git 命令；请安装 Git 并确保命令行可访问")
+        return problems
+
     hooks_path = result.stdout.strip() if result and result.returncode == 0 else ""
     if hooks_path != ".githooks":
         problems.append("core.hooksPath 未设置为 .githooks")
 
     hooks_dir = repo_root / ".githooks"
+    for support_file in REQUIRED_GIT_HOOK_SUPPORT_FILES:
+        support_path = hooks_dir / support_file
+        if not support_path.exists():
+            problems.append(f"缺少 .githooks/{support_file}")
+
     for hook_name in REQUIRED_GIT_HOOKS:
         hook_path = hooks_dir / hook_name
         if not hook_path.exists():
             problems.append(f"缺少 .githooks/{hook_name}")
-        elif not os.access(hook_path, os.X_OK):
+        elif os.name != "nt" and not os.access(hook_path, os.X_OK):
             problems.append(f".githooks/{hook_name} 不可执行")
     return problems
 
@@ -1299,7 +1310,11 @@ def print_git_hooks_warning(doc_root: Path):
     print("[hook-check] Git hooks 未安装或配置不完整：", file=sys.stderr)
     for problem in problems:
         print(f"- {problem}", file=sys.stderr)
-    print("[hook-check] 请执行：bash tools/repo_maintenance/install_git_hooks.sh", file=sys.stderr)
+    print(
+        "[hook-check] 请执行：bash tools/repo_maintenance/install_git_hooks.sh；"
+        "Windows 可执行 tools\\repo_maintenance\\install_git_hooks.cmd",
+        file=sys.stderr,
+    )
 
 
 def suggest_current_commit(doc_root: Path):

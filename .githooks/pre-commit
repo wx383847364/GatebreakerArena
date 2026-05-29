@@ -7,6 +7,7 @@ set -euo pipefail
 # 但会防止实现完成后忘记补迭代记录，并顺手自动同步索引。
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+source "${REPO_ROOT}/.githooks/_common"
 
-python3 "${REPO_ROOT}/tools/repo_maintenance/check_unity_guid_integrity.py" --staged
-python3 "${REPO_ROOT}/tools/doc_maintenance/check_doc_maintenance.py"
+run_python_script "${REPO_ROOT}" "${REPO_ROOT}/tools/repo_maintenance/check_unity_guid_integrity.py" --staged
+run_python_script "${REPO_ROOT}" "${REPO_ROOT}/tools/doc_maintenance/check_doc_maintenance.py"

@@ -33,6 +33,12 @@
 bash tools/repo_maintenance/install_git_hooks.sh
 ```
 
+   - Windows 可执行：
+
+```bat
+tools\repo_maintenance\install_git_hooks.cmd
+```
+
 2. 如果本轮包含工程级改动，补迭代记录或执行：
 
 ```bash
@@ -75,5 +81,6 @@ python3 tools/doc_maintenance/update_project_docs.py --doc-root doc sync
 ## Hook 约束
 
 - `core.hooksPath` 必须指向 `.githooks`；可执行 `python3 tools/repo_maintenance/check_git_hooks_installed.py` 检查。
+- Windows 环境要求 Git 可用，并至少存在 `python3`、`python` 或 `py -3` 中的一个 Python 3.8+ 命令。
 - `prepare-commit-msg` 会在 merge 来源时提前生成规范 merge 标题和正文。
 - `commit-msg` 会校验普通提交的八位编号；merge commit 还必须使用 `合并：` 标题前缀，并包含规范正文条目。

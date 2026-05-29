@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+.githooks/* text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.cmd text eol=crlf

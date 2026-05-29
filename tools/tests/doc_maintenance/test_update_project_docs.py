@@ -21,6 +21,7 @@ PRE_COMMIT_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "pre-commit"
 PREPARE_COMMIT_MSG_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "prepare-commit-msg"
 COMMIT_MSG_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "commit-msg"
 POST_COMMIT_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "post-commit"
+COMMON_HOOK = TOOLS_ROOT.parents[0] / ".githooks" / "_common"
 
 spec = importlib.util.spec_from_file_location("update_project_docs", SCRIPT_PATH)
 update_project_docs = importlib.util.module_from_spec(spec)
@@ -103,6 +104,8 @@ def install_git_hooks(
 ) -> Path:
     hooks_dir = root / ".githooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
+    if include_pre_commit or include_prepare_commit_msg or include_commit_msg or include_post_commit:
+        copy2(COMMON_HOOK, hooks_dir / "_common")
     if include_pre_commit:
         copy2(PRE_COMMIT_HOOK, hooks_dir / "pre-commit")
         os.chmod(hooks_dir / "pre-commit", 0o755)
@@ -2228,6 +2231,18 @@ class UpdateProjectDocsTests(unittest.TestCase):
                 hook.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
                 os.chmod(hook, 0o755)
             subprocess.run(["git", "config", "core.hooksPath", ".githooks"], cwd=root, check=True, capture_output=True, text=True)
+
+            missing_common = subprocess.run(
+                ["python3", str(checker)],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(missing_common.returncode, 0)
+            self.assertIn("缺少 .githooks/_common", missing_common.stderr)
+
+            copy2(COMMON_HOOK, hooks_dir / "_common")
 
             configured = subprocess.run(
                 ["python3", str(checker)],

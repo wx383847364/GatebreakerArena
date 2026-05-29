@@ -7,9 +7,10 @@ if [[ "${GATEBREAKER_POST_COMMIT_AMEND:-}" == "1" ]]; then
 fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+source "${REPO_ROOT}/.githooks/_common"
 REGISTRY_RELATIVE_PATH="doc/长期主文档/协作与执行/状态登记/commit_module_sequences.json"
 
-python3 "${REPO_ROOT}/tools/doc_maintenance/update_project_docs.py" \
+run_python_script "${REPO_ROOT}" "${REPO_ROOT}/tools/doc_maintenance/update_project_docs.py" \
   --doc-root "${REPO_ROOT}/doc" \
   sync-commit-sequences \
   --stage

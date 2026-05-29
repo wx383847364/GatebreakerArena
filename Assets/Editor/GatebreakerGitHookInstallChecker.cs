@@ -13,6 +13,12 @@ namespace Gatebreaker.Editor
     {
         private const string SessionKey = "Gatebreaker.GitHookInstallChecker.Reported";
         private const string ExpectedHooksPath = ".githooks";
+        private const string InstallBenefits =
+            "\n\n安装 Git hooks 后的好处：\n" +
+            "- 提交前自动检查 Unity GUID，降低场景、prefab 和 meta 引用损坏风险。\n" +
+            "- 自动校验八位编号提交标题，避免不规范提交进入历史。\n" +
+            "- merge 提交会自动生成规范标题和正文，减少合并提交格式错误。\n" +
+            "- 提交后自动同步提交序号登记，减少多人协作时编号冲突。";
 
         private static readonly string[] RequiredHooks =
         {
@@ -40,6 +46,31 @@ namespace Gatebreaker.Editor
 
         private static void CheckAndReport()
         {
+            CheckAndReport(autoInstall: true);
+        }
+
+        [MenuItem("Tools/Gatebreaker/Check Git Hooks")]
+        private static void CheckHooksFromMenu()
+        {
+            SessionState.SetBool(SessionKey, true);
+            CheckAndReport(autoInstall: false);
+        }
+
+        [MenuItem("Tools/Gatebreaker/Install Git Hooks")]
+        private static void InstallHooksFromMenu()
+        {
+            string repoRoot = Directory.GetParent(Application.dataPath)?.FullName;
+            if (string.IsNullOrEmpty(repoRoot))
+            {
+                Debug.LogError("Gatebreaker Git hooks 安装失败：无法定位仓库根目录。");
+                return;
+            }
+
+            InstallAndReport(repoRoot);
+        }
+
+        private static void CheckAndReport(bool autoInstall)
+        {
             string repoRoot = Directory.GetParent(Application.dataPath)?.FullName;
             if (string.IsNullOrEmpty(repoRoot))
             {
@@ -49,16 +80,37 @@ namespace Gatebreaker.Editor
             List<string> problems = CollectProblems(repoRoot);
             if (problems.Count == 0)
             {
+                if (!autoInstall)
+                {
+                    Debug.Log("Gatebreaker Git hooks 已正确安装，提交前会自动检查提交规范、merge 信息和 Unity GUID。");
+                }
+
                 return;
             }
 
-            string installScript = Path.Combine(repoRoot, "tools/repo_maintenance/install_git_hooks.sh");
+            if (autoInstall)
+            {
+                InstallAndReport(repoRoot);
+                return;
+            }
+
+            Debug.LogError(
+                "Gatebreaker Git hooks 未正确安装。\n\n" +
+                "当前问题：\n" +
+                string.Join("\n", problems) +
+                BuildInstallCommandMessage(repoRoot) +
+                InstallBenefits);
+        }
+
+        private static void InstallAndReport(string repoRoot)
+        {
+            string installScript = ResolveInstallScriptPath(repoRoot);
             string output = string.Empty;
             string error = string.Empty;
             bool installScriptExists = File.Exists(installScript);
             if (installScriptExists && RunInstallScript(repoRoot, installScript, out output, out error))
             {
-                problems = CollectProblems(repoRoot);
+                List<string> problems = CollectProblems(repoRoot);
                 if (problems.Count == 0)
                 {
                     Debug.Log("Gatebreaker Git hooks 已自动安装完成。");
@@ -69,7 +121,9 @@ namespace Gatebreaker.Editor
                     "Gatebreaker Git hooks 自动安装后仍未正确配置。\n" +
                     "当前问题：\n" +
                     string.Join("\n", problems) +
-                    BuildProcessOutput(output, error));
+                    BuildProcessOutput(output, error) +
+                    BuildInstallCommandMessage(repoRoot) +
+                    InstallBenefits);
                 return;
             }
 
@@ -77,14 +131,26 @@ namespace Gatebreaker.Editor
                 "Gatebreaker Git hooks 未正确安装。\n" +
                 "Unity 启动时已尝试自动安装，但安装未完成。\n\n" +
                 "当前问题：\n" +
-                string.Join("\n", problems) +
+                string.Join("\n", CollectProblems(repoRoot)) +
                 BuildMissingInstallScriptMessage(installScript, installScriptExists) +
-                BuildProcessOutput(output, error));
+                BuildProcessOutput(output, error) +
+                BuildInstallCommandMessage(repoRoot) +
+                InstallBenefits);
         }
 
         private static List<string> CollectProblems(string repoRoot)
         {
             var problems = new List<string>();
+            if (!CanRunCommand("git", "--version", 2000))
+            {
+                problems.Add("- 未找到 git 命令；请安装 Git，并确保 Unity/GitHub Desktop 启动环境能访问 git。");
+            }
+
+            if (!HasPython3Command())
+            {
+                problems.Add("- 未找到 Python 3.8+；请安装 Python，并确保 python3、python 或 py -3 至少一个可用。");
+            }
+
             string hooksPath = ReadGitConfig(repoRoot, "core.hooksPath");
             if (!string.Equals(hooksPath, ExpectedHooksPath, StringComparison.Ordinal))
             {
@@ -92,6 +158,12 @@ namespace Gatebreaker.Editor
             }
 
             string hooksDir = Path.Combine(repoRoot, ExpectedHooksPath);
+            string commonPath = Path.Combine(hooksDir, "_common");
+            if (!File.Exists(commonPath))
+            {
+                problems.Add("- 缺少 .githooks/_common");
+            }
+
             for (int i = 0; i < RequiredHooks.Length; i++)
             {
                 string hookPath = Path.Combine(hooksDir, RequiredHooks[i]);
@@ -108,6 +180,14 @@ namespace Gatebreaker.Editor
             }
 
             return problems;
+        }
+
+        private static string ResolveInstallScriptPath(string repoRoot)
+        {
+            string scriptName = IsWindowsPlatform()
+                ? "install_git_hooks.cmd"
+                : "install_git_hooks.sh";
+            return Path.Combine(repoRoot, "tools/repo_maintenance", scriptName);
         }
 
         private static string ReadGitConfig(string repoRoot, string key)
@@ -160,10 +240,12 @@ namespace Gatebreaker.Editor
         {
             output = string.Empty;
             error = string.Empty;
-            string bashPath = ResolveBashPath();
-            if (string.IsNullOrEmpty(bashPath))
+            string executable = ResolveInstallerExecutable();
+            if (string.IsNullOrEmpty(executable))
             {
-                error = "未找到 bash，无法自动执行 Git hooks 安装脚本。";
+                error = IsWindowsPlatform()
+                    ? "未找到 cmd.exe，无法自动执行 Windows Git hooks 安装脚本。"
+                    : "未找到 bash，无法自动执行 Git hooks 安装脚本。";
                 return false;
             }
 
@@ -171,8 +253,8 @@ namespace Gatebreaker.Editor
             {
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = bashPath,
-                    Arguments = "\"" + installScript + "\"",
+                    FileName = executable,
+                    Arguments = BuildInstallerArguments(installScript),
                     WorkingDirectory = repoRoot,
                     CreateNoWindow = true,
                     UseShellExecute = false,
@@ -184,7 +266,7 @@ namespace Gatebreaker.Editor
                 {
                     if (process == null)
                     {
-                        error = "无法启动 bash。";
+                        error = "无法启动安装脚本。";
                         return false;
                     }
 
@@ -225,10 +307,88 @@ namespace Gatebreaker.Editor
             return "bash";
         }
 
+        private static string ResolveInstallerExecutable()
+        {
+            if (IsWindowsPlatform())
+            {
+                string comSpec = Environment.GetEnvironmentVariable("ComSpec");
+                return string.IsNullOrEmpty(comSpec) ? "cmd.exe" : comSpec;
+            }
+
+            return ResolveBashPath();
+        }
+
+        private static string BuildInstallerArguments(string installScript)
+        {
+            return IsWindowsPlatform()
+                ? "/c \"\"" + installScript + "\"\""
+                : "\"" + installScript + "\"";
+        }
+
+        private static bool IsWindowsPlatform()
+        {
+            PlatformID platform = Environment.OSVersion.Platform;
+            return platform == PlatformID.Win32NT ||
+                   platform == PlatformID.Win32S ||
+                   platform == PlatformID.Win32Windows ||
+                   platform == PlatformID.WinCE;
+        }
+
         private static bool IsUnixLikePlatform()
         {
             PlatformID platform = Environment.OSVersion.Platform;
             return platform == PlatformID.MacOSX || platform == PlatformID.Unix;
+        }
+
+        private static bool HasPython3Command()
+        {
+            return CanRunCommand("python3", "-c \"import sys; raise SystemExit(sys.version_info < (3, 8))\"", 3000) ||
+                   CanRunCommand("python", "-c \"import sys; raise SystemExit(sys.version_info < (3, 8))\"", 3000) ||
+                   CanRunCommand("py", "-3 -c \"import sys; raise SystemExit(sys.version_info < (3, 8))\"", 3000);
+        }
+
+        private static bool CanRunCommand(string fileName, string arguments, int timeoutMilliseconds)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+
+                using (Process process = Process.Start(startInfo))
+                {
+                    if (process == null)
+                    {
+                        return false;
+                    }
+
+                    if (!process.WaitForExit(timeoutMilliseconds))
+                    {
+                        try
+                        {
+                            process.Kill();
+                        }
+                        catch (Exception)
+                        {
+                            // Ignore cleanup failures; the caller only needs a boolean result.
+                        }
+
+                        return false;
+                    }
+
+                    return process.ExitCode == 0;
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         private static bool IsExecutableFile(string path)
@@ -280,6 +440,17 @@ namespace Gatebreaker.Editor
             return installScriptExists
                 ? string.Empty
                 : "\n\n未找到自动安装脚本：\n" + installScript;
+        }
+
+        private static string BuildInstallCommandMessage(string repoRoot)
+        {
+            string command = IsWindowsPlatform()
+                ? "tools\\repo_maintenance\\install_git_hooks.cmd"
+                : "bash tools/repo_maintenance/install_git_hooks.sh";
+            return "\n\n请在仓库根目录执行：\n" +
+                   repoRoot +
+                   "\n" +
+                   command;
         }
 
         private static string BuildProcessOutput(string output, string error)
