@@ -377,12 +377,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _skillButton: {fileID: 1856915795}
   _ballCountText: {fileID: 1270092435}
+  _movementPad: {fileID: 1827568083}
+  _movementHandle: {fileID: 1355408912}
   _hudRoot: {fileID: 0}
   _hudTitleText: {fileID: 0}
   _hudStatusText: {fileID: 0}
   _hudScoreText: {fileID: 0}
   _hudServeText: {fileID: 0}
   _hudBallText: {fileID: 0}
+  _timeText: {fileID: 1310308971}
   _playerScoreTexts:
   - {fileID: 741093736}
   - {fileID: 1848800883}
@@ -391,10 +394,20 @@ MonoBehaviour:
   - {fileID: 1242535690}
   - {fileID: 956048238}
   - {fileID: 355727442}
-  _resultRoot: {fileID: 0}
-  _resultTitleText: {fileID: 0}
+  _resultRoot: {fileID: 1247873393}
+  _resultTitleText: {fileID: 1298076979}
   _resultBodyText: {fileID: 0}
   _resultScoreText: {fileID: 0}
+  _resultRankLabelTexts:
+  - {fileID: 1683914603}
+  - {fileID: 1116665179}
+  - {fileID: 1004824943}
+  _resultRankNameTexts:
+  - {fileID: 2095701658}
+  - {fileID: 1754801695}
+  - {fileID: 1326328556}
+  _resultRestartButton: {fileID: 784024756}
+  _resultBackButton: {fileID: 1617513143}
   _gmRoot: {fileID: 0}
   _gmHitOffsetSlider: {fileID: 0}
   _gmHitOffsetValueText: {fileID: 0}

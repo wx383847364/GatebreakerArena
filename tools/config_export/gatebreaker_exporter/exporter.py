@@ -85,7 +85,7 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         return
 
     required_fields = {
-        "DT_ModeRule": ("ModeId", "MatchDuration", "InitialBallsInMatch", "MaxBallsInMatch", "InitialServeAmmo", "MaxServeAmmo", "MaxOwnedBallsInField"),
+        "DT_ModeRule": ("ModeId", "InitialBallsInMatch", "MaxBallsInMatch", "InitialServeAmmo", "MaxServeAmmo", "MaxOwnedBallsInField"),
         "DT_BallRule": ("BallTypeId", "InitialSpeed", "MaxSpeed", "SpeedGainOnPaddleHit", "MinVerticalVelocity"),
         "DT_AIRule": ("AILevelId", "ReactionDelay", "ServeDecisionInterval", "AggressionWeight", "DefenseWeight"),
         "DT_MapRule": ("MapId", "SupportedPlayerCount", "SpawnLayoutType"),
@@ -94,6 +94,41 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         for field in required_fields[table_name]:
             if field not in row:
                 errors.append(f"{table_name}[{index}]: missing required field {field}.")
+        if table_name == "DT_ModeRule":
+            _normalize_mode_time_fields(row, index, errors)
+
+
+def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    has_time = _has_value(row, "Time")
+    has_match_duration = _has_value(row, "MatchDuration")
+    if not has_time and not has_match_duration:
+        errors.append(f"DT_ModeRule[{index}]: missing required field Time.")
+        return
+
+    if has_time and not has_match_duration:
+        row["MatchDuration"] = row["Time"]
+        return
+
+    if has_match_duration and not has_time:
+        row["Time"] = row["MatchDuration"]
+        return
+
+    if _normalize_number(row["Time"]) != _normalize_number(row["MatchDuration"]):
+        errors.append(f"DT_ModeRule[{index}]: Time and MatchDuration must match.")
+
+
+def _has_value(row: dict[str, Any], field: str) -> bool:
+    return field in row and row[field] is not None
+
+
+def _normalize_number(value: Any) -> Any:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if number.is_integer():
+        return int(number)
+    return number
 
 
 def _default_rows(table_name: str) -> list[dict[str, Any]]:
@@ -102,7 +137,8 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
             {
                 "ModeId": "PVE_STANDARD",
                 "ModeName": "PVE标准",
-                "MatchDuration": 150,
+                "Time": 60,
+                "MatchDuration": 60,
                 "InitialBallsInMatch": 1,
                 "MaxBallsInMatch": 4,
                 "BaseServeCooldown": 6.0,
@@ -124,7 +160,8 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
             {
                 "ModeId": "PVP_FFA",
                 "ModeName": "PVP乱斗",
-                "MatchDuration": 150,
+                "Time": 60,
+                "MatchDuration": 60,
                 "InitialBallsInMatch": 1,
                 "MaxBallsInMatch": 4,
                 "BaseServeCooldown": 6.0,
@@ -146,7 +183,8 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
             {
                 "ModeId": "PVP_TEAM",
                 "ModeName": "PVP组队乱斗",
-                "MatchDuration": 180,
+                "Time": 60,
+                "MatchDuration": 60,
                 "InitialBallsInMatch": 1,
                 "MaxBallsInMatch": 4,
                 "BaseServeCooldown": 6.5,

@@ -175,18 +175,25 @@ namespace App.Shared.Contracts
     {
         UnityEngine.Object SkillButtonObject { get; }
         UnityEngine.Object BallCountTextObject { get; }
+        UnityEngine.Object MovementPadObject { get; }
+        UnityEngine.Object MovementHandleObject { get; }
         UnityEngine.Object HudRootObject { get; }
         UnityEngine.Object HudTitleTextObject { get; }
         UnityEngine.Object HudStatusTextObject { get; }
         UnityEngine.Object HudScoreTextObject { get; }
         UnityEngine.Object HudServeTextObject { get; }
         UnityEngine.Object HudBallTextObject { get; }
+        UnityEngine.Object TimeTextObject { get; }
         UnityEngine.Object[] PlayerScoreTextObjects { get; }
         UnityEngine.Object[] PlayerHitTextObjects { get; }
         UnityEngine.Object ResultRootObject { get; }
         UnityEngine.Object ResultTitleTextObject { get; }
         UnityEngine.Object ResultBodyTextObject { get; }
         UnityEngine.Object ResultScoreTextObject { get; }
+        UnityEngine.Object[] ResultRankLabelTextObjects { get; }
+        UnityEngine.Object[] ResultRankNameTextObjects { get; }
+        UnityEngine.Object ResultRestartButtonObject { get; }
+        UnityEngine.Object ResultBackButtonObject { get; }
         UnityEngine.Object GmRootObject { get; }
         UnityEngine.Object GmHitOffsetSliderObject { get; }
         UnityEngine.Object GmHitOffsetValueTextObject { get; }

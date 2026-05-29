@@ -8,6 +8,7 @@ using App.HotUpdate.GatebreakerArena.Paddle;
 using App.Shared.Contracts;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace App.HotUpdate.GatebreakerArena.UI
@@ -24,9 +25,12 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public Action AcknowledgeLanStartRequested { get; set; }
         public Action<string> LanPlayerNameChanged { get; set; }
         public Action<string> LanRoomCodeChanged { get; set; }
+        public Action<float> MoveAxisChanged { get; set; }
         public Action<int> HitOffsetInfluenceChanged { get; set; }
         public Action<int> PaddleVelocityInfluenceChanged { get; set; }
         public Action<int> MinimumOutwardShareChanged { get; set; }
+        public Action RestartMatchRequested { get; set; }
+        public Action ResultBackRequested { get; set; }
         public string InitialLanPlayerName { get; set; }
         public string InitialLanRoomCode { get; set; }
     }
@@ -36,6 +40,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private readonly List<ButtonListener> _buttonListeners = new List<ButtonListener>();
         private readonly List<InputListener> _inputListeners = new List<InputListener>();
         private readonly List<SliderListener> _sliderListeners = new List<SliderListener>();
+        private readonly List<EventTriggerListener> _eventTriggerListeners = new List<EventTriggerListener>();
         private Button _skillButton;
         private Button _lanCreateButton;
         private Button _lanDiscoverButton;
@@ -46,17 +51,26 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private Button _lanAcknowledgeStartButton;
         private TMP_InputField _lanPlayerNameInput;
         private TMP_InputField _lanRoomCodeInput;
+        private RectTransform _movementPad;
+        private RectTransform _movementHandle;
+        private Vector2 _movementHandleRestPosition;
+        private bool _hasMovementHandleRestPosition;
         private TMP_Text _ballCountText;
         private TMP_Text _hudTitleText;
         private TMP_Text _hudStatusText;
         private TMP_Text _hudScoreText;
         private TMP_Text _hudServeText;
         private TMP_Text _hudBallText;
+        private TMP_Text _timeText;
         private TMP_Text[] _playerScoreTexts = Array.Empty<TMP_Text>();
         private TMP_Text[] _playerHitTexts = Array.Empty<TMP_Text>();
         private TMP_Text _resultTitleText;
         private TMP_Text _resultBodyText;
         private TMP_Text _resultScoreText;
+        private TMP_Text[] _resultRankLabelTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _resultRankNameTexts = Array.Empty<TMP_Text>();
+        private Button _resultRestartButton;
+        private Button _resultBackButton;
         private TMP_Text _gmHitOffsetValueText;
         private TMP_Text _gmPaddleVelocityValueText;
         private TMP_Text _gmMinimumOutwardValueText;
@@ -128,18 +142,31 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             _skillButton = Require<Button>(binding.SkillButtonObject, nameof(binding.SkillButtonObject));
             _ballCountText = Require<TMP_Text>(binding.BallCountTextObject, nameof(binding.BallCountTextObject));
+            _movementPad = Require<RectTransform>(binding.MovementPadObject, nameof(binding.MovementPadObject));
+            _movementHandle = Require<RectTransform>(binding.MovementHandleObject, nameof(binding.MovementHandleObject));
+            if (_movementHandle != null)
+            {
+                _movementHandleRestPosition = _movementHandle.anchoredPosition;
+                _hasMovementHandleRestPosition = true;
+            }
+
             _hudRoot = RequireGameObject(binding.HudRootObject, nameof(binding.HudRootObject));
             _hudTitleText = Require<TMP_Text>(binding.HudTitleTextObject, nameof(binding.HudTitleTextObject));
             _hudStatusText = Require<TMP_Text>(binding.HudStatusTextObject, nameof(binding.HudStatusTextObject));
             _hudScoreText = Require<TMP_Text>(binding.HudScoreTextObject, nameof(binding.HudScoreTextObject));
             _hudServeText = Require<TMP_Text>(binding.HudServeTextObject, nameof(binding.HudServeTextObject));
             _hudBallText = Require<TMP_Text>(binding.HudBallTextObject, nameof(binding.HudBallTextObject));
+            _timeText = Require<TMP_Text>(binding.TimeTextObject, nameof(binding.TimeTextObject));
             _playerScoreTexts = RequireTextArray(binding.PlayerScoreTextObjects, nameof(binding.PlayerScoreTextObjects));
             _playerHitTexts = RequireTextArray(binding.PlayerHitTextObjects, nameof(binding.PlayerHitTextObjects));
             _resultRoot = RequireGameObject(binding.ResultRootObject, nameof(binding.ResultRootObject));
             _resultTitleText = Require<TMP_Text>(binding.ResultTitleTextObject, nameof(binding.ResultTitleTextObject));
-            _resultBodyText = Require<TMP_Text>(binding.ResultBodyTextObject, nameof(binding.ResultBodyTextObject));
-            _resultScoreText = Require<TMP_Text>(binding.ResultScoreTextObject, nameof(binding.ResultScoreTextObject));
+            _resultBodyText = Optional<TMP_Text>(binding.ResultBodyTextObject);
+            _resultScoreText = Optional<TMP_Text>(binding.ResultScoreTextObject);
+            _resultRankLabelTexts = RequireTextArray(binding.ResultRankLabelTextObjects, nameof(binding.ResultRankLabelTextObjects));
+            _resultRankNameTexts = RequireTextArray(binding.ResultRankNameTextObjects, nameof(binding.ResultRankNameTextObjects));
+            _resultRestartButton = Require<Button>(binding.ResultRestartButtonObject, nameof(binding.ResultRestartButtonObject));
+            _resultBackButton = Require<Button>(binding.ResultBackButtonObject, nameof(binding.ResultBackButtonObject));
             _gmRoot = RequireGameObject(binding.GmRootObject, nameof(binding.GmRootObject));
             _gmHitOffsetSlider = Require<Slider>(binding.GmHitOffsetSliderObject, nameof(binding.GmHitOffsetSliderObject));
             _gmHitOffsetValueText = Require<TMP_Text>(binding.GmHitOffsetValueTextObject, nameof(binding.GmHitOffsetValueTextObject));
@@ -172,6 +199,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddButtonListener(_lanStartButton, () => _callbacks.StartLanLoadingRequested?.Invoke());
             AddButtonListener(_lanLeaveButton, () => _callbacks.LeaveLanRoomRequested?.Invoke());
             AddButtonListener(_lanAcknowledgeStartButton, () => _callbacks.AcknowledgeLanStartRequested?.Invoke());
+            AddButtonListener(_resultRestartButton, () => _callbacks.RestartMatchRequested?.Invoke());
+            AddButtonListener(_resultBackButton, () => _callbacks.ResultBackRequested?.Invoke());
+            AddMovementListeners(_movementPad);
+            AddMovementListeners(_movementHandle);
             AddInputListener(_lanPlayerNameInput, _callbacks.InitialLanPlayerName, value => _callbacks.LanPlayerNameChanged?.Invoke(value));
             AddInputListener(_lanRoomCodeInput, _callbacks.InitialLanRoomCode, value => _callbacks.LanRoomCodeChanged?.Invoke(value));
             ConfigureSlider(
@@ -206,11 +237,13 @@ namespace App.HotUpdate.GatebreakerArena.UI
             UpdateBallCount(snapshot);
             if (snapshot == null)
             {
+                SetText(_timeText, FormatTime(0f));
                 return;
             }
 
             SetText(_hudTitleText, "Gatebreaker Arena 原型");
             SetText(_hudStatusText, $"阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}");
+            SetText(_timeText, FormatTime(snapshot.RemainingTime));
             SetText(_hudScoreText, $"比分：{FormatScoreLine(snapshot)}");
             UpdatePlayerScorePanel(snapshot);
             SetText(
@@ -255,6 +288,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             SetText(_resultTitleText, "比赛结束");
             SetText(_resultBodyText, BuildWinnerText(snapshot));
             SetText(_resultScoreText, BuildScoreRows(snapshot) + "\n按 R 重新开始");
+            UpdateResultRanking(snapshot);
         }
 
         public void UpdateBounceTuning(PaddleBounceTuning tuning, MatchPhase phase)
@@ -334,6 +368,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             _sliderListeners.Clear();
+            for (int i = 0; i < _eventTriggerListeners.Count; i++)
+            {
+                EventTriggerListener listener = _eventTriggerListeners[i];
+                if (listener.Trigger != null && listener.Trigger.triggers != null)
+                {
+                    listener.Trigger.triggers.Remove(listener.Entry);
+                }
+            }
+
+            _eventTriggerListeners.Clear();
             _skillButton = null;
             _lanCreateButton = null;
             _lanDiscoverButton = null;
@@ -344,17 +388,26 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanAcknowledgeStartButton = null;
             _lanPlayerNameInput = null;
             _lanRoomCodeInput = null;
+            _movementPad = null;
+            _movementHandle = null;
+            _movementHandleRestPosition = Vector2.zero;
+            _hasMovementHandleRestPosition = false;
             _ballCountText = null;
             _hudTitleText = null;
             _hudStatusText = null;
             _hudScoreText = null;
             _hudServeText = null;
             _hudBallText = null;
+            _timeText = null;
             _playerScoreTexts = Array.Empty<TMP_Text>();
             _playerHitTexts = Array.Empty<TMP_Text>();
             _resultTitleText = null;
             _resultBodyText = null;
             _resultScoreText = null;
+            _resultRankLabelTexts = Array.Empty<TMP_Text>();
+            _resultRankNameTexts = Array.Empty<TMP_Text>();
+            _resultRestartButton = null;
+            _resultBackButton = null;
             _gmHitOffsetValueText = null;
             _gmPaddleVelocityValueText = null;
             _gmMinimumOutwardValueText = null;
@@ -387,6 +440,11 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             return value;
+        }
+
+        private static T Optional<T>(UnityEngine.Object source) where T : UnityEngine.Object
+        {
+            return source as T;
         }
 
         private GameObject RequireGameObject(UnityEngine.Object source, string bindingName)
@@ -466,6 +524,93 @@ namespace App.HotUpdate.GatebreakerArena.UI
             };
             slider.onValueChanged.AddListener(action);
             _sliderListeners.Add(new SliderListener(slider, action));
+        }
+
+        private void AddMovementListeners(RectTransform target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            AddEventTriggerListener(target, EventTriggerType.PointerDown, HandleMovementPointer);
+            AddEventTriggerListener(target, EventTriggerType.Drag, HandleMovementPointer);
+            AddEventTriggerListener(target, EventTriggerType.PointerUp, HandleMovementRelease);
+            AddEventTriggerListener(target, EventTriggerType.EndDrag, HandleMovementRelease);
+        }
+
+        private void AddEventTriggerListener(
+            Component target,
+            EventTriggerType eventType,
+            UnityEngine.Events.UnityAction<BaseEventData> action)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            EventTrigger trigger = target.GetComponent<EventTrigger>() ?? target.gameObject.AddComponent<EventTrigger>();
+            if (trigger.triggers == null)
+            {
+                trigger.triggers = new List<EventTrigger.Entry>();
+            }
+
+            var entry = new EventTrigger.Entry { eventID = eventType };
+            entry.callback.AddListener(action);
+            trigger.triggers.Add(entry);
+            _eventTriggerListeners.Add(new EventTriggerListener(trigger, entry));
+        }
+
+        private void HandleMovementPointer(BaseEventData eventData)
+        {
+            if (_movementPad == null)
+            {
+                SetMoveAxis(0f);
+                return;
+            }
+
+            var pointerEvent = eventData as PointerEventData;
+            if (pointerEvent == null)
+            {
+                return;
+            }
+
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    _movementPad,
+                    pointerEvent.position,
+                    pointerEvent.pressEventCamera,
+                    out Vector2 localPoint))
+            {
+                return;
+            }
+
+            float halfWidth = Mathf.Max(1f, _movementPad.rect.width * 0.5f);
+            SetMoveAxis(Mathf.Clamp(localPoint.x / halfWidth, -1f, 1f));
+        }
+
+        private void HandleMovementRelease(BaseEventData eventData)
+        {
+            SetMoveAxis(0f);
+        }
+
+        private void SetMoveAxis(float axis)
+        {
+            float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
+            _callbacks?.MoveAxisChanged?.Invoke(clampedAxis);
+            UpdateMovementHandle(clampedAxis);
+        }
+
+        private void UpdateMovementHandle(float axis)
+        {
+            if (_movementHandle == null || !_hasMovementHandleRestPosition)
+            {
+                return;
+            }
+
+            float padWidth = _movementPad != null ? _movementPad.rect.width : 0f;
+            float handleWidth = _movementHandle.rect.width * Mathf.Abs(_movementHandle.localScale.x);
+            float maxOffset = Mathf.Max(0f, (padWidth - handleWidth) * 0.5f);
+            _movementHandle.anchoredPosition = _movementHandleRestPosition + Vector2.right * maxOffset * axis;
         }
 
         private static void SetSliderValue(Slider slider, int value)
@@ -641,6 +786,54 @@ namespace App.HotUpdate.GatebreakerArena.UI
             return string.Join("\n", rows);
         }
 
+        private void UpdateResultRanking(GatebreakerHudSnapshot snapshot)
+        {
+            List<PlayerScoreSnapshot> rows = BuildResultRankRows(snapshot?.PlayerScores);
+            int rowCount = Math.Max(_resultRankLabelTexts.Length, _resultRankNameTexts.Length);
+            for (int i = 0; i < rowCount; i++)
+            {
+                if (i < rows.Count)
+                {
+                    PlayerScoreSnapshot score = rows[i];
+                    SetTextAt(_resultRankLabelTexts, i, $"No.{i + 1}:");
+                    SetTextAt(_resultRankNameTexts, i, FormatResultPlayer(score, snapshot));
+                }
+                else
+                {
+                    SetTextAt(_resultRankLabelTexts, i, $"No.{i + 1}:");
+                    SetTextAt(_resultRankNameTexts, i, string.Empty);
+                }
+            }
+        }
+
+        private static List<PlayerScoreSnapshot> BuildResultRankRows(IReadOnlyList<PlayerScoreSnapshot> playerScores)
+        {
+            var rows = new List<PlayerScoreSnapshot>();
+            if (playerScores == null)
+            {
+                return rows;
+            }
+
+            for (int i = 0; i < playerScores.Count; i++)
+            {
+                PlayerScoreSnapshot score = playerScores[i];
+                if (!score.IsDisabled)
+                {
+                    rows.Add(score);
+                }
+            }
+
+            return rows;
+        }
+
+        private static string FormatResultPlayer(PlayerScoreSnapshot score, GatebreakerHudSnapshot snapshot)
+        {
+            string winnerMarker = snapshot != null && snapshot.HasWinner && snapshot.WinnerPlayerId == score.PlayerId
+                ? "  WIN"
+                : string.Empty;
+            return $"Player{score.PlayerId}  SCORE {score.Score}  HIT {FormatHitScore(score.HitScore)}{winnerMarker}";
+        }
+
         private static string BuildWinnerText(GatebreakerHudSnapshot snapshot)
         {
             if (!snapshot.HasWinner || snapshot.WinnerPlayerId <= 0)
@@ -767,6 +960,18 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             public Slider Slider { get; }
             public UnityEngine.Events.UnityAction<float> Action { get; }
+        }
+
+        private readonly struct EventTriggerListener
+        {
+            public EventTriggerListener(EventTrigger trigger, EventTrigger.Entry entry)
+            {
+                Trigger = trigger;
+                Entry = entry;
+            }
+
+            public EventTrigger Trigger { get; }
+            public EventTrigger.Entry Entry { get; }
         }
     }
 }

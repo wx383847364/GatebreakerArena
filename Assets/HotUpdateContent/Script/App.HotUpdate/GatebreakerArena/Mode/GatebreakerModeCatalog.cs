@@ -28,9 +28,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             return new GatebreakerModeCatalog(
                 new[]
                 {
-                    CreateMode("PVE_STANDARD", "PVE标准", 150, 1, 4, 6.0f, 1, 2, 1, ScoreRuleType.AddScore, 1.05f, 0.95f),
-                    CreateMode("PVP_FFA", "PVP乱斗", 150, 1, 4, 6.0f, 1, 2, 1, ScoreRuleType.AddScore, 1.10f, 0.90f),
-                    CreateMode("PVP_TEAM", "PVP组队乱斗", 180, 1, 4, 6.5f, 1, 2, 1, ScoreRuleType.TeamScore, 1.10f, 0.92f),
+                    CreateMode("PVE_STANDARD", "PVE标准", 60, 1, 4, 6.0f, 1, 2, 1, ScoreRuleType.AddScore, 1.05f, 0.95f),
+                    CreateMode("PVP_FFA", "PVP乱斗", 60, 1, 4, 6.0f, 1, 2, 1, ScoreRuleType.AddScore, 1.10f, 0.90f),
+                    CreateMode("PVP_TEAM", "PVP组队乱斗", 60, 1, 4, 6.5f, 1, 2, 1, ScoreRuleType.TeamScore, 1.10f, 0.92f),
                 },
                 new[]
                 {
@@ -153,6 +153,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             {
                 ModeId = id,
                 ModeName = name,
+                Time = duration,
                 MatchDuration = duration,
                 InitialBallsInMatch = initialBalls,
                 MaxBallsInMatch = maxBalls,

@@ -28,7 +28,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(4, runtime.Players.Count);
             Assert.AreEqual(1, runtime.Balls.Count);
             Assert.AreEqual(0, runtime.FindPlayer(1).ServeResource.OwnedBallsInField);
-            Assert.AreEqual(150f, runtime.RemainingTime);
+            Assert.AreEqual(60f, runtime.RemainingTime);
         }
 
         [Test]

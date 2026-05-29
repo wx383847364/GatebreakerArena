@@ -7,6 +7,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
     {
         public string ModeId { get; set; }
         public string ModeName { get; set; }
+        public int Time { get; set; }
         public int MatchDuration { get; set; }
         public int InitialBallsInMatch { get; set; }
         public int MaxBallsInMatch { get; set; }
@@ -25,6 +26,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int FinalPhaseStartTime { get; set; }
         public float FinalPhaseBallSpeedScale { get; set; }
         public float FinalPhaseCooldownScale { get; set; }
+        public int CountdownSeconds => Time > 0 ? Time : MatchDuration;
     }
 
     public sealed class BallRuleDefinition

@@ -103,6 +103,7 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.AreEqual(hud.CurrentServeAmmo.ToString(), ballCountText.text);
                 IGatebreakerArenaSceneUiBinding sceneBinding = GatebreakerArenaSceneUiBindingRegistry.Current;
                 Assert.IsNotNull(sceneBinding, "BootstrapScene should register the scene UI binding bridge.");
+                AssertCountdownAndMovementBindings(sceneBinding, hud);
                 AssertPlayerScorePanelTexts(sceneBinding, hud);
 
                 int ballCountBeforeClick = context.MatchRuntime.Balls.Count;
@@ -168,6 +169,19 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.AreEqual(score.Score.ToString(), scoreText.text, $"playerId={score.PlayerId}");
                 Assert.AreEqual(score.HitScore.ToString(), hitText.text, $"playerId={score.PlayerId}");
             }
+        }
+
+        private static void AssertCountdownAndMovementBindings(
+            IGatebreakerArenaSceneUiBinding sceneBinding,
+            App.HotUpdate.GatebreakerArena.UI.GatebreakerHudSnapshot hud)
+        {
+            TMP_Text timeText = sceneBinding.TimeTextObject as TMP_Text;
+            Assert.IsNotNull(timeText, "Time binding should be a TMP_Text.");
+            Assert.AreNotEqual("59:59", timeText.text, "Time should be driven by the runtime countdown, not the prefab placeholder.");
+            Assert.LessOrEqual(hud.RemainingTime, 60f);
+            Assert.Greater(hud.RemainingTime, 55f);
+            Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementPadObject, "MovementPad should bind the green control background.");
+            Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementHandleObject, "MovementHandle should bind the red joystick handle.");
         }
 
         private static List<PlayerScoreSnapshot> BuildVisiblePlayerScores(

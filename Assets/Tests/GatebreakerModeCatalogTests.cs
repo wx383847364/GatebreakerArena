@@ -17,7 +17,8 @@ namespace Gatebreaker.Tests
             MapRuleDefinition map = catalog.GetMap("MAP_ARENA_01");
             EffectiveMatchRule effective = catalog.BuildEffectiveRule("PVE_STANDARD", "MAP_ARENA_01");
 
-            Assert.AreEqual(150, pve.MatchDuration);
+            Assert.AreEqual(60, pve.Time);
+            Assert.AreEqual(60, pve.MatchDuration);
             Assert.AreEqual(1, pve.InitialBallsInMatch);
             Assert.AreEqual(4, pve.MaxBallsInMatch);
             Assert.AreEqual(1, pve.InitialServeAmmo);

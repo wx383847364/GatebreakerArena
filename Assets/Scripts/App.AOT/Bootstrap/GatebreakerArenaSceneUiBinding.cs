@@ -12,18 +12,25 @@ namespace App.AOT.Bootstrap
     {
         [SerializeField] private Button _skillButton;
         [SerializeField] private TMP_Text _ballCountText;
+        [SerializeField] private RectTransform _movementPad;
+        [SerializeField] private RectTransform _movementHandle;
         [SerializeField] private GameObject _hudRoot;
         [SerializeField] private TMP_Text _hudTitleText;
         [SerializeField] private TMP_Text _hudStatusText;
         [SerializeField] private TMP_Text _hudScoreText;
         [SerializeField] private TMP_Text _hudServeText;
         [SerializeField] private TMP_Text _hudBallText;
+        [SerializeField] private TMP_Text _timeText;
         [SerializeField] private TMP_Text[] _playerScoreTexts;
         [SerializeField] private TMP_Text[] _playerHitTexts;
         [SerializeField] private GameObject _resultRoot;
         [SerializeField] private TMP_Text _resultTitleText;
         [SerializeField] private TMP_Text _resultBodyText;
         [SerializeField] private TMP_Text _resultScoreText;
+        [SerializeField] private TMP_Text[] _resultRankLabelTexts;
+        [SerializeField] private TMP_Text[] _resultRankNameTexts;
+        [SerializeField] private Button _resultRestartButton;
+        [SerializeField] private Button _resultBackButton;
         [SerializeField] private GameObject _gmRoot;
         [SerializeField] private Slider _gmHitOffsetSlider;
         [SerializeField] private TMP_Text _gmHitOffsetValueText;
@@ -50,18 +57,25 @@ namespace App.AOT.Bootstrap
 
         public Object SkillButtonObject => _skillButton;
         public Object BallCountTextObject => _ballCountText;
+        public Object MovementPadObject => _movementPad;
+        public Object MovementHandleObject => _movementHandle;
         public Object HudRootObject => _hudRoot;
         public Object HudTitleTextObject => _hudTitleText;
         public Object HudStatusTextObject => _hudStatusText;
         public Object HudScoreTextObject => _hudScoreText;
         public Object HudServeTextObject => _hudServeText;
         public Object HudBallTextObject => _hudBallText;
+        public Object TimeTextObject => _timeText;
         public Object[] PlayerScoreTextObjects => _playerScoreTexts;
         public Object[] PlayerHitTextObjects => _playerHitTexts;
         public Object ResultRootObject => _resultRoot;
         public Object ResultTitleTextObject => _resultTitleText;
         public Object ResultBodyTextObject => _resultBodyText;
         public Object ResultScoreTextObject => _resultScoreText;
+        public Object[] ResultRankLabelTextObjects => _resultRankLabelTexts;
+        public Object[] ResultRankNameTextObjects => _resultRankNameTexts;
+        public Object ResultRestartButtonObject => _resultRestartButton;
+        public Object ResultBackButtonObject => _resultBackButton;
         public Object GmRootObject => _gmRoot;
         public Object GmHitOffsetSliderObject => _gmHitOffsetSlider;
         public Object GmHitOffsetValueTextObject => _gmHitOffsetValueText;
@@ -89,8 +103,17 @@ namespace App.AOT.Bootstrap
         public bool HasRequiredBindings =>
             _skillButton != null &&
             _ballCountText != null &&
+            _movementPad != null &&
+            _movementHandle != null &&
+            _timeText != null &&
             HasTextBindings(_playerScoreTexts) &&
-            HasTextBindings(_playerHitTexts);
+            HasTextBindings(_playerHitTexts) &&
+            _resultRoot != null &&
+            _resultTitleText != null &&
+            HasTextBindings(_resultRankLabelTexts) &&
+            HasTextBindings(_resultRankNameTexts) &&
+            _resultRestartButton != null &&
+            _resultBackButton != null;
 
         private void Awake()
         {

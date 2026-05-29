@@ -94,11 +94,13 @@ namespace App.HotUpdate.GatebreakerArena.Mode
 
         private static ModeRuleDefinition ReadMode(Dictionary<string, object> item)
         {
+            int time = ReadOptionalInt(item, "Time") ?? ReadInt(item, "MatchDuration");
             return new ModeRuleDefinition
             {
                 ModeId = ReadString(item, "ModeId"),
                 ModeName = ReadString(item, "ModeName"),
-                MatchDuration = ReadInt(item, "MatchDuration"),
+                Time = time,
+                MatchDuration = time,
                 InitialBallsInMatch = ReadInt(item, "InitialBallsInMatch"),
                 MaxBallsInMatch = ReadInt(item, "MaxBallsInMatch"),
                 BaseServeCooldown = ReadFloat(item, "BaseServeCooldown"),

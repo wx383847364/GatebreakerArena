@@ -165,7 +165,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 : activePlayerIds[0];
             ConfigHash = config.ConfigHash ?? string.Empty;
             TuningHash = config.TuningHash ?? string.Empty;
-            RemainingTime = EffectiveRule.Mode.MatchDuration;
+            RemainingTime = EffectiveRule.Mode.CountdownSeconds;
             Phase = MatchPhase.Playing;
             _hasWinner = false;
             _winnerPlayerId = 0;

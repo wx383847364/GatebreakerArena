@@ -2,7 +2,8 @@
   {
     "ModeId": "PVE_STANDARD",
     "ModeName": "PVE标准",
-    "MatchDuration": 150,
+    "Time": 60,
+    "MatchDuration": 60,
     "InitialBallsInMatch": 1,
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.0,
@@ -24,7 +25,8 @@
   {
     "ModeId": "PVP_FFA",
     "ModeName": "PVP乱斗",
-    "MatchDuration": 150,
+    "Time": 60,
+    "MatchDuration": 60,
     "InitialBallsInMatch": 1,
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.0,
@@ -46,7 +48,8 @@
   {
     "ModeId": "PVP_TEAM",
     "ModeName": "PVP组队乱斗",
-    "MatchDuration": 180,
+    "Time": 60,
+    "MatchDuration": 60,
     "InitialBallsInMatch": 1,
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.5,

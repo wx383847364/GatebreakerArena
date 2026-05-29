@@ -31,6 +31,8 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(ScoreRuleType.TeamScore, mode.ScoreRuleType);
             Assert.AreEqual(OvertimeRuleType.TimedScore, mode.OvertimeRuleType);
+            Assert.AreEqual(180, mode.Time);
+            Assert.AreEqual(180, mode.MatchDuration);
             Assert.AreEqual(9.25f, ball.InitialSpeed);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball02.prefab", ball.PrefabLocation);
             Assert.AreEqual(0.1f, ai.ReactionDelay);
@@ -94,6 +96,7 @@ namespace Gatebreaker.Tests
     {{
       ""ModeId"": ""PVP_TEAM"",
       ""ModeName"": ""Team"",
+      ""Time"": ""180"",
       ""MatchDuration"": ""180"",
       ""InitialBallsInMatch"": 2,
       ""MaxBallsInMatch"": 6,

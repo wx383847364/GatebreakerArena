@@ -79,6 +79,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private int _localPlayerId = DefaultLocalPlayerId;
         private bool _initialized;
         private bool _guiServePressed;
+        private float _guiMoveAxis;
         private ulong _lanClientInstanceId;
         private string _lanPlayerName = "Player";
         private string _lanRoomCodeInput = string.Empty;
@@ -152,13 +153,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            if (Input.GetKeyDown(KeyCode.R))
+            if (!IsLanPlaying() && Input.GetKeyDown(KeyCode.R))
             {
-                _runtime.StartLocalPrototype();
-                _runtime.SetLocalPlayer(_localPlayerId);
-                _lastServeBlockReason = ServeBlockReason.None;
-                _guiServePressed = false;
-                RebuildDebugCollisionOverlay();
+                RestartLocalPrototype();
             }
 
             if (IsLanPlaying())
@@ -1092,7 +1089,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _ballViewPools.Clear();
         }
 
-        private static float ReadMoveAxis()
+        private float ReadMoveAxis()
         {
             float moveAxis = 0f;
             if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
@@ -1105,6 +1102,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 moveAxis += 1f;
             }
 
+            moveAxis += _guiMoveAxis;
             return Mathf.Clamp(moveAxis, -1f, 1f);
         }
 
@@ -1125,6 +1123,27 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _guiServePressed = true;
         }
 
+        private void RestartLocalPrototype()
+        {
+            if (IsLanPlaying())
+            {
+                return;
+            }
+
+            _runtime?.StartLocalPrototype();
+            _runtime?.SetLocalPlayer(_localPlayerId);
+            _lastServeBlockReason = ServeBlockReason.None;
+            _guiServePressed = false;
+            _guiMoveAxis = 0f;
+            RebuildDebugCollisionOverlay();
+            RefreshBoundHud();
+        }
+
+        private void SetGuiMoveAxis(float moveAxis)
+        {
+            _guiMoveAxis = Mathf.Clamp(moveAxis, -1f, 1f);
+        }
+
         private GatebreakerArenaSceneUiCallbacks BuildSceneUiCallbacks()
         {
             return new GatebreakerArenaSceneUiCallbacks
@@ -1139,9 +1158,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 AcknowledgeLanStartRequested = AcknowledgeLanStart,
                 LanPlayerNameChanged = SetLanPlayerName,
                 LanRoomCodeChanged = SetLanRoomCode,
+                MoveAxisChanged = SetGuiMoveAxis,
                 HitOffsetInfluenceChanged = value => _runtime?.BounceTuning?.SetHitOffsetInfluenceValue(value),
                 PaddleVelocityInfluenceChanged = value => _runtime?.BounceTuning?.SetPaddleVelocityInfluenceValue(value),
                 MinimumOutwardShareChanged = value => _runtime?.BounceTuning?.SetMinimumOutwardShareValue(value),
+                RestartMatchRequested = RestartLocalPrototype,
+                ResultBackRequested = LeaveLanRoom,
                 InitialLanPlayerName = _lanPlayerName,
                 InitialLanRoomCode = _lanRoomCodeInput,
             };
