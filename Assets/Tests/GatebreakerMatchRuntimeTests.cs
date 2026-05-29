@@ -22,12 +22,15 @@ namespace Gatebreaker.Tests
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
 
-            runtime.StartLocalPrototype(aiCount: 3);
+            runtime.StartLocalPrototype();
 
             Assert.AreEqual(MatchPhase.Playing, runtime.Phase);
-            Assert.AreEqual(4, runtime.Players.Count);
+            Assert.AreEqual(3, runtime.Players.Count);
             Assert.AreEqual(1, runtime.Balls.Count);
             Assert.AreEqual(0, runtime.FindPlayer(1).ServeResource.OwnedBallsInField);
+            Assert.IsNotNull(runtime.FindPlayer(2));
+            Assert.IsNotNull(runtime.FindPlayer(3));
+            Assert.IsNull(runtime.FindPlayer(4));
             Assert.AreEqual(60f, runtime.RemainingTime);
         }
 
@@ -192,18 +195,22 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void FourSidePrototypePlacesSidePaddlesOnTheirOwnEdges()
+        public void LocalPrototypePlacesConfiguredThreePlayerSidesOnPosition01Position03Position05()
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
-            runtime.StartLocalPrototype(aiCount: 3);
+            runtime.StartLocalPrototype();
 
-            PlayerRuntimeState rightPlayer = runtime.FindPlayer(3);
-            PlayerRuntimeState leftPlayer = runtime.FindPlayer(4);
+            PlayerRuntimeState bottomPlayer = runtime.FindPlayer(1);
+            PlayerRuntimeState rightPlayer = runtime.FindPlayer(2);
+            PlayerRuntimeState leftPlayer = runtime.FindPlayer(3);
 
+            Assert.Greater(bottomPlayer.Paddle.Normal.y, 0f);
+            Assert.Less(bottomPlayer.Paddle.Position.y, 0f);
             Assert.Less(rightPlayer.Paddle.Normal.x, 0f);
             Assert.Greater(rightPlayer.Paddle.Position.x, 0f);
             Assert.Greater(leftPlayer.Paddle.Normal.x, 0f);
             Assert.Less(leftPlayer.Paddle.Position.x, 0f);
+            Assert.IsNull(runtime.FindPlayer(4));
         }
 
         [Test]
@@ -224,30 +231,30 @@ namespace Gatebreaker.Tests
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
 
-            runtime.StartLocalPrototype(aiCount: 3);
+            runtime.StartLocalPrototype();
 
             AssertPaddleAlignedWithSegment(runtime.FindPlayer(1).Paddle, runtime.Arena.BoundarySegments[5], runtime.Arena.PaddleInset);
             Assert.AreEqual(0.05f, runtime.FindPlayer(1).Paddle.Thickness, 0.001f);
-            Assert.IsTrue(runtime.FindPlayer(2).IsDisabled);
-            Assert.IsNull(runtime.FindPlayer(2).Paddle);
-            AssertPaddleAlignedWithSegment(runtime.FindPlayer(3).Paddle, runtime.Arena.BoundarySegments[1], runtime.Arena.PaddleInset);
-            AssertPaddleAlignedWithSegment(runtime.FindPlayer(4).Paddle, runtime.Arena.BoundarySegments[3], runtime.Arena.PaddleInset);
+            AssertPaddleAlignedWithSegment(runtime.FindPlayer(2).Paddle, runtime.Arena.BoundarySegments[1], runtime.Arena.PaddleInset);
+            AssertPaddleAlignedWithSegment(runtime.FindPlayer(3).Paddle, runtime.Arena.BoundarySegments[3], runtime.Arena.PaddleInset);
+            Assert.IsNull(runtime.FindPlayer(4));
         }
 
         [Test]
-        public void Scene3v3BoundaryKeepsExistingGoalOwnership()
+        public void Scene3v3BoundaryUsesConfiguredPlayerSideBindings()
         {
-            ArenaGeometry arena = ArenaGeometry.CreateScene3v3();
+            MapRuleDefinition map = GatebreakerModeCatalog.CreateDefault().GetMap("MAP_ARENA_01");
+            ArenaGeometry arena = ArenaGeometry.CreateForMap(map, new[] { 1, 2, 3 });
             ArenaBoundarySegment bottomGoal = arena.BoundarySegments[5];
             ArenaBoundarySegment rightGoal = arena.BoundarySegments[1];
             ArenaBoundarySegment leftGoal = arena.BoundarySegments[3];
 
-            Assert.IsTrue(arena.TryGetGoalOwner(bottomGoal.GoalCenter - bottomGoal.InwardNormal * 0.2f, 4, SpawnLayoutType.FourSide, out int bottomOwner));
+            Assert.IsTrue(arena.TryGetGoalOwner(bottomGoal.GoalCenter - bottomGoal.InwardNormal * 0.2f, 3, SpawnLayoutType.FourSide, out int bottomOwner));
             Assert.AreEqual(0, bottomOwner);
-            Assert.IsTrue(arena.TryGetGoalOwner(rightGoal.GoalCenter - rightGoal.InwardNormal * 0.2f, 4, SpawnLayoutType.FourSide, out int rightOwner));
-            Assert.AreEqual(2, rightOwner);
-            Assert.IsTrue(arena.TryGetGoalOwner(leftGoal.GoalCenter - leftGoal.InwardNormal * 0.2f, 4, SpawnLayoutType.FourSide, out int leftOwner));
-            Assert.AreEqual(3, leftOwner);
+            Assert.IsTrue(arena.TryGetGoalOwner(rightGoal.GoalCenter - rightGoal.InwardNormal * 0.2f, 3, SpawnLayoutType.FourSide, out int rightOwner));
+            Assert.AreEqual(1, rightOwner);
+            Assert.IsTrue(arena.TryGetGoalOwner(leftGoal.GoalCenter - leftGoal.InwardNormal * 0.2f, 3, SpawnLayoutType.FourSide, out int leftOwner));
+            Assert.AreEqual(2, leftOwner);
         }
 
         [Test]
@@ -276,11 +283,12 @@ namespace Gatebreaker.Tests
         [Test]
         public void Scene3v3BottomNetScoresInsideTriggerBand()
         {
-            ArenaGeometry arena = ArenaGeometry.CreateScene3v3();
+            MapRuleDefinition map = GatebreakerModeCatalog.CreateDefault().GetMap("MAP_ARENA_01");
+            ArenaGeometry arena = ArenaGeometry.CreateForMap(map, new[] { 1, 2, 3 });
             ArenaBoundarySegment bottomGoal = arena.BoundarySegments[5];
             Vector2 insideNetBand = bottomGoal.GoalCenter + bottomGoal.InwardNormal * (bottomGoal.GoalTriggerInset * 0.5f);
 
-            Assert.IsTrue(arena.TryGetGoalOwner(insideNetBand, 4, SpawnLayoutType.FourSide, out int owner));
+            Assert.IsTrue(arena.TryGetGoalOwner(insideNetBand, 3, SpawnLayoutType.FourSide, out int owner));
             Assert.AreEqual(0, owner);
         }
 
@@ -409,14 +417,14 @@ namespace Gatebreaker.Tests
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 3);
-            PlayerRuntimeState rightPlayer = runtime.FindPlayer(3);
+            PlayerRuntimeState rightPlayer = runtime.FindPlayer(2);
             float initialAxis = rightPlayer.Paddle.AxisPosition;
 
-            Assert.IsTrue(runtime.SetLocalPlayer(3));
-            runtime.ApplyInputFrame(new PlayerInputFrame(3, 1f, false, Vector2.zero));
+            Assert.IsTrue(runtime.SetLocalPlayer(2));
+            runtime.ApplyInputFrame(new PlayerInputFrame(2, 1f, false, Vector2.zero));
             runtime.TickLocalPrototype(0.25f);
 
-            Assert.IsFalse(runtime.FindPlayer(3).IsAi);
+            Assert.IsFalse(runtime.FindPlayer(2).IsAi);
             Assert.IsTrue(runtime.FindPlayer(1).IsAi);
             Assert.Greater(rightPlayer.Paddle.AxisPosition, initialAxis);
         }
@@ -495,15 +503,15 @@ namespace Gatebreaker.Tests
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 3);
             BallRuntimeState ball = runtime.Balls[0];
-            ball.OwnerPlayerId = 3;
-            ball.OwnerTeamId = 3;
+            ball.OwnerPlayerId = 2;
+            ball.OwnerTeamId = 2;
             Vector2 entryPosition = new Vector2(runtime.Arena.HalfWidth + 0.1f, 0f);
             ball.Position = entryPosition;
             ball.Velocity = Vector2.right;
 
             runtime.TickLocalPrototype(0f);
 
-            Assert.AreEqual(0, runtime.FindPlayer(3).Score);
+            Assert.AreEqual(0, runtime.FindPlayer(2).Score);
             Assert.AreEqual(BallState.GoalRebound, ball.BallState);
             Assert.AreEqual(entryPosition, ball.Position);
             Assert.Less(ball.Velocity.x, 0f);
@@ -697,7 +705,7 @@ namespace Gatebreaker.Tests
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 3);
             PlayerRuntimeState owner = runtime.FindPlayer(1);
-            PlayerRuntimeState defender = runtime.FindPlayer(3);
+            PlayerRuntimeState defender = runtime.FindPlayer(2);
             ArenaBoundarySegment defenderGoal = runtime.Arena.BoundarySegments[1];
             BallRuntimeState ball = runtime.Balls[0];
             ball.OwnerPlayerId = owner.PlayerId;

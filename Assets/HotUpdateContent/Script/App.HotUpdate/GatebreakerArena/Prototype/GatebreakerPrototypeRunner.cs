@@ -7,6 +7,7 @@ using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.UI;
@@ -334,7 +335,99 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _sceneInstance.transform.localPosition = Vector3.zero;
             _sceneInstance.transform.localRotation = Quaternion.identity;
             _sceneInstance.transform.localScale = Vector3.one;
+            ApplyScenePlayerSideColors();
             UpdateSceneVisualBounds();
+        }
+
+        private void ApplyScenePlayerSideColors()
+        {
+            IReadOnlyList<MapPlayerSideBindingDefinition> bindings = _runtime?.EffectiveRule?.Map?.PlayerSideBindings;
+            if (_sceneInstance == null || bindings == null)
+            {
+                return;
+            }
+
+            Transform[] transforms = _sceneInstance.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < bindings.Count; i++)
+            {
+                MapPlayerSideBindingDefinition binding = bindings[i];
+                if (binding == null || string.IsNullOrEmpty(binding.ScenePosition))
+                {
+                    continue;
+                }
+
+                Transform position = FindSceneTransform(transforms, binding.ScenePosition);
+                if (position == null)
+                {
+                    continue;
+                }
+
+                ApplySceneNetColor(position, GetPlayerColor(binding.PlayerId));
+            }
+        }
+
+        private static Transform FindSceneTransform(Transform[] transforms, string name)
+        {
+            if (transforms == null || string.IsNullOrEmpty(name))
+            {
+                return null;
+            }
+
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform transform = transforms[i];
+                if (transform != null && string.Equals(transform.name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return transform;
+                }
+            }
+
+            return null;
+        }
+
+        private static void ApplySceneNetColor(Transform position, Color ownerColor)
+        {
+            Transform[] children = position.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+            {
+                Transform child = children[i];
+                if (child == null ||
+                    !child.gameObject.activeSelf ||
+                    !string.Equals(child.name, "net", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                SpriteRenderer[] spriteRenderers = child.GetComponentsInChildren<SpriteRenderer>(true);
+                for (int spriteIndex = 0; spriteIndex < spriteRenderers.Length; spriteIndex++)
+                {
+                    SpriteRenderer spriteRenderer = spriteRenderers[spriteIndex];
+                    spriteRenderer.color = new Color(ownerColor.r, ownerColor.g, ownerColor.b, spriteRenderer.color.a);
+                }
+
+                Renderer[] renderers = child.GetComponentsInChildren<Renderer>(true);
+                for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+                {
+                    Renderer renderer = renderers[rendererIndex];
+                    if (renderer is SpriteRenderer)
+                    {
+                        continue;
+                    }
+
+                    Material material = UnityEngine.Application.isPlaying ? renderer.material : renderer.sharedMaterial;
+                    if (material == null)
+                    {
+                        continue;
+                    }
+
+                    Color color = new Color(ownerColor.r, ownerColor.g, ownerColor.b, material.color.a);
+                    material.color = color;
+                    if (material.HasProperty("_BaseColor"))
+                    {
+                        material.SetColor("_BaseColor", color);
+                    }
+                }
+            }
         }
 
         private void UpdateSceneVisualBounds()
@@ -743,31 +836,54 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void CreateGuardZones()
         {
-            CreateGuardZone(1, "South Guard Zone", new Vector3(0f, 0.02f, -ArenaHalfHeight + GuardDepth * 0.5f), new Vector3(ArenaHalfWidth * 1.15f, 0.04f, GuardDepth));
-            CreateGuardZone(2, "North Guard Zone", new Vector3(0f, 0.02f, ArenaHalfHeight - GuardDepth * 0.5f), new Vector3(ArenaHalfWidth * 1.15f, 0.04f, GuardDepth));
-            CreateGuardZone(3, "East Guard Zone", new Vector3(ArenaHalfWidth - GuardDepth * 0.5f, 0.02f, 0f), new Vector3(GuardDepth, 0.04f, ArenaHalfHeight * 1.15f));
-            CreateGuardZone(4, "West Guard Zone", new Vector3(-ArenaHalfWidth + GuardDepth * 0.5f, 0.02f, 0f), new Vector3(GuardDepth, 0.04f, ArenaHalfHeight * 1.15f));
+            IReadOnlyList<PlayerRuntimeState> players = _runtime?.Players;
+            if (players == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerRuntimeState player = players[i];
+                if (player?.Zone == null || player.IsDisabled)
+                {
+                    continue;
+                }
+
+                CreateGuardZone(player);
+            }
         }
 
         private void CreatePaddles()
         {
-            for (int playerId = 1; playerId <= 4; playerId++)
+            IReadOnlyList<PlayerRuntimeState> players = _runtime?.Players;
+            if (players == null)
             {
-                PlayerRuntimeState player = _runtime?.FindPlayer(playerId);
+                return;
+            }
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerRuntimeState player = players[i];
                 if (player?.Paddle == null || player.IsDisabled)
                 {
                     continue;
                 }
 
-                Transform paddle = EnsurePaddleView(playerId);
+                Transform paddle = EnsurePaddleView(player.PlayerId);
                 paddle.localPosition = GetPaddlePosition(player);
                 paddle.localRotation = GetPaddleRotation(player?.Paddle);
             }
         }
 
-        private void CreateGuardZone(int playerId, string name, Vector3 position, Vector3 scale)
+        private void CreateGuardZone(PlayerRuntimeState player)
         {
-            GameObject guard = CreateBlock(name, position, scale, GetPlayerMaterial(playerId));
+            int playerId = player.PlayerId;
+            Vector3 position = ToVisualPosition(player.Zone.Center, 0.02f);
+            Vector3 scale = Mathf.Abs(player.Zone.Normal.y) > 0.5f
+                ? new Vector3(ArenaHalfWidth * 1.15f, 0.04f, GuardDepth)
+                : new Vector3(GuardDepth, 0.04f, ArenaHalfHeight * 1.15f);
+            GameObject guard = CreateBlock($"Player {playerId} Guard Zone", position, scale, GetPlayerMaterial(playerId));
             Renderer guardRenderer = guard.GetComponent<Renderer>();
             GatebreakerPlayerVisualColor.ApplyZoneColor(guardRenderer, GetPlayerColor(playerId), 0.32f);
             _guardRenderers[playerId] = guardRenderer;

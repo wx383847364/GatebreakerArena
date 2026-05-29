@@ -44,19 +44,23 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return new ArenaGeometry(8f, 5f, 0.55f, 2.8f, 0.28f, 8f);
         }
 
-        public static ArenaGeometry CreateForMap(MapRuleDefinition map)
+        public static ArenaGeometry CreateForMap(
+            MapRuleDefinition map,
+            IReadOnlyList<int> activePlayerIds = null)
         {
             if (map != null &&
                 !string.IsNullOrEmpty(map.ScenePrefabLocation) &&
                 map.ScenePrefabLocation.IndexOf(Scene3v3PrefabName, StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return CreateScene3v3();
+                return CreateScene3v3(map, activePlayerIds);
             }
 
             return CreateDefault();
         }
 
-        public static ArenaGeometry CreateScene3v3()
+        public static ArenaGeometry CreateScene3v3(
+            MapRuleDefinition map = null,
+            IReadOnlyList<int> activePlayerIds = null)
         {
             const float scene3v3GoalHalfLength = 1.06f;
             const float scene3v3GoalTriggerInset = 0.14f;
@@ -73,7 +77,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 new Vector2(-1.373f, -2.456f),
             };
             // Only active child objects named "net" score: Position01, Position03, Position05.
-            var goalOwners = new[] { -1, 2, -1, 3, -1, 0 };
+            int[] goalOwners = CreateScene3v3GoalOwners(map, activePlayerIds);
             var goalCenters = new[]
             {
                 new Vector2(2.086f, -1.231f),
@@ -91,6 +95,86 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 scene3v3PaddleThickness,
                 3.2f,
                 CreateBoundarySegments(points, goalOwners, goalCenters, scene3v3GoalHalfLength, scene3v3GoalTriggerInset));
+        }
+
+        private static int[] CreateScene3v3GoalOwners(
+            MapRuleDefinition map,
+            IReadOnlyList<int> activePlayerIds)
+        {
+            var goalOwners = new[] { -1, -1, -1, -1, -1, -1 };
+            IReadOnlyList<MapPlayerSideBindingDefinition> bindings =
+                map?.PlayerSideBindings != null && map.PlayerSideBindings.Count > 0
+                    ? map.PlayerSideBindings
+                    : CreateDefaultScene3v3PlayerSideBindings();
+
+            for (int i = 0; i < bindings.Count; i++)
+            {
+                MapPlayerSideBindingDefinition binding = bindings[i];
+                if (binding == null ||
+                    binding.BoundarySegmentIndex < 0 ||
+                    binding.BoundarySegmentIndex >= goalOwners.Length)
+                {
+                    continue;
+                }
+
+                int playerIndex = ResolveActivePlayerIndex(binding.PlayerId, activePlayerIds);
+                if (playerIndex < 0)
+                {
+                    continue;
+                }
+
+                goalOwners[binding.BoundarySegmentIndex] = playerIndex;
+            }
+
+            return goalOwners;
+        }
+
+        private static IReadOnlyList<MapPlayerSideBindingDefinition> CreateDefaultScene3v3PlayerSideBindings()
+        {
+            return new[]
+            {
+                new MapPlayerSideBindingDefinition
+                {
+                    PlayerId = 1,
+                    ScenePosition = "Position01",
+                    BoundarySegmentIndex = 5,
+                },
+                new MapPlayerSideBindingDefinition
+                {
+                    PlayerId = 2,
+                    ScenePosition = "Position03",
+                    BoundarySegmentIndex = 1,
+                },
+                new MapPlayerSideBindingDefinition
+                {
+                    PlayerId = 3,
+                    ScenePosition = "Position05",
+                    BoundarySegmentIndex = 3,
+                },
+            };
+        }
+
+        private static int ResolveActivePlayerIndex(int playerId, IReadOnlyList<int> activePlayerIds)
+        {
+            if (playerId <= 0)
+            {
+                return -1;
+            }
+
+            if (activePlayerIds == null || activePlayerIds.Count == 0)
+            {
+                return playerId - 1;
+            }
+
+            for (int i = 0; i < activePlayerIds.Count; i++)
+            {
+                if (activePlayerIds[i] == playerId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         public ArenaGeometry WithPaddleLength(float paddleLength)

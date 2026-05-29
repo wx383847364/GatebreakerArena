@@ -108,12 +108,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         public void StartLocalPrototype(
-            int aiCount = 3,
+            int aiCount = -1,
             string modeId = "PVE_STANDARD",
             string mapId = "MAP_ARENA_01",
             string ballTypeId = "BALL_NORMAL")
         {
-            int playerCount = Mathf.Clamp(aiCount + 1, 1, MaxPlayerCount);
+            int playerCount = ResolveLocalPrototypePlayerCount(aiCount, mapId);
             var activeSlots = new List<int>(playerCount);
             for (int i = 0; i < playerCount; i++)
             {
@@ -141,6 +141,19 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             _logger?.LogInfo("GatebreakerMatchRuntime: 本地原型开局完成。players={0}, balls={1}", _players.Count, _balls.Count);
+        }
+
+        private int ResolveLocalPrototypePlayerCount(int aiCount, string mapId)
+        {
+            if (aiCount >= 0)
+            {
+                return Mathf.Clamp(aiCount + 1, 1, MaxPlayerCount);
+            }
+
+            string resolvedMapId = string.IsNullOrEmpty(mapId) ? "MAP_ARENA_01" : mapId;
+            MapRuleDefinition map = _modeCatalog.GetMap(resolvedMapId);
+            int defaultPlayerCount = map.DefaultPlayerCount > 0 ? map.DefaultPlayerCount : DefaultPlayerCount;
+            return Mathf.Clamp(defaultPlayerCount, 1, MaxPlayerCount);
         }
 
         public void StartMatch(GatebreakerMatchStartConfig config)
@@ -181,7 +194,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             _stepInputBuffer.Clear();
             _nextBallId = 1;
             _nextScoreReachOrder = 1;
-            Arena = ArenaGeometry.CreateForMap(EffectiveRule.Map);
+            Arena = ArenaGeometry.CreateForMap(EffectiveRule.Map, activePlayerIds);
             ApplyTuningValues(config.TuningValues);
 
             for (int i = 0; i < activePlayerIds.Count; i++)
