@@ -37,14 +37,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const string SceneDebugLayerName = "SceneDebug";
         private const int SceneDebugLayerFallback = 6;
 
-        private static readonly Color[] PlayerPalette =
-        {
-            new Color(0.20f, 0.68f, 1.00f),
-            new Color(1.00f, 0.55f, 0.18f),
-            new Color(0.45f, 0.88f, 0.38f),
-            new Color(0.84f, 0.42f, 1.00f),
-        };
-
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, int> _ballViewSlots = new Dictionary<int, int>();
         private readonly Dictionary<int, Transform> _paddleViews = new Dictionary<int, Transform>();
@@ -722,10 +714,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _paddleMaterial = CreateMaterial(new Color(0.01f, 0.01f, 0.01f));
             _playerMaterials = new[]
             {
-                CreateMaterial(PlayerPalette[0]),
-                CreateMaterial(PlayerPalette[1]),
-                CreateMaterial(PlayerPalette[2]),
-                CreateMaterial(PlayerPalette[3]),
+                CreateMaterial(GetPlayerColor(1)),
+                CreateMaterial(GetPlayerColor(2)),
+                CreateMaterial(GetPlayerColor(3)),
+                CreateMaterial(GetPlayerColor(4)),
             };
         }
 
@@ -775,7 +767,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             GameObject guard = CreateBlock(name, position, scale, GetPlayerMaterial(playerId));
             Renderer guardRenderer = guard.GetComponent<Renderer>();
-            guardRenderer.material.color = WithAlpha(GetPlayerColor(playerId), 0.32f);
+            GatebreakerPlayerVisualColor.ApplyZoneColor(guardRenderer, GetPlayerColor(playerId), 0.32f);
             _guardRenderers[playerId] = guardRenderer;
         }
 
@@ -822,7 +814,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     Color guardColor = player.Zone != null && player.Zone.IsDanger
                         ? _dangerMaterial.color
                         : player.IsDisabled ? Color.gray : GetPlayerColor(player.PlayerId);
-                    guard.material.color = WithAlpha(guardColor, 0.32f);
+                    GatebreakerPlayerVisualColor.ApplyZoneColor(guard, guardColor, 0.32f);
                 }
             }
         }
@@ -844,6 +836,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 SetMaterial(paddleObject, _paddleMaterial);
                 _paddleRenderers[playerId] = paddleObject.GetComponent<Renderer>();
+            }
+            else
+            {
+                GatebreakerPlayerVisualColor.ApplyPaddleColor(paddleObject, GetPlayerColor(playerId));
             }
 
             _paddleViews[playerId] = paddleObject.transform;
@@ -960,42 +956,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return ballView;
             }
 
-            int playerSlot = ResolveBallPlayerSlot(ball);
-            GameObject ballObject = AcquireBallViewObject(playerSlot);
+            int ownerPlayerId = ball != null ? ball.OwnerPlayerId : 1;
+            GameObject ballObject = AcquireBallViewObject(ownerPlayerId);
             ballObject.name = $"Ball {ballId}";
             ballObject.transform.SetParent(_visualRoot, false);
             ballObject.SetActive(true);
             ballObject.transform.localScale = GetCompensatedVisualScale(0.45f);
+            GatebreakerPlayerVisualColor.ApplyBallOwnerColor(ballObject, GetPlayerColor(ownerPlayerId));
 
-            _ballViewSlots[ballId] = playerSlot;
+            _ballViewSlots[ballId] = ownerPlayerId;
             _ballViews[ballId] = ballObject.transform;
             return ballObject.transform;
-        }
-
-        private int ResolveBallPlayerSlot(BallRuntimeState ball)
-        {
-            if (ball == null || _runtime == null)
-            {
-                return 1;
-            }
-
-            int slot = 0;
-            for (int i = 0; i < _runtime.Players.Count; i++)
-            {
-                PlayerRuntimeState player = _runtime.Players[i];
-                if (player == null || player.IsDisabled || player.Paddle == null)
-                {
-                    continue;
-                }
-
-                slot += 1;
-                if (player.PlayerId == ball.OwnerPlayerId)
-                {
-                    return Mathf.Clamp(slot, 1, 3);
-                }
-            }
-
-            return 1;
         }
 
         private void RemoveStaleBallViews()
@@ -1022,16 +993,16 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
-        private GameObject AcquireBallViewObject(int playerSlot)
+        private GameObject AcquireBallViewObject(int ownerPlayerId)
         {
-            int safeSlot = Mathf.Clamp(playerSlot, 1, 3);
-            Stack<GameObject> pool = GetBallViewPool(safeSlot);
+            int safePlayerId = Mathf.Clamp(ownerPlayerId, 1, 4);
+            Stack<GameObject> pool = GetBallViewPool(safePlayerId);
             if (pool.Count > 0)
             {
                 return pool.Pop();
             }
 
-            GatebreakerLoadedPrefab ballPrefab = _visualAssets?.GetBallForPlayerSlot(safeSlot);
+            GatebreakerLoadedPrefab ballPrefab = _visualAssets?.GetBallForPlayerId(safePlayerId);
             return _usePrefabVisuals && ballPrefab?.Prefab != null
                 ? Instantiate(ballPrefab.Prefab)
                 : GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -1046,17 +1017,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             ballObject.SetActive(false);
             ballObject.transform.SetParent(_poolRoot != null ? _poolRoot : _visualRoot, false);
-            int playerSlot = _ballViewSlots.TryGetValue(ballId, out int slot) ? slot : 1;
-            GetBallViewPool(playerSlot).Push(ballObject);
+            int ownerPlayerId = _ballViewSlots.TryGetValue(ballId, out int playerId) ? playerId : 1;
+            GetBallViewPool(ownerPlayerId).Push(ballObject);
         }
 
-        private Stack<GameObject> GetBallViewPool(int playerSlot)
+        private Stack<GameObject> GetBallViewPool(int ownerPlayerId)
         {
-            int safeSlot = Mathf.Clamp(playerSlot, 1, 3);
-            if (!_ballViewPools.TryGetValue(safeSlot, out Stack<GameObject> pool))
+            int safePlayerId = Mathf.Clamp(ownerPlayerId, 1, 4);
+            if (!_ballViewPools.TryGetValue(safePlayerId, out Stack<GameObject> pool))
             {
                 pool = new Stack<GameObject>();
-                _ballViewPools[safeSlot] = pool;
+                _ballViewPools[safePlayerId] = pool;
             }
 
             return pool;
@@ -1449,8 +1420,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private Color GetPlayerColor(int playerId)
         {
-            int index = Mathf.Abs(playerId - 1) % PlayerPalette.Length;
-            return PlayerPalette[index];
+            return GatebreakerPlayerVisualColor.ToUnityColor(_runtime.ModeCatalog.GetPlayerColor(playerId));
         }
 
         private Vector3 ToVisualPosition(Vector2 position, float height)
@@ -1495,7 +1465,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return _localMaterial;
             }
 
-            int index = Mathf.Abs(playerId - 1) % _playerMaterials.Length;
+            int index = Mathf.Clamp(playerId, 1, _playerMaterials.Length) - 1;
             return _playerMaterials[index];
         }
 
@@ -1515,11 +1485,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             return material;
-        }
-
-        private static Color WithAlpha(Color color, float alpha)
-        {
-            return new Color(color.r, color.g, color.b, alpha);
         }
 
         private static void SetMaterial(GameObject gameObject, Material material)

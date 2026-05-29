@@ -1,0 +1,34 @@
+[
+  {
+    "PlayerId": 1,
+    "ColorName": "Red",
+    "Red": 1.0,
+    "Green": 0.18,
+    "Blue": 0.16,
+    "Alpha": 1.0
+  },
+  {
+    "PlayerId": 2,
+    "ColorName": "Blue",
+    "Red": 0.20,
+    "Green": 0.48,
+    "Blue": 1.0,
+    "Alpha": 1.0
+  },
+  {
+    "PlayerId": 3,
+    "ColorName": "Green",
+    "Red": 0.24,
+    "Green": 0.86,
+    "Blue": 0.34,
+    "Alpha": 1.0
+  },
+  {
+    "PlayerId": 4,
+    "ColorName": "Yellow",
+    "Red": 1.0,
+    "Green": 0.86,
+    "Blue": 0.18,
+    "Alpha": 1.0
+  }
+]

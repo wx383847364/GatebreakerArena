@@ -14,6 +14,10 @@ namespace App.AOT.Bootstrap
         [SerializeField] private TMP_Text _ballCountText;
         [SerializeField] private RectTransform _movementPad;
         [SerializeField] private RectTransform _movementHandle;
+        [SerializeField] private RectTransform _movementLeftArrowInput;
+        [SerializeField] private RectTransform _movementRightArrowInput;
+        [SerializeField] private Graphic _movementLeftArrowHighlight;
+        [SerializeField] private Graphic _movementRightArrowHighlight;
         [SerializeField] private GameObject _hudRoot;
         [SerializeField] private TMP_Text _hudTitleText;
         [SerializeField] private TMP_Text _hudStatusText;
@@ -59,6 +63,10 @@ namespace App.AOT.Bootstrap
         public Object BallCountTextObject => _ballCountText;
         public Object MovementPadObject => _movementPad;
         public Object MovementHandleObject => _movementHandle;
+        public Object MovementLeftArrowInputObject => _movementLeftArrowInput;
+        public Object MovementRightArrowInputObject => _movementRightArrowInput;
+        public Object MovementLeftArrowHighlightObject => _movementLeftArrowHighlight;
+        public Object MovementRightArrowHighlightObject => _movementRightArrowHighlight;
         public Object HudRootObject => _hudRoot;
         public Object HudTitleTextObject => _hudTitleText;
         public Object HudStatusTextObject => _hudStatusText;
@@ -105,6 +113,10 @@ namespace App.AOT.Bootstrap
             _ballCountText != null &&
             _movementPad != null &&
             _movementHandle != null &&
+            _movementLeftArrowInput != null &&
+            _movementRightArrowInput != null &&
+            _movementLeftArrowHighlight != null &&
+            _movementRightArrowHighlight != null &&
             _timeText != null &&
             HasTextBindings(_playerScoreTexts) &&
             HasTextBindings(_playerHitTexts) &&

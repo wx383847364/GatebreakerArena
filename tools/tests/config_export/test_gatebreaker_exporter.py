@@ -44,6 +44,8 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             self.assertEqual(result.payload["DT_ModeRule"][0]["MaxBallsInMatch"], 4)
             self.assertEqual(result.payload["DT_BallRule"][0]["InitialSpeed"], 5.25)
             self.assertEqual(result.payload["DT_BallRule"][0]["MaxSpeed"], 9.8)
+            self.assertEqual(result.payload["DT_PlayerColorRule"][0]["PlayerId"], 1)
+            self.assertEqual(result.payload["DT_PlayerColorRule"][0]["ColorName"], "Red")
             self.assertTrue(result.warnings)
 
     def test_export_writes_json_and_bytes(self) -> None:
@@ -60,6 +62,7 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             self.assertTrue(result.binary_path.is_file())
             payload = json.loads(result.json_path.read_text(encoding="utf-8"))
             self.assertIn("DT_MapRule", payload)
+            self.assertIn("DT_PlayerColorRule", payload)
             self.assertEqual(result.binary_path.read_bytes(), result.json_path.read_text(encoding="utf-8").encode("utf-8"))
 
     def test_invalid_source_is_rejected(self) -> None:

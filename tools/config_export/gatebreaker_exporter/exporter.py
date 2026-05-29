@@ -11,6 +11,7 @@ SOURCE_FILES = {
     "DT_BallRule": "DT_BallRule.json",
     "DT_AIRule": "DT_AIRule.json",
     "DT_MapRule": "DT_MapRule.json",
+    "DT_PlayerColorRule": "DT_PlayerColorRule.json",
 }
 
 
@@ -89,6 +90,7 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         "DT_BallRule": ("BallTypeId", "InitialSpeed", "MaxSpeed", "SpeedGainOnPaddleHit", "MinVerticalVelocity"),
         "DT_AIRule": ("AILevelId", "ReactionDelay", "ServeDecisionInterval", "AggressionWeight", "DefenseWeight"),
         "DT_MapRule": ("MapId", "SupportedPlayerCount", "SpawnLayoutType"),
+        "DT_PlayerColorRule": ("PlayerId", "Red", "Green", "Blue", "Alpha"),
     }
     for index, row in enumerate(rows):
         for field in required_fields[table_name]:
@@ -253,6 +255,40 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
                 "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
                 "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
             }
+        ],
+        "DT_PlayerColorRule": [
+            {
+                "PlayerId": 1,
+                "ColorName": "Red",
+                "Red": 1.0,
+                "Green": 0.18,
+                "Blue": 0.16,
+                "Alpha": 1.0,
+            },
+            {
+                "PlayerId": 2,
+                "ColorName": "Blue",
+                "Red": 0.20,
+                "Green": 0.48,
+                "Blue": 1.0,
+                "Alpha": 1.0,
+            },
+            {
+                "PlayerId": 3,
+                "ColorName": "Green",
+                "Red": 0.24,
+                "Green": 0.86,
+                "Blue": 0.34,
+                "Alpha": 1.0,
+            },
+            {
+                "PlayerId": 4,
+                "ColorName": "Yellow",
+                "Red": 1.0,
+                "Green": 0.86,
+                "Blue": 0.18,
+                "Alpha": 1.0,
+            },
         ],
     }
     return defaults[table_name]

@@ -79,7 +79,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     ReadArray(root, "DT_ModeRule", ReadMode),
                     ReadArray(root, "DT_BallRule", ReadBall),
                     ReadArray(root, "DT_AIRule", ReadAi),
-                    ReadArray(root, "DT_MapRule", ReadMap));
+                    ReadArray(root, "DT_MapRule", ReadMap),
+                    ReadArray(root, "DT_PlayerColorRule", ReadPlayerColor));
 
                 return GatebreakerConfigLoadResult.Success(catalog, source, ReadOptionalInt(root, "Version"));
             }
@@ -177,6 +178,19 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 GoalSizeModifier = ReadFloat(item, "GoalSizeModifier"),
                 ScenePrefabLocation = ReadOptionalString(item, "ScenePrefabLocation"),
                 PaddlePrefabLocation = ReadOptionalString(item, "PaddlePrefabLocation"),
+            };
+        }
+
+        private static PlayerColorRuleDefinition ReadPlayerColor(Dictionary<string, object> item)
+        {
+            return new PlayerColorRuleDefinition
+            {
+                PlayerId = ReadInt(item, "PlayerId"),
+                ColorName = ReadOptionalString(item, "ColorName"),
+                Red = ReadFloat(item, "Red"),
+                Green = ReadFloat(item, "Green"),
+                Blue = ReadFloat(item, "Blue"),
+                Alpha = ReadFloat(item, "Alpha"),
             };
         }
 

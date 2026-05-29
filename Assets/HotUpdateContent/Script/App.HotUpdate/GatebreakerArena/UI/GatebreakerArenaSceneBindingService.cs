@@ -53,8 +53,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private TMP_InputField _lanRoomCodeInput;
         private RectTransform _movementPad;
         private RectTransform _movementHandle;
+        private RectTransform _movementLeftArrowInput;
+        private RectTransform _movementRightArrowInput;
+        private Graphic _movementLeftArrowHighlight;
+        private Graphic _movementRightArrowHighlight;
         private Vector2 _movementHandleRestPosition;
         private bool _hasMovementHandleRestPosition;
+        private Color _movementLeftArrowRestColor;
+        private Color _movementRightArrowRestColor;
+        private bool _hasMovementLeftArrowRestColor;
+        private bool _hasMovementRightArrowRestColor;
         private TMP_Text _ballCountText;
         private TMP_Text _hudTitleText;
         private TMP_Text _hudStatusText;
@@ -144,11 +152,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _ballCountText = Require<TMP_Text>(binding.BallCountTextObject, nameof(binding.BallCountTextObject));
             _movementPad = Require<RectTransform>(binding.MovementPadObject, nameof(binding.MovementPadObject));
             _movementHandle = Require<RectTransform>(binding.MovementHandleObject, nameof(binding.MovementHandleObject));
+            _movementLeftArrowInput = Require<RectTransform>(binding.MovementLeftArrowInputObject, nameof(binding.MovementLeftArrowInputObject));
+            _movementRightArrowInput = Require<RectTransform>(binding.MovementRightArrowInputObject, nameof(binding.MovementRightArrowInputObject));
+            _movementLeftArrowHighlight = Require<Graphic>(binding.MovementLeftArrowHighlightObject, nameof(binding.MovementLeftArrowHighlightObject));
+            _movementRightArrowHighlight = Require<Graphic>(binding.MovementRightArrowHighlightObject, nameof(binding.MovementRightArrowHighlightObject));
             if (_movementHandle != null)
             {
                 _movementHandleRestPosition = _movementHandle.anchoredPosition;
                 _hasMovementHandleRestPosition = true;
             }
+            CaptureMovementArrowRestColors();
 
             _hudRoot = RequireGameObject(binding.HudRootObject, nameof(binding.HudRootObject));
             _hudTitleText = Require<TMP_Text>(binding.HudTitleTextObject, nameof(binding.HudTitleTextObject));
@@ -203,6 +216,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddButtonListener(_resultBackButton, () => _callbacks.ResultBackRequested?.Invoke());
             AddMovementListeners(_movementPad);
             AddMovementListeners(_movementHandle);
+            AddFixedMovementListeners(_movementLeftArrowInput, -1f);
+            AddFixedMovementListeners(_movementRightArrowInput, 1f);
             AddInputListener(_lanPlayerNameInput, _callbacks.InitialLanPlayerName, value => _callbacks.LanPlayerNameChanged?.Invoke(value));
             AddInputListener(_lanRoomCodeInput, _callbacks.InitialLanRoomCode, value => _callbacks.LanRoomCodeChanged?.Invoke(value));
             ConfigureSlider(
@@ -390,8 +405,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanRoomCodeInput = null;
             _movementPad = null;
             _movementHandle = null;
+            _movementLeftArrowInput = null;
+            _movementRightArrowInput = null;
+            _movementLeftArrowHighlight = null;
+            _movementRightArrowHighlight = null;
             _movementHandleRestPosition = Vector2.zero;
             _hasMovementHandleRestPosition = false;
+            _movementLeftArrowRestColor = Color.clear;
+            _movementRightArrowRestColor = Color.clear;
+            _hasMovementLeftArrowRestColor = false;
+            _hasMovementRightArrowRestColor = false;
             _ballCountText = null;
             _hudTitleText = null;
             _hudStatusText = null;
@@ -539,6 +562,19 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddEventTriggerListener(target, EventTriggerType.EndDrag, HandleMovementRelease);
         }
 
+        private void AddFixedMovementListeners(RectTransform target, float axis)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            AddEventTriggerListener(target, EventTriggerType.PointerDown, _ => SetMoveAxis(axis));
+            AddEventTriggerListener(target, EventTriggerType.Drag, _ => SetMoveAxis(axis));
+            AddEventTriggerListener(target, EventTriggerType.PointerUp, HandleMovementRelease);
+            AddEventTriggerListener(target, EventTriggerType.EndDrag, HandleMovementRelease);
+        }
+
         private void AddEventTriggerListener(
             Component target,
             EventTriggerType eventType,
@@ -598,6 +634,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
             _callbacks?.MoveAxisChanged?.Invoke(clampedAxis);
             UpdateMovementHandle(clampedAxis);
+            UpdateMovementArrowHighlights(clampedAxis);
         }
 
         private void UpdateMovementHandle(float axis)
@@ -611,6 +648,53 @@ namespace App.HotUpdate.GatebreakerArena.UI
             float handleWidth = _movementHandle.rect.width * Mathf.Abs(_movementHandle.localScale.x);
             float maxOffset = Mathf.Max(0f, (padWidth - handleWidth) * 0.5f);
             _movementHandle.anchoredPosition = _movementHandleRestPosition + Vector2.right * maxOffset * axis;
+        }
+
+        private void CaptureMovementArrowRestColors()
+        {
+            if (_movementLeftArrowHighlight != null)
+            {
+                _movementLeftArrowRestColor = _movementLeftArrowHighlight.color;
+                _hasMovementLeftArrowRestColor = true;
+            }
+
+            if (_movementRightArrowHighlight != null)
+            {
+                _movementRightArrowRestColor = _movementRightArrowHighlight.color;
+                _hasMovementRightArrowRestColor = true;
+            }
+
+            UpdateMovementArrowHighlights(0f);
+        }
+
+        private void UpdateMovementArrowHighlights(float axis)
+        {
+            SetMovementArrowHighlight(
+                _movementLeftArrowHighlight,
+                _movementLeftArrowRestColor,
+                _hasMovementLeftArrowRestColor,
+                axis < -0.01f);
+            SetMovementArrowHighlight(
+                _movementRightArrowHighlight,
+                _movementRightArrowRestColor,
+                _hasMovementRightArrowRestColor,
+                axis > 0.01f);
+        }
+
+        private static void SetMovementArrowHighlight(
+            Graphic graphic,
+            Color restColor,
+            bool hasRestColor,
+            bool active)
+        {
+            if (graphic == null)
+            {
+                return;
+            }
+
+            graphic.color = active
+                ? new Color(1f, 0.08f, 0.06f, Mathf.Max(0.65f, graphic.color.a))
+                : hasRestColor ? restColor : graphic.color;
         }
 
         private static void SetSliderValue(Slider slider, int value)

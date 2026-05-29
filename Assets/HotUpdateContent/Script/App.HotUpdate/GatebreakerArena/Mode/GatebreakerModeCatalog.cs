@@ -10,17 +10,20 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         private readonly Dictionary<string, BallRuleDefinition> _balls;
         private readonly Dictionary<string, AiRuleDefinition> _aiRules;
         private readonly Dictionary<string, MapRuleDefinition> _maps;
+        private readonly Dictionary<int, PlayerColorRuleDefinition> _playerColors;
 
         public GatebreakerModeCatalog(
             IEnumerable<ModeRuleDefinition> modes,
             IEnumerable<BallRuleDefinition> balls,
             IEnumerable<AiRuleDefinition> aiRules,
-            IEnumerable<MapRuleDefinition> maps)
+            IEnumerable<MapRuleDefinition> maps,
+            IEnumerable<PlayerColorRuleDefinition> playerColors)
         {
             _modes = IndexBy(modes, item => item.ModeId);
             _balls = IndexBy(balls, item => item.BallTypeId);
             _aiRules = IndexBy(aiRules, item => item.AILevelId);
             _maps = IndexBy(maps, item => item.MapId);
+            _playerColors = IndexBy(playerColors, item => item.PlayerId);
         }
 
         public static GatebreakerModeCatalog CreateDefault()
@@ -87,6 +90,13 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         ScenePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
                         PaddlePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
                     },
+                },
+                new[]
+                {
+                    CreatePlayerColor(1, "Red", 1.0f, 0.18f, 0.16f),
+                    CreatePlayerColor(2, "Blue", 0.20f, 0.48f, 1.0f),
+                    CreatePlayerColor(3, "Green", 0.24f, 0.86f, 0.34f),
+                    CreatePlayerColor(4, "Yellow", 1.0f, 0.86f, 0.18f),
                 });
         }
 
@@ -116,6 +126,13 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             return _maps.TryGetValue(mapId, out MapRuleDefinition rule)
                 ? rule
                 : throw new KeyNotFoundException($"Unknown map rule: {mapId}");
+        }
+
+        public PlayerColorRuleDefinition GetPlayerColor(int playerId)
+        {
+            return _playerColors.TryGetValue(playerId, out PlayerColorRuleDefinition rule)
+                ? rule
+                : throw new KeyNotFoundException($"Unknown player color rule: {playerId}");
         }
 
         public EffectiveMatchRule BuildEffectiveRule(string modeId, string mapId)
@@ -175,6 +192,24 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             };
         }
 
+        private static PlayerColorRuleDefinition CreatePlayerColor(
+            int playerId,
+            string colorName,
+            float red,
+            float green,
+            float blue)
+        {
+            return new PlayerColorRuleDefinition
+            {
+                PlayerId = playerId,
+                ColorName = colorName,
+                Red = red,
+                Green = green,
+                Blue = blue,
+                Alpha = 1f,
+            };
+        }
+
         private static Dictionary<string, T> IndexBy<T>(IEnumerable<T> items, Func<T, string> keySelector)
         {
             var result = new Dictionary<string, T>();
@@ -184,6 +219,23 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 if (string.IsNullOrEmpty(key))
                 {
                     throw new ArgumentException($"{typeof(T).Name} contains empty id.");
+                }
+
+                result[key] = item;
+            }
+
+            return result;
+        }
+
+        private static Dictionary<int, T> IndexBy<T>(IEnumerable<T> items, Func<T, int> keySelector)
+        {
+            var result = new Dictionary<int, T>();
+            foreach (T item in items)
+            {
+                int key = keySelector(item);
+                if (key <= 0)
+                {
+                    throw new ArgumentException($"{typeof(T).Name} contains invalid id.");
                 }
 
                 result[key] = item;

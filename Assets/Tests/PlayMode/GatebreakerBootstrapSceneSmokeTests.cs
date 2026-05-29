@@ -182,6 +182,10 @@ namespace Gatebreaker.Tests.PlayMode
             Assert.Greater(hud.RemainingTime, 55f);
             Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementPadObject, "MovementPad should bind the green control background.");
             Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementHandleObject, "MovementHandle should bind the red joystick handle.");
+            Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementLeftArrowInputObject, "Left movement arrow should have an explicit input binding.");
+            Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementRightArrowInputObject, "Right movement arrow should have an explicit input binding.");
+            Assert.IsInstanceOf<Graphic>(sceneBinding.MovementLeftArrowHighlightObject, "Left movement arrow should have an explicit highlight graphic binding.");
+            Assert.IsInstanceOf<Graphic>(sceneBinding.MovementRightArrowHighlightObject, "Right movement arrow should have an explicit highlight graphic binding.");
         }
 
         private static List<PlayerScoreSnapshot> BuildVisiblePlayerScores(

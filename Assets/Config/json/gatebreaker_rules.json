@@ -64,7 +64,6 @@
       "GoalPauseTime": 0.4,
       "InitialBallsInMatch": 1,
       "InitialServeAmmo": 1,
-      "Time": 60,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
@@ -75,7 +74,8 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "AddScore"
+      "ScoreRuleType": "AddScore",
+      "Time": 60
     },
     {
       "AllowAimServe": true,
@@ -87,7 +87,6 @@
       "GoalPauseTime": 0.4,
       "InitialBallsInMatch": 1,
       "InitialServeAmmo": 1,
-      "Time": 60,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
@@ -98,7 +97,8 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "AddScore"
+      "ScoreRuleType": "AddScore",
+      "Time": 60
     },
     {
       "AllowAimServe": true,
@@ -110,7 +110,6 @@
       "GoalPauseTime": 0.4,
       "InitialBallsInMatch": 1,
       "InitialServeAmmo": 1,
-      "Time": 60,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
@@ -121,7 +120,42 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "TeamScore"
+      "ScoreRuleType": "TeamScore",
+      "Time": 60
+    }
+  ],
+  "DT_PlayerColorRule": [
+    {
+      "Alpha": 1.0,
+      "Blue": 0.16,
+      "ColorName": "Red",
+      "Green": 0.18,
+      "PlayerId": 1,
+      "Red": 1.0
+    },
+    {
+      "Alpha": 1.0,
+      "Blue": 1.0,
+      "ColorName": "Blue",
+      "Green": 0.48,
+      "PlayerId": 2,
+      "Red": 0.2
+    },
+    {
+      "Alpha": 1.0,
+      "Blue": 0.34,
+      "ColorName": "Green",
+      "Green": 0.86,
+      "PlayerId": 3,
+      "Red": 0.24
+    },
+    {
+      "Alpha": 1.0,
+      "Blue": 0.18,
+      "ColorName": "Yellow",
+      "Green": 0.86,
+      "PlayerId": 4,
+      "Red": 1.0
     }
   ],
   "Version": 1

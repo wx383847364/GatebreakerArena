@@ -136,7 +136,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void MovementPadForwardsAxisAndResetsHandle()
+        public void LeftArrowPointerDownForwardsNegativeAxisMovesHandleAndHighlightsLeft()
         {
             float moveAxis = 0f;
             _binding.MovementPad.sizeDelta = new Vector2(200f, 68f);
@@ -146,18 +146,71 @@ namespace Gatebreaker.Tests
                 new GatebreakerArenaSceneUiCallbacks { MoveAxisChanged = axis => moveAxis = axis },
                 null);
 
-            InvokeMovementTrigger(_binding.MovementPad, EventTriggerType.PointerDown, new Vector2(100f, 0f));
+            InvokeMovementTrigger(_binding.MovementLeftArrowInput, EventTriggerType.PointerDown, Vector2.zero);
 
-            Assert.Greater(moveAxis, 0.9f);
+            Assert.AreEqual(-1f, moveAxis);
+            Assert.Less(_binding.MovementHandle.anchoredPosition.x, 0f);
+            AssertMovementHighlightActive(_binding.MovementLeftArrowHighlight);
+            AssertMovementHighlightRestored(_binding.MovementRightArrowHighlight);
+
+            InvokeMovementTrigger(_binding.MovementLeftArrowInput, EventTriggerType.PointerUp, Vector2.zero);
+
+            Assert.AreEqual(0f, moveAxis);
+            Assert.AreEqual(Vector2.zero, _binding.MovementHandle.anchoredPosition);
+            AssertMovementHighlightRestored(_binding.MovementLeftArrowHighlight);
+            AssertMovementHighlightRestored(_binding.MovementRightArrowHighlight);
+        }
+
+        [Test]
+        public void RightArrowPointerDownForwardsPositiveAxisMovesHandleAndHighlightsRight()
+        {
+            float moveAxis = 0f;
+            _binding.MovementPad.sizeDelta = new Vector2(200f, 68f);
+            _binding.MovementHandle.sizeDelta = new Vector2(40f, 40f);
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks { MoveAxisChanged = axis => moveAxis = axis },
+                null);
+
+            InvokeMovementTrigger(_binding.MovementRightArrowInput, EventTriggerType.PointerDown, Vector2.zero);
+
+            Assert.AreEqual(1f, moveAxis);
+            Assert.Greater(_binding.MovementHandle.anchoredPosition.x, 0f);
+            AssertMovementHighlightRestored(_binding.MovementLeftArrowHighlight);
+            AssertMovementHighlightActive(_binding.MovementRightArrowHighlight);
+
+            InvokeMovementTrigger(_binding.MovementRightArrowInput, EventTriggerType.EndDrag, Vector2.zero);
+
+            Assert.AreEqual(0f, moveAxis);
+            Assert.AreEqual(Vector2.zero, _binding.MovementHandle.anchoredPosition);
+            AssertMovementHighlightRestored(_binding.MovementLeftArrowHighlight);
+            AssertMovementHighlightRestored(_binding.MovementRightArrowHighlight);
+        }
+
+        [Test]
+        public void MovementPadDragForwardsContinuousAxisAndResetsOnEndDrag()
+        {
+            float moveAxis = 0f;
+            _binding.MovementPad.sizeDelta = new Vector2(200f, 68f);
+            _binding.MovementHandle.sizeDelta = new Vector2(40f, 40f);
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks { MoveAxisChanged = axis => moveAxis = axis },
+                null);
+
+            InvokeMovementTrigger(_binding.MovementPad, EventTriggerType.Drag, new Vector2(50f, 0f));
+
+            Assert.Greater(moveAxis, 0.45f);
+            Assert.Less(moveAxis, 0.55f);
             Assert.Greater(_binding.MovementHandle.anchoredPosition.x, 0f);
 
-            InvokeMovementTrigger(_binding.MovementPad, EventTriggerType.PointerUp, new Vector2(100f, 0f));
+            InvokeMovementTrigger(_binding.MovementPad, EventTriggerType.EndDrag, Vector2.zero);
 
             Assert.AreEqual(0f, moveAxis);
             Assert.AreEqual(Vector2.zero, _binding.MovementHandle.anchoredPosition);
         }
 
-        private static void InvokeMovementTrigger(RectTransform target, EventTriggerType eventType, Vector2 screenPosition)
+        private static void InvokeMovementTrigger(Component target, EventTriggerType eventType, Vector2 screenPosition)
         {
             EventTrigger trigger = target.GetComponent<EventTrigger>();
             Assert.NotNull(trigger);
@@ -177,6 +230,19 @@ namespace Gatebreaker.Tests
             }
 
             Assert.Fail($"Missing movement trigger {eventType}.");
+        }
+
+        private static void AssertMovementHighlightActive(Graphic graphic)
+        {
+            Assert.AreEqual(1f, graphic.color.r, 0.001f);
+            Assert.Less(graphic.color.g, 0.1f);
+            Assert.Less(graphic.color.b, 0.1f);
+            Assert.Greater(graphic.color.a, 0.6f);
+        }
+
+        private static void AssertMovementHighlightRestored(Graphic graphic)
+        {
+            Assert.AreEqual(Color.clear, graphic.color);
         }
 
         [Test]
@@ -267,6 +333,10 @@ namespace Gatebreaker.Tests
             public TMP_Text BallCountText { get; private set; }
             public RectTransform MovementPad { get; private set; }
             public RectTransform MovementHandle { get; private set; }
+            public RectTransform MovementLeftArrowInput { get; private set; }
+            public RectTransform MovementRightArrowInput { get; private set; }
+            public Graphic MovementLeftArrowHighlight { get; private set; }
+            public Graphic MovementRightArrowHighlight { get; private set; }
             public GameObject HudRoot { get; private set; }
             public TMP_Text HudTitleText { get; private set; }
             public TMP_Text HudStatusText { get; private set; }
@@ -312,6 +382,10 @@ namespace Gatebreaker.Tests
             public Object BallCountTextObject => BallCountText;
             public Object MovementPadObject => MovementPad;
             public Object MovementHandleObject => MovementHandle;
+            public Object MovementLeftArrowInputObject => MovementLeftArrowInput;
+            public Object MovementRightArrowInputObject => MovementRightArrowInput;
+            public Object MovementLeftArrowHighlightObject => MovementLeftArrowHighlight;
+            public Object MovementRightArrowHighlightObject => MovementRightArrowHighlight;
             public Object HudRootObject => HudRoot;
             public Object HudTitleTextObject => HudTitleText;
             public Object HudStatusTextObject => HudStatusText;
@@ -361,6 +435,10 @@ namespace Gatebreaker.Tests
                     BallCountText = Add<TextMeshProUGUI>(parent, "BallCount"),
                     MovementPad = Add<RectTransform>(parent, "MovementPad"),
                     MovementHandle = Add<RectTransform>(parent, "MovementHandle"),
+                    MovementLeftArrowInput = Add<RectTransform>(parent, "MovementLeftArrowInput"),
+                    MovementRightArrowInput = Add<RectTransform>(parent, "MovementRightArrowInput"),
+                    MovementLeftArrowHighlight = AddClearImage(parent, "MovementLeftArrowHighlight"),
+                    MovementRightArrowHighlight = AddClearImage(parent, "MovementRightArrowHighlight"),
                     HudRoot = CreateRoot(parent, "HudRoot"),
                     HudTitleText = Add<TextMeshProUGUI>(parent, "HudTitle"),
                     HudStatusText = Add<TextMeshProUGUI>(parent, "HudStatus"),
@@ -436,6 +514,13 @@ namespace Gatebreaker.Tests
                 var gameObject = new GameObject(name);
                 gameObject.transform.SetParent(parent, false);
                 return gameObject.AddComponent<T>();
+            }
+
+            private static Image AddClearImage(Transform parent, string name)
+            {
+                Image image = Add<Image>(parent, name);
+                image.color = Color.clear;
+                return image;
             }
         }
     }

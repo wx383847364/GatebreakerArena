@@ -67,6 +67,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         public MatchPhase Phase { get; private set; }
+        public GatebreakerModeCatalog ModeCatalog => _modeCatalog;
         public EffectiveMatchRule EffectiveRule { get; private set; }
         public BallRuleDefinition BallRule { get; private set; }
         public ArenaGeometry Arena { get; private set; }

@@ -35,6 +35,8 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(180, mode.MatchDuration);
             Assert.AreEqual(9.25f, ball.InitialSpeed);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball02.prefab", ball.PrefabLocation);
+            Assert.AreEqual("Blue", result.Catalog.GetPlayerColor(2).ColorName);
+            Assert.AreEqual(0.48f, result.Catalog.GetPlayerColor(2).Green);
             Assert.AreEqual(0.1f, ai.ReactionDelay);
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
             CollectionAssert.AreEqual(new[] { 2, 4 }, map.SupportedPlayerCount);
@@ -165,6 +167,40 @@ namespace Gatebreaker.Tests
       ""GoalSizeModifier"": -0.1,
       ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab"",
       ""PaddlePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Baffle.prefab""
+    }}
+  ],
+  ""DT_PlayerColorRule"": [
+    {{
+      ""PlayerId"": 1,
+      ""ColorName"": ""Red"",
+      ""Red"": 1.0,
+      ""Green"": 0.18,
+      ""Blue"": 0.16,
+      ""Alpha"": 1.0
+    }},
+    {{
+      ""PlayerId"": 2,
+      ""ColorName"": ""Blue"",
+      ""Red"": 0.20,
+      ""Green"": 0.48,
+      ""Blue"": 1.0,
+      ""Alpha"": 1.0
+    }},
+    {{
+      ""PlayerId"": 3,
+      ""ColorName"": ""Green"",
+      ""Red"": 0.24,
+      ""Green"": 0.86,
+      ""Blue"": 0.34,
+      ""Alpha"": 1.0
+    }},
+    {{
+      ""PlayerId"": 4,
+      ""ColorName"": ""Yellow"",
+      ""Red"": 1.0,
+      ""Green"": 0.86,
+      ""Blue"": 0.18,
+      ""Alpha"": 1.0
     }}
   ]
 }}",

@@ -29,6 +29,11 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(5.25f, ball.InitialSpeed);
             Assert.AreEqual(9.8f, ball.MaxSpeed);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball01.prefab", ball.PrefabLocation);
+            Assert.AreEqual("Red", catalog.GetPlayerColor(1).ColorName);
+            Assert.AreEqual(1.0f, catalog.GetPlayerColor(1).Red);
+            Assert.AreEqual("Blue", catalog.GetPlayerColor(2).ColorName);
+            Assert.AreEqual("Green", catalog.GetPlayerColor(3).ColorName);
+            Assert.AreEqual("Yellow", catalog.GetPlayerColor(4).ColorName);
             Assert.AreEqual(0.18f, ai.ReactionDelay);
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);

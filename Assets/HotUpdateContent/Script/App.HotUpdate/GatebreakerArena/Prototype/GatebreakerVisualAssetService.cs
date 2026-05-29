@@ -29,6 +29,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             GatebreakerLoadedPrefab player3Ball = await LoadOptionalPrefabAsync(ResolveSiblingBallPrefabLocation(ballRule?.PrefabLocation, 3), "ball-player-3");
             result.SetPlayerBall(2, player2Ball ?? result.Ball);
             result.SetPlayerBall(3, player3Ball ?? result.Ball);
+            result.SetPlayerBall(4, result.Ball);
             return result;
         }
 
@@ -98,7 +99,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
     public sealed class GatebreakerVisualAssetSet : IDisposable
     {
-        private readonly GatebreakerLoadedPrefab[] _playerBalls = new GatebreakerLoadedPrefab[3];
+        private readonly GatebreakerLoadedPrefab[] _playerBalls = new GatebreakerLoadedPrefab[4];
 
         public GatebreakerLoadedPrefab Scene { get; internal set; }
         public GatebreakerLoadedPrefab Paddle { get; internal set; }
@@ -106,24 +107,24 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         public bool IsComplete => Scene != null && Paddle != null && Ball != null;
 
-        public GatebreakerLoadedPrefab GetBallForPlayerSlot(int playerSlot)
+        public GatebreakerLoadedPrefab GetBallForPlayerId(int playerId)
         {
-            if (playerSlot > 0 && playerSlot <= _playerBalls.Length && _playerBalls[playerSlot - 1] != null)
+            if (playerId > 0 && playerId <= _playerBalls.Length && _playerBalls[playerId - 1] != null)
             {
-                return _playerBalls[playerSlot - 1];
+                return _playerBalls[playerId - 1];
             }
 
             return Ball;
         }
 
-        internal void SetPlayerBall(int playerSlot, GatebreakerLoadedPrefab prefab)
+        internal void SetPlayerBall(int playerId, GatebreakerLoadedPrefab prefab)
         {
-            if (playerSlot <= 0 || playerSlot > _playerBalls.Length)
+            if (playerId <= 0 || playerId > _playerBalls.Length)
             {
                 return;
             }
 
-            _playerBalls[playerSlot - 1] = prefab;
+            _playerBalls[playerId - 1] = prefab;
         }
 
         public void Dispose()

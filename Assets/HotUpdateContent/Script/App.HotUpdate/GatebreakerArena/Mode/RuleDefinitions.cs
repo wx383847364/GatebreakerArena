@@ -78,4 +78,14 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public string ScenePrefabLocation { get; set; }
         public string PaddlePrefabLocation { get; set; }
     }
+
+    public sealed class PlayerColorRuleDefinition
+    {
+        public int PlayerId { get; set; }
+        public string ColorName { get; set; }
+        public float Red { get; set; }
+        public float Green { get; set; }
+        public float Blue { get; set; }
+        public float Alpha { get; set; }
+    }
 }

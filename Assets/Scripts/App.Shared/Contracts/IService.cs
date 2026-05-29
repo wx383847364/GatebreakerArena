@@ -177,6 +177,10 @@ namespace App.Shared.Contracts
         UnityEngine.Object BallCountTextObject { get; }
         UnityEngine.Object MovementPadObject { get; }
         UnityEngine.Object MovementHandleObject { get; }
+        UnityEngine.Object MovementLeftArrowInputObject { get; }
+        UnityEngine.Object MovementRightArrowInputObject { get; }
+        UnityEngine.Object MovementLeftArrowHighlightObject { get; }
+        UnityEngine.Object MovementRightArrowHighlightObject { get; }
         UnityEngine.Object HudRootObject { get; }
         UnityEngine.Object HudTitleTextObject { get; }
         UnityEngine.Object HudStatusTextObject { get; }

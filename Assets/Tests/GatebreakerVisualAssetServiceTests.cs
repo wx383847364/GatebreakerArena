@@ -58,9 +58,10 @@ namespace Gatebreaker.Tests
             });
 
             CollectionAssert.AreEqual(new[] { "scene", "paddle", ball01, ball02, ball03 }, assetsRuntime.LoadedLocations);
-            Assert.AreEqual(ball01, set.GetBallForPlayerSlot(1).Location);
-            Assert.AreEqual(ball02, set.GetBallForPlayerSlot(2).Location);
-            Assert.AreEqual(ball03, set.GetBallForPlayerSlot(3).Location);
+            Assert.AreEqual(ball01, set.GetBallForPlayerId(1).Location);
+            Assert.AreEqual(ball02, set.GetBallForPlayerId(2).Location);
+            Assert.AreEqual(ball03, set.GetBallForPlayerId(3).Location);
+            Assert.AreEqual(ball01, set.GetBallForPlayerId(4).Location);
 
             set.Dispose();
 
