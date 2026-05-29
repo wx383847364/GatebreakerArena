@@ -1,22 +1,26 @@
+using System.Collections;
 using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Mode;
 using App.Shared.Contracts;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Gatebreaker.Tests
 {
     public sealed class GatebreakerConfigRuntimeLoaderTests
     {
-        [Test]
-        public async Task LoadAsync_LoadsRulesBytesThroughAssetsRuntime()
+        [UnityTest]
+        public IEnumerator LoadAsync_LoadsRulesBytesThroughAssetsRuntime()
         {
             var handle = new FakeAssetHandle(new TextAsset(CreateRulesJson("TeamScore", "FourSide")));
             var assetsRuntime = new FakeAssetsRuntime(handle);
             var loader = new GatebreakerConfigRuntimeLoader();
 
-            GatebreakerConfigLoadResult result = await loader.LoadAsync(assetsRuntime);
+            Task<GatebreakerConfigLoadResult> loadTask = loader.LoadAsync(assetsRuntime);
+            yield return WaitForTask(loadTask);
+            GatebreakerConfigLoadResult result = loadTask.Result;
 
             Assert.IsTrue(result.Succeeded, result.Message);
             Assert.AreEqual(GatebreakerConfigRuntimeLoader.RulesAssetLocation, assetsRuntime.LoadedLocation);
@@ -42,6 +46,17 @@ namespace Gatebreaker.Tests
             CollectionAssert.AreEqual(new[] { 2, 4 }, map.SupportedPlayerCount);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
+            Assert.AreEqual(3, map.DefaultPlayerCount);
+            Assert.AreEqual(3, map.PlayerSideBindings.Count);
+            Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);
+            Assert.AreEqual("Position01", map.PlayerSideBindings[0].ScenePosition);
+            Assert.AreEqual(5, map.PlayerSideBindings[0].BoundarySegmentIndex);
+            Assert.AreEqual(2, map.PlayerSideBindings[1].PlayerId);
+            Assert.AreEqual("Position03", map.PlayerSideBindings[1].ScenePosition);
+            Assert.AreEqual(1, map.PlayerSideBindings[1].BoundarySegmentIndex);
+            Assert.AreEqual(3, map.PlayerSideBindings[2].PlayerId);
+            Assert.AreEqual("Position05", map.PlayerSideBindings[2].ScenePosition);
+            Assert.AreEqual(3, map.PlayerSideBindings[2].BoundarySegmentIndex);
             Assert.AreEqual(3, effective.InitialBallsInMatch);
             Assert.AreEqual(7, effective.MaxBallsInMatch);
             Assert.AreEqual(1, effective.InitialServeAmmo);
@@ -61,12 +76,14 @@ namespace Gatebreaker.Tests
             CollectionAssert.AreEqual(new[] { 2, 4 }, result.Catalog.GetMap("MAP_RING").SupportedPlayerCount);
         }
 
-        [Test]
-        public async Task LoadAsync_ReturnsFallbackInfoWhenAssetIsMissing()
+        [UnityTest]
+        public IEnumerator LoadAsync_ReturnsFallbackInfoWhenAssetIsMissing()
         {
             var loader = new GatebreakerConfigRuntimeLoader();
 
-            GatebreakerConfigLoadResult result = await loader.LoadAsync(new FakeAssetsRuntime(null));
+            Task<GatebreakerConfigLoadResult> loadTask = loader.LoadAsync(new FakeAssetsRuntime(null));
+            yield return WaitForTask(loadTask);
+            GatebreakerConfigLoadResult result = loadTask.Result;
 
             Assert.IsFalse(result.Succeeded);
             Assert.AreEqual(GatebreakerConfigLoadFailureReason.AssetLoadFailed, result.FailureReason);
@@ -75,18 +92,38 @@ namespace Gatebreaker.Tests
             StringAssert.Contains("Failed to load", result.Message);
         }
 
-        [Test]
-        public async Task LoadAsync_ReturnsParseFailureForInvalidJson()
+        [UnityTest]
+        public IEnumerator LoadAsync_ReturnsParseFailureForInvalidJson()
         {
             var handle = new FakeAssetHandle(new TextAsset("{\"DT_ModeRule\": ["));
             var loader = new GatebreakerConfigRuntimeLoader();
 
-            GatebreakerConfigLoadResult result = await loader.LoadAsync(new FakeAssetsRuntime(handle));
+            Task<GatebreakerConfigLoadResult> loadTask = loader.LoadAsync(new FakeAssetsRuntime(handle));
+            yield return WaitForTask(loadTask);
+            GatebreakerConfigLoadResult result = loadTask.Result;
 
             Assert.IsFalse(result.Succeeded);
             Assert.AreEqual(GatebreakerConfigLoadFailureReason.ParseFailed, result.FailureReason);
             Assert.IsTrue(result.CanUseDefaultCatalogFallback);
             Assert.IsTrue(handle.Released);
+        }
+
+        private static IEnumerator WaitForTask(Task task)
+        {
+            while (!task.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (task.IsFaulted)
+            {
+                throw task.Exception;
+            }
+
+            if (task.IsCanceled)
+            {
+                Assert.Fail("Task was canceled.");
+            }
         }
 
         private static string CreateRulesJson(object scoreRuleType, object spawnLayoutType)
@@ -166,7 +203,25 @@ namespace Gatebreaker.Tests
       ""BallSpeedModifier"": 0.2,
       ""GoalSizeModifier"": -0.1,
       ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab"",
-      ""PaddlePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Baffle.prefab""
+      ""PaddlePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Baffle.prefab"",
+      ""DefaultPlayerCount"": 3,
+      ""PlayerSideBindings"": [
+        {{
+          ""PlayerId"": 1,
+          ""ScenePosition"": ""Position01"",
+          ""BoundarySegmentIndex"": 5
+        }},
+        {{
+          ""PlayerId"": 2,
+          ""ScenePosition"": ""Position03"",
+          ""BoundarySegmentIndex"": 1
+        }},
+        {{
+          ""PlayerId"": 3,
+          ""ScenePosition"": ""Position05"",
+          ""BoundarySegmentIndex"": 3
+        }}
+      ]
     }}
   ],
   ""DT_PlayerColorRule"": [

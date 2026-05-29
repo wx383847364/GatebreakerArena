@@ -89,6 +89,13 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         GoalSizeModifier = 0f,
                         ScenePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
                         PaddlePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+                        DefaultPlayerCount = 3,
+                        PlayerSideBindings = new[]
+                        {
+                            CreatePlayerSideBinding(1, "Position01", 5),
+                            CreatePlayerSideBinding(2, "Position03", 1),
+                            CreatePlayerSideBinding(3, "Position05", 3),
+                        },
                     },
                 },
                 new[]
@@ -207,6 +214,19 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Green = green,
                 Blue = blue,
                 Alpha = 1f,
+            };
+        }
+
+        private static MapPlayerSideBindingDefinition CreatePlayerSideBinding(
+            int playerId,
+            string scenePosition,
+            int boundarySegmentIndex)
+        {
+            return new MapPlayerSideBindingDefinition
+            {
+                PlayerId = playerId,
+                ScenePosition = scenePosition,
+                BoundarySegmentIndex = boundarySegmentIndex,
             };
         }
 

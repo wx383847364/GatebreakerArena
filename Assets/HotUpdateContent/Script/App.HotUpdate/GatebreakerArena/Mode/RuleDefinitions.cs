@@ -77,6 +77,15 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float GoalSizeModifier { get; set; }
         public string ScenePrefabLocation { get; set; }
         public string PaddlePrefabLocation { get; set; }
+        public int DefaultPlayerCount { get; set; }
+        public IReadOnlyList<MapPlayerSideBindingDefinition> PlayerSideBindings { get; set; }
+    }
+
+    public sealed class MapPlayerSideBindingDefinition
+    {
+        public int PlayerId { get; set; }
+        public string ScenePosition { get; set; }
+        public int BoundarySegmentIndex { get; set; }
     }
 
     public sealed class PlayerColorRuleDefinition

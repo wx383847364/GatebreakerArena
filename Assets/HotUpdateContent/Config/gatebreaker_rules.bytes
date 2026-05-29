@@ -33,6 +33,7 @@
   "DT_MapRule": [
     {
       "BallSpeedModifier": 0.0,
+      "DefaultPlayerCount": 3,
       "GoalSizeModifier": 0.0,
       "HasObstacle": false,
       "InitialBallsModifier": 0,
@@ -42,6 +43,23 @@
       "MaxOwnedBallsInField": 5,
       "MaxServeAmmo": 5,
       "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+      "PlayerSideBindings": [
+        {
+          "BoundarySegmentIndex": 5,
+          "PlayerId": 1,
+          "ScenePosition": "Position01"
+        },
+        {
+          "BoundarySegmentIndex": 1,
+          "PlayerId": 2,
+          "ScenePosition": "Position03"
+        },
+        {
+          "BoundarySegmentIndex": 3,
+          "PlayerId": 3,
+          "ScenePosition": "Position05"
+        }
+      ],
       "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
       "ServeCooldownModifier": 0.0,
       "ServeRechargeSeconds": 5.0,

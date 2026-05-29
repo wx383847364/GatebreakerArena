@@ -38,6 +38,17 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
+            Assert.AreEqual(3, map.DefaultPlayerCount);
+            Assert.AreEqual(3, map.PlayerSideBindings.Count);
+            Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);
+            Assert.AreEqual("Position01", map.PlayerSideBindings[0].ScenePosition);
+            Assert.AreEqual(5, map.PlayerSideBindings[0].BoundarySegmentIndex);
+            Assert.AreEqual(2, map.PlayerSideBindings[1].PlayerId);
+            Assert.AreEqual("Position03", map.PlayerSideBindings[1].ScenePosition);
+            Assert.AreEqual(1, map.PlayerSideBindings[1].BoundarySegmentIndex);
+            Assert.AreEqual(3, map.PlayerSideBindings[2].PlayerId);
+            Assert.AreEqual("Position05", map.PlayerSideBindings[2].ScenePosition);
+            Assert.AreEqual(3, map.PlayerSideBindings[2].BoundarySegmentIndex);
             Assert.AreEqual(1, effective.InitialBallsInMatch);
             Assert.AreEqual(20, effective.MaxBallsInMatch);
             Assert.AreEqual(1, effective.InitialServeAmmo);

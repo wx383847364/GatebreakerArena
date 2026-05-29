@@ -98,6 +98,8 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
                 errors.append(f"{table_name}[{index}]: missing required field {field}.")
         if table_name == "DT_ModeRule":
             _normalize_mode_time_fields(row, index, errors)
+        if table_name == "DT_MapRule":
+            _validate_map_player_side_bindings(row, index, errors)
 
 
 def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -117,6 +119,51 @@ def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[st
 
     if _normalize_number(row["Time"]) != _normalize_number(row["MatchDuration"]):
         errors.append(f"DT_ModeRule[{index}]: Time and MatchDuration must match.")
+
+
+def _validate_map_player_side_bindings(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    bindings = row.get("PlayerSideBindings")
+    if bindings is None:
+        return
+
+    if not isinstance(bindings, list):
+        errors.append(f"DT_MapRule[{index}]: PlayerSideBindings must be an array.")
+        return
+
+    seen_players: set[int] = set()
+    seen_segments: set[int] = set()
+    for binding_index, binding in enumerate(bindings):
+        if not isinstance(binding, dict):
+            errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: every item must be an object.")
+            continue
+
+        for field in ("PlayerId", "ScenePosition", "BoundarySegmentIndex"):
+            if field not in binding:
+                errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: missing required field {field}.")
+
+        player_id = _normalize_int(binding.get("PlayerId"))
+        segment_index = _normalize_int(binding.get("BoundarySegmentIndex"))
+        if player_id is None or player_id <= 0:
+            errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: PlayerId must be positive.")
+        elif player_id in seen_players:
+            errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: duplicate PlayerId {player_id}.")
+        else:
+            seen_players.add(player_id)
+
+        if segment_index is None or segment_index < 0:
+            errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: BoundarySegmentIndex must be non-negative.")
+        elif segment_index in seen_segments:
+            errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: duplicate BoundarySegmentIndex {segment_index}.")
+        else:
+            seen_segments.add(segment_index)
+
+
+def _normalize_int(value: Any) -> int | None:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number
 
 
 def _has_value(row: dict[str, Any], field: str) -> bool:
@@ -254,6 +301,24 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
                 "GoalSizeModifier": 0.0,
                 "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
                 "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+                "DefaultPlayerCount": 3,
+                "PlayerSideBindings": [
+                    {
+                        "PlayerId": 1,
+                        "ScenePosition": "Position01",
+                        "BoundarySegmentIndex": 5,
+                    },
+                    {
+                        "PlayerId": 2,
+                        "ScenePosition": "Position03",
+                        "BoundarySegmentIndex": 1,
+                    },
+                    {
+                        "PlayerId": 3,
+                        "ScenePosition": "Position05",
+                        "BoundarySegmentIndex": 3,
+                    },
+                ],
             }
         ],
         "DT_PlayerColorRule": [

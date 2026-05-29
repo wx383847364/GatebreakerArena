@@ -178,6 +178,18 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 GoalSizeModifier = ReadFloat(item, "GoalSizeModifier"),
                 ScenePrefabLocation = ReadOptionalString(item, "ScenePrefabLocation"),
                 PaddlePrefabLocation = ReadOptionalString(item, "PaddlePrefabLocation"),
+                DefaultPlayerCount = ReadOptionalInt(item, "DefaultPlayerCount") ?? 0,
+                PlayerSideBindings = ReadOptionalArray(item, "PlayerSideBindings", ReadPlayerSideBinding),
+            };
+        }
+
+        private static MapPlayerSideBindingDefinition ReadPlayerSideBinding(Dictionary<string, object> item)
+        {
+            return new MapPlayerSideBindingDefinition
+            {
+                PlayerId = ReadInt(item, "PlayerId"),
+                ScenePosition = ReadOptionalString(item, "ScenePosition"),
+                BoundarySegmentIndex = ReadInt(item, "BoundarySegmentIndex"),
             };
         }
 
@@ -202,6 +214,35 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             if (!root.TryGetValue(key, out object value) || !(value is List<object> array))
             {
                 throw new FormatException($"Missing JSON array '{key}'.");
+            }
+
+            var result = new List<T>(array.Count);
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (!(array[i] is Dictionary<string, object> item))
+                {
+                    throw new FormatException($"'{key}' item {i} must be an object.");
+                }
+
+                result.Add(read(item));
+            }
+
+            return result;
+        }
+
+        private static IReadOnlyList<T> ReadOptionalArray<T>(
+            Dictionary<string, object> root,
+            string key,
+            Func<Dictionary<string, object>, T> read)
+        {
+            if (!root.TryGetValue(key, out object value) || value == null)
+            {
+                return Array.Empty<T>();
+            }
+
+            if (!(value is List<object> array))
+            {
+                throw new FormatException($"JSON field '{key}' must be an array.");
             }
 
             var result = new List<T>(array.Count);

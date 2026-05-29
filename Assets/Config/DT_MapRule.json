@@ -14,6 +14,24 @@
     "BallSpeedModifier": 0.0,
     "GoalSizeModifier": 0.0,
     "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
-    "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab"
+    "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+    "DefaultPlayerCount": 3,
+    "PlayerSideBindings": [
+      {
+        "PlayerId": 1,
+        "ScenePosition": "Position01",
+        "BoundarySegmentIndex": 5
+      },
+      {
+        "PlayerId": 2,
+        "ScenePosition": "Position03",
+        "BoundarySegmentIndex": 1
+      },
+      {
+        "PlayerId": 3,
+        "ScenePosition": "Position05",
+        "BoundarySegmentIndex": 3
+      }
+    ]
   }
 ]
