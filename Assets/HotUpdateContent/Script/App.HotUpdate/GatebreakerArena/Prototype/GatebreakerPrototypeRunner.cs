@@ -964,7 +964,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             ballObject.transform.SetParent(_visualRoot, false);
             ballObject.SetActive(true);
             ballObject.transform.localScale = GetCompensatedVisualScale(0.45f);
-            GatebreakerPlayerVisualColor.ApplyBallOwnerColor(ballObject, GetPlayerColor(ownerPlayerId));
 
             _ballViewSlots[ballId] = ownerPlayerId;
             _ballViews[ballId] = ballObject.transform;

@@ -25,11 +25,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             result.Paddle = await LoadPrefabAsync(map?.PaddlePrefabLocation, "paddle");
             result.Ball = await LoadPrefabAsync(ballRule?.PrefabLocation, "ball");
             result.SetPlayerBall(1, result.Ball);
-            GatebreakerLoadedPrefab player2Ball = await LoadOptionalPrefabAsync(ResolveSiblingBallPrefabLocation(ballRule?.PrefabLocation, 2), "ball-player-2");
-            GatebreakerLoadedPrefab player3Ball = await LoadOptionalPrefabAsync(ResolveSiblingBallPrefabLocation(ballRule?.PrefabLocation, 3), "ball-player-3");
-            result.SetPlayerBall(2, player2Ball ?? result.Ball);
-            result.SetPlayerBall(3, player3Ball ?? result.Ball);
-            result.SetPlayerBall(4, result.Ball);
+            for (int playerId = 2; playerId <= 4; playerId++)
+            {
+                GatebreakerLoadedPrefab playerBall = await LoadOptionalPrefabAsync(
+                    ResolveSiblingBallPrefabLocation(ballRule?.PrefabLocation, playerId),
+                    $"ball-player-{playerId}");
+                result.SetPlayerBall(playerId, playerBall ?? result.Ball);
+            }
+
             return result;
         }
 

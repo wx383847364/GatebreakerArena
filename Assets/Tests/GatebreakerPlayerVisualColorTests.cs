@@ -8,7 +8,7 @@ namespace Gatebreaker.Tests
     public sealed class GatebreakerPlayerVisualColorTests
     {
         [Test]
-        public void PlayerColorsMapToAreaPaddleAndBallTrailByPlayerId()
+        public void PlayerColorsMapToAreaAndPaddleByPlayerId()
         {
             GatebreakerModeCatalog catalog = GatebreakerModeCatalog.CreateDefault();
 
@@ -23,33 +23,24 @@ namespace Gatebreaker.Tests
             Color expected = GatebreakerPlayerVisualColor.ToUnityColor(rule);
             var zone = GameObject.CreatePrimitive(PrimitiveType.Cube);
             var paddle = new GameObject($"Paddle {playerId}");
-            var ball = new GameObject($"Ball {playerId}");
             Material zoneMaterial = null;
-            Material trailMaterial = null;
             try
             {
                 zoneMaterial = new Material(Shader.Find("Sprites/Default"));
                 zone.GetComponent<Renderer>().sharedMaterial = zoneMaterial;
                 SpriteRenderer paddleRenderer = paddle.AddComponent<SpriteRenderer>();
-                TrailRenderer trail = ball.AddComponent<TrailRenderer>();
-                trailMaterial = new Material(Shader.Find("Sprites/Default"));
-                trail.sharedMaterial = trailMaterial;
 
                 GatebreakerPlayerVisualColor.ApplyZoneColor(zone.GetComponent<Renderer>(), expected, 0.32f);
                 GatebreakerPlayerVisualColor.ApplyPaddleColor(paddle, expected);
-                GatebreakerPlayerVisualColor.ApplyBallOwnerColor(ball, expected);
 
                 AssertColor(expected, zone.GetComponent<Renderer>().sharedMaterial.color, ignoreAlpha: true);
                 AssertColor(expected, paddleRenderer.color);
-                AssertColor(expected, trail.colorGradient.colorKeys[0].color, ignoreAlpha: true);
             }
             finally
             {
                 Object.DestroyImmediate(zone);
                 Object.DestroyImmediate(paddle);
-                Object.DestroyImmediate(ball);
                 Object.DestroyImmediate(zoneMaterial);
-                Object.DestroyImmediate(trailMaterial);
             }
         }
 

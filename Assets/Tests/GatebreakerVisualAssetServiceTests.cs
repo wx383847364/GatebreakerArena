@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Mode;
@@ -5,13 +6,14 @@ using App.HotUpdate.GatebreakerArena.Prototype;
 using App.Shared.Contracts;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Gatebreaker.Tests
 {
     public sealed class GatebreakerVisualAssetServiceTests
     {
-        [Test]
-        public async Task LoadAsync_LoadsConfiguredPrefabsThroughAssetsRuntime()
+        [UnityTest]
+        public IEnumerator LoadAsync_LoadsConfiguredPrefabsThroughAssetsRuntime()
         {
             var assetsRuntime = new FakeAssetsRuntime();
             assetsRuntime.Add("scene", new GameObject("ScenePrefab"));
@@ -19,7 +21,9 @@ namespace Gatebreaker.Tests
             assetsRuntime.Add("ball", new GameObject("BallPrefab"));
             var service = new GatebreakerVisualAssetService(assetsRuntime);
 
-            GatebreakerVisualAssetSet set = await service.LoadAsync(CreateEffectiveRule(), CreateBallRule());
+            Task<GatebreakerVisualAssetSet> loadTask = service.LoadAsync(CreateEffectiveRule(), CreateBallRule());
+            yield return WaitForTask(loadTask);
+            GatebreakerVisualAssetSet set = loadTask.Result;
 
             Assert.IsTrue(set.IsComplete);
             CollectionAssert.AreEqual(new[] { "scene", "paddle", "ball" }, assetsRuntime.LoadedLocations);
@@ -38,52 +42,60 @@ namespace Gatebreaker.Tests
             Object.DestroyImmediate(assetsRuntime.Handles["ball"].AssetObject);
         }
 
-        [Test]
-        public async Task LoadAsync_LoadsSiblingPlayerBallPrefabsWhenUsingBall01()
+        [UnityTest]
+        public IEnumerator LoadAsync_LoadsSiblingPlayerBallPrefabsWhenUsingBall01()
         {
             var assetsRuntime = new FakeAssetsRuntime();
             string ball01 = "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab";
             string ball02 = "Assets/HotUpdateContent/Res/prefabs/Ball02.prefab";
             string ball03 = "Assets/HotUpdateContent/Res/prefabs/Ball03.prefab";
+            string ball04 = "Assets/HotUpdateContent/Res/prefabs/Ball04.prefab";
             assetsRuntime.Add("scene", new GameObject("ScenePrefab"));
             assetsRuntime.Add("paddle", new GameObject("PaddlePrefab"));
             assetsRuntime.Add(ball01, new GameObject("Ball01Prefab"));
             assetsRuntime.Add(ball02, new GameObject("Ball02Prefab"));
             assetsRuntime.Add(ball03, new GameObject("Ball03Prefab"));
+            assetsRuntime.Add(ball04, new GameObject("Ball04Prefab"));
             var service = new GatebreakerVisualAssetService(assetsRuntime);
 
-            GatebreakerVisualAssetSet set = await service.LoadAsync(CreateEffectiveRule(), new BallRuleDefinition
+            Task<GatebreakerVisualAssetSet> loadTask = service.LoadAsync(CreateEffectiveRule(), new BallRuleDefinition
             {
                 PrefabLocation = ball01,
             });
+            yield return WaitForTask(loadTask);
+            GatebreakerVisualAssetSet set = loadTask.Result;
 
-            CollectionAssert.AreEqual(new[] { "scene", "paddle", ball01, ball02, ball03 }, assetsRuntime.LoadedLocations);
+            CollectionAssert.AreEqual(new[] { "scene", "paddle", ball01, ball02, ball03, ball04 }, assetsRuntime.LoadedLocations);
             Assert.AreEqual(ball01, set.GetBallForPlayerId(1).Location);
             Assert.AreEqual(ball02, set.GetBallForPlayerId(2).Location);
             Assert.AreEqual(ball03, set.GetBallForPlayerId(3).Location);
-            Assert.AreEqual(ball01, set.GetBallForPlayerId(4).Location);
+            Assert.AreEqual(ball04, set.GetBallForPlayerId(4).Location);
 
             set.Dispose();
 
             Assert.IsTrue(assetsRuntime.Handles[ball01].Released);
             Assert.IsTrue(assetsRuntime.Handles[ball02].Released);
             Assert.IsTrue(assetsRuntime.Handles[ball03].Released);
+            Assert.IsTrue(assetsRuntime.Handles[ball04].Released);
             Object.DestroyImmediate(assetsRuntime.Handles["scene"].AssetObject);
             Object.DestroyImmediate(assetsRuntime.Handles["paddle"].AssetObject);
             Object.DestroyImmediate(assetsRuntime.Handles[ball01].AssetObject);
             Object.DestroyImmediate(assetsRuntime.Handles[ball02].AssetObject);
             Object.DestroyImmediate(assetsRuntime.Handles[ball03].AssetObject);
+            Object.DestroyImmediate(assetsRuntime.Handles[ball04].AssetObject);
         }
 
-        [Test]
-        public async Task LoadAsync_ReturnsIncompleteSetWhenAssetIsMissing()
+        [UnityTest]
+        public IEnumerator LoadAsync_ReturnsIncompleteSetWhenAssetIsMissing()
         {
             var assetsRuntime = new FakeAssetsRuntime();
             assetsRuntime.Add("scene", new GameObject("ScenePrefab"));
             assetsRuntime.Add("ball", new GameObject("BallPrefab"));
             var service = new GatebreakerVisualAssetService(assetsRuntime);
 
-            GatebreakerVisualAssetSet set = await service.LoadAsync(CreateEffectiveRule(), CreateBallRule());
+            Task<GatebreakerVisualAssetSet> loadTask = service.LoadAsync(CreateEffectiveRule(), CreateBallRule());
+            yield return WaitForTask(loadTask);
+            GatebreakerVisualAssetSet set = loadTask.Result;
 
             Assert.IsFalse(set.IsComplete);
             Assert.IsNotNull(set.Scene);
@@ -95,18 +107,38 @@ namespace Gatebreaker.Tests
             Object.DestroyImmediate(assetsRuntime.Handles["ball"].AssetObject);
         }
 
-        [Test]
-        public async Task LoadAsync_ReleasesNonGameObjectAssetImmediately()
+        [UnityTest]
+        public IEnumerator LoadAsync_ReleasesNonGameObjectAssetImmediately()
         {
             var assetsRuntime = new FakeAssetsRuntime();
             assetsRuntime.Add("scene", new TextAsset("not a prefab"));
             var service = new GatebreakerVisualAssetService(assetsRuntime);
 
-            GatebreakerVisualAssetSet set = await service.LoadAsync(CreateEffectiveRule(), CreateBallRule());
+            Task<GatebreakerVisualAssetSet> loadTask = service.LoadAsync(CreateEffectiveRule(), CreateBallRule());
+            yield return WaitForTask(loadTask);
+            GatebreakerVisualAssetSet set = loadTask.Result;
 
             Assert.IsFalse(set.IsComplete);
             Assert.IsNull(set.Scene);
             Assert.IsTrue(assetsRuntime.Handles["scene"].Released);
+        }
+
+        private static IEnumerator WaitForTask(Task task)
+        {
+            while (!task.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (task.IsFaulted)
+            {
+                throw task.Exception;
+            }
+
+            if (task.IsCanceled)
+            {
+                Assert.Fail("Task was canceled.");
+            }
         }
 
         private static EffectiveMatchRule CreateEffectiveRule()
