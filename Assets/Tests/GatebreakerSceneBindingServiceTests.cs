@@ -210,6 +210,38 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(Vector2.zero, _binding.MovementHandle.anchoredPosition);
         }
 
+        [Test]
+        public void PreviewMoveAxisUpdatesHandleAndHighlightsWithoutForwardingCallback()
+        {
+            float moveAxis = 0f;
+            _binding.MovementPad.sizeDelta = new Vector2(200f, 68f);
+            _binding.MovementHandle.sizeDelta = new Vector2(40f, 40f);
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks { MoveAxisChanged = axis => moveAxis = axis },
+                null);
+
+            _service.PreviewMoveAxis(-1f);
+
+            Assert.AreEqual(0f, moveAxis);
+            Assert.Less(_binding.MovementHandle.anchoredPosition.x, 0f);
+            AssertMovementHighlightActive(_binding.MovementLeftArrowHighlight);
+            AssertMovementHighlightRestored(_binding.MovementRightArrowHighlight);
+
+            _service.PreviewMoveAxis(1f);
+
+            Assert.AreEqual(0f, moveAxis);
+            Assert.Greater(_binding.MovementHandle.anchoredPosition.x, 0f);
+            AssertMovementHighlightRestored(_binding.MovementLeftArrowHighlight);
+            AssertMovementHighlightActive(_binding.MovementRightArrowHighlight);
+
+            _service.PreviewMoveAxis(0f);
+
+            Assert.AreEqual(Vector2.zero, _binding.MovementHandle.anchoredPosition);
+            AssertMovementHighlightRestored(_binding.MovementLeftArrowHighlight);
+            AssertMovementHighlightRestored(_binding.MovementRightArrowHighlight);
+        }
+
         private static void InvokeMovementTrigger(Component target, EventTriggerType eventType, Vector2 screenPosition)
         {
             EventTrigger trigger = target.GetComponent<EventTrigger>();

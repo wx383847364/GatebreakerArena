@@ -633,6 +633,12 @@ namespace App.HotUpdate.GatebreakerArena.UI
         {
             float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
             _callbacks?.MoveAxisChanged?.Invoke(clampedAxis);
+            PreviewMoveAxis(clampedAxis);
+        }
+
+        public void PreviewMoveAxis(float axis)
+        {
+            float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
             UpdateMovementHandle(clampedAxis);
             UpdateMovementArrowHighlights(clampedAxis);
         }
@@ -693,7 +699,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             graphic.color = active
-                ? new Color(1f, 0.08f, 0.06f, Mathf.Max(0.65f, graphic.color.a))
+                ? new Color(1f, 0.08f, 0.06f, Mathf.Max(0.85f, graphic.color.a))
                 : hasRestColor ? restColor : graphic.color;
         }
 

@@ -159,7 +159,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 HandleLocalPlayerSelection();
             }
 
-            float moveAxis = ReadMoveAxis() * GetLocalMoveAxisSign();
+            float screenMoveAxis = ReadMoveAxis();
+            _sceneBindingService?.PreviewMoveAxis(screenMoveAxis);
+            float moveAxis = screenMoveAxis * GetLocalMoveAxisSign();
             bool servePressed = Input.GetKeyDown(KeyCode.Space) || _guiServePressed;
             _guiServePressed = false;
             var frame = new PlayerInputFrame(_localPlayerId, moveAxis, servePressed, BuildServeAimDirection(moveAxis));
