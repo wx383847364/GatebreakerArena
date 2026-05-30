@@ -313,6 +313,8 @@ namespace Gatebreaker.Tests
         [Test]
         public void LanButtonsAndInputsForwardCallbacks()
         {
+            int localBattleCount = 0;
+            int onlineBattleCount = 0;
             int createCount = 0;
             int discoverCount = 0;
             int joinCount = 0;
@@ -326,6 +328,8 @@ namespace Gatebreaker.Tests
                 _binding,
                 new GatebreakerArenaSceneUiCallbacks
                 {
+                    LocalBattleRequested = () => localBattleCount++,
+                    OnlineBattleRequested = () => onlineBattleCount++,
                     CreateLanHostRequested = () => createCount++,
                     StartLanDiscoveryRequested = () => discoverCount++,
                     JoinLanRoomRequested = () => joinCount++,
@@ -338,6 +342,9 @@ namespace Gatebreaker.Tests
                 },
                 null);
 
+            _binding.LocalBattleButton.onClick.Invoke();
+            _binding.OnlineBattleButton.onClick.Invoke();
+            _binding.LanBackButton.onClick.Invoke();
             _binding.LanCreateButton.onClick.Invoke();
             _binding.LanDiscoverButton.onClick.Invoke();
             _binding.LanJoinButton.onClick.Invoke();
@@ -348,15 +355,52 @@ namespace Gatebreaker.Tests
             _binding.LanPlayerNameInput.onValueChanged.Invoke("Bruce");
             _binding.LanRoomCodeInput.onValueChanged.Invoke("ROOM42");
 
+            Assert.AreEqual(1, localBattleCount);
+            Assert.AreEqual(1, onlineBattleCount);
             Assert.AreEqual(1, createCount);
             Assert.AreEqual(1, discoverCount);
             Assert.AreEqual(1, joinCount);
             Assert.AreEqual(1, readyCount);
             Assert.AreEqual(1, startCount);
-            Assert.AreEqual(1, leaveCount);
+            Assert.AreEqual(2, leaveCount);
             Assert.AreEqual(1, acknowledgeCount);
             Assert.AreEqual("Bruce", playerName);
             Assert.AreEqual("ROOM42", roomCode);
+        }
+
+        [Test]
+        public void EntryPanelsSwitchBetweenModeSelectOnlineMenuRoomAndCountdown()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+
+            Assert.IsTrue(_binding.LanRoot.activeSelf);
+            Assert.IsTrue(_binding.ModeSelectRoot.activeSelf);
+            Assert.IsFalse(_binding.LanBackButton.gameObject.activeSelf);
+            Assert.IsFalse(_binding.LanMenuRoot.activeSelf);
+            Assert.IsFalse(_binding.LanRoomInfoRoot.activeSelf);
+            Assert.IsFalse(_binding.LanStatusRoot.activeSelf);
+            Assert.IsFalse(_binding.StartCountdownRoot.activeSelf);
+
+            _service.ShowOnlineMenu();
+            Assert.IsFalse(_binding.ModeSelectRoot.activeSelf);
+            Assert.IsTrue(_binding.LanBackButton.gameObject.activeSelf);
+            Assert.IsTrue(_binding.LanMenuRoot.activeSelf);
+            Assert.IsFalse(_binding.LanRoomInfoRoot.activeSelf);
+            Assert.IsTrue(_binding.LanStatusRoot.activeSelf);
+
+            _service.ShowLanRoomStatus();
+            Assert.IsFalse(_binding.LanMenuRoot.activeSelf);
+            Assert.IsTrue(_binding.LanBackButton.gameObject.activeSelf);
+            Assert.IsTrue(_binding.LanRoomInfoRoot.activeSelf);
+            Assert.IsTrue(_binding.LanStatusRoot.activeSelf);
+
+            _service.ShowStartCountdown("5");
+            Assert.IsFalse(_binding.LanRoot.activeSelf);
+            Assert.IsTrue(_binding.StartCountdownRoot.activeSelf);
+            Assert.AreEqual("5", _binding.StartCountdownText.text);
+
+            _service.ShowStartCountdown("开始游戏");
+            Assert.AreEqual("开始游戏", _binding.StartCountdownText.text);
         }
 
         private sealed class TestSceneUiBinding : IGatebreakerArenaSceneUiBinding
@@ -394,6 +438,13 @@ namespace Gatebreaker.Tests
             public Slider MinimumOutwardSlider { get; private set; }
             public TMP_Text MinimumOutwardValueText { get; private set; }
             public GameObject LanRoot { get; private set; }
+            public GameObject ModeSelectRoot { get; private set; }
+            public Button LocalBattleButton { get; private set; }
+            public Button OnlineBattleButton { get; private set; }
+            public GameObject LanMenuRoot { get; private set; }
+            public GameObject LanRoomInfoRoot { get; private set; }
+            public GameObject LanStatusRoot { get; private set; }
+            public Button LanBackButton { get; private set; }
             public Button LanCreateButton { get; private set; }
             public Button LanDiscoverButton { get; private set; }
             public Button LanJoinButton { get; private set; }
@@ -409,6 +460,8 @@ namespace Gatebreaker.Tests
             public TMP_Text LanLocalIpText { get; private set; }
             public TMP_Text LanRoomIpText { get; private set; }
             public TMP_Text LanErrorText { get; private set; }
+            public GameObject StartCountdownRoot { get; private set; }
+            public TMP_Text StartCountdownText { get; private set; }
 
             public Object SkillButtonObject => SkillButton;
             public Object BallCountTextObject => BallCountText;
@@ -443,6 +496,13 @@ namespace Gatebreaker.Tests
             public Object GmMinimumOutwardSliderObject => MinimumOutwardSlider;
             public Object GmMinimumOutwardValueTextObject => MinimumOutwardValueText;
             public Object LanRootObject => LanRoot;
+            public Object ModeSelectRootObject => ModeSelectRoot;
+            public Object LocalBattleButtonObject => LocalBattleButton;
+            public Object OnlineBattleButtonObject => OnlineBattleButton;
+            public Object LanMenuRootObject => LanMenuRoot;
+            public Object LanRoomInfoRootObject => LanRoomInfoRoot;
+            public Object LanStatusRootObject => LanStatusRoot;
+            public Object LanBackButtonObject => LanBackButton;
             public Object LanCreateButtonObject => LanCreateButton;
             public Object LanDiscoverButtonObject => LanDiscoverButton;
             public Object LanJoinButtonObject => LanJoinButton;
@@ -458,6 +518,8 @@ namespace Gatebreaker.Tests
             public Object LanLocalIpTextObject => LanLocalIpText;
             public Object LanRoomIpTextObject => LanRoomIpText;
             public Object LanErrorTextObject => LanErrorText;
+            public Object StartCountdownRootObject => StartCountdownRoot;
+            public Object StartCountdownTextObject => StartCountdownText;
 
             public static TestSceneUiBinding Create(Transform parent)
             {
@@ -516,6 +578,13 @@ namespace Gatebreaker.Tests
                     MinimumOutwardSlider = Add<Slider>(parent, "MinimumOutwardSlider"),
                     MinimumOutwardValueText = Add<TextMeshProUGUI>(parent, "MinimumOutwardValue"),
                     LanRoot = CreateRoot(parent, "LanRoot"),
+                    ModeSelectRoot = CreateRoot(parent, "ModeSelectRoot"),
+                    LocalBattleButton = Add<Button>(parent, "LocalBattle"),
+                    OnlineBattleButton = Add<Button>(parent, "OnlineBattle"),
+                    LanMenuRoot = CreateRoot(parent, "LanMenuRoot"),
+                    LanRoomInfoRoot = CreateRoot(parent, "LanRoomInfoRoot"),
+                    LanStatusRoot = CreateRoot(parent, "LanStatusRoot"),
+                    LanBackButton = Add<Button>(parent, "LanBack"),
                     LanCreateButton = Add<Button>(parent, "LanCreate"),
                     LanDiscoverButton = Add<Button>(parent, "LanDiscover"),
                     LanJoinButton = Add<Button>(parent, "LanJoin"),
@@ -531,6 +600,8 @@ namespace Gatebreaker.Tests
                     LanLocalIpText = Add<TextMeshProUGUI>(parent, "LanLocalIp"),
                     LanRoomIpText = Add<TextMeshProUGUI>(parent, "LanRoomIp"),
                     LanErrorText = Add<TextMeshProUGUI>(parent, "LanError"),
+                    StartCountdownRoot = CreateRoot(parent, "StartCountdownRoot"),
+                    StartCountdownText = Add<TextMeshProUGUI>(parent, "StartCountdownText"),
                 };
             }
 

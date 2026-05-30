@@ -36,6 +36,10 @@ namespace Gatebreaker.Tests.PlayMode
                 {
                     failures.Add($"{type}: {condition}\n{stackTrace}");
                 }
+                else if (type == LogType.Warning && condition.Contains("GatebreakerArenaSceneBindingService:"))
+                {
+                    failures.Add($"{type}: {condition}\n{stackTrace}");
+                }
             };
 
             bool previousIgnoreFailingMessages = LogAssert.ignoreFailingMessages;
@@ -77,6 +81,8 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.IsTrue(context.SceneBindingService.HasSkillButtonBinding, "Skill button should be explicitly bound.");
                 Assert.IsTrue(context.SceneBindingService.HasBallCountTextBinding, "BallCount text should be explicitly bound.");
                 Assert.IsTrue(context.SceneBindingService.HasPlayerScorePanelBindings, "Player score/hit panel texts should be explicitly bound.");
+                Assert.IsTrue(context.SceneBindingService.HasGmSliderBindings, "GM tuning sliders should be explicitly bound.");
+                Assert.IsTrue(context.SceneBindingService.HasLanButtonBindings, "LAN buttons should be explicitly bound.");
                 Assert.IsNotNull(context.VisualAssetService, "Arena signal: visual asset service should be registered.");
                 Assert.IsNotNull(context.HudPresenter, "HUD signal: HUD presenter should be registered.");
                 Assert.IsNotNull(GameObject.Find("Gatebreaker Prototype Runner"), "Prototype runner GameObject should be created.");
@@ -103,8 +109,38 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.AreEqual(hud.CurrentServeAmmo.ToString(), ballCountText.text);
                 IGatebreakerArenaSceneUiBinding sceneBinding = GatebreakerArenaSceneUiBindingRegistry.Current;
                 Assert.IsNotNull(sceneBinding, "BootstrapScene should register the scene UI binding bridge.");
+                AssertModeSelectVisible(sceneBinding);
                 AssertCountdownAndMovementBindings(sceneBinding, hud);
                 AssertPlayerScorePanelTexts(sceneBinding, hud);
+                AssertLanBindings(sceneBinding);
+
+                float remainingBeforeModeSelectWait = context.MatchRuntime.RemainingTime;
+                yield return new WaitForSeconds(0.35f);
+                Assert.AreEqual(
+                    remainingBeforeModeSelectWait,
+                    context.MatchRuntime.RemainingTime,
+                    0.001f,
+                    "Mode select should freeze local prototype time before the player chooses human battle.");
+
+                Button localBattleButton = sceneBinding.LocalBattleButtonObject as Button;
+                Assert.IsNotNull(localBattleButton, "Local battle mode button should be explicitly bound.");
+                localBattleButton.onClick.Invoke();
+                TMP_Text countdownText = sceneBinding.StartCountdownTextObject as TMP_Text;
+                Assert.IsNotNull(countdownText, "Start countdown text should be explicitly bound.");
+
+                GameObject countdownRoot = (sceneBinding.StartCountdownRootObject as Component)?.gameObject ??
+                                           sceneBinding.StartCountdownRootObject as GameObject;
+                Assert.IsNotNull(countdownRoot, "Start countdown root should be explicitly bound.");
+                Assert.IsTrue(countdownRoot.activeSelf, "Local battle click should show the start countdown.");
+
+                float countdownDeadline = Time.realtimeSinceStartup + 8f;
+                while (countdownRoot.activeSelf && Time.realtimeSinceStartup < countdownDeadline)
+                {
+                    AssertNoFailures(failures);
+                    yield return null;
+                }
+
+                Assert.IsFalse(countdownRoot.activeSelf, "Start countdown should hide after displaying 开始游戏.");
 
                 int ballCountBeforeClick = context.MatchRuntime.Balls.Count;
                 GameObject skillButtonObject = GameObject.Find("Skill_btn");
@@ -186,6 +222,50 @@ namespace Gatebreaker.Tests.PlayMode
             Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementRightArrowInputObject, "Right movement arrow should have an explicit input binding.");
             Assert.IsInstanceOf<Graphic>(sceneBinding.MovementLeftArrowHighlightObject, "Left movement arrow should have an explicit highlight graphic binding.");
             Assert.IsInstanceOf<Graphic>(sceneBinding.MovementRightArrowHighlightObject, "Right movement arrow should have an explicit highlight graphic binding.");
+        }
+
+        private static void AssertLanBindings(IGatebreakerArenaSceneUiBinding sceneBinding)
+        {
+            Assert.IsInstanceOf<GameObject>(sceneBinding.ModeSelectRootObject, "Mode select root should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LocalBattleButtonObject, "Local battle button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.OnlineBattleButtonObject, "Online battle button should be explicitly bound.");
+            Assert.IsInstanceOf<GameObject>(sceneBinding.LanMenuRootObject, "LAN menu root should be explicitly bound.");
+            Assert.IsInstanceOf<GameObject>(sceneBinding.LanRoomInfoRootObject, "LAN room-info root should be explicitly bound.");
+            Assert.IsInstanceOf<GameObject>(sceneBinding.LanStatusRootObject, "LAN status root should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanBackButtonObject, "LAN back button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanCreateButtonObject, "LAN create button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanDiscoverButtonObject, "LAN discover button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanJoinButtonObject, "LAN join button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanReadyButtonObject, "LAN ready button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanStartButtonObject, "LAN start button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanLeaveButtonObject, "LAN leave button should be explicitly bound.");
+            Assert.IsInstanceOf<Button>(sceneBinding.LanAcknowledgeStartButtonObject, "LAN acknowledge-start button should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_InputField>(sceneBinding.LanPlayerNameInputObject, "LAN player-name input should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_InputField>(sceneBinding.LanRoomCodeInputObject, "LAN room-code input should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanStateTextObject, "LAN state text should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanRoomCodeTextObject, "LAN room-code text should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanPlayerCountTextObject, "LAN player-count text should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanLocalIpTextObject, "LAN local-IP text should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanRoomIpTextObject, "LAN room-IP text should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanErrorTextObject, "LAN error text should be explicitly bound.");
+            Assert.IsInstanceOf<GameObject>(sceneBinding.StartCountdownRootObject, "Start countdown root should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.StartCountdownTextObject, "Start countdown text should be explicitly bound.");
+        }
+
+        private static void AssertModeSelectVisible(IGatebreakerArenaSceneUiBinding sceneBinding)
+        {
+            GameObject modeSelect = sceneBinding.ModeSelectRootObject as GameObject;
+            GameObject lanMenu = sceneBinding.LanMenuRootObject as GameObject;
+            Button lanBackButton = sceneBinding.LanBackButtonObject as Button;
+            GameObject countdown = sceneBinding.StartCountdownRootObject as GameObject;
+            Assert.IsNotNull(modeSelect, "ModeSelectPanel should be bound.");
+            Assert.IsNotNull(lanMenu, "LanPanel should be bound as the online menu root.");
+            Assert.IsNotNull(lanBackButton, "LanBackButton should be bound.");
+            Assert.IsNotNull(countdown, "StartCountdownPanel should be bound.");
+            Assert.IsTrue(modeSelect.activeSelf, "BootstrapScene should start on mode select.");
+            Assert.IsFalse(lanBackButton.gameObject.activeSelf, "LAN back button should stay hidden on mode select.");
+            Assert.IsFalse(lanMenu.activeSelf, "Create/Join menu should stay hidden until Online Battle is selected.");
+            Assert.IsFalse(countdown.activeSelf, "Start countdown should be hidden before Local Battle is selected.");
         }
 
         private static List<PlayerScoreSnapshot> BuildVisiblePlayerScores(

@@ -43,6 +43,13 @@ namespace App.AOT.Bootstrap
         [SerializeField] private Slider _gmMinimumOutwardSlider;
         [SerializeField] private TMP_Text _gmMinimumOutwardValueText;
         [SerializeField] private GameObject _lanRoot;
+        [SerializeField] private GameObject _modeSelectRoot;
+        [SerializeField] private Button _localBattleButton;
+        [SerializeField] private Button _onlineBattleButton;
+        [SerializeField] private GameObject _lanMenuRoot;
+        [SerializeField] private GameObject _lanRoomInfoRoot;
+        [SerializeField] private GameObject _lanStatusRoot;
+        [SerializeField] private Button _lanBackButton;
         [SerializeField] private Button _lanCreateButton;
         [SerializeField] private Button _lanDiscoverButton;
         [SerializeField] private Button _lanJoinButton;
@@ -58,6 +65,8 @@ namespace App.AOT.Bootstrap
         [SerializeField] private TMP_Text _lanLocalIpText;
         [SerializeField] private TMP_Text _lanRoomIpText;
         [SerializeField] private TMP_Text _lanErrorText;
+        [SerializeField] private GameObject _startCountdownRoot;
+        [SerializeField] private TMP_Text _startCountdownText;
 
         public Object SkillButtonObject => _skillButton;
         public Object BallCountTextObject => _ballCountText;
@@ -92,6 +101,13 @@ namespace App.AOT.Bootstrap
         public Object GmMinimumOutwardSliderObject => _gmMinimumOutwardSlider;
         public Object GmMinimumOutwardValueTextObject => _gmMinimumOutwardValueText;
         public Object LanRootObject => _lanRoot;
+        public Object ModeSelectRootObject => _modeSelectRoot;
+        public Object LocalBattleButtonObject => _localBattleButton;
+        public Object OnlineBattleButtonObject => _onlineBattleButton;
+        public Object LanMenuRootObject => _lanMenuRoot;
+        public Object LanRoomInfoRootObject => _lanRoomInfoRoot;
+        public Object LanStatusRootObject => _lanStatusRoot;
+        public Object LanBackButtonObject => _lanBackButton;
         public Object LanCreateButtonObject => _lanCreateButton;
         public Object LanDiscoverButtonObject => _lanDiscoverButton;
         public Object LanJoinButtonObject => _lanJoinButton;
@@ -107,6 +123,8 @@ namespace App.AOT.Bootstrap
         public Object LanLocalIpTextObject => _lanLocalIpText;
         public Object LanRoomIpTextObject => _lanRoomIpText;
         public Object LanErrorTextObject => _lanErrorText;
+        public Object StartCountdownRootObject => _startCountdownRoot;
+        public Object StartCountdownTextObject => _startCountdownText;
 
         public bool HasRequiredBindings =>
             _skillButton != null &&
@@ -125,7 +143,39 @@ namespace App.AOT.Bootstrap
             HasTextBindings(_resultRankLabelTexts) &&
             HasTextBindings(_resultRankNameTexts) &&
             _resultRestartButton != null &&
-            _resultBackButton != null;
+            _resultBackButton != null &&
+            _gmRoot != null &&
+            _gmHitOffsetSlider != null &&
+            _gmHitOffsetValueText != null &&
+            _gmPaddleVelocitySlider != null &&
+            _gmPaddleVelocityValueText != null &&
+            _gmMinimumOutwardSlider != null &&
+            _gmMinimumOutwardValueText != null &&
+            _lanRoot != null &&
+            _modeSelectRoot != null &&
+            _localBattleButton != null &&
+            _onlineBattleButton != null &&
+            _lanMenuRoot != null &&
+            _lanRoomInfoRoot != null &&
+            _lanStatusRoot != null &&
+            _lanBackButton != null &&
+            _lanCreateButton != null &&
+            _lanDiscoverButton != null &&
+            _lanJoinButton != null &&
+            _lanReadyButton != null &&
+            _lanStartButton != null &&
+            _lanLeaveButton != null &&
+            _lanAcknowledgeStartButton != null &&
+            _lanPlayerNameInput != null &&
+            _lanRoomCodeInput != null &&
+            _lanStateText != null &&
+            _lanRoomCodeText != null &&
+            _lanPlayerCountText != null &&
+            _lanLocalIpText != null &&
+            _lanRoomIpText != null &&
+            _lanErrorText != null &&
+            _startCountdownRoot != null &&
+            _startCountdownText != null;
 
         private void Awake()
         {

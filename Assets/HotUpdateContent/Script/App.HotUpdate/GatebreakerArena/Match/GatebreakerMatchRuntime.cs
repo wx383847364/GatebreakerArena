@@ -215,6 +215,23 @@ namespace App.HotUpdate.GatebreakerArena.Match
             TickInternal(deltaTime, false);
         }
 
+        public bool ForceFinishWithCurrentLeader()
+        {
+            if (Phase != MatchPhase.Playing && Phase != MatchPhase.Overtime)
+            {
+                return false;
+            }
+
+            IReadOnlyList<int> stableTopPlayers = _scoreSystem.GetTopRankedPlayerIds(_players, true);
+            if (stableTopPlayers.Count <= 0)
+            {
+                return false;
+            }
+
+            EndWithWinner(stableTopPlayers[0]);
+            return true;
+        }
+
         public void ApplyInputFrame(PlayerInputFrame frame)
         {
             if (!_inputFrames.TryGetValue(frame.PlayerId, out PlayerInputFrame existing) || !existing.ServePressed)

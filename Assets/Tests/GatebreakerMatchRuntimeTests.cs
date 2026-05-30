@@ -913,6 +913,38 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void ForceFinishWithCurrentLeaderEntersResultPhase()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 1);
+            runtime.FindPlayer(1).Score = 1;
+            runtime.FindPlayer(2).Score = 3;
+
+            bool finished = runtime.ForceFinishWithCurrentLeader();
+
+            Assert.IsTrue(finished);
+            Assert.AreEqual(MatchPhase.Result, runtime.Phase);
+            Assert.IsTrue(runtime.HasWinner);
+            Assert.AreEqual(2, runtime.WinnerPlayerId);
+            Assert.AreEqual(0f, runtime.RemainingTime);
+        }
+
+        [Test]
+        public void ForceFinishWithCurrentLeaderUsesStableTieBreaker()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 1);
+            runtime.FindPlayer(1).Score = 2;
+            runtime.FindPlayer(2).Score = 2;
+
+            bool finished = runtime.ForceFinishWithCurrentLeader();
+
+            Assert.IsTrue(finished);
+            Assert.AreEqual(MatchPhase.Result, runtime.Phase);
+            Assert.AreEqual(1, runtime.WinnerPlayerId);
+        }
+
+        [Test]
         public void TiedHighestScoreEntersSuddenDeathOvertime()
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();

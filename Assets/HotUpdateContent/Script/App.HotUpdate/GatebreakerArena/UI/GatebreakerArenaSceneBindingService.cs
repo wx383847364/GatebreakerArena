@@ -16,6 +16,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
     public sealed class GatebreakerArenaSceneUiCallbacks
     {
         public Action ServeRequested { get; set; }
+        public Action LocalBattleRequested { get; set; }
+        public Action OnlineBattleRequested { get; set; }
         public Action CreateLanHostRequested { get; set; }
         public Action StartLanDiscoveryRequested { get; set; }
         public Action JoinLanRoomRequested { get; set; }
@@ -42,7 +44,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private readonly List<SliderListener> _sliderListeners = new List<SliderListener>();
         private readonly List<EventTriggerListener> _eventTriggerListeners = new List<EventTriggerListener>();
         private Button _skillButton;
+        private Button _localBattleButton;
+        private Button _onlineBattleButton;
         private Button _lanCreateButton;
+        private Button _lanBackButton;
         private Button _lanDiscoverButton;
         private Button _lanJoinButton;
         private Button _lanReadyButton;
@@ -95,6 +100,12 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private GameObject _resultRoot;
         private GameObject _gmRoot;
         private GameObject _lanRoot;
+        private GameObject _modeSelectRoot;
+        private GameObject _lanMenuRoot;
+        private GameObject _lanRoomInfoRoot;
+        private GameObject _lanStatusRoot;
+        private GameObject _startCountdownRoot;
+        private TMP_Text _startCountdownText;
         private GatebreakerArenaSceneUiCallbacks _callbacks;
         private IAppLogger _logger;
         private bool _suppressSliderEvents;
@@ -114,6 +125,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
         public bool HasLanButtonBindings =>
             _lanCreateButton != null &&
+            _lanBackButton != null &&
             _lanDiscoverButton != null &&
             _lanJoinButton != null &&
             _lanReadyButton != null &&
@@ -163,12 +175,12 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
             CaptureMovementArrowRestColors();
 
-            _hudRoot = RequireGameObject(binding.HudRootObject, nameof(binding.HudRootObject));
-            _hudTitleText = Require<TMP_Text>(binding.HudTitleTextObject, nameof(binding.HudTitleTextObject));
-            _hudStatusText = Require<TMP_Text>(binding.HudStatusTextObject, nameof(binding.HudStatusTextObject));
-            _hudScoreText = Require<TMP_Text>(binding.HudScoreTextObject, nameof(binding.HudScoreTextObject));
-            _hudServeText = Require<TMP_Text>(binding.HudServeTextObject, nameof(binding.HudServeTextObject));
-            _hudBallText = Require<TMP_Text>(binding.HudBallTextObject, nameof(binding.HudBallTextObject));
+            _hudRoot = OptionalGameObject(binding.HudRootObject);
+            _hudTitleText = Optional<TMP_Text>(binding.HudTitleTextObject);
+            _hudStatusText = Optional<TMP_Text>(binding.HudStatusTextObject);
+            _hudScoreText = Optional<TMP_Text>(binding.HudScoreTextObject);
+            _hudServeText = Optional<TMP_Text>(binding.HudServeTextObject);
+            _hudBallText = Optional<TMP_Text>(binding.HudBallTextObject);
             _timeText = Require<TMP_Text>(binding.TimeTextObject, nameof(binding.TimeTextObject));
             _playerScoreTexts = RequireTextArray(binding.PlayerScoreTextObjects, nameof(binding.PlayerScoreTextObjects));
             _playerHitTexts = RequireTextArray(binding.PlayerHitTextObjects, nameof(binding.PlayerHitTextObjects));
@@ -188,6 +200,13 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _gmMinimumOutwardSlider = Require<Slider>(binding.GmMinimumOutwardSliderObject, nameof(binding.GmMinimumOutwardSliderObject));
             _gmMinimumOutwardValueText = Require<TMP_Text>(binding.GmMinimumOutwardValueTextObject, nameof(binding.GmMinimumOutwardValueTextObject));
             _lanRoot = RequireGameObject(binding.LanRootObject, nameof(binding.LanRootObject));
+            _modeSelectRoot = RequireGameObject(binding.ModeSelectRootObject, nameof(binding.ModeSelectRootObject));
+            _localBattleButton = Require<Button>(binding.LocalBattleButtonObject, nameof(binding.LocalBattleButtonObject));
+            _onlineBattleButton = Require<Button>(binding.OnlineBattleButtonObject, nameof(binding.OnlineBattleButtonObject));
+            _lanMenuRoot = RequireGameObject(binding.LanMenuRootObject, nameof(binding.LanMenuRootObject));
+            _lanRoomInfoRoot = RequireGameObject(binding.LanRoomInfoRootObject, nameof(binding.LanRoomInfoRootObject));
+            _lanStatusRoot = RequireGameObject(binding.LanStatusRootObject, nameof(binding.LanStatusRootObject));
+            _lanBackButton = Require<Button>(binding.LanBackButtonObject, nameof(binding.LanBackButtonObject));
             _lanCreateButton = Require<Button>(binding.LanCreateButtonObject, nameof(binding.LanCreateButtonObject));
             _lanDiscoverButton = Require<Button>(binding.LanDiscoverButtonObject, nameof(binding.LanDiscoverButtonObject));
             _lanJoinButton = Require<Button>(binding.LanJoinButtonObject, nameof(binding.LanJoinButtonObject));
@@ -203,8 +222,13 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanLocalIpText = Require<TMP_Text>(binding.LanLocalIpTextObject, nameof(binding.LanLocalIpTextObject));
             _lanRoomIpText = Require<TMP_Text>(binding.LanRoomIpTextObject, nameof(binding.LanRoomIpTextObject));
             _lanErrorText = Require<TMP_Text>(binding.LanErrorTextObject, nameof(binding.LanErrorTextObject));
+            _startCountdownRoot = RequireGameObject(binding.StartCountdownRootObject, nameof(binding.StartCountdownRootObject));
+            _startCountdownText = Require<TMP_Text>(binding.StartCountdownTextObject, nameof(binding.StartCountdownTextObject));
 
             AddButtonListener(_skillButton, HandleSkillButtonClicked);
+            AddButtonListener(_localBattleButton, () => _callbacks.LocalBattleRequested?.Invoke());
+            AddButtonListener(_onlineBattleButton, () => _callbacks.OnlineBattleRequested?.Invoke());
+            AddButtonListener(_lanBackButton, () => _callbacks.LeaveLanRoomRequested?.Invoke());
             AddButtonListener(_lanCreateButton, () => _callbacks.CreateLanHostRequested?.Invoke());
             AddButtonListener(_lanDiscoverButton, () => _callbacks.StartLanDiscoveryRequested?.Invoke());
             AddButtonListener(_lanJoinButton, () => _callbacks.JoinLanRoomRequested?.Invoke());
@@ -238,7 +262,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             SetActive(_hudRoot, true);
             SetActive(_gmRoot, true);
-            SetActive(_lanRoot, true);
+            ShowModeSelect();
             SetActive(_resultRoot, false);
         }
 
@@ -328,7 +352,6 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
         public void UpdateLanRoom(RoomSnapshot snapshot, string localIp, string roomIp)
         {
-            SetActive(_lanRoot, snapshot != null);
             if (snapshot == null)
             {
                 return;
@@ -351,6 +374,52 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 snapshot.State == LanRoomState.Loading && !snapshot.IsHost);
         }
 
+        public void ShowModeSelect()
+        {
+            SetActive(_lanRoot, true);
+            SetActive(_modeSelectRoot, true);
+            SetActive(_lanBackButton != null ? _lanBackButton.gameObject : null, false);
+            SetActive(_lanMenuRoot, false);
+            SetActive(_lanRoomInfoRoot, false);
+            SetActive(_lanStatusRoot, false);
+            SetActive(_startCountdownRoot, false);
+        }
+
+        public void ShowOnlineMenu()
+        {
+            SetActive(_lanRoot, true);
+            SetActive(_modeSelectRoot, false);
+            SetActive(_lanBackButton != null ? _lanBackButton.gameObject : null, true);
+            SetActive(_lanMenuRoot, true);
+            SetActive(_lanRoomInfoRoot, false);
+            SetActive(_lanStatusRoot, true);
+            SetActive(_startCountdownRoot, false);
+        }
+
+        public void ShowLanRoomStatus()
+        {
+            SetActive(_lanRoot, true);
+            SetActive(_modeSelectRoot, false);
+            SetActive(_lanBackButton != null ? _lanBackButton.gameObject : null, true);
+            SetActive(_lanMenuRoot, false);
+            SetActive(_lanRoomInfoRoot, true);
+            SetActive(_lanStatusRoot, true);
+            SetActive(_startCountdownRoot, false);
+        }
+
+        public void HideEntryUi()
+        {
+            SetActive(_lanRoot, false);
+            SetActive(_startCountdownRoot, false);
+        }
+
+        public void ShowStartCountdown(string text)
+        {
+            SetActive(_lanRoot, false);
+            SetActive(_startCountdownRoot, true);
+            SetText(_startCountdownText, text ?? string.Empty);
+        }
+
         public void Clear()
         {
             for (int i = 0; i < _buttonListeners.Count; i++)
@@ -363,6 +432,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             _buttonListeners.Clear();
+            _localBattleButton = null;
+            _onlineBattleButton = null;
             for (int i = 0; i < _inputListeners.Count; i++)
             {
                 InputListener listener = _inputListeners[i];
@@ -394,6 +465,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             _eventTriggerListeners.Clear();
             _skillButton = null;
+            _lanBackButton = null;
             _lanCreateButton = null;
             _lanDiscoverButton = null;
             _lanJoinButton = null;
@@ -447,6 +519,12 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _resultRoot = null;
             _gmRoot = null;
             _lanRoot = null;
+            _modeSelectRoot = null;
+            _lanMenuRoot = null;
+            _lanRoomInfoRoot = null;
+            _lanStatusRoot = null;
+            _startCountdownRoot = null;
+            _startCountdownText = null;
             _callbacks = null;
             _logger = null;
             _lastBallCountText = null;
@@ -468,6 +546,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private static T Optional<T>(UnityEngine.Object source) where T : UnityEngine.Object
         {
             return source as T;
+        }
+
+        private static GameObject OptionalGameObject(UnityEngine.Object source)
+        {
+            if (source is GameObject gameObject)
+            {
+                return gameObject;
+            }
+
+            return source is Component component ? component.gameObject : null;
         }
 
         private GameObject RequireGameObject(UnityEngine.Object source, string bindingName)
@@ -713,7 +801,13 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
         private static void SetText(TMP_Text text, string value)
         {
-            if (text != null && text.text != value)
+            if (text == null)
+            {
+                return;
+            }
+
+            GatebreakerRuntimeTmpFontResolver.EnsureFontSupportsText(text, value);
+            if (text.text != value)
             {
                 text.text = value;
             }

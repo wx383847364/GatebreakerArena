@@ -206,6 +206,13 @@ namespace App.Shared.Contracts
         UnityEngine.Object GmMinimumOutwardSliderObject { get; }
         UnityEngine.Object GmMinimumOutwardValueTextObject { get; }
         UnityEngine.Object LanRootObject { get; }
+        UnityEngine.Object ModeSelectRootObject { get; }
+        UnityEngine.Object LocalBattleButtonObject { get; }
+        UnityEngine.Object OnlineBattleButtonObject { get; }
+        UnityEngine.Object LanMenuRootObject { get; }
+        UnityEngine.Object LanRoomInfoRootObject { get; }
+        UnityEngine.Object LanStatusRootObject { get; }
+        UnityEngine.Object LanBackButtonObject { get; }
         UnityEngine.Object LanCreateButtonObject { get; }
         UnityEngine.Object LanDiscoverButtonObject { get; }
         UnityEngine.Object LanJoinButtonObject { get; }
@@ -221,6 +228,8 @@ namespace App.Shared.Contracts
         UnityEngine.Object LanLocalIpTextObject { get; }
         UnityEngine.Object LanRoomIpTextObject { get; }
         UnityEngine.Object LanErrorTextObject { get; }
+        UnityEngine.Object StartCountdownRootObject { get; }
+        UnityEngine.Object StartCountdownTextObject { get; }
     }
 
     public static class GatebreakerArenaSceneUiBindingRegistry

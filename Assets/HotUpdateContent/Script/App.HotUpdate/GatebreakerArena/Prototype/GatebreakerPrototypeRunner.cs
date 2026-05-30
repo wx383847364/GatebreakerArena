@@ -37,6 +37,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const int DebugOverlaySortingOrder = 1200;
         private const string SceneDebugLayerName = "SceneDebug";
         private const int SceneDebugLayerFallback = 6;
+        private const float LocalStartCountdownSeconds = 5f;
+        private const float LocalStartReadyTextSeconds = 0.75f;
 
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, int> _ballViewSlots = new Dictionary<int, int>();
@@ -82,7 +84,20 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private bool _usePrefabVisuals;
         private bool _ownsVisualRoot;
         private bool _hasSceneVisualBounds;
+        private bool _missingInputServiceWarningLogged;
         private float _paddlePrefabLength = 1f;
+        private StartupUiState _startupUiState = StartupUiState.ModeSelect;
+        private float _localStartCountdownElapsed;
+        private string _lastStartCountdownText;
+
+        private enum StartupUiState
+        {
+            ModeSelect,
+            LocalCountdown,
+            LocalPlaying,
+            OnlineMenu,
+            OnlineRoom,
+        }
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
         private float ArenaHalfHeight => _runtime?.Arena != null ? _runtime.Arena.HalfHeight : 5f;
@@ -146,6 +161,23 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
+            if (!EnsureLocalRuntimeReady())
+            {
+                return;
+            }
+
+            if (HandleStartupUiState())
+            {
+                return;
+            }
+
+#if UNITY_EDITOR
+            if (HandleEditorDebugShortcuts())
+            {
+                return;
+            }
+#endif
+
             if (!IsLanPlaying() && Input.GetKeyDown(KeyCode.R))
             {
                 RestartLocalPrototype();
@@ -176,7 +208,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _lanInputAccumulator = 0f;
-            _inputService.SetFrame(frame);
+            SetLocalInputFrame(frame);
             _runtime.ApplyInputFrame(frame);
             _runtime.TickLocalPrototype(Time.deltaTime);
             if (servePressed)
@@ -190,10 +222,117 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             RefreshBoundHud();
         }
 
+        private bool EnsureLocalRuntimeReady()
+        {
+            if (_runtime != null)
+            {
+                return true;
+            }
+
+            Debug.LogError("GatebreakerPrototypeRunner: runtime dependency is missing; disabling prototype runner.");
+            _initialized = false;
+            enabled = false;
+            return false;
+        }
+
+#if UNITY_EDITOR
+        private bool HandleEditorDebugShortcuts()
+        {
+            if (!Input.GetKeyDown(KeyCode.Escape))
+            {
+                return false;
+            }
+
+            if (IsLanPlaying())
+            {
+                Debug.LogWarning("GatebreakerPrototypeRunner: editor ESC result shortcut is ignored during LAN play.");
+                return false;
+            }
+
+            if (!_runtime.ForceFinishWithCurrentLeader())
+            {
+                return false;
+            }
+
+            _guiServePressed = false;
+            _lanInputAccumulator = 0f;
+            SyncPlayerViews();
+            SyncBallViews();
+            RefreshBoundHud();
+            Debug.Log("GatebreakerPrototypeRunner: editor ESC forced local prototype result.");
+            return true;
+        }
+#endif
+
+        private void SetLocalInputFrame(PlayerInputFrame frame)
+        {
+            if (_inputService != null)
+            {
+                _inputService.SetFrame(frame);
+                return;
+            }
+
+            if (!_missingInputServiceWarningLogged)
+            {
+                Debug.LogWarning("GatebreakerPrototypeRunner: input service is missing; local prototype continues with direct runtime input.");
+                _missingInputServiceWarningLogged = true;
+            }
+        }
+
         private bool IsLanPlaying()
         {
             return _lanRoomService != null &&
                    _lanRoomService.CurrentSnapshot.State == LanRoomState.Playing;
+        }
+
+        private bool HandleStartupUiState()
+        {
+            if (IsLanPlaying())
+            {
+                _startupUiState = StartupUiState.OnlineRoom;
+                return false;
+            }
+
+            if (_startupUiState == StartupUiState.LocalCountdown)
+            {
+                UpdateLocalStartCountdown();
+                return true;
+            }
+
+            return _startupUiState != StartupUiState.LocalPlaying;
+        }
+
+        private void UpdateLocalStartCountdown()
+        {
+            _localStartCountdownElapsed += Mathf.Max(0f, Time.deltaTime);
+            float remaining = LocalStartCountdownSeconds - _localStartCountdownElapsed;
+            if (remaining > 0f)
+            {
+                ShowStartCountdown(Mathf.CeilToInt(remaining).ToString());
+                return;
+            }
+
+            if (_localStartCountdownElapsed < LocalStartCountdownSeconds + LocalStartReadyTextSeconds)
+            {
+                ShowStartCountdown("开始游戏");
+                return;
+            }
+
+            _startupUiState = StartupUiState.LocalPlaying;
+            _sceneBindingService?.HideEntryUi();
+            _lastStartCountdownText = null;
+            RefreshBoundHud();
+        }
+
+        private void ShowStartCountdown(string text)
+        {
+            if (text == _lastStartCountdownText)
+            {
+                return;
+            }
+
+            _lastStartCountdownText = text;
+            _sceneBindingService?.ShowStartCountdown(text);
         }
 
         private void SyncLanLocalPlayer()
@@ -1237,6 +1376,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             return new GatebreakerArenaSceneUiCallbacks
             {
                 ServeRequested = RequestGuiServe,
+                LocalBattleRequested = StartLocalBattleCountdown,
+                OnlineBattleRequested = ShowOnlineBattleMenu,
                 CreateLanHostRequested = CreateLanHost,
                 StartLanDiscoveryRequested = StartLanDiscovery,
                 JoinLanRoomRequested = JoinLanRoom,
@@ -1434,6 +1575,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             int tcpPort = _lanTransport?.TcpListenEndpoint.Port ?? 0;
             RoomSnapshot snapshot = _lanRoomService.CreateHost(_lanPlayerName, _lanClientInstanceId, tcpPort: tcpPort);
             _lanRoomCodeInput = snapshot.RoomCode;
+            _startupUiState = StartupUiState.OnlineRoom;
+            _sceneBindingService?.ShowLanRoomStatus();
+            RefreshBoundHud();
         }
 
         private void StartLanDiscovery()
@@ -1446,6 +1590,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             EnsureLanIdentity();
             _lanTransport?.StartDiscovery();
             _lanRoomService.StartDiscovery(_lanClientInstanceId, _lanPlayerName);
+            _startupUiState = StartupUiState.OnlineMenu;
+            _sceneBindingService?.ShowOnlineMenu();
+            RefreshBoundHud();
         }
 
         private void JoinLanRoom()
@@ -1455,7 +1602,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            _lanRoomService.JoinDiscoveredRoom(_lanRoomCodeInput);
+            if (_lanRoomService.JoinDiscoveredRoom(_lanRoomCodeInput))
+            {
+                _startupUiState = StartupUiState.OnlineRoom;
+                _sceneBindingService?.ShowLanRoomStatus();
+                RefreshBoundHud();
+            }
         }
 
         private void ToggleLanReady()
@@ -1476,6 +1628,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void LeaveLanRoom()
         {
             _lanRoomService?.Leave("ui");
+            _startupUiState = StartupUiState.ModeSelect;
+            _sceneBindingService?.ShowModeSelect();
+            RefreshBoundHud();
         }
 
         private void AcknowledgeLanStart()
@@ -1491,6 +1646,22 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void SetLanRoomCode(string value)
         {
             _lanRoomCodeInput = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+        }
+
+        private void StartLocalBattleCountdown()
+        {
+            RestartLocalPrototype();
+            _startupUiState = StartupUiState.LocalCountdown;
+            _localStartCountdownElapsed = 0f;
+            _lastStartCountdownText = null;
+            ShowStartCountdown(Mathf.CeilToInt(LocalStartCountdownSeconds).ToString());
+        }
+
+        private void ShowOnlineBattleMenu()
+        {
+            _startupUiState = StartupUiState.OnlineMenu;
+            _sceneBindingService?.ShowOnlineMenu();
+            RefreshBoundHud();
         }
 
         private void ToggleLanReady(RoomSnapshot snapshot)
@@ -1524,7 +1695,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             GatebreakerHudSnapshot snapshot = _hudPresenter.BuildSnapshot(_localPlayerId);
             _sceneBindingService.UpdateHud(snapshot, _lastServeBlockReason);
             _sceneBindingService.UpdateResult(snapshot);
-            _sceneBindingService.UpdateBounceTuning(_runtime?.BounceTuning, snapshot?.Phase ?? MatchPhase.Waiting);
+            bool canShowTuning = _startupUiState == StartupUiState.LocalPlaying || IsLanPlaying();
+            _sceneBindingService.UpdateBounceTuning(
+                canShowTuning ? _runtime?.BounceTuning : null,
+                snapshot?.Phase ?? MatchPhase.Waiting);
             if (_lanRoomService != null)
             {
                 RoomSnapshot roomSnapshot = _lanRoomService.CurrentSnapshot;
