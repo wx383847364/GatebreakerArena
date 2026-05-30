@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:yousandi.cn,2023:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3aa8ce3a7748f402f9eb6c78c18e4d38, type: 3}
+  m_Name: GatebreakerFontRuntimeSettings
+  m_EditorClassIdentifier: 
+  roleProfile: {fileID: 11400000, guid: c2255cc0461f34537b1f469e0f73164a, type: 2}
+  defaultFallbackFont: {fileID: 11400000, guid: 38c99420381a74d6eb47b879f7528247, type: 2}
+  defaultFallbackSourceFont: {fileID: 12800000, guid: 30856cf78f3454c2d9f5174d3f46270c, type: 3}

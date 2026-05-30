@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:yousandi.cn,2023:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a76b72ba1869d4b58896ee3890827b36, type: 3}
+  m_Name: GatebreakerFontRoleProfile
+  m_EditorClassIdentifier: 
+  roleEntries:
+  - Role: 0
+    Enabled: 1
+    SourceFont: {fileID: 12800000, guid: 8a92a91cb6b8740ef8262cd17f09a61a, type: 3}
+    TmpFontAsset: {fileID: 11400000, guid: 2739a9e44a02d41758c3237c10662c96, type: 2}
+    Description: "8bit \u82F1\u6587\u5927\u6807\u9898\uFF0C\u4F8B\u5982 BATTLE MODE\u3001GAME
+      OVER\u3002"
+  - Role: 1
+    Enabled: 1
+    SourceFont: {fileID: 12800000, guid: 30856cf78f3454c2d9f5174d3f46270c, type: 3}
+    TmpFontAsset: {fileID: 11400000, guid: 4cf32bdb455cc4f75b4790e8501c7ec4, type: 2}
+    Description: "\u4E2D\u6587 HUD\u3001\u6309\u94AE\u3001\u63D0\u793A\u548C\u5E38\u89C4
+      UI \u6587\u672C\u3002"
+  - Role: 2
+    Enabled: 1
+    SourceFont: {fileID: 12800000, guid: f839564e6671d4eb9ada6f1f82f613a1, type: 3}
+    TmpFontAsset: {fileID: 11400000, guid: 7257309967c564c78904b2d267bb78a2, type: 2}
+    Description: "\u82F1\u6587\u73A9\u5BB6\u540D\u3001\u72B6\u6001\u3001\u6570\u5B57\u548C\u6B63\u6587\u5907\u9009\u3002"
+  - Role: 3
+    Enabled: 1
+    SourceFont: {fileID: 12800000, guid: ea846de54769249b49eceb2e27dc7fde, type: 3}
+    TmpFontAsset: {fileID: 11400000, guid: 51fcd09fd4bf84f20859ebc153da7a31, type: 2}
+    Description: "\u65E5\u5F0F\u50CF\u7D20\u98CE\u5907\u9009\u6807\u9898\u6216\u98CE\u683C\u9884\u89C8\u3002"
+  - Role: 4
+    Enabled: 1
+    SourceFont: {fileID: 12800000, guid: 30856cf78f3454c2d9f5174d3f46270c, type: 3}
+    TmpFontAsset: {fileID: 11400000, guid: 38c99420381a74d6eb47b879f7528247, type: 2}
+    Description: "\u4E2D\u6587\u515C\u5E95\u5B57\u4F53\uFF0C\u7528\u4E8E TMP \u7F3A\u5B57\u56DE\u9000\u3002"
+  manualOverrides: []
