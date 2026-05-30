@@ -2,65 +2,72 @@
 
 ## 文档定位
 
-本文记录 Gatebreaker Arena 当前原型从固定子步进升级到 `moving swept collision` 的落地方案。
+本文记录 Gatebreaker Arena 当前原型的连续碰撞基线。
 
-目标是解决低帧率、卡顿或极高速场景下：
+当前状态：已落地为 HotUpdate runtime 的默认碰撞推进方式。
 
-- 球穿过挡板后直接进门。
-- 同一 tick 内本应先碰板，却因当前位置先越界而得分。
-- 挡板先按整帧 `deltaTime` 瞬移到最终位置，导致漏碰旧位置或中间位置。
-- 挡板提前到最终位置参与所有球子步碰撞，导致幽灵碰撞。
+当前实现位置：
 
-本文作为后续实现、测试和 subagent 拆分的权威入口。实现前仍需阅读热更新边界规范，玩法物理逻辑必须留在 `App.HotUpdate.GatebreakerArena`。
+- `Client/Assets/HotUpdateContent/Script/App.HotUpdate/GatebreakerArena/Match/GatebreakerMatchRuntime.cs`
+- 入口方法：`SimulateBallsSwept`
+- 飞行球推进：`SimulateFlyingBallSwept`
+- 事件选择：`TryFindEarliestSweepHit`
+- 挡板事件：`TryAddPaddleSweepHit` / `ResolveSweptPaddleHit`
+- 球门事件：`TryAddBoundarySweepHit` / `TryAddBoundarySegmentSweepHit` / `ResolveSweptGoalHit`
+- 墙体事件：`ResolveSweptWallHit`
 
-## 最终决策
+本文后续用于实现审查、测试补充和新 UI/联网接入时确认规则边界。玩法物理必须继续留在 `App.HotUpdate.GatebreakerArena`。
 
-采用 `moving swept collision` + 单 tick 内事件迭代上限。
+## 当前结论
 
-不再把固定子步进作为正确性来源。固定子步进只能降低穿透概率，不能保证事件发生顺序；如果挡板仍先按整帧移动到最终位置，再对球做子步碰撞，会继续产生漏碰和幽灵碰撞。
+项目采用 `moving swept collision` + 单 tick 内事件迭代上限。
+
+固定子步进不再作为正确性来源。当前实现用同一条 tick 时间轴推进球和挡板，按最早 `time-of-impact / TOI` 处理事件。
 
 核心原则：
 
-- 球和挡板都在同一条 tick 时间轴上推进。
-- 同一时间参数下计算 `ball(t)` 与 `paddle(t)`。
-- 按最早 `time-of-impact / TOI` 处理 `Paddle / Goal / Wall`。
+- 球和挡板都在同一 tick 时间轴上推进。
+- 在同一时间参数下计算 `ball(t)` 与 `paddle(t)`。
+- 比较 `Paddle / Goal / Wall` 的最早 TOI。
 - 浮点并列时使用固定兜底优先级：`Paddle > Goal > Wall`。
-- `GoalRebound`、得分销毁、多球和加时绝杀继续走现有 runtime 规则入口，不重写业务规则。
+- `GoalRebound`、得分销毁、owner ball count 回收、多球、加时绝杀继续走现有 runtime 规则入口。
 
 ## HotUpdate 边界
 
-本方案只允许修改 HotUpdate 玩法层：
+允许修改：
 
-- 主要落点：`App.HotUpdate.GatebreakerArena.Match`
-- 可新增纯逻辑碰撞服务，例如 `BallSweepCollisionSystem` 或 `SweptBallSimulationSystem`
-- 继续复用 `PaddleBounceCalculator`
-- 继续复用 `GoalJudgeSystem`
+- `App.HotUpdate.GatebreakerArena.Match`
+- `App.HotUpdate.GatebreakerArena.Ball`
+- `App.HotUpdate.GatebreakerArena.Paddle`
+- `App.HotUpdate.GatebreakerArena.Zone`
+- 纯 C# 玩法测试
 
 禁止事项：
 
-- 不把玩法物理放进 `App.AOT`
-- 不向 `App.Shared` 添加非必要玩法实现
-- 不让 `MonoBehaviour`、OnGUI 或未来 UGUI 承载碰撞、得分、加时或球门规则
-- 不新增配置表字段作为本轮方案前置条件
+- 不把玩法物理放进 `App.AOT`。
+- 不向 `App.Shared` 添加玩法实现。
+- 不让 `MonoBehaviour`、OnGUI、UGUI 或 prefab binding 承载碰撞、得分、球门、加时或销毁规则。
+- 不用 UI 状态覆盖 runtime 判定。
+- 不新增 `Resources.Load` 作为碰撞或表现资源入口。
 
-UI/表现层只负责提交 `PlayerInputFrame`、绑定调参值、读取 runtime 状态并刷新表现。
+UI/表现层只负责提交输入、绑定调参、读取 runtime 状态和刷新表现。
 
-## 核心算法
+## 当前算法
 
-每个 tick 的物理推进改为：
+每个 tick 的顺序：
 
 ```text
-采集输入/AI
+采集输入 / AI
 计算每个挡板 oldAxis -> targetAxis
 对每颗球做 swept 事件迭代
   在任意时间 t 上，用 paddle(t) 判断挡板位置
-  在同一时间轴上比较 Paddle / Goal / Wall 的 TOI
+  在同一时间轴比较 Paddle / Goal / Wall 的 TOI
   处理最早事件
 tick 末提交挡板最终位置与 TangentVelocity
 刷新危险提示
 ```
 
-同一 tick 内的时间函数：
+时间函数：
 
 ```text
 ball(t) = ballStart + ballVelocity * segmentDuration * t
@@ -68,100 +75,130 @@ paddleAxis(t) = paddleOldAxis + (paddleTargetAxis - paddleOldAxis) * t
 paddlePos(t) = Arena.GetPaddleCenter(paddleNormal, paddleAxis(t))
 ```
 
-`t` 范围为 `0..1`，表示当前剩余物理段内的归一化时间。
+`t` 范围为 `0..1`，表示当前剩余物理段内的归一化时间。挡板 motion 通过 `PaddleMotionState.GetPosition(normalizedTime)` 读取。
 
-### 挡板 TOI
+## 当前实现参数
 
-对每个挡板，先判断球是否从挡板正面穿过挡板平面：
+当前 runtime 常量：
+
+| 常量 | 当前值 | 说明 |
+|---|---:|---|
+| `MaxCollisionIterations` | 12 | 单颗球单 tick 内最多处理的连续事件数 |
+| `CollisionEpsilon` | 0.0001 | 浮点误差阈值 |
+| `CollisionSkin` | 0.02 | 碰撞后推出距离 |
+
+当前行为：
+
+- `deltaTime < 0` 会 clamp 到 0。
+- `deltaTime == 0` 走 `ResolveFieldCollisions`，用于静态碰撞检查和 rebound 状态清理。
+- 加时绝杀后 runtime 进入 `Result`，当前 tick 剩余物理事件会停止改写结果。
+- 当前没有单独暴露 `MaxPhysicsTimePerTick` 配置。
+
+## 挡板 TOI
+
+挡板命中要求球从挡板正面穿过挡板平面：
 
 ```text
-n0 = Dot(ballStart - paddlePos(0), paddle.Normal)
-n1 = Dot(ballEnd - paddlePos(1), paddle.Normal)
+n0 = Dot(ballStart - paddlePos(segmentStart), paddle.Normal)
+n1 = Dot(ballEnd - paddlePos(segmentEnd), paddle.Normal)
 ```
 
-候选命中时间 `hitT` 成立后，必须用该时刻的挡板位置判断切线范围：
+候选命中时间成立后，必须在命中时刻检查切线范围：
 
 ```text
 hitPoint = ball(hitT)
-paddleAtHit = paddle(hitT)
+paddleAtHit = paddle(globalHitT)
 tangentDistance = Dot(hitPoint - paddleAtHit.Position, paddle.Tangent)
 
-abs(tangentDistance) <= paddle.Length * 0.5f
+abs(tangentDistance) <= paddle.Length * 0.5f + epsilon
 ```
 
 命中后：
 
-- `hitOffset = tangentDistance / (paddle.Length * 0.5f)`
-- 反弹仍调用 `PaddleBounceCalculator.CalculateBounce`
-- `normalizedPaddleVelocity` 使用该物理段真实挡板位移 / 时间
-- 球位置推出到 `paddleAtHit.Position + tangent * tangentDistance + normal * (thickness + skin)`
-- 调用现有速度 clamp
-- 继续消费剩余物理时间
+- `hitOffset = tangentDistance / (paddle.Length * 0.5f)`。
+- 反弹调用 `PaddleBounceCalculator.CalculateBounce`。
+- `normalizedPaddleVelocity` 使用该 tick 内真实挡板切向速度。
+- 球位置推出到 `paddleAtHit + tangent * tangentDistance + normal * (thickness + skin)`。
+- 调用 `BallSimulationSystem.ClampSpeed`。
+- 继续消费剩余物理时间。
 
-### 球门与墙 TOI
+当前实现还处理嵌入挡板的起始状态：如果球已经贴近或嵌入挡板且正在向内运动，可生成 `time = 0` 的挡板事件。
 
-球门线和墙都按 `start -> end` 线段做 sweep。
+## 球门与墙 TOI
 
-四条边界语义保持当前 arena 定义：
+当前支持两类边界：
+
+- 旧四边矩形边界。
+- `ArenaGeometry.CreateScene3v3` 派生出的自定义边界段。
+
+四边矩形语义：
 
 - bottom：`y < -HalfHeight`
 - top：`y > HalfHeight`
-- right：`x > HalfWidth`
 - left：`x < -HalfWidth`
+- right：`x > HalfWidth`
 
-有 zone 的边界生成 `Goal` 事件；无 zone 的边界生成 `Wall` 事件。
+自定义边界语义：
 
-`Goal` 事件继续调用现有 `ResolveGoalEntry`：
+- `ArenaBoundarySegment` 提供 `Start / End / InwardNormal`。
+- 有 `GoalPlayerIndex` 的段可以产生 Goal。
+- 无有效 goal 或不在 goal span 内的碰撞按 Wall 处理。
+- `Scene3v3` 中未激活玩家对应的网段按墙处理。
 
-- 敌方球进门：计分并销毁球
-- 己方球进己方守护区：进入 `GoalRebound`，不计分，不销毁
+Goal 事件继续调用 `ResolveGoalEntry`：
 
-`Wall` 事件继续使用现有墙反弹规则和 `WallBounceFactor`。
+- 敌方球进门：计分、销毁球、回收 owner ball count。
+- 己方球进己方守护区：进入 `GoalRebound`，不计分、不销毁。
 
-### deltaTime 与迭代默认值
-
-默认实现策略：
-
-- `deltaTime < 0` clamp 到 `0`
-- `deltaTime == 0` 只做静态碰撞检查，并清理挡板 `TangentVelocity = 0`
-- `MaxCollisionIterations` 默认 8 或 12，由实现时作为 HotUpdate runtime 常量落地
-- 加时绝杀后立即停止当前 tick 剩余物理事件，避免同帧其他球继续改写结果
-- 极端卡顿可增加 `MaxPhysicsTimePerTick`，例如 `0.25f` 或 `0.33f`，但不作为首轮必须新增配置项
+Wall 事件继续使用 `BallRule.WallBounceFactor`。
 
 ## 规则保持
 
-本方案不改变 Gatebreaker Arena 的玩法规则：
+连续碰撞不改变玩法规则：
 
-- `GoalRebound` 仍由 `GoalJudgeSystem` 设置
-- 得分、销毁、owner ball count 回收仍走现有 runtime 路径
-- 加时绝杀仍由现有 overtime 逻辑决定
-- 多球逐颗处理，已销毁球不再参与后续碰撞
-- 四方向挡板统一使用 `Normal / Tangent / AxisPosition`，不写上下左右专用分支
+- `GoalRebound` 仍由 `GoalJudgeSystem` 设置和结束。
+- 得分、销毁、owner ball count 回收仍由 `GatebreakerMatchRuntime.ResolveGoalEntry` 和 `RemoveBall` 处理。
+- 加时绝杀仍由 `IsOvertimeWinningScore` 和 `EndWithWinner` 处理。
+- 多球逐颗处理，已销毁球不再参与后续碰撞。
+- 四方向挡板统一使用 `Normal / Tangent / AxisPosition`。
+- `Scene3v3` 的边界与可得分区域以 `ArenaGeometry` 为权威。
 
-如果同一 tick 内出现多个事件，唯一权威顺序是最早 TOI。只有在浮点并列时才使用 `Paddle > Goal > Wall` 兜底优先级。
+如果同一 tick 内出现多个事件，唯一权威顺序是最早 TOI。只有浮点并列时才使用 `Paddle > Goal > Wall`。
 
-## UGUI 兼容说明
+## 与当前项目后续修改的关系
 
-未来 UI 迁移到 UGUI 时，本方案不需要调整。
+后续 UI、LAN、资源加载、配置表修改都不应改变本方案的规则边界。
 
-推荐数据流保持：
+UGUI 接入时保持：
 
 ```text
 UGUI 按钮 / 摇杆 / 滑条
  -> InputService / Presenter
  -> runtime.ApplyInputFrame(...)
- -> GatebreakerMatchRuntime.Tick(...)
+ -> GatebreakerMatchRuntime.Tick(...) 或 StepFrame(...)
  -> HUD snapshot / runtime state
  -> UGUI 刷新显示
 ```
 
-UGUI 只绑定输入、调参和显示，不参与碰撞、得分、球门、加时或销毁规则。
+LAN/Lockstep 接入时保持：
 
-当前 OnGUI 发射按钮和反弹调参面板的小窗口问题作为原型 UI 临时债处理，后续随 UGUI 迁移单独解决。
+```text
+本地输入量化
+ -> LockstepSession 收齐帧输入
+ -> GatebreakerMatchRuntime.StepFrame(...)
+ -> runtime checksum
+ -> checksum report / desync handling
+```
+
+关键要求：
+
+- 同步层只提交输入帧，不重算碰撞规则。
+- UI 层只显示结果，不参与 TOI 判定。
+- AOT transport 只传输字节和事件，不理解玩法物理。
 
 ## 验收测试计划
 
-以下测试应直接映射到 `GatebreakerMatchRuntimeTests`：
+以下测试应继续覆盖在 `GatebreakerMatchRuntimeTests` 或相邻测试中：
 
 - 静止挡板 + 大 `deltaTime`：球跨过挡板和门线时，必须先反弹，不得分。
 - 移动挡板 + 大 `deltaTime`：球命中挡板中间时刻的真实位置，必须反弹。
@@ -175,6 +212,7 @@ UGUI 只绑定输入、调参和显示，不参与碰撞、得分、球门、加
 - 多球同帧：一颗得分销毁不影响另一颗反弹或继续飞行。
 - 加时绝杀：绝杀发生后同 tick 剩余球不再改写结果。
 - `deltaTime == 0`：保持静态碰撞检查，并清理挡板速度。
+- `Scene3v3`：活动 goal 段能得分，非活动网段和 goal span 外区域按墙处理。
 
 建议验证命令：
 
@@ -182,24 +220,31 @@ UGUI 只绑定输入、调参和显示，不参与碰撞、得分、球门、加
 bash tools/validation/run_gatebreaker_validation.sh
 ```
 
-Unity/Tuanjie Editor 内还需跑 EditMode `GatebreakerMatchRuntimeTests`。如要跑 PlayMode smoke，需先关闭已打开的同项目 Editor 实例，再执行：
+PlayMode smoke：
 
 ```bash
 bash tools/validation/run_gatebreaker_playmode_smoke.sh
 ```
 
-## Subagent 分工
+## 后续债务
 
-如果启动 subagent，建议拆为 3 个：
+- 连续碰撞目前集中在 `GatebreakerMatchRuntime`，如果继续增长，可抽出 HotUpdate 纯逻辑服务，但不能移到 AOT 或 UI。
+- `MaxCollisionIterations`、`CollisionSkin` 暂为 runtime 常量，是否配表化需要在玩法稳定后决定。
+- `GoalRebound` 当前按入射反方向回弹，若后续要加入更强表现或角度控制，需要保持 `GoalJudgeSystem` 作为规则入口。
+- `FinalPhaseBallSpeedScale` 是否影响飞行中球速尚需单独设计确认，不能顺手塞进碰撞代码。
 
-- 实现 agent：负责 moving swept collision 实现，只改 HotUpdate runtime 或新增 HotUpdate 纯逻辑物理类。禁止改 `App.AOT`、`App.Shared`、UI 和配置表。
-- 测试 agent：负责补齐 `GatebreakerMatchRuntimeTests`。禁止改 runtime 实现，除非先提出测试辅助需求。
-- 审查验证 agent：只读审查 TOI 顺序、边界、加时、多球和测试覆盖，运行验证脚本。默认不直接改代码。
+## Subagent 分工建议
+
+如果后续继续拆分任务：
+
+- 实现 agent：只改 HotUpdate runtime 或新增 HotUpdate 纯逻辑碰撞服务。
+- 测试 agent：补齐 `GatebreakerMatchRuntimeTests` 和 Scene3v3 边界测试。
+- 审查验证 agent：只读审查 TOI 顺序、边界、加时、多球和测试覆盖，并运行验证脚本。
 
 并行前必须冻结约束：玩法物理在 HotUpdate，表现层只做输入与刷新，Shared 不承载玩法实现。
 
 ## 完成情况
 
-- 当前状态：进行中
-- 进度说明：已完成方案文档落地、HotUpdate runtime 初版实现、回归测试补充和原型布局修复；待 Editor 内复验。
-- 最近更新：2026-05-11，已完成方案文档落地、HotUpdate runtime 初版实现、回归测试补充和原型布局修复；待 Editor 内复验。
+- 当前状态：已落地，继续维护
+- 最近更新：2026-05-30
+- 说明：moving swept collision 已作为当前 runtime 默认推进方式；后续修改以保持规则边界、补齐测试和降低 runtime 文件复杂度为主。
