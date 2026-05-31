@@ -366,6 +366,8 @@ P0 HUD：
 
 当前联网方向是 LAN 房间 + Lockstep。
 
+多端创建、发现、加入、Ready、Start、Playing、退出/断线和日志取证的验收步骤，以 [Gatebreaker Arena LAN 联机测试方案 v0.1](Gatebreaker%20Arena%20LAN联机测试方案_v0.1.md) 为准。
+
 已落地模块：
 
 - `LanRoomService`：房间、发现、加入、准备、loading ack、playing 状态。
@@ -404,6 +406,8 @@ bash tools/validation/run_gatebreaker_playmode_smoke.sh
 - `GatebreakerModeCatalogTests` / `GatebreakerConfigRuntimeLoaderTests`：配置和有效规则。
 - `GatebreakerLockstepRuntimeTests` / `GatebreakerLanApiReadinessTests`：同步和 LAN 准备度。
 - `GatebreakerHudPresenterTests` / `GatebreakerSceneBindingServiceTests`：HUD snapshot 与场景 UI 绑定。
+
+LAN 多端验收、同机限制、真机测试步骤和 `game.log` 取证要求，统一维护在 [Gatebreaker Arena LAN 联机测试方案 v0.1](Gatebreaker%20Arena%20LAN联机测试方案_v0.1.md)。
 
 ## 十四、后续修改方向
 
