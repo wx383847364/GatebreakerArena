@@ -23,6 +23,7 @@ namespace App.HotUpdate.GatebreakerArena.Application
             GatebreakerArenaHudPresenter hudPresenter,
             GatebreakerArenaSceneBindingService sceneBindingService,
             GatebreakerVisualAssetService visualAssetService,
+            LanDiagnosticsService lanDiagnosticsService,
             LanRoomService lanRoomService,
             LanRoomTransportBridge lanRoomTransportBridge,
             GatebreakerNetworkMatchController networkMatchController)
@@ -39,6 +40,7 @@ namespace App.HotUpdate.GatebreakerArena.Application
             HudPresenter = hudPresenter;
             SceneBindingService = sceneBindingService;
             VisualAssetService = visualAssetService;
+            LanDiagnosticsService = lanDiagnosticsService;
             LanRoomService = lanRoomService;
             LanRoomTransportBridge = lanRoomTransportBridge;
             NetworkMatchController = networkMatchController;
@@ -56,6 +58,7 @@ namespace App.HotUpdate.GatebreakerArena.Application
         public GatebreakerArenaHudPresenter HudPresenter { get; }
         public GatebreakerArenaSceneBindingService SceneBindingService { get; }
         public GatebreakerVisualAssetService VisualAssetService { get; }
+        public LanDiagnosticsService LanDiagnosticsService { get; }
         public LanRoomService LanRoomService { get; }
         public LanRoomTransportBridge LanRoomTransportBridge { get; }
         public GatebreakerNetworkMatchController NetworkMatchController { get; }

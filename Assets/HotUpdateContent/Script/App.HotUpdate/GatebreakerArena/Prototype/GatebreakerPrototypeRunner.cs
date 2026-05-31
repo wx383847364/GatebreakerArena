@@ -54,6 +54,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private GatebreakerArenaHudPresenter _hudPresenter;
         private GatebreakerArenaSceneBindingService _sceneBindingService;
         private LanRoomService _lanRoomService;
+        private LanDiagnosticsService _lanDiagnosticsService;
         private ILanTransport _lanTransport;
         private GatebreakerVisualAssetService _visualAssetService;
         private GatebreakerVisualAssetSet _visualAssets;
@@ -79,8 +80,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private string _lanPlayerName = "Player";
         private string _lanRoomCodeInput = string.Empty;
         private string _cachedLocalLanAddress = "-";
+        private string _lastLanDiagnosticsSummary = string.Empty;
+        private string _lastLanDiagnosticsExportPath = string.Empty;
         private float _lanInputAccumulator;
         private float _nextLocalLanAddressRefreshTime;
+        private Vector2 _lanDiagnosticsScroll;
+        private bool _showLanDiagnostics;
         private bool _usePrefabVisuals;
         private bool _ownsVisualRoot;
         private bool _hasSceneVisualBounds;
@@ -116,6 +121,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             _visualAssetService = context.VisualAssetService;
             _lanRoomService = context.LanRoomService;
+            _lanDiagnosticsService = context.LanDiagnosticsService;
             _lanTransport = context.Services?.Get<ILanTransport>();
             _sceneBindingService = context.SceneBindingService;
             await InitializeAsync(context.MatchRuntime, context.InputService, context.HudPresenter, DefaultLocalPlayerId);
@@ -165,6 +171,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 return;
             }
+
+            HandleLanDiagnosticsShortcuts();
 
             if (HandleStartupUiState())
             {
@@ -285,6 +293,29 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                    _lanRoomService.CurrentSnapshot.State == LanRoomState.Playing;
         }
 
+        private void HandleLanDiagnosticsShortcuts()
+        {
+            if (_lanDiagnosticsService == null)
+            {
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.F8))
+            {
+                _showLanDiagnostics = !_showLanDiagnostics;
+                if (_showLanDiagnostics)
+                {
+                    _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(_lanRoomService?.CurrentSnapshot);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.F9))
+            {
+                _lanDiagnosticsService.Flush();
+                _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(_lanRoomService?.CurrentSnapshot);
+            }
+        }
+
         private bool HandleStartupUiState()
         {
             if (IsLanPlaying())
@@ -393,6 +424,109 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             ConfigurePrototypeCamera();
+        }
+
+        private void OnGUI()
+        {
+            if (_lanDiagnosticsService == null)
+            {
+                return;
+            }
+
+            if (GUI.Button(new Rect(8f, 8f, 58f, 28f), "DIAG"))
+            {
+                _showLanDiagnostics = !_showLanDiagnostics;
+                if (_showLanDiagnostics)
+                {
+                    _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(_lanRoomService?.CurrentSnapshot);
+                }
+            }
+
+            if (!_showLanDiagnostics)
+            {
+                return;
+            }
+
+            DrawLanDiagnosticsOverlay();
+        }
+
+        private void DrawLanDiagnosticsOverlay()
+        {
+            RoomSnapshot room = _lanRoomService?.CurrentSnapshot;
+            LanDiagnosticsSnapshot diagnostics = _lanDiagnosticsService.CreateSnapshot();
+            float width = Mathf.Min(620f, Screen.width - 16f);
+            float height = Mathf.Min(520f, Screen.height - 50f);
+            Rect panel = new Rect(8f, 42f, width, height);
+            GUI.Box(panel, GUIContent.none);
+
+            GUILayout.BeginArea(new Rect(panel.x + 10f, panel.y + 8f, panel.width - 20f, panel.height - 16f));
+            GUILayout.Label("LAN Diagnostics");
+            GUILayout.Label("state=" + (room != null ? room.State.ToString() : "-") +
+                            " role=" + (room != null ? (room.IsHost ? "Host" : "Client") : "-") +
+                            " room=" + (room != null ? room.RoomCode : "-"));
+            GUILayout.Label("session=" + (room != null ? room.SessionId.ToString() : "-") +
+                            " slot=" + (room != null ? room.LocalSlotIndex.ToString() : "-") +
+                            " log=" + ShortenPath(diagnostics.CurrentLogPath));
+            if (room?.Lockstep != null)
+            {
+                GUILayout.Label("frame confirmed=" + room.Lockstep.LatestConfirmedFrame +
+                                " target=" + room.Lockstep.LocalTargetFrame +
+                                " waiting=" + JoinInts(room.Lockstep.WaitingSlotIndexes));
+            }
+
+            if (!string.IsNullOrEmpty(diagnostics.LastWriteError))
+            {
+                GUILayout.Label("writeError=" + diagnostics.LastWriteError);
+            }
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Refresh"))
+            {
+                _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(room);
+            }
+
+            if (GUILayout.Button("Flush"))
+            {
+                _lanDiagnosticsService.Flush();
+                _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(room);
+            }
+
+            if (GUILayout.Button("Export Package"))
+            {
+                _lastLanDiagnosticsExportPath = _lanDiagnosticsService.ExportDiagnosticsPackage(room);
+                _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(room);
+            }
+
+            if (GUILayout.Button("Close"))
+            {
+                _showLanDiagnostics = false;
+            }
+
+            GUILayout.EndHorizontal();
+            if (!string.IsNullOrEmpty(_lastLanDiagnosticsExportPath))
+            {
+                GUILayout.Label("export=" + ShortenPath(_lastLanDiagnosticsExportPath));
+            }
+
+            _lanDiagnosticsScroll = GUILayout.BeginScrollView(_lanDiagnosticsScroll);
+            GUILayout.Label("Recent events:");
+            LanDiagnosticEvent[] events = diagnostics.RecentEvents ?? Array.Empty<LanDiagnosticEvent>();
+            int start = Mathf.Max(0, events.Length - 30);
+            for (int i = start; i < events.Length; i++)
+            {
+                LanDiagnosticEvent item = events[i];
+                GUILayout.Label(item.MonotonicMs + " " + item.EventName + " f=" + item.FrameIndex + " " + item.Result + " " + item.Detail);
+            }
+
+            if (!string.IsNullOrEmpty(_lastLanDiagnosticsSummary))
+            {
+                GUILayout.Space(8f);
+                GUILayout.Label("Summary:");
+                GUILayout.TextArea(_lastLanDiagnosticsSummary);
+            }
+
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
         }
 
         private void OnDestroy()
@@ -1506,6 +1640,26 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private static LanEndpoint ExtractLanEndpoint(object endpoint)
         {
             return endpoint is LanEndpoint lanEndpoint ? lanEndpoint : default(LanEndpoint);
+        }
+
+        private static string ShortenPath(string value)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length <= 58)
+            {
+                return string.IsNullOrEmpty(value) ? "-" : value;
+            }
+
+            return "..." + value.Substring(value.Length - 55);
+        }
+
+        private static string JoinInts(int[] values)
+        {
+            if (values == null || values.Length <= 0)
+            {
+                return "-";
+            }
+
+            return string.Join(",", Array.ConvertAll(values, item => item.ToString()));
         }
 
         private string GetLocalLanAddress()

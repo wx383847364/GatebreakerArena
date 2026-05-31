@@ -17,6 +17,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private readonly Dictionary<int, Dictionary<int, uint>> _checksumReportsByFrame =
             new Dictionary<int, Dictionary<int, uint>>();
         private readonly IAppLogger _logger;
+        private readonly ILanDiagnosticsSink _diagnostics;
         private readonly LockstepSession _lockstepSession;
         private uint _nextSequence = 1;
         private float _advertiseTimer;
@@ -30,10 +31,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private object _hostEndpoint;
         private object _hostConnectionId;
         private int _hostTcpPort;
+        private LockstepSyncState _lastDiagnosticSyncState = LockstepSyncState.Idle;
+        private string _lastDiagnosticWaitingSlots = string.Empty;
 
-        public LanRoomService(IAppLogger logger = null)
+        public LanRoomService(IAppLogger logger = null, ILanDiagnosticsSink diagnostics = null)
         {
             _logger = logger;
+            _diagnostics = diagnostics;
             _lockstepSession = new LockstepSession();
             _lockstepSession.LocalInputReady += OnLocalInputReady;
             _lockstepSession.FrameBundleReady += OnFrameBundleReady;
@@ -71,6 +75,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             _lockstepSession.Tick(deltaTime);
+            RecordLockstepStateChanges();
         }
 
         public RoomSnapshot CreateHost(
@@ -111,6 +116,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             _advertiseTimer = 0f;
+            RecordRoomEvent("CreateHost", "ok", "tcpPort=" + tcpPort);
             PublishSnapshot();
             return CreateSnapshot();
         }
@@ -121,6 +127,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             LocalClientInstanceId = localClientInstanceId;
             LocalPlayerName = NormalizeName(playerName);
             State = LanRoomState.Discovering;
+            RecordRoomEvent("DiscoveryStart", "ok", string.Empty);
             PublishSnapshot();
         }
 
@@ -131,6 +138,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 !_discoveredRooms.TryGetValue(roomCode.Trim().ToUpperInvariant(), out DiscoveredRoom room))
             {
                 SetError("Room was not discovered.");
+                RecordRoomEvent("JoinDiscoveredRoom", "notFound", roomCode);
                 return false;
             }
 
@@ -140,6 +148,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _roomCode = room.Advertise.RoomCode;
             _maxPlayers = room.Advertise.MaxPlayers;
             State = LanRoomState.Joining;
+            RecordRoomEvent("JoinRequestSend", "ok", EndpointToString(_hostEndpoint));
             SendReliable(
                 GatebreakerNetworkMessageType.RoomJoinRequest,
                 GatebreakerPayloadCodec.EncodeJoinRequest(new RoomJoinRequest
@@ -158,6 +167,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             if (_playersFrozen || State != LanRoomState.Lobby)
             {
+                RecordRoomEvent("ReadyChanged", "ignored", "state=" + State);
                 return false;
             }
 
@@ -170,6 +180,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 }
 
                 slot.IsReady = isReady;
+                RecordRoomEvent("ReadyChanged", "ok", "ready=" + isReady);
                 BroadcastRoomSnapshot();
                 PublishSnapshot();
                 return true;
@@ -182,6 +193,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     ClientInstanceId = LocalClientInstanceId,
                     IsReady = isReady,
                 }));
+            RecordRoomEvent("ReadyChanged", "sent", "ready=" + isReady);
             return true;
         }
 
@@ -190,10 +202,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
             if (!_isHost || State != LanRoomState.Lobby || !CanStart())
             {
                 SetError("Room is not ready to start.");
+                RecordRoomEvent("StartLoading", "rejected", State.ToString());
                 return false;
             }
 
             State = LanRoomState.Loading;
+            RecordRoomEvent("StartLoading", "ok", string.Empty);
             foreach (RoomSlot slot in _slots)
             {
                 if (slot.IsActive)
@@ -215,6 +229,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             if (State != LanRoomState.Loading)
             {
+                RecordRoomEvent("StartAck", "ignored", "state=" + State);
                 return false;
             }
 
@@ -226,6 +241,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     slot.IsLoadingAcked = true;
                 }
 
+                RecordRoomEvent("StartAckReceive", "localHost", string.Empty);
                 TryEnterPlaying();
                 PublishSnapshot();
                 return true;
@@ -238,6 +254,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     ClientInstanceId = LocalClientInstanceId,
                     SlotIndex = LocalSlotIndex,
                 }));
+            RecordRoomEvent("StartAckSend", "ok", string.Empty);
             return true;
         }
 
@@ -247,6 +264,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 return;
             }
+
+            RecordRoomEvent("Leave", "requested", reason ?? string.Empty);
 
             var notice = new RoomLeaveNotice
             {
@@ -269,11 +288,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             State = LanRoomState.Left;
+            _diagnostics?.Flush();
             PublishSnapshot();
         }
 
         public void Abort(MatchAbortReason reason, string message = null)
         {
+            RecordRoomEvent("Abort", reason.ToString(), message ?? string.Empty);
             ApplyAbort(reason, message);
             var notice = new RoomAbortNotice
             {
@@ -298,11 +319,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             if (!GatebreakerEnvelopeCodec.TryDecode(bytes, out GatebreakerEnvelope envelope))
             {
+                RecordPacketEvent("PacketDecodeFailed", GatebreakerNetworkMessageType.Unknown, 0, 0, bytes != null ? bytes.Length : 0, 0, "decode");
                 return false;
             }
 
             if (envelope.ProtocolVersion != GatebreakerEnvelopeCodec.ProtocolVersion)
             {
+                RecordPacketEvent("PacketIgnored", envelope.MessageType, envelope.Sequence, envelope.PayloadHash, envelope.PayloadBytes.Length, envelope.SessionId, "protocolMismatch");
                 return false;
             }
 
@@ -310,8 +333,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 envelope.SessionId != 0 &&
                 envelope.SessionId != SessionId)
             {
+                RecordPacketEvent("PacketIgnored", envelope.MessageType, envelope.Sequence, envelope.PayloadHash, envelope.PayloadBytes.Length, envelope.SessionId, "sessionMismatch");
                 return false;
             }
+
+            RecordPacketEvent("PacketReceived", envelope.MessageType, envelope.Sequence, envelope.PayloadHash, envelope.PayloadBytes.Length, envelope.SessionId, EndpointToString(endpoint));
 
             try
             {
@@ -352,7 +378,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
                         HandleLockstepInput(GatebreakerPayloadCodec.DecodeLockstepInput(envelope.PayloadBytes));
                         return true;
                     case GatebreakerNetworkMessageType.LockstepFrameBundle:
-                        _lockstepSession.ReceiveFrameBundle(GatebreakerPayloadCodec.DecodeFrameBundle(envelope.PayloadBytes));
+                        LockstepFrameBundle receivedBundle = GatebreakerPayloadCodec.DecodeFrameBundle(envelope.PayloadBytes);
+                        _lockstepSession.ReceiveFrameBundle(receivedBundle);
+                        RecordFrameBundle("BundleReceived", receivedBundle);
                         PublishSnapshot();
                         return true;
                     case GatebreakerNetworkMessageType.ChecksumReport:
@@ -365,6 +393,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             catch (Exception ex)
             {
                 SetError(ex.Message);
+                RecordPacketEvent("PacketHandleFailed", envelope.MessageType, envelope.Sequence, envelope.PayloadHash, envelope.PayloadBytes.Length, envelope.SessionId, ex.Message);
                 _logger?.LogWarning("Gatebreaker LAN packet decode failed: {0}", ex.Message);
                 return false;
             }
@@ -377,12 +406,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 advertise.ProtocolVersion != GatebreakerEnvelopeCodec.ProtocolVersion ||
                 string.IsNullOrWhiteSpace(advertise.RoomCode))
             {
+                RecordRoomEvent("AdvertiseIgnored", "ignored", advertise != null ? advertise.RoomCode : string.Empty);
                 return;
             }
 
             object reliableEndpoint = BuildReliableEndpoint(endpoint, advertise.TcpPort);
             var room = new DiscoveredRoom(advertise, endpoint, reliableEndpoint);
             _discoveredRooms[advertise.RoomCode.Trim().ToUpperInvariant()] = room;
+            RecordRoomEvent("AdvertiseAccepted", "ok", "udp=" + EndpointToString(endpoint) + ";tcpPort=" + advertise.TcpPort + ";reliable=" + EndpointToString(reliableEndpoint));
             RoomDiscovered?.Invoke(room);
         }
 
@@ -394,6 +425,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             RoomJoinResponse response = TryAcceptJoin(request, endpoint, connectionId);
+            RecordRoomEvent("JoinRequestReceive", response.Accepted ? "accepted" : response.Result.ToString(), request.RoomCode);
             SendReliable(
                 GatebreakerNetworkMessageType.RoomJoinResponse,
                 GatebreakerPayloadCodec.EncodeJoinResponse(response),
@@ -479,6 +511,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 State = LanRoomState.Discovering;
                 SetError(response.Error);
+                RecordRoomEvent("JoinResponseReceive", response.Result.ToString(), response.Error);
                 return;
             }
 
@@ -488,6 +521,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             ChannelId = response.ChannelId;
             LocalSlotIndex = response.SlotIndex;
             State = LanRoomState.Lobby;
+            RecordRoomEvent("JoinResponseReceive", "accepted", "slot=" + response.SlotIndex);
             ApplyRemoteSnapshot(response.Snapshot);
             PublishSnapshot();
         }
@@ -506,6 +540,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             slot.IsReady = ready.IsReady;
+            RecordRoomEvent("ReadyChanged", "remote", "slot=" + slot.SlotIndex + ";ready=" + ready.IsReady);
             BroadcastRoomSnapshot();
             PublishSnapshot();
         }
@@ -519,6 +554,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             ApplyRemoteSnapshot(snapshot);
             State = LanRoomState.Loading;
+            RecordRoomEvent("StartLoadingReceive", "ok", string.Empty);
             PublishSnapshot();
         }
 
@@ -539,6 +575,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             slot.IsLoadingAcked = true;
+            RecordRoomEvent("StartAckReceive", "remote", "slot=" + ack.SlotIndex);
             TryEnterPlaying();
             BroadcastRoomSnapshot();
             PublishSnapshot();
@@ -564,17 +601,20 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
                 if (_playersFrozen)
                 {
+                    RecordRoomEvent("LeaveReceive", "clientLeftDuringPlay", "slot=" + slot.SlotIndex);
                     Abort(MatchAbortReason.ClientLeft, "A player left during play.");
                     return;
                 }
 
                 ClearSlot(slot);
+                RecordRoomEvent("LeaveReceive", "cleared", leave.Reason);
                 BroadcastRoomSnapshot();
                 PublishSnapshot();
                 return;
             }
 
             ApplyAbort(MatchAbortReason.HostLeft, "Host left the room.");
+            RecordRoomEvent("LeaveReceive", "hostLeft", leave.Reason);
         }
 
         private void HandleAbort(RoomAbortNotice notice)
@@ -585,6 +625,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             ApplyAbort(notice.Reason, notice.Message);
+            RecordRoomEvent("AbortReceive", notice.Reason.ToString(), notice.Message);
         }
 
         private void HandleLockstepInput(LockstepInputFrame input)
@@ -595,6 +636,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             _lockstepSession.SubmitInput(input);
+            Record(new LanDiagnosticEvent
+            {
+                EventName = "RemoteInputReceived",
+                SlotIndex = input.SlotIndex,
+                PlayerId = input.PlayerId,
+                FrameIndex = input.FrameIndex,
+                Sequence = input.InputSeq,
+            });
         }
 
         private void HandleChecksumReport(ChecksumReport report)
@@ -606,6 +655,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             if (_isHost)
             {
+                Record(new LanDiagnosticEvent
+                {
+                    EventName = "ChecksumReportReceived",
+                    SlotIndex = report.SlotIndex,
+                    FrameIndex = report.FrameIndex,
+                    Checksum = report.Checksum,
+                    Result = report.DesyncDetected ? "desyncFlag" : "ok",
+                });
                 RecordChecksumReport(report);
                 return;
             }
@@ -625,6 +682,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             State = LanRoomState.Playing;
             _playersFrozen = true;
             _lockstepSession.StartHost(CreateSnapshot().Players, LocalSlotIndex);
+            RecordRoomEvent("PlayingEntered", "host", string.Empty);
             RoomSnapshot snapshot = CreateSnapshot();
             Broadcast(
                 GatebreakerNetworkMessageType.RoomPlaying,
@@ -634,6 +692,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 Broadcast(
                     GatebreakerNetworkMessageType.LockstepFrameBundle,
                     GatebreakerPayloadCodec.EncodeFrameBundle(bundle));
+                RecordFrameBundle("BundleSent", bundle);
             }
 
             PublishSnapshot();
@@ -649,6 +708,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             State = LanRoomState.Playing;
             _playersFrozen = true;
             _lockstepSession.StartClient(CreateSnapshot().Players, LocalSlotIndex);
+            RecordRoomEvent("PlayingEntered", "client", string.Empty);
             PublishSnapshot();
         }
 
@@ -688,6 +748,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             RoomSlot local = FindLocalSlot();
             LocalSlotIndex = local?.SlotIndex ?? LocalSlotIndex;
+            RecordRoomEvent("SnapshotReceive", "ok", "state=" + State);
             PublishSnapshot();
         }
 
@@ -716,6 +777,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 GatebreakerPayloadCodec.EncodeRoomAdvertise(advertise),
                 0,
                 ChannelId);
+            RecordRoomEvent("AdvertiseSend", "ok", "tcpPort=" + _hostTcpPort);
             UdpBroadcastRequested?.Invoke(bytes);
         }
 
@@ -753,6 +815,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private void SendReliable(GatebreakerNetworkMessageType messageType, byte[] payload, object connectionOrEndpoint)
         {
             byte[] packet = CreatePacket(messageType, payload, SessionId, ChannelId);
+            RecordPacketEvent("PacketSend", messageType, _nextSequence - 1U, GatebreakerEnvelopeCodec.ComputePayloadHash(payload), payload != null ? payload.Length : 0, SessionId, EndpointToString(connectionOrEndpoint));
             ReliableSendRequested?.Invoke(packet, connectionOrEndpoint);
         }
 
@@ -805,6 +868,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _lastError = _abortMessage;
             State = LanRoomState.Aborted;
             _lockstepSession.Abort(reason, _abortMessage);
+            _diagnostics?.Flush();
             PublishSnapshot();
         }
 
@@ -818,6 +882,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
             SendReliableToHost(
                 GatebreakerNetworkMessageType.LockstepInput,
                 GatebreakerPayloadCodec.EncodeLockstepInput(input));
+            Record(new LanDiagnosticEvent
+            {
+                EventName = "LocalInputSubmitted",
+                SlotIndex = input.SlotIndex,
+                PlayerId = input.PlayerId,
+                FrameIndex = input.FrameIndex,
+                Sequence = input.InputSeq,
+            });
         }
 
         private void OnFrameBundleReady(LockstepFrameBundle bundle)
@@ -830,6 +902,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             Broadcast(
                 GatebreakerNetworkMessageType.LockstepFrameBundle,
                 GatebreakerPayloadCodec.EncodeFrameBundle(bundle));
+            RecordFrameBundle("HostBundleBuilt", bundle);
         }
 
         private void OnChecksumReportReady(ChecksumReport report)
@@ -841,10 +914,24 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             if (_isHost)
             {
+                Record(new LanDiagnosticEvent
+                {
+                    EventName = "ChecksumCreated",
+                    SlotIndex = report.SlotIndex,
+                    FrameIndex = report.FrameIndex,
+                    Checksum = report.Checksum,
+                });
                 RecordChecksumReport(report);
                 return;
             }
 
+            Record(new LanDiagnosticEvent
+            {
+                EventName = "ChecksumReportSent",
+                SlotIndex = report.SlotIndex,
+                FrameIndex = report.FrameIndex,
+                Checksum = report.Checksum,
+            });
             SendReliableToHost(
                 GatebreakerNetworkMessageType.ChecksumReport,
                 GatebreakerPayloadCodec.EncodeChecksumReport(report));
@@ -854,6 +941,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             if (State == LanRoomState.Playing)
             {
+                RecordRoomEvent("LockstepAborted", reason.ToString(), message);
                 Abort(reason, message);
             }
         }
@@ -909,6 +997,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             ChannelId = 0;
             LocalSlotIndex = -1;
             State = LanRoomState.Idle;
+            _lastDiagnosticSyncState = LockstepSyncState.Idle;
+            _lastDiagnosticWaitingSlots = string.Empty;
         }
 
         private static string NormalizeName(string playerName)
@@ -964,6 +1054,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             if (report.DesyncDetected)
             {
+                Record(new LanDiagnosticEvent
+                {
+                    EventName = "ChecksumMismatch",
+                    SlotIndex = report.SlotIndex,
+                    FrameIndex = report.FrameIndex,
+                    Checksum = report.Checksum,
+                    Result = "desyncFlag",
+                });
                 Abort(MatchAbortReason.Desync, "Checksum desync detected.");
                 return;
             }
@@ -982,6 +1080,15 @@ namespace App.HotUpdate.GatebreakerArena.Network
             if (frameReports.TryGetValue(report.SlotIndex, out uint previousOwnChecksum) &&
                 previousOwnChecksum != report.Checksum)
             {
+                Record(new LanDiagnosticEvent
+                {
+                    EventName = "ChecksumMismatch",
+                    SlotIndex = report.SlotIndex,
+                    FrameIndex = report.FrameIndex,
+                    Checksum = report.Checksum,
+                    ReferenceChecksum = previousOwnChecksum,
+                    Result = "changed",
+                });
                 Abort(MatchAbortReason.Desync, "Checksum changed for a reported slot.");
                 return;
             }
@@ -990,12 +1097,153 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 if (existing.Key != report.SlotIndex && existing.Value != report.Checksum)
                 {
+                    Record(new LanDiagnosticEvent
+                    {
+                        EventName = "ChecksumMismatch",
+                        SlotIndex = report.SlotIndex,
+                        FrameIndex = report.FrameIndex,
+                        Checksum = report.Checksum,
+                        ReferenceChecksum = existing.Value,
+                        Result = "mismatchWithSlot=" + existing.Key,
+                    });
                     Abort(MatchAbortReason.Desync, "Checksum mismatch detected.");
                     return;
                 }
             }
 
             frameReports[report.SlotIndex] = report.Checksum;
+        }
+
+        private void RecordLockstepStateChanges()
+        {
+            LockstepSnapshot snapshot = _lockstepSession.CreateSnapshot();
+            string waitingSlots = JoinInts(snapshot.WaitingSlotIndexes);
+            if (snapshot.State != _lastDiagnosticSyncState)
+            {
+                string eventName = snapshot.State == LockstepSyncState.SyncWaiting
+                    ? "WaitingStarted"
+                    : (_lastDiagnosticSyncState == LockstepSyncState.SyncWaiting ? "WaitingRecovered" : "LockstepStateChanged");
+                Record(new LanDiagnosticEvent
+                {
+                    EventName = eventName,
+                    FrameIndex = snapshot.NextRequiredFrame,
+                    Result = snapshot.State.ToString(),
+                    Detail = waitingSlots,
+                });
+                _lastDiagnosticSyncState = snapshot.State;
+            }
+
+            if (snapshot.State == LockstepSyncState.SyncWaiting &&
+                !string.Equals(waitingSlots, _lastDiagnosticWaitingSlots, StringComparison.Ordinal))
+            {
+                Record(new LanDiagnosticEvent
+                {
+                    EventName = "WaitingSlotsChanged",
+                    FrameIndex = snapshot.NextRequiredFrame,
+                    Detail = waitingSlots,
+                });
+            }
+
+            _lastDiagnosticWaitingSlots = waitingSlots;
+        }
+
+        private static string JoinInts(int[] values)
+        {
+            if (values == null || values.Length <= 0)
+            {
+                return "-";
+            }
+
+            return string.Join(",", Array.ConvertAll(values, item => item.ToString()));
+        }
+
+        private void Record(LanDiagnosticEvent diagnosticEvent)
+        {
+            if (diagnosticEvent == null)
+            {
+                return;
+            }
+
+            diagnosticEvent.Role = string.IsNullOrEmpty(diagnosticEvent.Role)
+                ? (_isHost ? "Host" : "Client")
+                : diagnosticEvent.Role;
+            diagnosticEvent.RoomCode = string.IsNullOrEmpty(diagnosticEvent.RoomCode) ? _roomCode : diagnosticEvent.RoomCode;
+            diagnosticEvent.SessionId = diagnosticEvent.SessionId != 0UL ? diagnosticEvent.SessionId : SessionId;
+            diagnosticEvent.ChannelId = diagnosticEvent.ChannelId != 0U ? diagnosticEvent.ChannelId : ChannelId;
+            diagnosticEvent.ClientInstanceId = diagnosticEvent.ClientInstanceId != 0UL ? diagnosticEvent.ClientInstanceId : LocalClientInstanceId;
+            diagnosticEvent.SlotIndex = diagnosticEvent.SlotIndex >= 0 ? diagnosticEvent.SlotIndex : LocalSlotIndex;
+            _diagnostics?.Record(diagnosticEvent);
+        }
+
+        private void RecordRoomEvent(string eventName, string result, string detail)
+        {
+            Record(new LanDiagnosticEvent
+            {
+                EventName = eventName,
+                Result = result ?? string.Empty,
+                Detail = detail ?? string.Empty,
+            });
+        }
+
+        private void RecordPacketEvent(
+            string eventName,
+            GatebreakerNetworkMessageType messageType,
+            uint sequence,
+            uint payloadHash,
+            int payloadBytes,
+            ulong envelopeSessionId,
+            string detail)
+        {
+            Record(new LanDiagnosticEvent
+            {
+                EventName = eventName,
+                MessageType = messageType.ToString(),
+                Sequence = sequence,
+                PayloadHash = payloadHash,
+                PayloadBytes = payloadBytes,
+                SessionId = envelopeSessionId != 0UL ? envelopeSessionId : SessionId,
+                Detail = detail ?? string.Empty,
+            });
+        }
+
+        private void RecordFrameBundle(string eventName, LockstepFrameBundle bundle)
+        {
+            if (bundle == null)
+            {
+                return;
+            }
+
+            Record(new LanDiagnosticEvent
+            {
+                EventName = eventName,
+                FrameIndex = bundle.FrameIndex,
+                Sequence = bundle.BundleSeq,
+                PayloadBytes = bundle.Inputs != null ? bundle.Inputs.Length : 0,
+            });
+            _diagnostics?.RecordFrameTrace(new LanFrameTrace
+            {
+                FrameIndex = bundle.FrameIndex,
+                BundleSeq = bundle.BundleSeq,
+                LatestConfirmedFrame = _lockstepSession.LatestConfirmedFrame,
+                LocalTargetFrame = _lockstepSession.LocalTargetFrame,
+                InputSlots = bundle.Inputs != null ? bundle.Inputs.Select(input => input.SlotIndex).ToArray() : Array.Empty<int>(),
+                WaitingSlots = _lockstepSession.CreateSnapshot().WaitingSlotIndexes,
+            });
+        }
+
+        private static string EndpointToString(object endpoint)
+        {
+            if (endpoint is LanEndpoint lanEndpoint)
+            {
+                return lanEndpoint.IsValid ? lanEndpoint.ToString() : string.Empty;
+            }
+
+            if (endpoint is LanConnectionId connectionId)
+            {
+                return connectionId.IsValid ? "connection:" + connectionId.Value : string.Empty;
+            }
+
+            return endpoint != null ? endpoint.ToString() : string.Empty;
         }
 
         private sealed class RoomSlot
@@ -1055,14 +1303,16 @@ namespace App.HotUpdate.GatebreakerArena.Network
     {
         private readonly LanRoomService _roomService;
         private readonly ILanTransport _transport;
+        private readonly ILanDiagnosticsSink _diagnostics;
         private readonly Dictionary<LanEndpoint, LanConnectionId> _endpointConnections =
             new Dictionary<LanEndpoint, LanConnectionId>();
         private bool _disposed;
 
-        public LanRoomTransportBridge(LanRoomService roomService, ILanTransport transport)
+        public LanRoomTransportBridge(LanRoomService roomService, ILanTransport transport, ILanDiagnosticsSink diagnostics = null)
         {
             _roomService = roomService ?? throw new ArgumentNullException(nameof(roomService));
             _transport = transport ?? throw new ArgumentNullException(nameof(transport));
+            _diagnostics = diagnostics;
 
             _roomService.UdpBroadcastRequested += OnUdpBroadcastRequested;
             _roomService.UdpSendRequested += OnUdpSendRequested;
@@ -1087,6 +1337,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private void OnUdpBroadcastRequested(byte[] payload)
         {
+            _diagnostics?.Record(new LanDiagnosticEvent
+            {
+                EventName = "DiscoverySend",
+                PayloadBytes = payload != null ? payload.Length : 0,
+                Endpoint = "broadcast:" + _transport.DiscoveryPort,
+            });
             _transport.SendDiscovery(payload ?? Array.Empty<byte>());
         }
 
@@ -1094,6 +1350,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             if (endpoint is LanEndpoint lanEndpoint)
             {
+                _diagnostics?.Record(new LanDiagnosticEvent
+                {
+                    EventName = "DiscoverySend",
+                    PayloadBytes = payload != null ? payload.Length : 0,
+                    Endpoint = lanEndpoint.ToString(),
+                });
                 _transport.SendDiscovery(payload ?? Array.Empty<byte>(), lanEndpoint);
             }
         }
@@ -1103,7 +1365,17 @@ namespace App.HotUpdate.GatebreakerArena.Network
             byte[] safePayload = payload ?? Array.Empty<byte>();
             if (connectionOrEndpoint is LanConnectionId connectionId)
             {
-                _transport.Send(connectionId, safePayload);
+                bool sent = _transport.Send(connectionId, safePayload);
+                if (!sent)
+                {
+                    _diagnostics?.Record(new LanDiagnosticEvent
+                    {
+                        EventName = "TcpSendFail",
+                        ConnectionId = connectionId.Value,
+                        PayloadBytes = safePayload.Length,
+                    });
+                }
+
                 return;
             }
 
@@ -1112,7 +1384,17 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 LanConnectionId resolved = ResolveConnection(endpoint);
                 if (resolved.IsValid)
                 {
-                    _transport.Send(resolved, safePayload);
+                    bool sent = _transport.Send(resolved, safePayload);
+                    if (!sent)
+                    {
+                        _diagnostics?.Record(new LanDiagnosticEvent
+                        {
+                            EventName = "TcpSendFail",
+                            Endpoint = endpoint.ToString(),
+                            ConnectionId = resolved.Value,
+                            PayloadBytes = safePayload.Length,
+                        });
+                    }
                 }
             }
         }
@@ -1124,6 +1406,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 return;
             }
 
+            _diagnostics?.RecordTransportEvent(transportEvent);
             switch (transportEvent.Type)
             {
                 case LanTransportEventType.DiscoveryReceived:
@@ -1148,6 +1431,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 case LanTransportEventType.Disconnected:
                     RemoveConnection(transportEvent.ConnectionId);
                     break;
+                case LanTransportEventType.Error:
+                    break;
             }
         }
 
@@ -1158,10 +1443,23 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 return existing;
             }
 
+            _diagnostics?.Record(new LanDiagnosticEvent
+            {
+                EventName = "TcpConnectStart",
+                Endpoint = endpoint.ToString(),
+            });
             LanConnectionId connectionId = _transport.Connect(endpoint);
             if (connectionId.IsValid)
             {
                 _endpointConnections[endpoint] = connectionId;
+            }
+            else
+            {
+                _diagnostics?.Record(new LanDiagnosticEvent
+                {
+                    EventName = "TcpConnectFail",
+                    Endpoint = endpoint.ToString(),
+                });
             }
 
             return connectionId;
@@ -1196,14 +1494,19 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private readonly LanRoomService _roomService;
         private readonly GatebreakerMatchRuntime _runtime;
+        private readonly ILanDiagnosticsSink _diagnostics;
         private bool _runtimeStarted;
         private ulong _activeSessionId;
         private float _frameAccumulator;
 
-        public GatebreakerNetworkMatchController(LanRoomService roomService, GatebreakerMatchRuntime runtime)
+        public GatebreakerNetworkMatchController(
+            LanRoomService roomService,
+            GatebreakerMatchRuntime runtime,
+            ILanDiagnosticsSink diagnostics = null)
         {
             _roomService = roomService ?? throw new ArgumentNullException(nameof(roomService));
             _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            _diagnostics = diagnostics;
         }
 
         public void Tick(float deltaTime)
@@ -1233,12 +1536,45 @@ namespace App.HotUpdate.GatebreakerArena.Network
             if (_roomService.Lockstep.TryDequeueConfirmedFrame(out LockstepFrameBundle bundle))
             {
                 _frameAccumulator -= _runtime.FrameDelta;
+                _diagnostics?.Record(new LanDiagnosticEvent
+                {
+                    EventName = "BundleDequeued",
+                    Role = snapshot.IsHost ? "Host" : "Client",
+                    RoomCode = snapshot.RoomCode,
+                    SessionId = snapshot.SessionId,
+                    ChannelId = snapshot.ChannelId,
+                    SlotIndex = snapshot.LocalSlotIndex,
+                    FrameIndex = bundle.FrameIndex,
+                    Sequence = bundle.BundleSeq,
+                    PayloadBytes = bundle.Inputs != null ? bundle.Inputs.Length : 0,
+                });
                 _runtime.StepFrame(
                     bundle.FrameIndex,
                     GatebreakerLockstepInputConverter.ToGatebreakerFrameInputs(bundle));
                 if (bundle.FrameIndex % ChecksumIntervalFrames == 0)
                 {
                     GatebreakerMatchChecksum checksum = _runtime.CreateChecksum(bundle.FrameIndex);
+                    _diagnostics?.Record(new LanDiagnosticEvent
+                    {
+                        EventName = "ChecksumCreated",
+                        Role = snapshot.IsHost ? "Host" : "Client",
+                        RoomCode = snapshot.RoomCode,
+                        SessionId = snapshot.SessionId,
+                        ChannelId = snapshot.ChannelId,
+                        SlotIndex = snapshot.LocalSlotIndex,
+                        FrameIndex = bundle.FrameIndex,
+                        Checksum = checksum.Value,
+                    });
+                    _diagnostics?.RecordFrameTrace(new LanFrameTrace
+                    {
+                        FrameIndex = bundle.FrameIndex,
+                        BundleSeq = bundle.BundleSeq,
+                        Checksum = checksum.Value,
+                        LatestConfirmedFrame = _roomService.Lockstep.LatestConfirmedFrame,
+                        LocalTargetFrame = _roomService.Lockstep.LocalTargetFrame,
+                        InputSlots = bundle.Inputs != null ? bundle.Inputs.Select(input => input.SlotIndex).ToArray() : Array.Empty<int>(),
+                        WaitingSlots = snapshot.Lockstep != null ? snapshot.Lockstep.WaitingSlotIndexes : Array.Empty<int>(),
+                    });
                     _roomService.Lockstep.SubmitChecksumReport(new ChecksumReport
                     {
                         SlotIndex = snapshot.LocalSlotIndex,
@@ -1288,6 +1624,17 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _runtimeStarted = true;
             _activeSessionId = snapshot.SessionId;
             _frameAccumulator = 0f;
+            _diagnostics?.Record(new LanDiagnosticEvent
+            {
+                EventName = "RuntimeStarted",
+                Role = snapshot.IsHost ? "Host" : "Client",
+                RoomCode = snapshot.RoomCode,
+                SessionId = snapshot.SessionId,
+                ChannelId = snapshot.ChannelId,
+                SlotIndex = snapshot.LocalSlotIndex,
+                PlayerId = localPlayerId,
+                Detail = "players=" + activePlayers.Length,
+            });
         }
     }
 }

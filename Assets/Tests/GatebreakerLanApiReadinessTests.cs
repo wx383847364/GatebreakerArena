@@ -318,6 +318,126 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(MatchAbortReason.MissingInputTimeout, aborted.AbortReason);
         }
 
+        [Test]
+        public void DiagnosticsJsonEscapesTextAndIncludesStableSchemaFields()
+        {
+            string json = LanDiagnosticJson.WriteEvent(
+                new LanDiagnosticEvent
+                {
+                    EventName = "JoinRejected",
+                    MonotonicMs = 123,
+                    RoomCode = "ABC123",
+                    Detail = "line\nquote\"slash\\",
+                    ErrorCode = "RoomFull",
+                },
+                "diag-1",
+                "1.0",
+                "Device",
+                "Editor");
+
+            StringAssert.Contains("\"schemaVersion\":1", json);
+            StringAssert.Contains("\"diagSessionId\":\"diag-1\"", json);
+            StringAssert.Contains("\"eventName\":\"JoinRejected\"", json);
+            StringAssert.Contains("\"detail\":\"line\\nquote\\\"slash\\\\\"", json);
+            StringAssert.Contains("\"errorCode\":\"RoomFull\"", json);
+        }
+
+        [Test]
+        public void DiagnosticsRingBufferKeepsMostRecentEvents()
+        {
+            var writer = new MemoryDiagnosticsWriter();
+            var clock = new ManualDiagnosticsClock();
+            var diagnostics = new LanDiagnosticsService(writer, clock);
+
+            for (int i = 0; i < LanDiagnosticsService.EventCapacity + 25; i++)
+            {
+                clock.Advance(1);
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "E" + i,
+                    Detail = i.ToString(),
+                });
+            }
+
+            LanDiagnosticsSnapshot snapshot = diagnostics.CreateSnapshot();
+            Assert.AreEqual(LanDiagnosticsService.EventCapacity + 26, snapshot.EventCount);
+            Assert.AreEqual(30, snapshot.RecentEvents.Length);
+            Assert.AreEqual("E" + (LanDiagnosticsService.EventCapacity + 24), snapshot.RecentEvents.Last().EventName);
+        }
+
+        [Test]
+        public void DiagnosticsFlushCallsWriter()
+        {
+            var writer = new MemoryDiagnosticsWriter();
+            var diagnostics = new LanDiagnosticsService(writer, new ManualDiagnosticsClock());
+
+            diagnostics.Record(new LanDiagnosticEvent { EventName = "FlushProbe" });
+            diagnostics.Flush();
+
+            Assert.Greater(writer.Lines.Count, 0);
+            Assert.AreEqual(1, writer.FlushCount);
+        }
+
+        [Test]
+        public void TransportBridgeRecordsTransportEventsForDiagnostics()
+        {
+            var writer = new MemoryDiagnosticsWriter();
+            var diagnostics = new LanDiagnosticsService(writer, new ManualDiagnosticsClock());
+            var room = new LanRoomService(null, diagnostics);
+            var transport = new GatebreakerLanTestTransport();
+            using (new LanRoomTransportBridge(room, transport, diagnostics))
+            {
+                transport.StartDiscovery();
+                transport.StartTcpHost(47780);
+                transport.Connect(new LanEndpoint("127.0.0.1", 47780));
+                transport.Send(new LanConnectionId(999), new byte[] { 1 });
+                transport.Tick();
+            }
+
+            string joined = string.Join("\n", writer.Lines.ToArray());
+            StringAssert.Contains("TransportDiscoveryStarted", joined);
+            StringAssert.Contains("TransportTcpHostStarted", joined);
+            StringAssert.Contains("TransportConnected", joined);
+            StringAssert.Contains("TransportError", joined);
+        }
+
+        [Test]
+        public void ChecksumMismatchWritesDiagnosticEventBeforeAbort()
+        {
+            var writer = new MemoryDiagnosticsWriter();
+            var diagnostics = new LanDiagnosticsService(writer, new ManualDiagnosticsClock());
+            var host = new LanRoomService(null, diagnostics);
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            host.CreateHost("Host", hostId, 4, "ABC123");
+            JoinClientAndEnterPlaying(host, clientId);
+
+            host.Lockstep.SubmitChecksumReport(new ChecksumReport
+            {
+                SlotIndex = 0,
+                FrameIndex = 30,
+                Checksum = 111U,
+            });
+            byte[] checksumPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.ChecksumReport,
+                4,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeChecksumReport(new ChecksumReport
+                {
+                    SlotIndex = 1,
+                    FrameIndex = 30,
+                    Checksum = 222U,
+                }));
+
+            Assert.IsTrue(host.HandleIncomingPacket(checksumPacket));
+
+            string joined = string.Join("\n", writer.Lines.ToArray());
+            StringAssert.Contains("ChecksumMismatch", joined);
+            StringAssert.Contains("\"frameIndex\":30", joined);
+            StringAssert.Contains("\"checksum\":222", joined);
+        }
+
         private static Type FindType(string[] candidates)
         {
             return candidates
@@ -412,6 +532,34 @@ namespace Gatebreaker.Tests
                 }));
             Assert.IsTrue(host.HandleIncomingPacket(ackPacket));
             Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
+        }
+
+        private sealed class ManualDiagnosticsClock : ILanDiagnosticsClock
+        {
+            public long MonotonicMilliseconds { get; private set; }
+
+            public void Advance(long milliseconds)
+            {
+                MonotonicMilliseconds += milliseconds;
+            }
+        }
+
+        private sealed class MemoryDiagnosticsWriter : ILanDiagnosticsWriter
+        {
+            public string CurrentLogPath { get; set; } = "memory://lan_diag.jsonl";
+            public string LastWriteError { get; set; } = string.Empty;
+            public int FlushCount { get; private set; }
+            public System.Collections.Generic.List<string> Lines { get; } = new System.Collections.Generic.List<string>();
+
+            public void WriteLine(string line)
+            {
+                Lines.Add(line);
+            }
+
+            public void Flush()
+            {
+                FlushCount++;
+            }
         }
     }
 }

@@ -81,12 +81,13 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             var hudPresenter = new GatebreakerArenaHudPresenter(matchRuntime);
             var sceneBindingService = new GatebreakerArenaSceneBindingService();
             var visualAssetService = new GatebreakerVisualAssetService(assetsRuntime, logger);
-            var lanRoomService = new LanRoomService(logger);
+            var lanDiagnosticsService = new LanDiagnosticsService();
+            var lanRoomService = new LanRoomService(logger, lanDiagnosticsService);
             ILanTransport lanTransport = serviceContainer.Get<ILanTransport>();
             LanRoomTransportBridge lanRoomTransportBridge = lanTransport != null
-                ? new LanRoomTransportBridge(lanRoomService, lanTransport)
+                ? new LanRoomTransportBridge(lanRoomService, lanTransport, lanDiagnosticsService)
                 : null;
-            var networkMatchController = new GatebreakerNetworkMatchController(lanRoomService, matchRuntime);
+            var networkMatchController = new GatebreakerNetworkMatchController(lanRoomService, matchRuntime, lanDiagnosticsService);
 
             serviceContainer.RegisterSingleton(configLoader);
             serviceContainer.RegisterSingleton(modeCatalog);
@@ -100,12 +101,14 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             serviceContainer.RegisterSingleton(hudPresenter);
             serviceContainer.RegisterSingleton(sceneBindingService);
             serviceContainer.RegisterSingleton(visualAssetService);
+            serviceContainer.RegisterSingleton(lanDiagnosticsService);
             serviceContainer.RegisterSingleton(lanRoomService);
             serviceContainer.RegisterSingleton(networkMatchController);
             if (lanRoomTransportBridge != null)
             {
                 serviceContainer.RegisterSingleton(lanRoomTransportBridge);
             }
+            tickManager.Register(lanDiagnosticsService);
             tickManager.Register(networkMatchController);
             tickManager.Register(lanRoomService);
 
@@ -122,6 +125,7 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
                 hudPresenter,
                 sceneBindingService,
                 visualAssetService,
+                lanDiagnosticsService,
                 lanRoomService,
                 lanRoomTransportBridge,
                 networkMatchController);
