@@ -567,6 +567,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     }
                 }
             }
+
         }
 
         private void UpdateSceneVisualBounds()
@@ -703,6 +704,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             max = Vector3.Max(max, localCorner);
         }
 
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
         private void RebuildDebugCollisionOverlay()
         {
             ClearDebugCollisionOverlay();
@@ -713,7 +715,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             EnsureDebugCollisionOverlayRoot();
             IReadOnlyList<GatebreakerCollisionOverlayLine> lines =
-                GatebreakerCollisionOverlayGeometry.BuildLines(_runtime.Arena, _runtime.Players.Count);
+                GatebreakerCollisionOverlayGeometry.BuildLines(_runtime.Arena, _runtime.Players);
             for (int i = 0; i < lines.Count; i++)
             {
                 GatebreakerCollisionOverlayLine line = lines[i];
@@ -1074,6 +1076,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     GatebreakerPlayerVisualColor.ApplyZoneColor(guard, guardColor, 0.32f);
                 }
             }
+
+            RebuildDebugCollisionOverlay();
         }
 
         private Transform EnsurePaddleView(int playerId)

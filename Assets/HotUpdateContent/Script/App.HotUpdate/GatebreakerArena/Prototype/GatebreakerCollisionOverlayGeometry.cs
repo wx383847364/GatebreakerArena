@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Paddle;
 using UnityEngine;
 
 namespace App.HotUpdate.GatebreakerArena.Prototype
@@ -41,9 +42,27 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             ArenaGeometry arena,
             int activePlayerCount)
         {
+            return BuildArenaLines(arena, activePlayerCount, true);
+        }
+
+        public static IReadOnlyList<GatebreakerCollisionOverlayLine> BuildLines(
+            ArenaGeometry arena,
+            IReadOnlyList<PlayerRuntimeState> players)
+        {
+            int activePlayerCount = players != null ? players.Count : 0;
+            List<GatebreakerCollisionOverlayLine> lines = BuildArenaLines(arena, activePlayerCount, false);
+            AddRuntimePaddleContactLines(players, lines);
+            return lines;
+        }
+
+        private static List<GatebreakerCollisionOverlayLine> BuildArenaLines(
+            ArenaGeometry arena,
+            int activePlayerCount,
+            bool includeStaticPaddleContact)
+        {
             if (arena == null || !arena.HasCustomBoundary)
             {
-                return Array.Empty<GatebreakerCollisionOverlayLine>();
+                return new List<GatebreakerCollisionOverlayLine>();
             }
 
             var lines = new List<GatebreakerCollisionOverlayLine>(arena.BoundarySegments.Count * 5);
@@ -52,7 +71,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 ArenaBoundarySegment segment = arena.BoundarySegments[i];
                 if (IsActiveGoalSegment(segment, activePlayerCount))
                 {
-                    AddActiveGoalLines(arena, segment, lines);
+                    AddActiveGoalLines(arena, segment, lines, includeStaticPaddleContact);
                 }
                 else
                 {
@@ -74,7 +93,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private static void AddActiveGoalLines(
             ArenaGeometry arena,
             ArenaBoundarySegment segment,
-            List<GatebreakerCollisionOverlayLine> lines)
+            List<GatebreakerCollisionOverlayLine> lines,
+            bool includeStaticPaddleContact)
         {
             Vector2 edge = segment.End - segment.Start;
             float edgeLength = edge.magnitude;
@@ -99,6 +119,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalOuterEnd, segment.GoalPlayerIndex);
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalTriggerStart, segment.GoalPlayerIndex);
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterEnd, goalTriggerEnd, segment.GoalPlayerIndex);
+            if (!includeStaticPaddleContact)
+            {
+                return;
+            }
 
             Vector2 paddleCenter = segment.GoalCenter + segment.InwardNormal * arena.PaddleInset;
             Vector2 paddleContactCenter = paddleCenter + segment.InwardNormal * arena.PaddleThickness;
@@ -108,6 +132,37 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 paddleContactCenter - tangent * (arena.PaddleLength * 0.5f),
                 paddleContactCenter + tangent * (arena.PaddleLength * 0.5f),
                 segment.GoalPlayerIndex);
+        }
+
+        private static void AddRuntimePaddleContactLines(
+            IReadOnlyList<PlayerRuntimeState> players,
+            List<GatebreakerCollisionOverlayLine> lines)
+        {
+            if (players == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerRuntimeState player = players[i];
+                PaddleRuntimeState paddle = player?.Paddle;
+                if (player == null || player.IsDisabled || paddle == null)
+                {
+                    continue;
+                }
+
+                Vector2 tangent = paddle.Tangent.sqrMagnitude > SegmentEpsilon * SegmentEpsilon
+                    ? paddle.Tangent.normalized
+                    : Vector2.right;
+                Vector2 contactCenter = paddle.Position + paddle.Normal * paddle.Thickness;
+                AddLine(
+                    lines,
+                    GatebreakerCollisionOverlayLineKind.PaddleContact,
+                    contactCenter - tangent * (paddle.Length * 0.5f),
+                    contactCenter + tangent * (paddle.Length * 0.5f),
+                    i);
+            }
         }
 
         private static void AddWallSpan(

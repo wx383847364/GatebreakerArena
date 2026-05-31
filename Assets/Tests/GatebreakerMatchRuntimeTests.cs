@@ -339,6 +339,25 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void RuntimeCollisionOverlayUsesActualPaddleStateForContactLine()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 3);
+            PlayerRuntimeState player = runtime.FindPlayer(1);
+            player.Paddle.AxisPosition = 0.37f;
+            player.Paddle.Length = 0.66f;
+            player.Paddle.Position = runtime.Arena.GetPaddleCenter(player.Paddle.Normal, player.Paddle.AxisPosition);
+
+            GatebreakerCollisionOverlayLine line = GatebreakerCollisionOverlayGeometry
+                .BuildLines(runtime.Arena, runtime.Players)
+                .First(item => item.Kind == GatebreakerCollisionOverlayLineKind.PaddleContact && item.GoalPlayerIndex == 0);
+
+            Vector2 expectedCenter = player.Paddle.Position + player.Paddle.Normal * player.Paddle.Thickness;
+            Assert.AreEqual(player.Paddle.Length, Vector2.Distance(line.Start, line.End), 0.001f);
+            Assert.Less(Vector2.Distance(expectedCenter, (line.Start + line.End) * 0.5f), 0.001f);
+        }
+
+        [Test]
         public void SweptCollisionUsesScene3v3BoundarySegments()
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
