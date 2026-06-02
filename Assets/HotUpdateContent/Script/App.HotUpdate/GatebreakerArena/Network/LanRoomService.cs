@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.Shared.Contracts;
 
@@ -9,6 +10,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
     public sealed class LanRoomService : ITickable
     {
         private const int DefaultMaxPlayers = 4;
+        // LAN runtime currently starts MAP_ARENA_01 / Scene3v3, whose default layout is 1v1v1.
+        private const int DefaultLanMapPlayerCount = 3;
         private const float AdvertiseIntervalSeconds = 1f;
 
         private readonly List<RoomSlot> _slots = new List<RoomSlot>();
@@ -206,13 +209,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 return false;
             }
 
+            EnsureAiBackfillPlayers();
             State = LanRoomState.Loading;
             RecordRoomEvent("StartLoading", "ok", string.Empty);
             foreach (RoomSlot slot in _slots)
             {
                 if (slot.IsActive)
                 {
-                    slot.IsLoadingAcked = slot.IsHost;
+                    slot.IsLoadingAcked = slot.IsHost || slot.IsAi;
                 }
             }
 
@@ -743,6 +747,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     IsReady = player.IsReady,
                     IsLoadingAcked = player.IsLoadingAcked,
                     IsActive = player.IsActive,
+                    IsAi = player.IsAi,
                 });
             }
 
@@ -792,7 +797,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             foreach (RoomSlot slot in _slots)
             {
-                if (!slot.IsActive || slot.IsHost)
+                if (!slot.IsActive || slot.IsHost || slot.IsAi)
                 {
                     continue;
                 }
@@ -858,7 +863,59 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             RoomSlot[] active = _slots.Where(slot => slot.IsActive).ToArray();
-            return active.Length >= 2 && active.All(slot => slot.IsReady);
+            return active.Count(slot => !slot.IsAi) >= 2 && active.All(slot => slot.IsAi || slot.IsReady);
+        }
+
+        private void EnsureAiBackfillPlayers()
+        {
+            if (!_isHost || _playersFrozen)
+            {
+                return;
+            }
+
+            int targetPlayerCount = DefaultLanMapPlayerCount;
+            int activeCount = _slots.Count(slot => slot.IsActive);
+            if (activeCount >= targetPlayerCount)
+            {
+                return;
+            }
+
+            _maxPlayers = Math.Max(_maxPlayers, targetPlayerCount);
+            EnsureSlotCapacity(targetPlayerCount);
+            for (int i = 0; i < _slots.Count && activeCount < targetPlayerCount; i++)
+            {
+                RoomSlot slot = _slots[i];
+                if (slot.IsActive)
+                {
+                    continue;
+                }
+
+                slot.ClientInstanceId = 0UL;
+                slot.PlayerName = "AI Player " + slot.PlayerId;
+                slot.IsHost = false;
+                slot.IsLocal = false;
+                slot.IsReady = true;
+                slot.IsLoadingAcked = true;
+                slot.IsActive = true;
+                slot.IsAi = true;
+                slot.Endpoint = null;
+                slot.ConnectionId = null;
+                activeCount++;
+                RecordRoomEvent("AiBackfillAdded", "ok", "slot=" + slot.SlotIndex + ";playerId=" + slot.PlayerId);
+            }
+        }
+
+        private void EnsureSlotCapacity(int targetPlayerCount)
+        {
+            for (int i = _slots.Count; i < targetPlayerCount; i++)
+            {
+                _slots.Add(new RoomSlot
+                {
+                    SlotIndex = i,
+                    SideOrder = i,
+                    PlayerId = i + 1,
+                });
+            }
         }
 
         private void ApplyAbort(MatchAbortReason reason, string message)
@@ -960,6 +1017,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             slot.IsReady = false;
             slot.IsLoadingAcked = false;
             slot.IsActive = false;
+            slot.IsAi = false;
             slot.Endpoint = null;
             slot.ConnectionId = null;
         }
@@ -1258,6 +1316,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             public bool IsReady { get; set; }
             public bool IsLoadingAcked { get; set; }
             public bool IsActive { get; set; }
+            public bool IsAi { get; set; }
             public object Endpoint { get; set; }
             public object ConnectionId { get; set; }
 
@@ -1275,6 +1334,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     IsReady = IsReady,
                     IsLoadingAcked = IsLoadingAcked,
                     IsActive = IsActive,
+                    IsAi = IsAi,
                 };
             }
         }
@@ -1525,6 +1585,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 StartRuntime(snapshot);
             }
 
+            SubmitHostAiInputs(snapshot);
             _frameAccumulator = Math.Min(
                 _frameAccumulator + Math.Max(0f, deltaTime),
                 _runtime.FrameDelta * 4f);
@@ -1616,6 +1677,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     SlotIndex = player.SlotIndex,
                     SideOrder = player.SideOrder,
                     PlayerId = player.PlayerId,
+                    IsAi = player.IsAi,
                 }).ToArray(),
                 LocalPlayerId = localPlayerId,
                 ConfigHash = "LAN_DEFAULT",
@@ -1635,6 +1697,51 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 PlayerId = localPlayerId,
                 Detail = "players=" + activePlayers.Length,
             });
+        }
+
+        private void SubmitHostAiInputs(RoomSnapshot snapshot)
+        {
+            if (snapshot == null || !snapshot.IsHost || snapshot.Players == null)
+            {
+                return;
+            }
+
+            int frameIndex = _roomService.Lockstep.HostNextBundleFrame;
+            for (int i = 0; i < snapshot.Players.Length; i++)
+            {
+                RoomPlayerSnapshot player = snapshot.Players[i];
+                if (player == null || !player.IsActive || !player.IsAi || player.SlotIndex < 0)
+                {
+                    continue;
+                }
+
+                PlayerInputFrame aiFrame = _runtime.BuildAiInputFrame(player.PlayerId);
+                ushort buttons = aiFrame.ServePressed ? GatebreakerLockstepInputConverter.ServeButton : (ushort)0;
+                LockstepInputFrame input = _roomService.Lockstep.SubmitHostInputForSlot(
+                    player.SlotIndex,
+                    frameIndex,
+                    GatebreakerLockstepInputConverter.QuantizeSignedUnit(aiFrame.MoveAxis),
+                    GatebreakerLockstepInputConverter.QuantizeSignedUnit(aiFrame.AimDirection.x),
+                    GatebreakerLockstepInputConverter.QuantizeSignedUnit(aiFrame.AimDirection.y),
+                    buttons);
+                if (input.PlayerId <= 0)
+                {
+                    continue;
+                }
+
+                _diagnostics?.Record(new LanDiagnosticEvent
+                {
+                    EventName = "AiInputSubmitted",
+                    Role = "Host",
+                    RoomCode = snapshot.RoomCode,
+                    SessionId = snapshot.SessionId,
+                    ChannelId = snapshot.ChannelId,
+                    SlotIndex = input.SlotIndex,
+                    PlayerId = input.PlayerId,
+                    FrameIndex = input.FrameIndex,
+                    Sequence = input.InputSeq,
+                });
+            }
         }
     }
 }

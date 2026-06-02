@@ -27,5 +27,6 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public int SlotIndex { get; set; } = -1;
         public int SideOrder { get; set; } = -1;
         public int PlayerId { get; set; }
+        public bool IsAi { get; set; }
     }
 }

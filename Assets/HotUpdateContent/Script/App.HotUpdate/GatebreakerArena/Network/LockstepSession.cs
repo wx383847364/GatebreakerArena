@@ -19,6 +19,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private readonly List<LockstepFrameBundle> _startupBundles = new List<LockstepFrameBundle>();
         private readonly List<int> _waitingSlots = new List<int>();
         private readonly Dictionary<int, int> _slotToPlayerId = new Dictionary<int, int>();
+        private readonly Dictionary<int, uint> _authorityInputSeqBySlot = new Dictionary<int, uint>();
         private readonly HashSet<int> _activeSlots = new HashSet<int>();
         private uint _localInputSeq;
         private uint _bundleSeq;
@@ -40,6 +41,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public MatchAbortReason AbortReason { get; private set; } = MatchAbortReason.None;
         public bool IsHost => _isHost;
         public int LocalTargetFrame => _nextLocalInputFrame;
+        public int HostNextBundleFrame => _nextBundleFrame;
         public int NextRequiredFrame => LatestConfirmedFrame + 1;
 
         public void StartHost(IEnumerable<RoomPlayerSnapshot> activePlayers, int localSlotIndex)
@@ -60,6 +62,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _startupBundles.Clear();
             _waitingSlots.Clear();
             _slotToPlayerId.Clear();
+            _authorityInputSeqBySlot.Clear();
             _activeSlots.Clear();
             _localInputSeq = 0;
             _bundleSeq = 0;
@@ -110,6 +113,50 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 buttons);
             SubmitInput(input);
             LocalInputReady?.Invoke(input);
+            return input;
+        }
+
+        public LockstepInputFrame SubmitHostInputForSlot(
+            int slotIndex,
+            int frameIndex,
+            short moveAxisQ,
+            short aimXQ,
+            short aimYQ,
+            ushort buttons)
+        {
+            if (!_isHost ||
+                State == LockstepSyncState.Idle ||
+                State == LockstepSyncState.Aborted ||
+                State == LockstepSyncState.Desync ||
+                !_activeSlots.Contains(slotIndex) ||
+                frameIndex < _nextBundleFrame)
+            {
+                return new LockstepInputFrame();
+            }
+
+            if (_inputsByFrame.TryGetValue(frameIndex, out Dictionary<int, LockstepInputFrame> frameInputs) &&
+                frameInputs.TryGetValue(slotIndex, out LockstepInputFrame existing))
+            {
+                return existing;
+            }
+
+            int playerId = ResolvePlayerId(slotIndex);
+            if (playerId <= 0)
+            {
+                return new LockstepInputFrame();
+            }
+
+            uint inputSeq = NextAuthorityInputSeq(slotIndex);
+            var input = new LockstepInputFrame(
+                slotIndex,
+                playerId,
+                frameIndex,
+                inputSeq,
+                moveAxisQ,
+                aimXQ,
+                aimYQ,
+                buttons);
+            SubmitInput(input);
             return input;
         }
 
@@ -396,6 +443,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private int ResolvePlayerId(int slotIndex)
         {
             return _slotToPlayerId.TryGetValue(slotIndex, out int playerId) ? playerId : 0;
+        }
+
+        private uint NextAuthorityInputSeq(int slotIndex)
+        {
+            _authorityInputSeqBySlot.TryGetValue(slotIndex, out uint inputSeq);
+            inputSeq++;
+            _authorityInputSeqBySlot[slotIndex] = inputSeq;
+            return inputSeq;
         }
 
         private void ClearWaiting()

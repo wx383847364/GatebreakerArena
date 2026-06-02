@@ -382,7 +382,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     continue;
                 }
 
-                if (player.PlayerId != _localPlayerId && _runtime.SetLocalPlayer(player.PlayerId))
+                if (player.PlayerId != _localPlayerId && _runtime.SetLocalPlayer(player.PlayerId, true))
                 {
                     _localPlayerId = player.PlayerId;
                     _lastServeBlockReason = ServeBlockReason.None;

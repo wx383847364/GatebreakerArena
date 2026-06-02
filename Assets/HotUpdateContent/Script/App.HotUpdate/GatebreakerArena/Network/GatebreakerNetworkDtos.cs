@@ -131,6 +131,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public bool IsReady { get; set; }
         public bool IsLoadingAcked { get; set; }
         public bool IsActive { get; set; }
+        public bool IsAi { get; set; }
     }
 
     public sealed class RoomReadyCommand

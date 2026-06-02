@@ -258,6 +258,48 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void Scene3v3LanAiBackfillCreatesPlayableThirdPlayer()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+
+            runtime.StartMatch(new GatebreakerMatchStartConfig
+            {
+                MatchId = "lan-ai-backfill-test",
+                ModeId = "PVE_STANDARD",
+                MapId = "MAP_ARENA_01",
+                BallTypeId = "BALL_NORMAL",
+                InputDelayFrames = 0,
+                LocalPlayerId = 1,
+                PlayerSlots = new[]
+                {
+                    new GatebreakerMatchPlayerSlot { SlotIndex = 0, SideOrder = 0, PlayerId = 1 },
+                    new GatebreakerMatchPlayerSlot { SlotIndex = 1, SideOrder = 1, PlayerId = 2 },
+                    new GatebreakerMatchPlayerSlot { SlotIndex = 2, SideOrder = 2, PlayerId = 3, IsAi = true },
+                },
+            });
+
+            PlayerRuntimeState ai = runtime.FindPlayer(3);
+            Assert.IsNotNull(ai);
+            Assert.IsTrue(ai.IsAi);
+            Assert.IsFalse(ai.IsDisabled);
+            Assert.IsNotNull(ai.Paddle);
+            Assert.IsNotNull(ai.Zone);
+            AssertPaddleAlignedWithSegment(ai.Paddle, runtime.Arena.BoundarySegments[3], runtime.Arena.PaddleInset);
+
+            ArenaBoundarySegment leftGoal = runtime.Arena.BoundarySegments[3];
+            Assert.IsTrue(runtime.Arena.TryGetGoalOwner(
+                leftGoal.GoalCenter - leftGoal.InwardNormal * 0.2f,
+                runtime.Players.Count,
+                SpawnLayoutType.FourSide,
+                out int owner));
+            Assert.AreEqual(2, owner);
+
+            var lines = GatebreakerCollisionOverlayGeometry.BuildLines(runtime.Arena, runtime.Players);
+            Assert.AreEqual(3, lines.Count(line => line.Kind == GatebreakerCollisionOverlayLineKind.GoalTrigger));
+            Assert.AreEqual(3, lines.Count(line => line.Kind == GatebreakerCollisionOverlayLineKind.PaddleContact));
+        }
+
+        [Test]
         public void Scene3v3InactiveNetPositionsAreWalls()
         {
             ArenaGeometry arena = ArenaGeometry.CreateScene3v3();

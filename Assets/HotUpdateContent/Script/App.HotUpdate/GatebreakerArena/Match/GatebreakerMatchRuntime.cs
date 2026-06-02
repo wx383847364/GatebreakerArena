@@ -197,10 +197,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Arena = ArenaGeometry.CreateForMap(EffectiveRule.Map, activePlayerIds);
             ApplyTuningValues(config.TuningValues);
 
+            HashSet<int> aiPlayerIds = ResolveAiPlayerIds(config);
             for (int i = 0; i < activePlayerIds.Count; i++)
             {
                 int playerId = activePlayerIds[i];
-                AddPlayer(playerId, playerId, playerId == LocalPlayerId, false);
+                AddPlayer(playerId, playerId, playerId == LocalPlayerId, aiPlayerIds.Contains(playerId));
             }
 
             for (int i = 0; i < EffectiveRule.InitialBallsInMatch; i++)
@@ -279,6 +280,14 @@ namespace App.HotUpdate.GatebreakerArena.Match
             TrimStepInputBuffer(frameIndex - InputDelayFrames);
             LastFrameIndex = frameIndex;
             TickInternal(FrameDelta, false);
+        }
+
+        public PlayerInputFrame BuildAiInputFrame(int playerId)
+        {
+            PlayerRuntimeState player = FindPlayer(playerId);
+            return player != null && player.IsAi
+                ? _aiService.BuildFrame(player, this)
+                : new PlayerInputFrame(playerId, 0f, false, Vector2.zero);
         }
 
         private void TickInternal(float deltaTime, bool includeAi)
@@ -463,7 +472,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return _players.FirstOrDefault(player => player.PlayerId == playerId);
         }
 
-        public bool SetLocalPlayer(int playerId)
+        public bool SetLocalPlayer(int playerId, bool preserveAiFlags = false)
         {
             PlayerRuntimeState localPlayer = FindPlayer(playerId);
             if (localPlayer == null)
@@ -481,7 +490,17 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 PlayerRuntimeState player = _players[i];
                 bool isLocalPlayer = player.PlayerId == playerId;
                 player.IsLocalPlayer = isLocalPlayer;
-                player.IsAi = !isLocalPlayer;
+                if (preserveAiFlags)
+                {
+                    if (isLocalPlayer)
+                    {
+                        player.IsAi = false;
+                    }
+                }
+                else
+                {
+                    player.IsAi = !isLocalPlayer;
+                }
             }
 
             return true;
@@ -562,6 +581,26 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 }
 
                 result.Add(playerId);
+            }
+
+            return result;
+        }
+
+        private static HashSet<int> ResolveAiPlayerIds(GatebreakerMatchStartConfig config)
+        {
+            var result = new HashSet<int>();
+            if (config?.PlayerSlots == null)
+            {
+                return result;
+            }
+
+            for (int i = 0; i < config.PlayerSlots.Count; i++)
+            {
+                GatebreakerMatchPlayerSlot slot = config.PlayerSlots[i];
+                if (slot != null && slot.IsAi && slot.PlayerId > 0)
+                {
+                    result.Add(slot.PlayerId);
+                }
             }
 
             return result;

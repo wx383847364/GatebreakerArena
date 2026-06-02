@@ -35,7 +35,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
     public static class GatebreakerEnvelopeCodec
     {
-        public const ushort ProtocolVersion = 1;
+        public const ushort ProtocolVersion = 2;
         public const int MaxPayloadBytes = 4096;
         private const int HeaderSize = 28;
 
@@ -444,6 +444,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 writer.WriteBool(player.IsReady);
                 writer.WriteBool(player.IsLoadingAcked);
                 writer.WriteBool(player.IsActive);
+                writer.WriteBool(player.IsAi);
             }
         }
 
@@ -465,6 +466,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     IsReady = reader.ReadBool(),
                     IsLoadingAcked = reader.ReadBool(),
                     IsActive = reader.ReadBool(),
+                    IsAi = reader.ReadBool(),
                 };
             }
 

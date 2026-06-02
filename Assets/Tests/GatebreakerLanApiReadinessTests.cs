@@ -1,7 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using App.HotUpdate.GatebreakerArena.Ball;
+using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
+using App.HotUpdate.GatebreakerArena.Serve;
+using App.HotUpdate.GatebreakerArena.Zone;
 using App.Shared.Contracts;
 using NUnit.Framework;
 
@@ -159,6 +165,87 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void RoomSnapshotCodecRoundTripsAiPlayerFlag()
+        {
+            var snapshot = new RoomSnapshot
+            {
+                SessionId = 12345UL,
+                ChannelId = 7U,
+                RoomCode = "ABC123",
+                State = LanRoomState.Loading,
+                IsHost = true,
+                CanStart = false,
+                PlayersFrozen = true,
+                LocalSlotIndex = 0,
+                MaxPlayers = 4,
+                Players = new[]
+                {
+                    new RoomPlayerSnapshot
+                    {
+                        SlotIndex = 0,
+                        SideOrder = 0,
+                        PlayerId = 1,
+                        ClientInstanceId = 1001UL,
+                        PlayerName = "Host",
+                        IsHost = true,
+                        IsReady = true,
+                        IsLoadingAcked = true,
+                        IsActive = true,
+                    },
+                    new RoomPlayerSnapshot
+                    {
+                        SlotIndex = 2,
+                        SideOrder = 2,
+                        PlayerId = 3,
+                        PlayerName = "AI Player 3",
+                        IsReady = true,
+                        IsLoadingAcked = true,
+                        IsActive = true,
+                        IsAi = true,
+                    },
+                },
+            };
+
+            RoomSnapshot decoded = GatebreakerPayloadCodec.DecodeRoomSnapshot(
+                GatebreakerPayloadCodec.EncodeRoomSnapshot(snapshot));
+
+            Assert.AreEqual(2, GatebreakerEnvelopeCodec.ProtocolVersion);
+            Assert.AreEqual(2, decoded.Players.Length);
+            RoomPlayerSnapshot ai = decoded.Players.Single(player => player.PlayerId == 3);
+            Assert.IsTrue(ai.IsAi);
+            Assert.AreEqual("AI Player 3", ai.PlayerName);
+        }
+
+        [Test]
+        public void EnvelopeRejectsPreviousProtocolVersionAfterAiSnapshotSchemaChange()
+        {
+            byte[] encoded = EncodeEnvelopeForDecodeOnly(
+                (ushort)GatebreakerNetworkMessageType.RoomSnapshot,
+                GatebreakerEnvelopeCodec.ProtocolVersion - 1,
+                1,
+                123UL,
+                7U,
+                GatebreakerPayloadCodec.EncodeRoomSnapshot(new RoomSnapshot
+                {
+                    SessionId = 123UL,
+                    ChannelId = 7U,
+                    Players = new[]
+                    {
+                        new RoomPlayerSnapshot
+                        {
+                            SlotIndex = 2,
+                            SideOrder = 2,
+                            PlayerId = 3,
+                            IsActive = true,
+                            IsAi = true,
+                        },
+                    },
+                }));
+
+            Assert.IsFalse(GatebreakerEnvelopeCodec.TryDecode(encoded, out _));
+        }
+
+        [Test]
         public void CreateHostGeneratesNumericRoomCodeByDefault()
         {
             var host = new LanRoomService();
@@ -196,6 +283,61 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void HostAuthorityInputCompletesAiSlotInLockstepBundle()
+        {
+            var session = new LockstepSession();
+            var activePlayers = new[]
+            {
+                new RoomPlayerSnapshot { SlotIndex = 0, SideOrder = 0, PlayerId = 1, IsActive = true },
+                new RoomPlayerSnapshot { SlotIndex = 1, SideOrder = 1, PlayerId = 2, IsActive = true },
+                new RoomPlayerSnapshot { SlotIndex = 2, SideOrder = 2, PlayerId = 3, IsActive = true, IsAi = true },
+            };
+            session.StartHost(activePlayers, 0);
+            Assert.IsTrue(session.TryDequeueConfirmedFrame(out _));
+            Assert.IsTrue(session.TryDequeueConfirmedFrame(out _));
+
+            LockstepInputFrame local = session.SubmitLocalInput(0, 0, 0, 0);
+            Assert.AreEqual(2, local.FrameIndex);
+            session.SubmitInput(new LockstepInputFrame(1, 2, 2, 1, 0, 0, 0, 0));
+            session.SubmitHostInputForSlot(2, session.HostNextBundleFrame, 0, 0, 0, 0);
+
+            Assert.IsTrue(session.TryDequeueConfirmedFrame(out LockstepFrameBundle frameTwo));
+            Assert.AreEqual(2, frameTwo.FrameIndex);
+            Assert.AreEqual(3, frameTwo.Inputs.Length);
+            Assert.IsTrue(frameTwo.Inputs.Any(input => input.SlotIndex == 2 && input.PlayerId == 3));
+        }
+
+        [Test]
+        public void HostAuthorityInputCompletesConsecutiveAiLockstepBundles()
+        {
+            var session = new LockstepSession();
+            var activePlayers = new[]
+            {
+                new RoomPlayerSnapshot { SlotIndex = 0, SideOrder = 0, PlayerId = 1, IsActive = true },
+                new RoomPlayerSnapshot { SlotIndex = 1, SideOrder = 1, PlayerId = 2, IsActive = true },
+                new RoomPlayerSnapshot { SlotIndex = 2, SideOrder = 2, PlayerId = 3, IsActive = true, IsAi = true },
+            };
+            session.StartHost(activePlayers, 0);
+            Assert.IsTrue(session.TryDequeueConfirmedFrame(out _));
+            Assert.IsTrue(session.TryDequeueConfirmedFrame(out _));
+
+            for (int frame = 2; frame < 12; frame++)
+            {
+                LockstepInputFrame local = session.SubmitLocalInput(0, 0, 0, 0);
+                Assert.AreEqual(frame, local.FrameIndex);
+                session.SubmitInput(new LockstepInputFrame(1, 2, frame, (uint)frame, 0, 0, 0, 0));
+                session.SubmitHostInputForSlot(2, session.HostNextBundleFrame, 0, 0, 0, 0);
+                session.Tick(0f);
+
+                Assert.IsTrue(session.TryDequeueConfirmedFrame(out LockstepFrameBundle bundle), "frame=" + frame);
+                Assert.AreEqual(frame, bundle.FrameIndex);
+                Assert.AreEqual(3, bundle.Inputs.Length);
+                Assert.IsTrue(bundle.Inputs.Any(input => input.SlotIndex == 2 && input.PlayerId == 3), "frame=" + frame);
+                Assert.IsFalse(session.CreateSnapshot().WaitingSlotIndexes.Contains(2), "frame=" + frame);
+            }
+        }
+
+        [Test]
         public void HostAbortsWhenPeerChecksumDiffersFromLocalChecksum()
         {
             var host = new LanRoomService();
@@ -226,6 +368,172 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(host.HandleIncomingPacket(checksumPacket));
             Assert.AreEqual(LanRoomState.Aborted, host.CurrentSnapshot.State);
             Assert.AreEqual(MatchAbortReason.Desync, host.CurrentSnapshot.AbortReason);
+        }
+
+        [Test]
+        public void TwoHumanLanStartBackfillsAiThirdPlayerForScene3v3()
+        {
+            var host = new LanRoomService();
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            RoomSnapshot hostSnapshot = host.CreateHost("Host", hostId, 4, "ABC123");
+            Assert.AreEqual(LanRoomState.Lobby, hostSnapshot.State);
+            Assert.IsFalse(hostSnapshot.CanStart);
+
+            byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomJoinRequest,
+                1,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeJoinRequest(new RoomJoinRequest
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    ClientInstanceId = clientId,
+                    PlayerName = "Client",
+                    RoomCode = "ABC123",
+                }));
+            Assert.IsTrue(host.HandleIncomingPacket(
+                joinPacket,
+                new LanEndpoint("127.0.0.1", 47780),
+                new LanConnectionId(1)));
+
+            byte[] readyPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomReady,
+                2,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeRoomReady(new RoomReadyCommand
+                {
+                    ClientInstanceId = clientId,
+                    IsReady = true,
+                }));
+            Assert.IsTrue(host.HandleIncomingPacket(readyPacket));
+            Assert.IsTrue(host.CurrentSnapshot.CanStart);
+
+            Assert.IsTrue(host.StartLoading());
+            RoomSnapshot loading = host.CurrentSnapshot;
+            Assert.AreEqual(LanRoomState.Loading, loading.State);
+            Assert.AreEqual(3, loading.Players.Length);
+            RoomPlayerSnapshot ai = loading.Players.Single(player => player.PlayerId == 3);
+            Assert.IsTrue(ai.IsAi);
+            Assert.IsTrue(ai.IsReady);
+            Assert.IsTrue(ai.IsLoadingAcked);
+            Assert.AreEqual(2, ai.SlotIndex);
+            Assert.AreEqual("AI Player 3", ai.PlayerName);
+
+            byte[] ackPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomStartAck,
+                3,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeStartAck(new RoomStartAck
+                {
+                    ClientInstanceId = clientId,
+                    SlotIndex = 1,
+                }));
+            Assert.IsTrue(host.HandleIncomingPacket(ackPacket));
+            Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
+            Assert.IsTrue(host.CurrentSnapshot.Players.Single(player => player.PlayerId == 3).IsAi);
+            Assert.IsTrue(host.Lockstep.TryDequeueConfirmedFrame(out LockstepFrameBundle firstStartup));
+            Assert.AreEqual(3, firstStartup.Inputs.Length);
+            Assert.IsTrue(firstStartup.Inputs.Any(input => input.SlotIndex == 2 && input.PlayerId == 3));
+        }
+
+        [Test]
+        public void HostAiBackfillDrivesClientRuntimeToMatchingThirtyFrameChecksum()
+        {
+            var host = new LanRoomService();
+            var client = new LanRoomService();
+            var hostRuntime = CreateGatebreakerRuntime();
+            var clientRuntime = CreateGatebreakerRuntime();
+            var hostController = new GatebreakerNetworkMatchController(host, hostRuntime);
+            var clientController = new GatebreakerNetworkMatchController(client, clientRuntime);
+            var hostToClient = new Queue<byte[]>();
+            var clientToHost = new Queue<byte[]>();
+            host.ReliableSendRequested += (payload, _) => hostToClient.Enqueue(payload);
+            client.ReliableSendRequested += (payload, _) => clientToHost.Enqueue(payload);
+
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            host.CreateHost("Host", hostId, 4, "ABC123");
+            client.StartDiscovery(clientId, "Client");
+            client.HandleIncomingPacket(CreatePacket(
+                GatebreakerNetworkMessageType.RoomAdvertise,
+                1,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeRoomAdvertise(new RoomAdvertise
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    SessionId = host.SessionId,
+                    ChannelId = host.ChannelId,
+                    RoomCode = "ABC123",
+                    HostClientInstanceId = hostId,
+                    HostPlayerName = "Host",
+                    TcpPort = 47780,
+                    MaxPlayers = 4,
+                    ActivePlayers = 1,
+                    State = LanRoomState.Lobby,
+                })),
+                new LanEndpoint("127.0.0.1", 47680));
+            Assert.IsTrue(client.JoinDiscoveredRoom("ABC123"));
+            PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.AreEqual(LanRoomState.Lobby, host.CurrentSnapshot.State);
+            Assert.AreEqual(LanRoomState.Lobby, client.CurrentSnapshot.State);
+
+            Assert.IsTrue(client.SetReady(true));
+            PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.IsTrue(host.CurrentSnapshot.CanStart);
+            Assert.IsTrue(host.StartLoading());
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.AreEqual(LanRoomState.Loading, client.CurrentSnapshot.State);
+            Assert.IsTrue(client.AcknowledgeStart());
+            PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
+            Assert.AreEqual(LanRoomState.Playing, client.CurrentSnapshot.State);
+            Assert.IsTrue(host.CurrentSnapshot.Players.Any(player => player.PlayerId == 3 && player.IsAi));
+            Assert.IsTrue(client.CurrentSnapshot.Players.Any(player => player.PlayerId == 3 && player.IsAi));
+
+            var deliveredBundles = new List<LockstepFrameBundle>();
+            for (int startupFrame = 0; startupFrame < LockstepSession.InputDelay - 1; startupFrame++)
+            {
+                hostController.Tick(1f / LockstepSession.SimulationFps);
+                clientController.Tick(1f / LockstepSession.SimulationFps);
+                PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+                Assert.AreEqual(startupFrame, hostRuntime.LastFrameIndex, "host startup frame=" + startupFrame);
+                Assert.AreEqual(startupFrame, clientRuntime.LastFrameIndex, "client startup frame=" + startupFrame);
+            }
+
+            for (int frame = LockstepSession.InputDelay - 1; frame <= 30; frame++)
+            {
+                SubmitLocalInput(host.Lockstep, frame, 0, 1);
+                SubmitRemoteInputToHost(host, frame, 1, 2);
+                hostController.Tick(1f / LockstepSession.SimulationFps);
+                PumpReliable(hostToClient, client, null, new LanConnectionId(1), deliveredBundles);
+                clientController.Tick(1f / LockstepSession.SimulationFps);
+                PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+
+                Assert.AreEqual(frame, hostRuntime.LastFrameIndex, "host frame=" + frame);
+                Assert.AreEqual(frame, clientRuntime.LastFrameIndex, "client frame=" + frame);
+                LockstepSnapshot hostLockstep = host.Lockstep.CreateSnapshot();
+                LockstepSnapshot clientLockstep = client.Lockstep.CreateSnapshot();
+                Assert.IsFalse(hostLockstep.WaitingSlotIndexes.Contains(2), "host waiting ai frame=" + frame);
+                Assert.AreEqual(LockstepSyncState.Running, hostLockstep.State, "host lockstep frame=" + frame);
+                Assert.AreEqual(LockstepSyncState.Running, clientLockstep.State, "client lockstep frame=" + frame);
+                Assert.IsTrue(deliveredBundles.Any(bundle =>
+                    bundle.FrameIndex == frame &&
+                    bundle.Inputs != null &&
+                    bundle.Inputs.Any(input => input.SlotIndex == 2 && input.PlayerId == 3)), "ai bundle frame=" + frame);
+            }
+
+            uint hostChecksum = hostRuntime.CreateChecksum(30).Value;
+            uint clientChecksum = clientRuntime.CreateChecksum(30).Value;
+            Assert.AreEqual(hostChecksum, clientChecksum);
+            Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
+            Assert.AreEqual(LanRoomState.Playing, client.CurrentSnapshot.State);
         }
 
         [Test]
@@ -462,6 +770,81 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(GatebreakerEnvelopeCodec.ProtocolVersion, envelope.ProtocolVersion);
             Assert.AreEqual(messageType, envelope.MessageType);
             return envelope.PayloadBytes;
+        }
+
+        private static GatebreakerMatchRuntime CreateGatebreakerRuntime()
+        {
+            return new GatebreakerMatchRuntime(
+                GatebreakerModeCatalog.CreateDefault(),
+                new BallSimulationSystem(),
+                new ServeResourceSystem(),
+                new GoalJudgeSystem(),
+                new ScoreSystem(),
+                null);
+        }
+
+        private static byte[] CreatePacket(
+            GatebreakerNetworkMessageType messageType,
+            uint sequence,
+            ulong sessionId,
+            uint channelId,
+            byte[] payload)
+        {
+            return GatebreakerEnvelopeCodec.Encode(messageType, sequence, sessionId, channelId, payload);
+        }
+
+        private static void PumpReliable(
+            Queue<byte[]> packets,
+            LanRoomService target,
+            object endpoint,
+            object connectionId,
+            List<LockstepFrameBundle> deliveredBundles = null)
+        {
+            while (packets.Count > 0)
+            {
+                byte[] packet = packets.Dequeue();
+                if (deliveredBundles != null &&
+                    GatebreakerEnvelopeCodec.TryDecode(packet, out GatebreakerEnvelope envelope) &&
+                    envelope.MessageType == GatebreakerNetworkMessageType.LockstepFrameBundle)
+                {
+                    deliveredBundles.Add(GatebreakerPayloadCodec.DecodeFrameBundle(envelope.PayloadBytes));
+                }
+
+                Assert.IsTrue(target.HandleIncomingPacket(packet, endpoint, connectionId));
+            }
+        }
+
+        private static void SubmitLocalInput(
+            LockstepSession session,
+            int expectedFrame,
+            short moveAxisQ,
+            ushort buttons)
+        {
+            LockstepInputFrame input = session.SubmitLocalInput(moveAxisQ, 0, 0, buttons);
+            Assert.AreEqual(expectedFrame, input.FrameIndex);
+        }
+
+        private static void SubmitRemoteInputToHost(
+            LanRoomService host,
+            int frameIndex,
+            int slotIndex,
+            int playerId)
+        {
+            byte[] packet = CreatePacket(
+                GatebreakerNetworkMessageType.LockstepInput,
+                (uint)(1000 + frameIndex),
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeLockstepInput(new LockstepInputFrame(
+                    slotIndex,
+                    playerId,
+                    frameIndex,
+                    (uint)frameIndex,
+                    0,
+                    0,
+                    0,
+                    0)));
+            Assert.IsTrue(host.HandleIncomingPacket(packet, null, new LanConnectionId(1)));
         }
 
         private static byte[] EncodeEnvelopeForDecodeOnly(
