@@ -1682,7 +1682,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             if (snapshot != null && snapshot.IsHost)
             {
-                return GetLocalLanAddress();
+                string localAddress = GetLocalLanAddress();
+                int tcpPort = _lanTransport?.TcpListenEndpoint.Port ?? 0;
+                return tcpPort > 0 && !string.IsNullOrWhiteSpace(localAddress)
+                    ? localAddress + ":" + tcpPort.ToString()
+                    : localAddress;
             }
 
             string roomCode = snapshot != null && !string.IsNullOrWhiteSpace(snapshot.RoomCode)
@@ -1695,7 +1699,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             LanEndpoint endpoint = ExtractLanEndpoint(room?.ReliableEndpoint ?? room?.DiscoveryEndpoint);
-            return !string.IsNullOrEmpty(endpoint.Address) ? endpoint.Address : "-";
+            return endpoint.IsValid ? endpoint.ToString() : "-";
         }
 
         private DiscoveredRoom FindDiscoveredRoom(string roomCode)
@@ -1810,8 +1814,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             EnsureLanIdentity();
             _lanTransport?.StartDiscovery();
-            _lanTransport?.StartTcpHost();
+            bool tcpStarted = _lanTransport != null && _lanTransport.StartTcpHost();
             int tcpPort = _lanTransport?.TcpListenEndpoint.Port ?? 0;
+            if (!tcpStarted || tcpPort <= 0)
+            {
+                _lanRoomService.HandleHostTransportStartFailed("tcpPort=" + tcpPort.ToString());
+                _startupUiState = StartupUiState.OnlineMenu;
+                _lanEntryUiHiddenForPlaying = false;
+                _sceneBindingService?.ShowOnlineMenu();
+                RefreshBoundHud();
+                return;
+            }
+
             RoomSnapshot snapshot = _lanRoomService.CreateHost(_lanPlayerName, _lanClientInstanceId, tcpPort: tcpPort);
             _lanRoomCodeInput = snapshot.RoomCode;
             _startupUiState = StartupUiState.OnlineRoom;
@@ -1840,9 +1854,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             if (_lanRoomService == null || string.IsNullOrWhiteSpace(_lanRoomCodeInput))
             {
+                _lanRoomService?.RecordUiAction("JoinClicked", "ignored;roomCode=" + (_lanRoomCodeInput ?? string.Empty));
                 return;
             }
 
+            _lanRoomService.RecordUiAction("JoinClicked", "roomCode=" + _lanRoomCodeInput);
             if (_lanRoomService.JoinDiscoveredRoom(_lanRoomCodeInput))
             {
                 _startupUiState = StartupUiState.OnlineRoom;
@@ -1859,11 +1875,13 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
+            _lanRoomService.RecordUiAction("ReadyClicked", BuildLanUiSnapshotDetail(_lanRoomService.CurrentSnapshot));
             ToggleLanReady(_lanRoomService.CurrentSnapshot);
         }
 
         private void StartLanLoading()
         {
+            _lanRoomService?.RecordUiAction("StartClicked", BuildLanUiSnapshotDetail(_lanRoomService.CurrentSnapshot));
             _lanRoomService?.StartLoading();
         }
 
@@ -1926,6 +1944,46 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             bool nextReady = local == null || !local.IsReady;
             _lanRoomService.SetReady(nextReady);
+        }
+
+        private static string BuildLanUiSnapshotDetail(RoomSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                return "snapshot=null";
+            }
+
+            int active = 0;
+            int human = 0;
+            int ai = 0;
+            RoomPlayerSnapshot[] players = snapshot.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            for (int i = 0; i < players.Length; i++)
+            {
+                RoomPlayerSnapshot player = players[i];
+                if (player == null || !player.IsActive)
+                {
+                    continue;
+                }
+
+                active++;
+                if (player.IsAi)
+                {
+                    ai++;
+                }
+                else
+                {
+                    human++;
+                }
+            }
+
+            return "state=" + snapshot.State +
+                   ";roomCode=" + (snapshot.RoomCode ?? string.Empty) +
+                   ";canStart=" + snapshot.CanStart +
+                   ";localSlot=" + snapshot.LocalSlotIndex +
+                   ";active=" + active +
+                   ";human=" + human +
+                   ";ai=" + ai +
+                   ";total=" + players.Length;
         }
 
         private void RefreshBoundHud()

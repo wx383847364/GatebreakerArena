@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.Shared.Contracts;
@@ -167,6 +168,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             return true;
         }
 
+        public void HandleHostTransportStartFailed(string reason)
+        {
+            ResetRoom();
+            RecordRoomEvent("HostTransportStartFailed", "error", reason ?? string.Empty);
+            SetError("Host TCP start failed; LAN clients cannot join this room.");
+        }
+
         public bool SetReady(bool isReady)
         {
             if (_playersFrozen || State != LanRoomState.Lobby)
@@ -183,8 +191,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     return false;
                 }
 
-                slot.IsReady = isReady;
-                RecordRoomEvent("ReadyChanged", "ok", "ready=" + isReady);
+                slot.IsReady = true;
+                RecordRoomEvent("ReadyChanged", "ok", "ready=true;requested=" + isReady);
                 BroadcastRoomSnapshot();
                 PublishSnapshot();
                 return true;
@@ -199,6 +207,22 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 }));
             RecordRoomEvent("ReadyChanged", "sent", "ready=" + isReady);
             return true;
+        }
+
+        public void HandleReliableSendFailed(object endpoint, string reason)
+        {
+            string detail = string.IsNullOrWhiteSpace(reason) ? EndpointToString(endpoint) : reason;
+            RecordRoomEvent("ReliableSendFailed", "error", detail);
+            if (!_isHost && State == LanRoomState.Joining)
+            {
+                State = LanRoomState.Discovering;
+                SetError("Join failed: TCP connection to host was not established.");
+            }
+        }
+
+        public void RecordUiAction(string action, string detail = null)
+        {
+            RecordRoomEvent("Ui" + (string.IsNullOrWhiteSpace(action) ? "Action" : action), State.ToString(), detail ?? string.Empty);
         }
 
         public bool StartLoading()
@@ -409,6 +433,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             if (State != LanRoomState.Discovering ||
                 advertise == null ||
                 advertise.ProtocolVersion != GatebreakerEnvelopeCodec.ProtocolVersion ||
+                advertise.TcpPort <= 0 ||
                 string.IsNullOrWhiteSpace(advertise.RoomCode))
             {
                 RecordRoomEvent("AdvertiseIgnored", "ignored", advertise != null ? advertise.RoomCode : string.Empty);
@@ -417,9 +442,21 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             object reliableEndpoint = BuildReliableEndpoint(endpoint, advertise.TcpPort);
             var room = new DiscoveredRoom(advertise, endpoint, reliableEndpoint);
-            _discoveredRooms[advertise.RoomCode.Trim().ToUpperInvariant()] = room;
-            RecordRoomEvent("AdvertiseAccepted", "ok", "udp=" + EndpointToString(endpoint) + ";tcpPort=" + advertise.TcpPort + ";reliable=" + EndpointToString(reliableEndpoint));
-            RoomDiscovered?.Invoke(room);
+            string key = advertise.RoomCode.Trim().ToUpperInvariant();
+            bool changed = !_discoveredRooms.TryGetValue(key, out DiscoveredRoom previous) ||
+                           previous.Advertise == null ||
+                           previous.Advertise.SessionId != advertise.SessionId ||
+                           previous.Advertise.ChannelId != advertise.ChannelId ||
+                           previous.Advertise.TcpPort != advertise.TcpPort ||
+                           previous.Advertise.ActivePlayers != advertise.ActivePlayers ||
+                           previous.Advertise.State != advertise.State ||
+                           !Equals(previous.ReliableEndpoint, reliableEndpoint);
+            _discoveredRooms[key] = room;
+            if (changed)
+            {
+                RecordRoomEvent("AdvertiseAccepted", "ok", "udp=" + EndpointToString(endpoint) + ";tcpPort=" + advertise.TcpPort + ";reliable=" + EndpointToString(reliableEndpoint));
+                RoomDiscovered?.Invoke(room);
+            }
         }
 
         private void HandleJoinRequest(RoomJoinRequest request, object endpoint, object connectionId)
@@ -467,9 +504,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             RoomSlot freeSlot = FindJoinTargetSlot();
             if (freeSlot == null)
             {
-                return RejectJoin(LanRoomJoinResult.RoomFull, "Room is full.");
+                RoomSnapshot snapshot = CreateSnapshot();
+                string snapshotDetail = BuildRoomSnapshotDetail(snapshot);
+                RecordRoomEvent("JoinTargetNotFound", "roomFull", snapshotDetail);
+                return RejectJoin(LanRoomJoinResult.RoomFull, "Room is full. " + BuildRoomCountDetail(snapshot));
             }
 
+            RecordRoomEvent("JoinTargetSelected", "ok", "slot=" + freeSlot.SlotIndex + ";playerId=" + freeSlot.PlayerId + ";name=" + freeSlot.PlayerName + ";isAi=" + freeSlot.IsAi);
             freeSlot.ClientInstanceId = request.ClientInstanceId;
             freeSlot.PlayerName = NormalizeName(request.PlayerName);
             freeSlot.IsHost = false;
@@ -902,7 +943,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private RoomSlot FindJoinTargetSlot()
         {
             RoomSlot aiSlot = _slots
-                .Where(slot => slot.IsActive && slot.IsAi)
+                .Where(slot => IsReplaceableComputerSlot(slot))
                 .OrderBy(slot => slot.SlotIndex)
                 .FirstOrDefault();
             if (aiSlot != null)
@@ -911,6 +952,23 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             return _slots.FirstOrDefault(slot => !slot.IsActive);
+        }
+
+        private static bool IsReplaceableComputerSlot(RoomSlot slot)
+        {
+            if (slot == null || !slot.IsActive || slot.IsHost)
+            {
+                return false;
+            }
+
+            if (slot.IsAi)
+            {
+                return true;
+            }
+
+            return slot.ClientInstanceId == 0UL &&
+                   !string.IsNullOrWhiteSpace(slot.PlayerName) &&
+                   slot.PlayerName.Trim().StartsWith("Computer ", StringComparison.OrdinalIgnoreCase);
         }
 
         private static void ReplaceSlotWithAi(RoomSlot slot)
@@ -1057,7 +1115,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private void PublishSnapshot()
         {
-            SnapshotChanged?.Invoke(CreateSnapshot());
+            RoomSnapshot snapshot = CreateSnapshot();
+            RecordRoomSnapshotState(snapshot);
+            SnapshotChanged?.Invoke(snapshot);
         }
 
         private void ResetRoom()
@@ -1270,6 +1330,98 @@ namespace App.HotUpdate.GatebreakerArena.Network
             });
         }
 
+        private void RecordRoomSnapshotState(RoomSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            Record(new LanDiagnosticEvent
+            {
+                EventName = "RoomSnapshotState",
+                Role = snapshot.IsHost ? "Host" : "Client",
+                RoomCode = snapshot.RoomCode,
+                SessionId = snapshot.SessionId,
+                ChannelId = snapshot.ChannelId,
+                SlotIndex = snapshot.LocalSlotIndex,
+                Result = snapshot.State.ToString(),
+                Detail = BuildRoomSnapshotDetail(snapshot),
+            });
+        }
+
+        private static string BuildRoomSnapshotDetail(RoomSnapshot snapshot)
+        {
+            RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            int active = players.Count(player => player != null && player.IsActive);
+            int human = players.Count(player => player != null && player.IsActive && !player.IsAi);
+            int ai = players.Count(player => player != null && player.IsActive && player.IsAi);
+            var builder = new StringBuilder(256);
+            builder.Append("state=").Append(snapshot != null ? snapshot.State.ToString() : "-")
+                .Append(";canStart=").Append(snapshot != null && snapshot.CanStart ? "true" : "false")
+                .Append(";active=").Append(active)
+                .Append(";human=").Append(human)
+                .Append(";ai=").Append(ai)
+                .Append(";total=").Append(players.Length)
+                .Append(";max=").Append(snapshot != null ? snapshot.MaxPlayers : 0)
+                .Append(";localSlot=").Append(snapshot != null ? snapshot.LocalSlotIndex : -1)
+                .Append(";frozen=").Append(snapshot != null && snapshot.PlayersFrozen ? "true" : "false")
+                .Append(";roster=").Append(BuildRosterDetail(players));
+            return builder.ToString();
+        }
+
+        private static string BuildRoomCountDetail(RoomSnapshot snapshot)
+        {
+            RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            int active = players.Count(player => player != null && player.IsActive);
+            int human = players.Count(player => player != null && player.IsActive && !player.IsAi);
+            int ai = players.Count(player => player != null && player.IsActive && player.IsAi);
+            return "active=" + active +
+                   ";human=" + human +
+                   ";ai=" + ai +
+                   ";total=" + players.Length +
+                   ";max=" + (snapshot != null ? snapshot.MaxPlayers : 0);
+        }
+
+        private static string BuildRosterDetail(RoomPlayerSnapshot[] players)
+        {
+            if (players == null || players.Length <= 0)
+            {
+                return "-";
+            }
+
+            var ordered = players
+                .Where(player => player != null)
+                .OrderBy(player => player.SlotIndex)
+                .ThenBy(player => player.PlayerId)
+                .ToArray();
+            if (ordered.Length <= 0)
+            {
+                return "-";
+            }
+
+            var builder = new StringBuilder(256);
+            for (int i = 0; i < ordered.Length; i++)
+            {
+                RoomPlayerSnapshot player = ordered[i];
+                if (i > 0)
+                {
+                    builder.Append('|');
+                }
+
+                builder.Append("slot").Append(player.SlotIndex)
+                    .Append("/p").Append(player.PlayerId)
+                    .Append('/').Append(string.IsNullOrWhiteSpace(player.PlayerName) ? "-" : player.PlayerName)
+                    .Append(player.IsAi ? "/AI" : "/Human")
+                    .Append(player.IsHost ? "/Host" : string.Empty)
+                    .Append(player.IsLocal ? "/Local" : string.Empty)
+                    .Append(player.IsReady ? "/Ready" : "/NotReady")
+                    .Append("/cid=").Append(player.ClientInstanceId);
+            }
+
+            return builder.ToString();
+        }
+
         private void RecordPacketEvent(
             string eventName,
             GatebreakerNetworkMessageType messageType,
@@ -1461,6 +1613,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                         ConnectionId = connectionId.Value,
                         PayloadBytes = safePayload.Length,
                     });
+                    _roomService.HandleReliableSendFailed(connectionId, "send failed");
                 }
 
                 return;
@@ -1481,7 +1634,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
                             ConnectionId = resolved.Value,
                             PayloadBytes = safePayload.Length,
                         });
+                        _roomService.HandleReliableSendFailed(endpoint, "send failed");
                     }
+                }
+                else
+                {
+                    _roomService.HandleReliableSendFailed(endpoint, "connect failed");
                 }
             }
         }

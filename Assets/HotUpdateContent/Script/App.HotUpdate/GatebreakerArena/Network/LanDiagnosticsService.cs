@@ -265,6 +265,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 builder.Append("sessionId=").AppendLine(roomSnapshot.SessionId.ToString(CultureInfo.InvariantCulture));
                 builder.Append("state=").AppendLine(roomSnapshot.State.ToString());
                 builder.Append("slot=").AppendLine(roomSnapshot.LocalSlotIndex.ToString(CultureInfo.InvariantCulture));
+                AppendRoomPlayerSummary(builder, roomSnapshot);
                 if (roomSnapshot.Lockstep != null)
                 {
                     builder.Append("latestConfirmed=").AppendLine(roomSnapshot.Lockstep.LatestConfirmedFrame.ToString(CultureInfo.InvariantCulture));
@@ -347,6 +348,86 @@ namespace App.HotUpdate.GatebreakerArena.Network
             });
         }
 
+        private static void AppendRoomPlayerSummary(StringBuilder builder, RoomSnapshot roomSnapshot)
+        {
+            RoomPlayerSnapshot[] players = roomSnapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            int active = 0;
+            int human = 0;
+            int ai = 0;
+            for (int i = 0; i < players.Length; i++)
+            {
+                RoomPlayerSnapshot player = players[i];
+                if (player == null || !player.IsActive)
+                {
+                    continue;
+                }
+
+                active++;
+                if (player.IsAi)
+                {
+                    ai++;
+                }
+                else
+                {
+                    human++;
+                }
+            }
+
+            builder.Append("canStart=").AppendLine(roomSnapshot != null && roomSnapshot.CanStart ? "true" : "false");
+            builder.Append("players=")
+                .Append("active=").Append(active.ToString(CultureInfo.InvariantCulture))
+                .Append(";human=").Append(human.ToString(CultureInfo.InvariantCulture))
+                .Append(";ai=").Append(ai.ToString(CultureInfo.InvariantCulture))
+                .Append(";total=").Append(players.Length.ToString(CultureInfo.InvariantCulture))
+                .Append(";max=").Append(roomSnapshot != null ? roomSnapshot.MaxPlayers.ToString(CultureInfo.InvariantCulture) : "0")
+                .AppendLine();
+            builder.Append("roster=").AppendLine(BuildRosterSummary(players));
+        }
+
+        private static string BuildRosterSummary(RoomPlayerSnapshot[] players)
+        {
+            if (players == null || players.Length <= 0)
+            {
+                return "-";
+            }
+
+            var sortedPlayers = (RoomPlayerSnapshot[])players.Clone();
+            Array.Sort(sortedPlayers, (left, right) =>
+            {
+                int leftSlot = left != null ? left.SlotIndex : int.MaxValue;
+                int rightSlot = right != null ? right.SlotIndex : int.MaxValue;
+                return leftSlot.CompareTo(rightSlot);
+            });
+
+            var builder = new StringBuilder(256);
+            bool wroteAny = false;
+            for (int i = 0; i < sortedPlayers.Length; i++)
+            {
+                RoomPlayerSnapshot player = sortedPlayers[i];
+                if (player == null)
+                {
+                    continue;
+                }
+
+                if (wroteAny)
+                {
+                    builder.Append('|');
+                }
+
+                wroteAny = true;
+                builder.Append("slot").Append(player.SlotIndex.ToString(CultureInfo.InvariantCulture))
+                    .Append("/p").Append(player.PlayerId.ToString(CultureInfo.InvariantCulture))
+                    .Append('/').Append(string.IsNullOrWhiteSpace(player.PlayerName) ? "-" : player.PlayerName)
+                    .Append(player.IsAi ? "/AI" : "/Human")
+                    .Append(player.IsHost ? "/Host" : string.Empty)
+                    .Append(player.IsLocal ? "/Local" : string.Empty)
+                    .Append(player.IsReady ? "/Ready" : "/NotReady")
+                    .Append("/cid=").Append(player.ClientInstanceId.ToString(CultureInfo.InvariantCulture));
+            }
+
+            return wroteAny ? builder.ToString() : "-";
+        }
+
         private void EnqueueEvent(LanDiagnosticEvent diagnosticEvent)
         {
             if (_events.Count >= EventCapacity)
@@ -361,15 +442,46 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private LanDiagnosticEvent[] CloneRecentEvents(int maxCount)
         {
             LanDiagnosticEvent[] all = _events.ToArray();
-            int count = Math.Min(maxCount, all.Length);
-            var result = new LanDiagnosticEvent[count];
-            int start = all.Length - count;
-            for (int i = 0; i < count; i++)
+            var filtered = new List<LanDiagnosticEvent>(maxCount);
+            for (int i = all.Length - 1; i >= 0 && filtered.Count < maxCount; i--)
             {
-                result[i] = all[start + i].Clone();
+                if (!IsNoisyDiscoveryEvent(all[i]))
+                {
+                    filtered.Add(all[i]);
+                }
+            }
+
+            filtered.Reverse();
+            var result = new LanDiagnosticEvent[filtered.Count];
+            for (int i = 0; i < filtered.Count; i++)
+            {
+                result[i] = filtered[i].Clone();
             }
 
             return result;
+        }
+
+        private static bool IsNoisyDiscoveryEvent(LanDiagnosticEvent diagnosticEvent)
+        {
+            if (diagnosticEvent == null)
+            {
+                return false;
+            }
+
+            if (string.Equals(diagnosticEvent.EventName, "TransportDiscoveryReceived", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (string.Equals(diagnosticEvent.EventName, "AdvertiseSend", StringComparison.Ordinal) ||
+                string.Equals(diagnosticEvent.EventName, "AdvertiseIgnored", StringComparison.Ordinal) ||
+                string.Equals(diagnosticEvent.EventName, "DiscoverySend", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return string.Equals(diagnosticEvent.EventName, "PacketReceived", StringComparison.Ordinal) &&
+                   string.Equals(diagnosticEvent.MessageType, GatebreakerNetworkMessageType.RoomAdvertise.ToString(), StringComparison.Ordinal);
         }
 
         private LanFrameTrace[] CloneRecentFrames(int maxCount)

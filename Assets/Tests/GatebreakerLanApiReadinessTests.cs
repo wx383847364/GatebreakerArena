@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using App.AOT.Networking.Lan;
 using App.HotUpdate.GatebreakerArena.Ball;
 using App.HotUpdate.GatebreakerArena.Match;
@@ -178,6 +179,108 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual("192.168.0.255", endpoint.Address);
             Assert.AreEqual(LanTransportDefaults.DiscoveryPort, endpoint.Port);
+        }
+
+        [Test]
+        public void JoinReturnsToDiscoveryWhenTcpConnectionFails()
+        {
+            var client = new LanRoomService();
+            var transport = new GatebreakerLanTestTransport { FailConnect = true };
+            ulong clientId = 2002UL;
+
+            using (new LanRoomTransportBridge(client, transport))
+            {
+                client.StartDiscovery(clientId, "Client");
+                byte[] advertisePacket = GatebreakerEnvelopeCodec.Encode(
+                    GatebreakerNetworkMessageType.RoomAdvertise,
+                    1,
+                    0,
+                    7,
+                    GatebreakerPayloadCodec.EncodeRoomAdvertise(new RoomAdvertise
+                    {
+                        ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                        SessionId = 12345UL,
+                        ChannelId = 7,
+                        RoomCode = "ABC123",
+                        HostClientInstanceId = 1111UL,
+                        HostPlayerName = "Host",
+                        TcpPort = 47780,
+                        MaxPlayers = 4,
+                        ActivePlayers = 1,
+                        State = LanRoomState.Lobby,
+                    }));
+
+                Assert.IsTrue(client.HandleIncomingPacket(advertisePacket, new LanEndpoint("192.168.0.115", 47680)));
+                Assert.IsTrue(client.JoinDiscoveredRoom("ABC123"));
+            }
+
+            RoomSnapshot snapshot = client.CurrentSnapshot;
+            Assert.AreEqual(LanRoomState.Discovering, snapshot.State);
+            StringAssert.Contains("TCP connection", snapshot.Error);
+        }
+
+        [Test]
+        public void DiscoveryIgnoresAdvertiseWithoutTcpPort()
+        {
+            var client = new LanRoomService();
+            client.StartDiscovery(2002UL, "Client");
+            byte[] advertisePacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomAdvertise,
+                1,
+                0,
+                7,
+                GatebreakerPayloadCodec.EncodeRoomAdvertise(new RoomAdvertise
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    SessionId = 12345UL,
+                    ChannelId = 7,
+                    RoomCode = "ABC123",
+                    HostClientInstanceId = 1111UL,
+                    HostPlayerName = "Host",
+                    TcpPort = 0,
+                    MaxPlayers = 4,
+                    ActivePlayers = 1,
+                    State = LanRoomState.Lobby,
+                }));
+
+            Assert.IsTrue(client.HandleIncomingPacket(advertisePacket, new LanEndpoint("192.168.0.115", 47680)));
+            Assert.AreEqual(0, client.DiscoveredRooms.Count);
+            Assert.IsFalse(client.JoinDiscoveredRoom("ABC123"));
+        }
+
+        [Test]
+        public void DuplicateAdvertiseDoesNotFloodDiagnostics()
+        {
+            var writer = new MemoryDiagnosticsWriter();
+            var diagnostics = new LanDiagnosticsService(writer, new ManualDiagnosticsClock());
+            var client = new LanRoomService(null, diagnostics);
+            client.StartDiscovery(2002UL, "Client");
+            byte[] advertisePacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomAdvertise,
+                1,
+                0,
+                7,
+                GatebreakerPayloadCodec.EncodeRoomAdvertise(new RoomAdvertise
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    SessionId = 12345UL,
+                    ChannelId = 7,
+                    RoomCode = "ABC123",
+                    HostClientInstanceId = 1111UL,
+                    HostPlayerName = "Host",
+                    TcpPort = 47780,
+                    MaxPlayers = 4,
+                    ActivePlayers = 1,
+                    State = LanRoomState.Lobby,
+                }));
+
+            var endpoint = new LanEndpoint("192.168.0.115", 47680);
+            Assert.IsTrue(client.HandleIncomingPacket(advertisePacket, endpoint));
+            Assert.IsTrue(client.HandleIncomingPacket(advertisePacket, endpoint));
+
+            int acceptedCount = writer.Lines.Count(line => line.Contains("\"eventName\":\"AdvertiseAccepted\""));
+            Assert.AreEqual(1, acceptedCount);
+            Assert.AreEqual(1, client.DiscoveredRooms.Count);
         }
 
         [Test]
@@ -359,7 +462,7 @@ namespace Gatebreaker.Tests
             var host = new LanRoomService();
             ulong hostId = 1001UL;
             ulong clientId = 2002UL;
-            host.CreateHost("Host", hostId, 4, "ABC123");
+            host.CreateHost("Host", hostId, 3, "ABC123");
             JoinClientAndEnterPlaying(host, clientId);
 
             host.Lockstep.SubmitChecksumReport(new ChecksumReport
@@ -465,6 +568,93 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(host.Lockstep.TryDequeueConfirmedFrame(out LockstepFrameBundle firstStartup));
             Assert.AreEqual(3, firstStartup.Inputs.Length);
             Assert.IsTrue(firstStartup.Inputs.Any(input => input.SlotIndex == 2 && input.PlayerId == 3));
+        }
+
+        [Test]
+        public void HostReadyButtonDoesNotToggleHostToNotReady()
+        {
+            var host = new LanRoomService();
+            RoomSnapshot snapshot = host.CreateHost("Host", 1001UL, 3, "ABC123");
+            Assert.IsTrue(snapshot.CanStart);
+            Assert.IsTrue(snapshot.Players.Single(player => player.IsHost).IsReady);
+
+            Assert.IsTrue(host.SetReady(false));
+
+            RoomSnapshot afterReadyClick = host.CurrentSnapshot;
+            Assert.IsTrue(afterReadyClick.CanStart);
+            Assert.IsTrue(afterReadyClick.Players.Single(player => player.IsHost).IsReady);
+        }
+
+        [Test]
+        public void JoinReplacesComputerNamedSlotEvenWhenAiFlagWasMissing()
+        {
+            var host = new LanRoomService();
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            host.CreateHost("Host", hostId, 3, "ABC123");
+            ForceComputerSlotsToLoseAiFlag(host);
+
+            byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomJoinRequest,
+                1,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeJoinRequest(new RoomJoinRequest
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    ClientInstanceId = clientId,
+                    PlayerName = "Client",
+                    RoomCode = "ABC123",
+                }));
+
+            Assert.IsTrue(host.HandleIncomingPacket(
+                joinPacket,
+                new LanEndpoint("127.0.0.1", 47780),
+                new LanConnectionId(1)));
+
+            RoomSnapshot joined = host.CurrentSnapshot;
+            RoomPlayerSnapshot client = joined.Players.Single(player => player.ClientInstanceId == clientId);
+            Assert.AreEqual(1, client.SlotIndex);
+            Assert.AreEqual(2, client.PlayerId);
+            Assert.IsFalse(client.IsAi);
+            Assert.AreEqual("Client", client.PlayerName);
+        }
+
+        [Test]
+        public void RoomFullJoinResponseIncludesHostCountDetail()
+        {
+            var host = new LanRoomService();
+            byte[] responsePacket = null;
+            host.ReliableSendRequested += (payload, _) => responsePacket = payload;
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            host.CreateHost("Host", hostId, 3, "ABC123");
+            ForceComputerSlotsToBecomeNonReplaceableHumans(host);
+
+            byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomJoinRequest,
+                1,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeJoinRequest(new RoomJoinRequest
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    ClientInstanceId = clientId,
+                    PlayerName = "Client",
+                    RoomCode = "ABC123",
+                }));
+
+            Assert.IsTrue(host.HandleIncomingPacket(
+                joinPacket,
+                new LanEndpoint("127.0.0.1", 47780),
+                new LanConnectionId(1)));
+            Assert.IsNotNull(responsePacket);
+            Assert.IsTrue(GatebreakerEnvelopeCodec.TryDecode(responsePacket, out GatebreakerEnvelope envelope));
+            Assert.AreEqual(GatebreakerNetworkMessageType.RoomJoinResponse, envelope.MessageType);
+            RoomJoinResponse response = GatebreakerPayloadCodec.DecodeJoinResponse(envelope.PayloadBytes);
+            Assert.IsFalse(response.Accepted);
+            Assert.AreEqual(LanRoomJoinResult.RoomFull, response.Result);
+            StringAssert.Contains("active=3;human=3;ai=0;total=3", response.Error);
         }
 
         [Test]
@@ -738,6 +928,81 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void RoomSnapshotDiagnosticsIncludeCountsAndRoster()
+        {
+            var writer = new MemoryDiagnosticsWriter();
+            var diagnostics = new LanDiagnosticsService(writer, new ManualDiagnosticsClock());
+            var host = new LanRoomService(null, diagnostics);
+
+            host.CreateHost("Host", 1001UL, 4, "ABC123");
+
+            string joined = string.Join("\n", writer.Lines.ToArray());
+            StringAssert.Contains("RoomSnapshotState", joined);
+            StringAssert.Contains("active=3;human=1;ai=2;total=3", joined);
+            StringAssert.Contains("slot0/p1/Host/Human/Host/Local/Ready", joined);
+            StringAssert.Contains("slot1/p2/Computer 2/AI/Ready", joined);
+        }
+
+        [Test]
+        public void DiagnosticsSummaryIncludesRoomCountsAndRoster()
+        {
+            var diagnostics = new LanDiagnosticsService(new MemoryDiagnosticsWriter(), new ManualDiagnosticsClock());
+            var host = new LanRoomService(null, diagnostics);
+            RoomSnapshot snapshot = host.CreateHost("Host", 1001UL, 4, "ABC123");
+
+            string summary = diagnostics.CreateSummaryText(snapshot);
+            StringAssert.Contains("canStart=true", summary);
+            StringAssert.Contains("players=active=3;human=1;ai=2;total=3;max=4", summary);
+            StringAssert.Contains("roster=slot0/p1/Host/Human/Host/Local/Ready", summary);
+        }
+
+        [Test]
+        public void DiagnosticsRecentEventsFilterDiscoveryAdvertiseNoise()
+        {
+            var diagnostics = new LanDiagnosticsService(new MemoryDiagnosticsWriter(), new ManualDiagnosticsClock());
+            for (int i = 0; i < 40; i++)
+            {
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "TransportDiscoveryReceived",
+                    Endpoint = "192.168.0.115:" + i,
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "PacketReceived",
+                    MessageType = GatebreakerNetworkMessageType.RoomAdvertise.ToString(),
+                    Endpoint = "192.168.0.115:" + i,
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "AdvertiseSend",
+                    Detail = "tcpPort=47780",
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "DiscoverySend",
+                    Detail = string.Empty,
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "AdvertiseIgnored",
+                    Detail = "ABC123",
+                });
+            }
+
+            diagnostics.Record(new LanDiagnosticEvent
+            {
+                EventName = "JoinResponseReceive",
+                Detail = "Room is full.",
+            });
+
+            LanDiagnosticsSnapshot snapshot = diagnostics.CreateSnapshot();
+            Assert.AreEqual(2, snapshot.RecentEvents.Length);
+            Assert.AreEqual("DiagnosticsStarted", snapshot.RecentEvents[0].EventName);
+            Assert.AreEqual("JoinResponseReceive", snapshot.RecentEvents[1].EventName);
+        }
+
+        [Test]
         public void ChecksumMismatchWritesDiagnosticEventBeforeAbort()
         {
             var writer = new MemoryDiagnosticsWriter();
@@ -943,6 +1208,55 @@ namespace Gatebreaker.Tests
                 }));
             Assert.IsTrue(host.HandleIncomingPacket(ackPacket));
             Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
+        }
+
+        private static void ForceComputerSlotsToLoseAiFlag(LanRoomService room)
+        {
+            FieldInfo slotsField = typeof(LanRoomService).GetField("_slots", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(slotsField);
+            var slots = slotsField.GetValue(room) as System.Collections.IEnumerable;
+            Assert.IsNotNull(slots);
+            foreach (object slot in slots)
+            {
+                PropertyInfo playerNameProperty = slot.GetType().GetProperty("PlayerName", BindingFlags.Instance | BindingFlags.Public);
+                PropertyInfo isAiProperty = slot.GetType().GetProperty("IsAi", BindingFlags.Instance | BindingFlags.Public);
+                Assert.IsNotNull(playerNameProperty);
+                Assert.IsNotNull(isAiProperty);
+                string playerName = playerNameProperty.GetValue(slot) as string;
+                if (!string.IsNullOrWhiteSpace(playerName) &&
+                    playerName.Trim().StartsWith("Computer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    isAiProperty.SetValue(slot, false);
+                }
+            }
+        }
+
+        private static void ForceComputerSlotsToBecomeNonReplaceableHumans(LanRoomService room)
+        {
+            FieldInfo slotsField = typeof(LanRoomService).GetField("_slots", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(slotsField);
+            var slots = slotsField.GetValue(room) as System.Collections.IEnumerable;
+            Assert.IsNotNull(slots);
+            foreach (object slot in slots)
+            {
+                PropertyInfo playerNameProperty = slot.GetType().GetProperty("PlayerName", BindingFlags.Instance | BindingFlags.Public);
+                PropertyInfo clientIdProperty = slot.GetType().GetProperty("ClientInstanceId", BindingFlags.Instance | BindingFlags.Public);
+                PropertyInfo isAiProperty = slot.GetType().GetProperty("IsAi", BindingFlags.Instance | BindingFlags.Public);
+                PropertyInfo playerIdProperty = slot.GetType().GetProperty("PlayerId", BindingFlags.Instance | BindingFlags.Public);
+                Assert.IsNotNull(playerNameProperty);
+                Assert.IsNotNull(clientIdProperty);
+                Assert.IsNotNull(isAiProperty);
+                Assert.IsNotNull(playerIdProperty);
+                string playerName = playerNameProperty.GetValue(slot) as string;
+                if (!string.IsNullOrWhiteSpace(playerName) &&
+                    playerName.Trim().StartsWith("Computer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    int playerId = (int)playerIdProperty.GetValue(slot);
+                    playerNameProperty.SetValue(slot, "Occupied " + playerId);
+                    clientIdProperty.SetValue(slot, 3000UL + (ulong)playerId);
+                    isAiProperty.SetValue(slot, false);
+                }
+            }
         }
 
         private sealed class ManualDiagnosticsClock : ILanDiagnosticsClock

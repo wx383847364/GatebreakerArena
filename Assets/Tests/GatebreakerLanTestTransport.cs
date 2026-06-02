@@ -16,6 +16,7 @@ namespace Gatebreaker.Tests
         public int DiscoveryPort { get; private set; } = LanTransportDefaults.DiscoveryPort;
         public IReadOnlyCollection<byte[]> OutboundMessages => _outboundMessages;
         public LanConnectionId LastConnectionId { get; private set; } = LanConnectionId.Invalid;
+        public bool FailConnect { get; set; }
 
         public event Action<LanTransportEvent> EventReceived;
 
@@ -116,6 +117,12 @@ namespace Gatebreaker.Tests
             if (!endpoint.IsValid)
             {
                 EnqueueError(LanTransportError.InvalidEndpoint, endpoint);
+                return LanConnectionId.Invalid;
+            }
+
+            if (FailConnect)
+            {
+                EnqueueError(LanTransportError.TcpConnectFailed, endpoint);
                 return LanConnectionId.Invalid;
             }
 
