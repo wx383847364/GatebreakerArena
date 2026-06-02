@@ -39,6 +39,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const int SceneDebugLayerFallback = 6;
         private const float LocalStartCountdownSeconds = 5f;
         private const float LocalStartReadyTextSeconds = 0.75f;
+        private const float LanDiagnosticsPanelMargin = 8f;
+        private const float LanDiagnosticsTopOffset = 46f;
+        private const int LanDiagnosticsTitleFontSize = 22;
+        private const int LanDiagnosticsBodyFontSize = 16;
+        private const int LanDiagnosticsSmallFontSize = 14;
 
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, int> _ballViewSlots = new Dictionary<int, int>();
@@ -306,6 +311,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 if (_showLanDiagnostics)
                 {
                     _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(_lanRoomService?.CurrentSnapshot);
+                    LogLanDiagnosticsSummary("F8");
                 }
             }
 
@@ -313,6 +319,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 _lanDiagnosticsService.Flush();
                 _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(_lanRoomService?.CurrentSnapshot);
+                LogLanDiagnosticsSummary("F9");
             }
         }
 
@@ -433,12 +440,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            if (GUI.Button(new Rect(8f, 8f, 58f, 28f), "DIAG"))
+            GUIStyle diagButtonStyle = CreateLanDiagnosticsButtonStyle();
+            if (GUI.Button(new Rect(8f, 8f, 74f, 34f), "DIAG", diagButtonStyle))
             {
                 _showLanDiagnostics = !_showLanDiagnostics;
                 if (_showLanDiagnostics)
                 {
                     _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(_lanRoomService?.CurrentSnapshot);
+                    LogLanDiagnosticsSummary("DIAG");
                 }
             }
 
@@ -454,50 +463,64 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             RoomSnapshot room = _lanRoomService?.CurrentSnapshot;
             LanDiagnosticsSnapshot diagnostics = _lanDiagnosticsService.CreateSnapshot();
-            float width = Mathf.Min(620f, Screen.width - 16f);
-            float height = Mathf.Min(520f, Screen.height - 50f);
-            Rect panel = new Rect(8f, 42f, width, height);
+            float width = Mathf.Max(320f, Screen.width - LanDiagnosticsPanelMargin * 2f);
+            float height = Mathf.Max(260f, Screen.height - LanDiagnosticsTopOffset - LanDiagnosticsPanelMargin);
+            Rect panel = new Rect(LanDiagnosticsPanelMargin, LanDiagnosticsTopOffset, width, height);
+            Color previousColor = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.98f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 1f, 1f, 0.95f);
             GUI.Box(panel, GUIContent.none);
+            GUI.color = previousColor;
 
-            GUILayout.BeginArea(new Rect(panel.x + 10f, panel.y + 8f, panel.width - 20f, panel.height - 16f));
-            GUILayout.Label("LAN Diagnostics");
+            GUIStyle titleStyle = CreateLanDiagnosticsLabelStyle(LanDiagnosticsTitleFontSize, FontStyle.Bold);
+            GUIStyle bodyStyle = CreateLanDiagnosticsLabelStyle(LanDiagnosticsBodyFontSize, FontStyle.Normal);
+            GUIStyle eventStyle = CreateLanDiagnosticsLabelStyle(LanDiagnosticsSmallFontSize, FontStyle.Normal);
+            GUIStyle textAreaStyle = CreateLanDiagnosticsTextAreaStyle();
+            GUIStyle buttonStyle = CreateLanDiagnosticsButtonStyle();
+
+            GUILayout.BeginArea(new Rect(panel.x + 14f, panel.y + 10f, panel.width - 28f, panel.height - 20f));
+            GUILayout.Label("LAN Diagnostics", titleStyle);
             GUILayout.Label("state=" + (room != null ? room.State.ToString() : "-") +
-                            " role=" + (room != null ? (room.IsHost ? "Host" : "Client") : "-") +
-                            " room=" + (room != null ? room.RoomCode : "-"));
+                            "  role=" + (room != null ? (room.IsHost ? "Host" : "Client") : "-") +
+                            "  room=" + (room != null ? room.RoomCode : "-"), bodyStyle);
             GUILayout.Label("session=" + (room != null ? room.SessionId.ToString() : "-") +
-                            " slot=" + (room != null ? room.LocalSlotIndex.ToString() : "-") +
-                            " log=" + ShortenPath(diagnostics.CurrentLogPath));
+                            "  slot=" + (room != null ? room.LocalSlotIndex.ToString() : "-") +
+                            "  log=" + ShortenPath(diagnostics.CurrentLogPath), bodyStyle);
             if (room?.Lockstep != null)
             {
                 GUILayout.Label("frame confirmed=" + room.Lockstep.LatestConfirmedFrame +
                                 " target=" + room.Lockstep.LocalTargetFrame +
-                                " waiting=" + JoinInts(room.Lockstep.WaitingSlotIndexes));
+                                " waiting=" + JoinInts(room.Lockstep.WaitingSlotIndexes), bodyStyle);
             }
 
             if (!string.IsNullOrEmpty(diagnostics.LastWriteError))
             {
-                GUILayout.Label("writeError=" + diagnostics.LastWriteError);
+                GUILayout.Label("writeError=" + diagnostics.LastWriteError, bodyStyle);
             }
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Refresh"))
+            if (GUILayout.Button("Refresh", buttonStyle, GUILayout.Height(36f)))
             {
                 _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(room);
+                LogLanDiagnosticsSummary("Refresh");
             }
 
-            if (GUILayout.Button("Flush"))
+            if (GUILayout.Button("Flush", buttonStyle, GUILayout.Height(36f)))
             {
                 _lanDiagnosticsService.Flush();
                 _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(room);
+                LogLanDiagnosticsSummary("Flush");
             }
 
-            if (GUILayout.Button("Export Package"))
+            if (GUILayout.Button("Export Package", buttonStyle, GUILayout.Height(36f)))
             {
                 _lastLanDiagnosticsExportPath = _lanDiagnosticsService.ExportDiagnosticsPackage(room);
                 _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(room);
+                LogLanDiagnosticsSummary("Export");
             }
 
-            if (GUILayout.Button("Close"))
+            if (GUILayout.Button("Close", buttonStyle, GUILayout.Height(36f)))
             {
                 _showLanDiagnostics = false;
             }
@@ -505,28 +528,77 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             GUILayout.EndHorizontal();
             if (!string.IsNullOrEmpty(_lastLanDiagnosticsExportPath))
             {
-                GUILayout.Label("export=" + ShortenPath(_lastLanDiagnosticsExportPath));
+                GUILayout.Label("export=" + ShortenPath(_lastLanDiagnosticsExportPath), bodyStyle);
             }
 
             _lanDiagnosticsScroll = GUILayout.BeginScrollView(_lanDiagnosticsScroll);
-            GUILayout.Label("Recent events:");
+            GUILayout.Label("Recent events:", bodyStyle);
             LanDiagnosticEvent[] events = diagnostics.RecentEvents ?? Array.Empty<LanDiagnosticEvent>();
             int start = Mathf.Max(0, events.Length - 30);
             for (int i = start; i < events.Length; i++)
             {
                 LanDiagnosticEvent item = events[i];
-                GUILayout.Label(item.MonotonicMs + " " + item.EventName + " f=" + item.FrameIndex + " " + item.Result + " " + item.Detail);
+                GUILayout.Label(item.MonotonicMs + " " + item.EventName + " f=" + item.FrameIndex + " " + item.Result + " " + item.Detail, eventStyle);
             }
 
             if (!string.IsNullOrEmpty(_lastLanDiagnosticsSummary))
             {
-                GUILayout.Space(8f);
-                GUILayout.Label("Summary:");
-                GUILayout.TextArea(_lastLanDiagnosticsSummary);
+                GUILayout.Space(10f);
+                GUILayout.Label("Summary:", bodyStyle);
+                GUILayout.TextArea(_lastLanDiagnosticsSummary, textAreaStyle);
             }
 
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        private void LogLanDiagnosticsSummary(string reason)
+        {
+            if (_lanDiagnosticsService == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_lastLanDiagnosticsSummary))
+            {
+                _lastLanDiagnosticsSummary = _lanDiagnosticsService.CreateSummaryText(_lanRoomService?.CurrentSnapshot);
+            }
+
+            Debug.Log("[Gatebreaker LAN Diagnostics][" + reason + "]\n" + _lastLanDiagnosticsSummary);
+        }
+
+        private static GUIStyle CreateLanDiagnosticsLabelStyle(int fontSize, FontStyle fontStyle)
+        {
+            var style = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = fontSize,
+                fontStyle = fontStyle,
+                wordWrap = true,
+                richText = false,
+            };
+            style.normal.textColor = Color.white;
+            return style;
+        }
+
+        private static GUIStyle CreateLanDiagnosticsTextAreaStyle()
+        {
+            var style = new GUIStyle(GUI.skin.textArea)
+            {
+                fontSize = LanDiagnosticsSmallFontSize,
+                wordWrap = true,
+            };
+            style.normal.textColor = Color.white;
+            return style;
+        }
+
+        private static GUIStyle CreateLanDiagnosticsButtonStyle()
+        {
+            var style = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = LanDiagnosticsBodyFontSize,
+                fontStyle = FontStyle.Bold,
+            };
+            return style;
         }
 
         private void OnDestroy()
