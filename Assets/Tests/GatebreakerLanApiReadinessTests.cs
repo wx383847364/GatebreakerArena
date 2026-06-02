@@ -707,7 +707,6 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(host.StartLoading());
             PumpReliable(hostToClient, client, null, new LanConnectionId(1));
             Assert.AreEqual(LanRoomState.Loading, client.CurrentSnapshot.State);
-            Assert.IsTrue(client.AcknowledgeStart());
             PumpReliable(clientToHost, host, new LanConnectionId(1), null);
             PumpReliable(hostToClient, client, null, new LanConnectionId(1));
             Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
@@ -957,11 +956,42 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void DiagnosticsRecentEventsFilterDiscoveryAdvertiseNoise()
+        public void DiagnosticsRecentEventsFilterResolvedLanNoise()
         {
             var diagnostics = new LanDiagnosticsService(new MemoryDiagnosticsWriter(), new ManualDiagnosticsClock());
             for (int i = 0; i < 40; i++)
             {
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "RoomSnapshotState",
+                    Detail = "state=Lobby",
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "SnapshotReceive",
+                    Detail = "state=Lobby",
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "PacketSend",
+                    Detail = "connection:1",
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "PacketReceived",
+                    MessageType = GatebreakerNetworkMessageType.RoomSnapshot.ToString(),
+                    Endpoint = "192.168.0.115:" + i,
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "TransportConnected",
+                    Endpoint = "192.168.0.115:" + i,
+                });
+                diagnostics.Record(new LanDiagnosticEvent
+                {
+                    EventName = "TransportDataReceived",
+                    Endpoint = "192.168.0.115:" + i,
+                });
                 diagnostics.Record(new LanDiagnosticEvent
                 {
                     EventName = "TransportDiscoveryReceived",

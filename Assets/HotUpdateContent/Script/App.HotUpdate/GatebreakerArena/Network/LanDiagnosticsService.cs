@@ -445,7 +445,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             var filtered = new List<LanDiagnosticEvent>(maxCount);
             for (int i = all.Length - 1; i >= 0 && filtered.Count < maxCount; i--)
             {
-                if (!IsNoisyDiscoveryEvent(all[i]))
+                if (!IsNoisyRecentEvent(all[i]))
                 {
                     filtered.Add(all[i]);
                 }
@@ -461,14 +461,28 @@ namespace App.HotUpdate.GatebreakerArena.Network
             return result;
         }
 
-        private static bool IsNoisyDiscoveryEvent(LanDiagnosticEvent diagnosticEvent)
+        private static bool IsNoisyRecentEvent(LanDiagnosticEvent diagnosticEvent)
         {
             if (diagnosticEvent == null)
             {
                 return false;
             }
 
-            if (string.Equals(diagnosticEvent.EventName, "TransportDiscoveryReceived", StringComparison.Ordinal))
+            if (string.Equals(diagnosticEvent.EventName, "RoomSnapshotState", StringComparison.Ordinal) ||
+                string.Equals(diagnosticEvent.EventName, "SnapshotReceive", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (string.Equals(diagnosticEvent.EventName, "PacketReceived", StringComparison.Ordinal) ||
+                string.Equals(diagnosticEvent.EventName, "PacketSend", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (string.Equals(diagnosticEvent.EventName, "TransportDiscoveryReceived", StringComparison.Ordinal) ||
+                string.Equals(diagnosticEvent.EventName, "TransportDataReceived", StringComparison.Ordinal) ||
+                string.Equals(diagnosticEvent.EventName, "TransportConnected", StringComparison.Ordinal))
             {
                 return true;
             }

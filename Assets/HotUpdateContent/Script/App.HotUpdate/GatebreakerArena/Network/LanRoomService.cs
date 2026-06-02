@@ -283,7 +283,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     ClientInstanceId = LocalClientInstanceId,
                     SlotIndex = LocalSlotIndex,
                 }));
+            RoomSlot localSlot = FindLocalSlot();
+            if (localSlot != null)
+            {
+                localSlot.IsLoadingAcked = true;
+            }
+
             RecordRoomEvent("StartAckSend", "ok", string.Empty);
+            PublishSnapshot();
             return true;
         }
 
@@ -603,6 +610,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             State = LanRoomState.Loading;
             RecordRoomEvent("StartLoadingReceive", "ok", string.Empty);
             PublishSnapshot();
+            AcknowledgeStart();
         }
 
         private void HandleStartAck(RoomStartAck ack)
