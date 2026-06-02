@@ -9,9 +9,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
 {
     public sealed class LanRoomService : ITickable
     {
-        private const int DefaultMaxPlayers = 4;
         // LAN runtime currently starts MAP_ARENA_01 / Scene3v3, whose default layout is 1v1v1.
         private const int DefaultLanMapPlayerCount = 3;
+        private const int DefaultMaxPlayers = DefaultLanMapPlayerCount;
         private const float AdvertiseIntervalSeconds = 1f;
 
         private readonly List<RoomSlot> _slots = new List<RoomSlot>();
@@ -118,6 +118,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 _slots.Add(new RoomSlot { SlotIndex = i, SideOrder = i, PlayerId = i + 1 });
             }
 
+            EnsureAiBackfillPlayers();
             _advertiseTimer = 0f;
             RecordRoomEvent("CreateHost", "ok", "tcpPort=" + tcpPort);
             PublishSnapshot();
@@ -463,7 +464,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 return RejectJoin(LanRoomJoinResult.DuplicateIdentity, "Client identity already joined.");
             }
 
-            RoomSlot freeSlot = _slots.FirstOrDefault(slot => !slot.IsActive);
+            RoomSlot freeSlot = FindJoinTargetSlot();
             if (freeSlot == null)
             {
                 return RejectJoin(LanRoomJoinResult.RoomFull, "Room is full.");
@@ -476,6 +477,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             freeSlot.IsReady = false;
             freeSlot.IsLoadingAcked = false;
             freeSlot.IsActive = true;
+            freeSlot.IsAi = false;
             freeSlot.Endpoint = endpoint;
             freeSlot.ConnectionId = connectionId;
             return new RoomJoinResponse
@@ -610,8 +612,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     return;
                 }
 
-                ClearSlot(slot);
-                RecordRoomEvent("LeaveReceive", "cleared", leave.Reason);
+                ReplaceSlotWithAi(slot);
+                RecordRoomEvent("LeaveReceive", "aiBackfill", leave.Reason);
                 BroadcastRoomSnapshot();
                 PublishSnapshot();
                 return;
@@ -863,7 +865,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             RoomSlot[] active = _slots.Where(slot => slot.IsActive).ToArray();
-            return active.Count(slot => !slot.IsAi) >= 2 && active.All(slot => slot.IsAi || slot.IsReady);
+            return active.Any(slot => !slot.IsAi) &&
+                   active.All(slot => slot.IsAi || slot.IsReady);
         }
 
         private void EnsureAiBackfillPlayers()
@@ -890,19 +893,43 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     continue;
                 }
 
-                slot.ClientInstanceId = 0UL;
-                slot.PlayerName = "AI Player " + slot.PlayerId;
-                slot.IsHost = false;
-                slot.IsLocal = false;
-                slot.IsReady = true;
-                slot.IsLoadingAcked = true;
-                slot.IsActive = true;
-                slot.IsAi = true;
-                slot.Endpoint = null;
-                slot.ConnectionId = null;
+                ReplaceSlotWithAi(slot);
                 activeCount++;
                 RecordRoomEvent("AiBackfillAdded", "ok", "slot=" + slot.SlotIndex + ";playerId=" + slot.PlayerId);
             }
+        }
+
+        private RoomSlot FindJoinTargetSlot()
+        {
+            RoomSlot aiSlot = _slots
+                .Where(slot => slot.IsActive && slot.IsAi)
+                .OrderBy(slot => slot.SlotIndex)
+                .FirstOrDefault();
+            if (aiSlot != null)
+            {
+                return aiSlot;
+            }
+
+            return _slots.FirstOrDefault(slot => !slot.IsActive);
+        }
+
+        private static void ReplaceSlotWithAi(RoomSlot slot)
+        {
+            if (slot == null)
+            {
+                return;
+            }
+
+            slot.ClientInstanceId = 0UL;
+            slot.PlayerName = "Computer " + slot.PlayerId;
+            slot.IsHost = false;
+            slot.IsLocal = false;
+            slot.IsReady = true;
+            slot.IsLoadingAcked = true;
+            slot.IsActive = true;
+            slot.IsAi = true;
+            slot.Endpoint = null;
+            slot.ConnectionId = null;
         }
 
         private void EnsureSlotCapacity(int targetPlayerCount)

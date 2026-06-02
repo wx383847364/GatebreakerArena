@@ -1,5 +1,6 @@
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.UI;
 using App.Shared.Contracts;
@@ -403,6 +404,71 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("开始游戏", _binding.StartCountdownText.text);
         }
 
+        [Test]
+        public void LanRoomUpdateRefreshesNativePlayerInfoRows()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+
+            _service.UpdateLanRoom(
+                new RoomSnapshot
+                {
+                    State = LanRoomState.Lobby,
+                    RoomCode = "ABC123",
+                    MaxPlayers = 3,
+                    Players = new[]
+                    {
+                        new RoomPlayerSnapshot { PlayerId = 1, PlayerName = "Host", IsReady = true, IsActive = true },
+                        new RoomPlayerSnapshot { PlayerId = 2, PlayerName = "Client", IsReady = false, IsActive = true },
+                        new RoomPlayerSnapshot { PlayerId = 3, PlayerName = "Computer 3", IsReady = true, IsActive = true, IsAi = true },
+                    },
+                },
+                "192.168.0.220",
+                "192.168.0.115");
+
+            Assert.AreEqual("Player1:", _binding.LanRoomPlayerInfoTexts[0].text);
+            Assert.AreEqual("Host", _binding.LanRoomPlayerNameTexts[0].text);
+            Assert.AreEqual("ready", _binding.LanRoomPlayerReadyTexts[0].text);
+            Assert.AreEqual("Player2:", _binding.LanRoomPlayerInfoTexts[1].text);
+            Assert.AreEqual("Client", _binding.LanRoomPlayerNameTexts[1].text);
+            Assert.AreEqual("not ready", _binding.LanRoomPlayerReadyTexts[1].text);
+            Assert.AreEqual("Player3:", _binding.LanRoomPlayerInfoTexts[2].text);
+            Assert.AreEqual("Computer 3", _binding.LanRoomPlayerNameTexts[2].text);
+            Assert.AreEqual("ready", _binding.LanRoomPlayerReadyTexts[2].text);
+        }
+
+        [Test]
+        public void LanRoomUpdateFallsBackToNativePlayerInfoChildren()
+        {
+            _binding.UseNativeLanRoomInfoChildrenOnly();
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+
+            _service.UpdateLanRoom(
+                new RoomSnapshot
+                {
+                    State = LanRoomState.Lobby,
+                    RoomCode = "ABC123",
+                    MaxPlayers = 3,
+                    Players = new[]
+                    {
+                        new RoomPlayerSnapshot { PlayerId = 1, PlayerName = "Host", IsReady = true, IsActive = true },
+                        new RoomPlayerSnapshot { PlayerId = 2, PlayerName = "Computer 2", IsReady = true, IsActive = true, IsAi = true },
+                        new RoomPlayerSnapshot { PlayerId = 3, PlayerName = "Computer 3", IsReady = true, IsActive = true, IsAi = true },
+                    },
+                },
+                "192.168.0.220",
+                "192.168.0.115");
+
+            Assert.AreEqual("Player1:", _binding.LanRoomPlayerInfoTexts[0].text);
+            Assert.AreEqual("Host", _binding.NativeLanRoomPlayerNameTexts[0].text);
+            Assert.AreEqual("ready", _binding.NativeLanRoomPlayerReadyTexts[0].text);
+            Assert.AreEqual("Player2:", _binding.LanRoomPlayerInfoTexts[1].text);
+            Assert.AreEqual("Computer 2", _binding.NativeLanRoomPlayerNameTexts[1].text);
+            Assert.AreEqual("ready", _binding.NativeLanRoomPlayerReadyTexts[1].text);
+            Assert.AreEqual("Player3:", _binding.LanRoomPlayerInfoTexts[2].text);
+            Assert.AreEqual("Computer 3", _binding.NativeLanRoomPlayerNameTexts[2].text);
+            Assert.AreEqual("ready", _binding.NativeLanRoomPlayerReadyTexts[2].text);
+        }
+
         private sealed class TestSceneUiBinding : IGatebreakerArenaSceneUiBinding
         {
             public Button SkillButton { get; private set; }
@@ -460,6 +526,11 @@ namespace Gatebreaker.Tests
             public TMP_Text LanLocalIpText { get; private set; }
             public TMP_Text LanRoomIpText { get; private set; }
             public TMP_Text LanErrorText { get; private set; }
+            public TMP_Text[] LanRoomPlayerInfoTexts { get; private set; }
+            public TMP_Text[] LanRoomPlayerNameTexts { get; private set; }
+            public TMP_Text[] LanRoomPlayerReadyTexts { get; private set; }
+            public TMP_Text[] NativeLanRoomPlayerNameTexts { get; private set; } = System.Array.Empty<TMP_Text>();
+            public TMP_Text[] NativeLanRoomPlayerReadyTexts { get; private set; } = System.Array.Empty<TMP_Text>();
             public GameObject StartCountdownRoot { get; private set; }
             public TMP_Text StartCountdownText { get; private set; }
 
@@ -518,6 +589,9 @@ namespace Gatebreaker.Tests
             public Object LanLocalIpTextObject => LanLocalIpText;
             public Object LanRoomIpTextObject => LanRoomIpText;
             public Object LanErrorTextObject => LanErrorText;
+            public Object[] LanRoomPlayerInfoTextObjects => LanRoomPlayerInfoTexts;
+            public Object[] LanRoomPlayerNameTextObjects => LanRoomPlayerNameTexts;
+            public Object[] LanRoomPlayerReadyTextObjects => LanRoomPlayerReadyTexts;
             public Object StartCountdownRootObject => StartCountdownRoot;
             public Object StartCountdownTextObject => StartCountdownText;
 
@@ -600,9 +674,42 @@ namespace Gatebreaker.Tests
                     LanLocalIpText = Add<TextMeshProUGUI>(parent, "LanLocalIp"),
                     LanRoomIpText = Add<TextMeshProUGUI>(parent, "LanRoomIp"),
                     LanErrorText = Add<TextMeshProUGUI>(parent, "LanError"),
+                    LanRoomPlayerInfoTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_1"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_2"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_3"),
+                    },
+                    LanRoomPlayerNameTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_1_Name"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_2_Name"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_3_Name"),
+                    },
+                    LanRoomPlayerReadyTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_1_Status"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_2_Status"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_3_Status"),
+                    },
                     StartCountdownRoot = CreateRoot(parent, "StartCountdownRoot"),
                     StartCountdownText = Add<TextMeshProUGUI>(parent, "StartCountdownText"),
                 };
+            }
+
+            public void UseNativeLanRoomInfoChildrenOnly()
+            {
+                NativeLanRoomPlayerNameTexts = new TMP_Text[LanRoomPlayerInfoTexts.Length];
+                NativeLanRoomPlayerReadyTexts = new TMP_Text[LanRoomPlayerInfoTexts.Length];
+                for (int i = 0; i < LanRoomPlayerInfoTexts.Length; i++)
+                {
+                    Transform row = LanRoomPlayerInfoTexts[i].transform;
+                    NativeLanRoomPlayerNameTexts[i] = Add<TextMeshProUGUI>(row, "Name");
+                    NativeLanRoomPlayerReadyTexts[i] = Add<TextMeshProUGUI>(row, "Status");
+                }
+
+                LanRoomPlayerNameTexts = System.Array.Empty<TMP_Text>();
+                LanRoomPlayerReadyTexts = System.Array.Empty<TMP_Text>();
             }
 
             private static GameObject CreateRoot(Transform parent, string name)

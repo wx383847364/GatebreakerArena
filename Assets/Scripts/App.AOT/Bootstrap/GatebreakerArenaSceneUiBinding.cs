@@ -65,6 +65,9 @@ namespace App.AOT.Bootstrap
         [SerializeField] private TMP_Text _lanLocalIpText;
         [SerializeField] private TMP_Text _lanRoomIpText;
         [SerializeField] private TMP_Text _lanErrorText;
+        [SerializeField] private TMP_Text[] _lanRoomPlayerInfoTexts;
+        [SerializeField] private TMP_Text[] _lanRoomPlayerNameTexts;
+        [SerializeField] private TMP_Text[] _lanRoomPlayerReadyTexts;
         [SerializeField] private GameObject _startCountdownRoot;
         [SerializeField] private TMP_Text _startCountdownText;
 
@@ -123,6 +126,9 @@ namespace App.AOT.Bootstrap
         public Object LanLocalIpTextObject => _lanLocalIpText;
         public Object LanRoomIpTextObject => _lanRoomIpText;
         public Object LanErrorTextObject => _lanErrorText;
+        public Object[] LanRoomPlayerInfoTextObjects => _lanRoomPlayerInfoTexts;
+        public Object[] LanRoomPlayerNameTextObjects => _lanRoomPlayerNameTexts;
+        public Object[] LanRoomPlayerReadyTextObjects => _lanRoomPlayerReadyTexts;
         public Object StartCountdownRootObject => _startCountdownRoot;
         public Object StartCountdownTextObject => _startCountdownText;
 
@@ -174,6 +180,9 @@ namespace App.AOT.Bootstrap
             _lanLocalIpText != null &&
             _lanRoomIpText != null &&
             _lanErrorText != null &&
+            HasTextBindings(_lanRoomPlayerInfoTexts) &&
+            HasTextBindings(_lanRoomPlayerNameTexts) &&
+            HasTextBindings(_lanRoomPlayerReadyTexts) &&
             _startCountdownRoot != null &&
             _startCountdownText != null;
 

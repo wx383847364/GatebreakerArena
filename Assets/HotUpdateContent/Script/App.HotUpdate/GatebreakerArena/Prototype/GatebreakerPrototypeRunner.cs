@@ -95,6 +95,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private bool _ownsVisualRoot;
         private bool _hasSceneVisualBounds;
         private bool _missingInputServiceWarningLogged;
+        private bool _lanEntryUiHiddenForPlaying;
         private float _paddlePrefabLength = 1f;
         private StartupUiState _startupUiState = StartupUiState.ModeSelect;
         private float _localStartCountdownElapsed;
@@ -328,9 +329,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (IsLanPlaying())
             {
                 _startupUiState = StartupUiState.OnlineRoom;
+                if (!_lanEntryUiHiddenForPlaying)
+                {
+                    _sceneBindingService?.HideEntryUi();
+                    _lanEntryUiHiddenForPlaying = true;
+                    RefreshBoundHud();
+                }
+
                 return false;
             }
 
+            _lanEntryUiHiddenForPlaying = false;
             if (_startupUiState == StartupUiState.LocalCountdown)
             {
                 UpdateLocalStartCountdown();
@@ -441,7 +450,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             GUIStyle diagButtonStyle = CreateLanDiagnosticsButtonStyle();
-            if (GUI.Button(new Rect(8f, 8f, 74f, 34f), "DIAG", diagButtonStyle))
+            if (GUI.Button(new Rect(8f, Screen.height - 42f, 74f, 34f), "DIAG", diagButtonStyle))
             {
                 _showLanDiagnostics = !_showLanDiagnostics;
                 if (_showLanDiagnostics)
@@ -1806,6 +1815,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             RoomSnapshot snapshot = _lanRoomService.CreateHost(_lanPlayerName, _lanClientInstanceId, tcpPort: tcpPort);
             _lanRoomCodeInput = snapshot.RoomCode;
             _startupUiState = StartupUiState.OnlineRoom;
+            _lanEntryUiHiddenForPlaying = false;
             _sceneBindingService?.ShowLanRoomStatus();
             RefreshBoundHud();
         }
@@ -1821,6 +1831,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _lanTransport?.StartDiscovery();
             _lanRoomService.StartDiscovery(_lanClientInstanceId, _lanPlayerName);
             _startupUiState = StartupUiState.OnlineMenu;
+            _lanEntryUiHiddenForPlaying = false;
             _sceneBindingService?.ShowOnlineMenu();
             RefreshBoundHud();
         }
@@ -1835,6 +1846,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (_lanRoomService.JoinDiscoveredRoom(_lanRoomCodeInput))
             {
                 _startupUiState = StartupUiState.OnlineRoom;
+                _lanEntryUiHiddenForPlaying = false;
                 _sceneBindingService?.ShowLanRoomStatus();
                 RefreshBoundHud();
             }
@@ -1859,6 +1871,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             _lanRoomService?.Leave("ui");
             _startupUiState = StartupUiState.ModeSelect;
+            _lanEntryUiHiddenForPlaying = false;
             _sceneBindingService?.ShowModeSelect();
             RefreshBoundHud();
         }

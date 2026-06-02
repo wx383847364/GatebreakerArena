@@ -197,7 +197,7 @@ namespace Gatebreaker.Tests
                         SlotIndex = 2,
                         SideOrder = 2,
                         PlayerId = 3,
-                        PlayerName = "AI Player 3",
+                        PlayerName = "Computer 3",
                         IsReady = true,
                         IsLoadingAcked = true,
                         IsActive = true,
@@ -213,7 +213,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(2, decoded.Players.Length);
             RoomPlayerSnapshot ai = decoded.Players.Single(player => player.PlayerId == 3);
             Assert.IsTrue(ai.IsAi);
-            Assert.AreEqual("AI Player 3", ai.PlayerName);
+            Assert.AreEqual("Computer 3", ai.PlayerName);
         }
 
         [Test]
@@ -371,14 +371,18 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void TwoHumanLanStartBackfillsAiThirdPlayerForScene3v3()
+        public void HostRoomStartsWithComputerBackfillAndJoinReplacesComputerSlot()
         {
             var host = new LanRoomService();
             ulong hostId = 1001UL;
             ulong clientId = 2002UL;
             RoomSnapshot hostSnapshot = host.CreateHost("Host", hostId, 4, "ABC123");
             Assert.AreEqual(LanRoomState.Lobby, hostSnapshot.State);
-            Assert.IsFalse(hostSnapshot.CanStart);
+            Assert.IsTrue(hostSnapshot.CanStart);
+            Assert.AreEqual(3, hostSnapshot.Players.Length);
+            Assert.AreEqual(2, hostSnapshot.Players.Count(player => player.IsAi));
+            Assert.AreEqual("Computer 2", hostSnapshot.Players.Single(player => player.PlayerId == 2).PlayerName);
+            Assert.AreEqual("Computer 3", hostSnapshot.Players.Single(player => player.PlayerId == 3).PlayerName);
 
             byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
                 GatebreakerNetworkMessageType.RoomJoinRequest,
@@ -396,6 +400,14 @@ namespace Gatebreaker.Tests
                 joinPacket,
                 new LanEndpoint("127.0.0.1", 47780),
                 new LanConnectionId(1)));
+            RoomSnapshot joined = host.CurrentSnapshot;
+            Assert.AreEqual(3, joined.Players.Length);
+            Assert.IsFalse(joined.CanStart);
+            RoomPlayerSnapshot client = joined.Players.Single(player => player.ClientInstanceId == clientId);
+            Assert.AreEqual(1, client.SlotIndex);
+            Assert.AreEqual(2, client.PlayerId);
+            Assert.IsFalse(client.IsAi);
+            Assert.AreEqual(1, joined.Players.Count(player => player.IsAi));
 
             byte[] readyPacket = GatebreakerEnvelopeCodec.Encode(
                 GatebreakerNetworkMessageType.RoomReady,
@@ -419,7 +431,7 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(ai.IsReady);
             Assert.IsTrue(ai.IsLoadingAcked);
             Assert.AreEqual(2, ai.SlotIndex);
-            Assert.AreEqual("AI Player 3", ai.PlayerName);
+            Assert.AreEqual("Computer 3", ai.PlayerName);
 
             byte[] ackPacket = GatebreakerEnvelopeCodec.Encode(
                 GatebreakerNetworkMessageType.RoomStartAck,
@@ -571,7 +583,7 @@ namespace Gatebreaker.Tests
             ulong clientId = 2002UL;
             RoomSnapshot hostSnapshot = host.CreateHost("Host", hostId, 4, "ABC123");
             Assert.AreEqual(LanRoomState.Lobby, hostSnapshot.State);
-            Assert.IsFalse(hostSnapshot.CanStart);
+            Assert.IsTrue(hostSnapshot.CanStart);
 
             byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
                 GatebreakerNetworkMessageType.RoomJoinRequest,

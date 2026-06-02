@@ -228,6 +228,9 @@ namespace App.Shared.Contracts
         UnityEngine.Object LanLocalIpTextObject { get; }
         UnityEngine.Object LanRoomIpTextObject { get; }
         UnityEngine.Object LanErrorTextObject { get; }
+        UnityEngine.Object[] LanRoomPlayerInfoTextObjects { get; }
+        UnityEngine.Object[] LanRoomPlayerNameTextObjects { get; }
+        UnityEngine.Object[] LanRoomPlayerReadyTextObjects { get; }
         UnityEngine.Object StartCountdownRootObject { get; }
         UnityEngine.Object StartCountdownTextObject { get; }
     }

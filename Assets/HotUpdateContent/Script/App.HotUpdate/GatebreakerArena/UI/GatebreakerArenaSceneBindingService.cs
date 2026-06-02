@@ -93,6 +93,9 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private TMP_Text _lanLocalIpText;
         private TMP_Text _lanRoomIpText;
         private TMP_Text _lanErrorText;
+        private TMP_Text[] _lanRoomPlayerInfoTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _lanRoomPlayerNameTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _lanRoomPlayerReadyTexts = Array.Empty<TMP_Text>();
         private Slider _gmHitOffsetSlider;
         private Slider _gmPaddleVelocitySlider;
         private Slider _gmMinimumOutwardSlider;
@@ -224,6 +227,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanErrorText = Require<TMP_Text>(binding.LanErrorTextObject, nameof(binding.LanErrorTextObject));
             _startCountdownRoot = RequireGameObject(binding.StartCountdownRootObject, nameof(binding.StartCountdownRootObject));
             _startCountdownText = Require<TMP_Text>(binding.StartCountdownTextObject, nameof(binding.StartCountdownTextObject));
+            _lanRoomPlayerInfoTexts = OptionalTextArray(binding.LanRoomPlayerInfoTextObjects, nameof(binding.LanRoomPlayerInfoTextObjects));
+            _lanRoomPlayerNameTexts = OptionalTextArray(binding.LanRoomPlayerNameTextObjects, nameof(binding.LanRoomPlayerNameTextObjects), false);
+            _lanRoomPlayerReadyTexts = OptionalTextArray(binding.LanRoomPlayerReadyTextObjects, nameof(binding.LanRoomPlayerReadyTextObjects), false);
+            ResolveLanRoomNativeChildTextBindings();
 
             AddButtonListener(_skillButton, HandleSkillButtonClicked);
             AddButtonListener(_localBattleButton, () => _callbacks.LocalBattleRequested?.Invoke());
@@ -359,10 +366,13 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             SetText(_lanStateText, $"状态：{FormatLanRoomState(snapshot.State)}");
             SetText(_lanRoomCodeText, $"房间号：{(string.IsNullOrEmpty(snapshot.RoomCode) ? "-" : snapshot.RoomCode)}");
-            SetText(_lanPlayerCountText, $"人数：{snapshot.Players.Length}/{Mathf.Max(1, snapshot.MaxPlayers)}");
+            SetText(_lanPlayerCountText, FormatLanPlayerCount(snapshot));
             SetText(_lanLocalIpText, $"本机 IP：{(string.IsNullOrEmpty(localIp) ? "-" : localIp)}");
             SetText(_lanRoomIpText, $"房间 IP：{(string.IsNullOrEmpty(roomIp) ? "-" : roomIp)}");
-            SetText(_lanErrorText, string.IsNullOrEmpty(snapshot.Error) ? string.Empty : TruncateLanStatus(snapshot.Error));
+            SetText(_lanErrorText, string.IsNullOrEmpty(snapshot.Error)
+                ? FormatLanRoster(snapshot)
+                : TruncateLanStatus(snapshot.Error));
+            UpdateLanRosterRows(snapshot);
 
             if (_lanStartButton != null)
             {
@@ -512,6 +522,9 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanLocalIpText = null;
             _lanRoomIpText = null;
             _lanErrorText = null;
+            _lanRoomPlayerInfoTexts = Array.Empty<TMP_Text>();
+            _lanRoomPlayerNameTexts = Array.Empty<TMP_Text>();
+            _lanRoomPlayerReadyTexts = Array.Empty<TMP_Text>();
             _gmHitOffsetSlider = null;
             _gmPaddleVelocitySlider = null;
             _gmMinimumOutwardSlider = null;
@@ -586,6 +599,89 @@ namespace App.HotUpdate.GatebreakerArena.UI
             for (int i = 0; i < sources.Length; i++)
             {
                 texts[i] = Require<TMP_Text>(sources[i], $"{bindingName}[{i}]");
+            }
+
+            return texts;
+        }
+
+        private TMP_Text[] OptionalTextArray(UnityEngine.Object[] sources, string bindingName, bool warnWhenMissing = true)
+        {
+            if (sources == null || sources.Length == 0)
+            {
+                if (warnWhenMissing)
+                {
+                    _logger?.LogWarning("GatebreakerArenaSceneBindingService: {0} has no optional text bindings.", bindingName);
+                }
+
+                return Array.Empty<TMP_Text>();
+            }
+
+            var texts = new TMP_Text[sources.Length];
+            for (int i = 0; i < sources.Length; i++)
+            {
+                texts[i] = Require<TMP_Text>(sources[i], $"{bindingName}[{i}]");
+            }
+
+            return texts;
+        }
+
+        private void ResolveLanRoomNativeChildTextBindings()
+        {
+            if (_lanRoomPlayerInfoTexts.Length <= 0)
+            {
+                return;
+            }
+
+            if (_lanRoomPlayerNameTexts.Length <= 0)
+            {
+                _lanRoomPlayerNameTexts = ResolveLanRoomNativeChildTextBindings("Name");
+            }
+
+            if (_lanRoomPlayerReadyTexts.Length <= 0)
+            {
+                _lanRoomPlayerReadyTexts = ResolveLanRoomNativeChildTextBindings("Status");
+            }
+
+            if (_lanRoomPlayerNameTexts.Length <= 0)
+            {
+                _logger?.LogWarning("GatebreakerArenaSceneBindingService: LanRoomPlayerNameTextObjects has no optional text bindings.");
+            }
+
+            if (_lanRoomPlayerReadyTexts.Length <= 0)
+            {
+                _logger?.LogWarning("GatebreakerArenaSceneBindingService: LanRoomPlayerReadyTextObjects has no optional text bindings.");
+            }
+        }
+
+        private TMP_Text[] ResolveLanRoomNativeChildTextBindings(string childName)
+        {
+            var texts = new TMP_Text[_lanRoomPlayerInfoTexts.Length];
+            for (int i = 0; i < _lanRoomPlayerInfoTexts.Length; i++)
+            {
+                TMP_Text rowLabel = _lanRoomPlayerInfoTexts[i];
+                Transform rowTransform = rowLabel != null ? rowLabel.transform : null;
+                if (rowTransform == null)
+                {
+                    return Array.Empty<TMP_Text>();
+                }
+
+                TMP_Text text = null;
+                for (int childIndex = 0; childIndex < rowTransform.childCount; childIndex++)
+                {
+                    Transform child = rowTransform.GetChild(childIndex);
+                    if (child != null && string.Equals(child.name, childName, StringComparison.Ordinal))
+                    {
+                        text = child.GetComponent<TMP_Text>();
+                        break;
+                    }
+                }
+
+                if (text == null)
+                {
+                    return Array.Empty<TMP_Text>();
+                }
+
+                texts[i] = text;
             }
 
             return texts;
@@ -810,6 +906,40 @@ namespace App.HotUpdate.GatebreakerArena.UI
             if (text.text != value)
             {
                 text.text = value;
+            }
+        }
+
+        private void UpdateLanRosterRows(RoomSnapshot snapshot)
+        {
+            int rowCount = Math.Min(
+                _lanRoomPlayerInfoTexts.Length,
+                Math.Min(_lanRoomPlayerNameTexts.Length, _lanRoomPlayerReadyTexts.Length));
+            if (rowCount <= 0)
+            {
+                return;
+            }
+
+            RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            Array.Sort(players, (left, right) =>
+            {
+                int leftOrder = left != null ? left.PlayerId : int.MaxValue;
+                int rightOrder = right != null ? right.PlayerId : int.MaxValue;
+                return leftOrder.CompareTo(rightOrder);
+            });
+
+            for (int i = 0; i < rowCount; i++)
+            {
+                RoomPlayerSnapshot player = i < players.Length ? players[i] : null;
+                int playerId = player != null ? player.PlayerId : i + 1;
+                string fallbackName = "Computer " + playerId.ToString(CultureInfo.InvariantCulture);
+                string playerName = player == null || string.IsNullOrWhiteSpace(player.PlayerName)
+                    ? fallbackName
+                    : player.PlayerName;
+                string ready = player == null || player.IsAi || player.IsReady ? "ready" : "not ready";
+
+                SetText(_lanRoomPlayerInfoTexts[i], "Player" + playerId.ToString(CultureInfo.InvariantCulture) + ":");
+                SetText(_lanRoomPlayerNameTexts[i], playerName);
+                SetText(_lanRoomPlayerReadyTexts[i], ready);
             }
         }
 
@@ -1098,6 +1228,54 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 default:
                     return "空闲";
             }
+        }
+
+        private static string FormatLanPlayerCount(RoomSnapshot snapshot)
+        {
+            int totalPlayers = snapshot?.Players != null ? snapshot.Players.Length : 0;
+            int humanPlayers = 0;
+            RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            for (int i = 0; i < players.Length; i++)
+            {
+                if (players[i] != null && !players[i].IsAi)
+                {
+                    humanPlayers++;
+                }
+            }
+
+            return $"人数：{humanPlayers}真人/{Mathf.Max(1, totalPlayers)}总";
+        }
+
+        private static string FormatLanRoster(RoomSnapshot snapshot)
+        {
+            RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            if (players.Length <= 0)
+            {
+                return string.Empty;
+            }
+
+            var rows = new List<string>(players.Length);
+            for (int i = 0; i < players.Length; i++)
+            {
+                RoomPlayerSnapshot player = players[i];
+                if (player == null)
+                {
+                    continue;
+                }
+
+                rows.Add(FormatLanRosterSummary(player));
+            }
+
+            return string.Join(" / ", rows);
+        }
+
+        private static string FormatLanRosterSummary(RoomPlayerSnapshot player)
+        {
+            string name = string.IsNullOrWhiteSpace(player.PlayerName)
+                ? "Player" + player.PlayerId.ToString(CultureInfo.InvariantCulture)
+                : player.PlayerName;
+            string ready = player.IsAi || player.IsReady ? "ready" : "not ready";
+            return "Player" + player.PlayerId.ToString(CultureInfo.InvariantCulture) + " " + name + " " + ready;
         }
 
         private static string TruncateLanStatus(string value)
