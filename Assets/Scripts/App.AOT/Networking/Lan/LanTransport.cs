@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading;
 using App.Shared.Contracts;
@@ -163,7 +164,38 @@ namespace App.AOT.Networking.Lan
 
         public bool SendDiscovery(byte[] payload)
         {
-            return SendDiscovery(payload, new LanEndpoint("255.255.255.255", LanTransportDefaults.DiscoveryPort));
+            if (payload == null)
+            {
+                payload = new byte[0];
+            }
+
+            var endpoints = GetDefaultDiscoveryBroadcastEndpoints(LanTransportDefaults.DiscoveryPort);
+            var sentAny = false;
+            Exception lastError = null;
+            LanEndpoint lastEndpoint = default(LanEndpoint);
+            for (var i = 0; i < endpoints.Count; i++)
+            {
+                Exception error;
+                if (SendDiscoveryToEndpoint(payload, endpoints[i], false, out error))
+                {
+                    sentAny = true;
+                    continue;
+                }
+
+                lastError = error;
+                lastEndpoint = endpoints[i];
+            }
+
+            if (sentAny)
+            {
+                return true;
+            }
+
+            var message = lastError != null
+                ? "Discovery send failed: " + lastError.Message
+                : "Discovery send failed: no broadcast endpoints.";
+            EnqueueError(LanTransportError.DiscoverySendFailed, message, LanConnectionId.Invalid, lastEndpoint);
+            return false;
         }
 
         public bool SendDiscovery(byte[] payload, LanEndpoint endpoint)
@@ -179,23 +211,8 @@ namespace App.AOT.Networking.Lan
                 return false;
             }
 
-            try
-            {
-                using (var sender = new UdpClient(AddressFamily.InterNetwork))
-                {
-                    sender.EnableBroadcast = true;
-                    sender.Send(payload, payload.Length, endpoint.Address, endpoint.Port);
-                }
-
-                Interlocked.Add(ref _bytesSent, payload.Length);
-                Interlocked.Increment(ref _packetsSent);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                EnqueueError(LanTransportError.DiscoverySendFailed, "Discovery send failed: " + ex.Message, LanConnectionId.Invalid, endpoint);
-                return false;
-            }
+            Exception ignored;
+            return SendDiscoveryToEndpoint(payload, endpoint, true, out ignored);
         }
 
         public bool StartTcpHost(int preferredPort = 0)
@@ -647,6 +664,33 @@ namespace App.AOT.Networking.Lan
             }
         }
 
+        private bool SendDiscoveryToEndpoint(byte[] payload, LanEndpoint endpoint, bool reportError, out Exception error)
+        {
+            error = null;
+            try
+            {
+                using (var sender = new UdpClient(AddressFamily.InterNetwork))
+                {
+                    sender.EnableBroadcast = true;
+                    sender.Send(payload, payload.Length, endpoint.Address, endpoint.Port);
+                }
+
+                Interlocked.Add(ref _bytesSent, payload.Length);
+                Interlocked.Increment(ref _packetsSent);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+                if (reportError)
+                {
+                    EnqueueError(LanTransportError.DiscoverySendFailed, "Discovery send failed: " + ex.Message, LanConnectionId.Invalid, endpoint);
+                }
+
+                return false;
+            }
+        }
+
         private void EnqueueError(LanTransportError error, string message, LanConnectionId connectionId, LanEndpoint remoteEndpoint)
         {
             Interlocked.Increment(ref _errors);
@@ -679,6 +723,131 @@ namespace App.AOT.Networking.Lan
             }
 
             return new LanEndpoint(ipEndpoint.Address.ToString(), ipEndpoint.Port);
+        }
+
+        public static List<LanEndpoint> GetDefaultDiscoveryBroadcastEndpoints(int port)
+        {
+            var endpoints = new List<LanEndpoint>
+            {
+                new LanEndpoint("255.255.255.255", port),
+            };
+
+            try
+            {
+                var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+                for (var i = 0; i < interfaces.Length; i++)
+                {
+                    var networkInterface = interfaces[i];
+                    if (networkInterface == null ||
+                        networkInterface.OperationalStatus != OperationalStatus.Up ||
+                        networkInterface.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                    {
+                        continue;
+                    }
+
+                    IPInterfaceProperties properties;
+                    try
+                    {
+                        properties = networkInterface.GetIPProperties();
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    var addresses = properties.UnicastAddresses;
+                    for (var j = 0; j < addresses.Count; j++)
+                    {
+                        var unicast = addresses[j];
+                        IPAddress subnetMask;
+                        if (unicast == null ||
+                            unicast.Address == null ||
+                            unicast.Address.AddressFamily != AddressFamily.InterNetwork ||
+                            !TryGetIPv4Mask(unicast, out subnetMask))
+                        {
+                            continue;
+                        }
+
+                        LanEndpoint endpoint;
+                        if (TryCreateDirectedBroadcastEndpoint(unicast.Address, subnetMask, port, out endpoint) &&
+                            !ContainsEndpoint(endpoints, endpoint))
+                        {
+                            endpoints.Add(endpoint);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return endpoints;
+        }
+
+        public static bool TryCreateDirectedBroadcastEndpoint(IPAddress address, IPAddress subnetMask, int port, out LanEndpoint endpoint)
+        {
+            endpoint = default(LanEndpoint);
+            if (address == null ||
+                subnetMask == null ||
+                address.AddressFamily != AddressFamily.InterNetwork ||
+                subnetMask.AddressFamily != AddressFamily.InterNetwork ||
+                port <= 0 ||
+                port > 65535)
+            {
+                return false;
+            }
+
+            var addressBytes = address.GetAddressBytes();
+            var maskBytes = subnetMask.GetAddressBytes();
+            if (addressBytes.Length != 4 || maskBytes.Length != 4)
+            {
+                return false;
+            }
+
+            var broadcastBytes = new byte[4];
+            for (var i = 0; i < broadcastBytes.Length; i++)
+            {
+                broadcastBytes[i] = (byte)(addressBytes[i] | (byte)~maskBytes[i]);
+            }
+
+            var broadcastAddress = new IPAddress(broadcastBytes);
+            if (IPAddress.Any.Equals(broadcastAddress) ||
+                IPAddress.Loopback.Equals(broadcastAddress) ||
+                address.Equals(broadcastAddress))
+            {
+                return false;
+            }
+
+            endpoint = new LanEndpoint(broadcastAddress.ToString(), port);
+            return endpoint.IsValid;
+        }
+
+        private static bool TryGetIPv4Mask(UnicastIPAddressInformation unicast, out IPAddress subnetMask)
+        {
+            subnetMask = null;
+            try
+            {
+                subnetMask = unicast.IPv4Mask;
+            }
+            catch
+            {
+                return false;
+            }
+
+            return subnetMask != null && subnetMask.AddressFamily == AddressFamily.InterNetwork;
+        }
+
+        private static bool ContainsEndpoint(List<LanEndpoint> endpoints, LanEndpoint endpoint)
+        {
+            for (var i = 0; i < endpoints.Count; i++)
+            {
+                if (endpoints[i].Equals(endpoint))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void CloseUdpClient(UdpClient client)

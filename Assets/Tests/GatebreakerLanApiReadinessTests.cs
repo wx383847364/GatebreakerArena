@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using App.AOT.Networking.Lan;
 using App.HotUpdate.GatebreakerArena.Ball;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
@@ -162,6 +164,20 @@ namespace Gatebreaker.Tests
             DiscoveredRoom room = client.DiscoveredRooms.Single();
             Assert.AreEqual(54321, room.Advertise.TcpPort);
             Assert.AreEqual(new LanEndpoint("192.168.1.20", 54321), room.ReliableEndpoint);
+        }
+
+        [Test]
+        public void LanTransportCalculatesDirectedBroadcastForLocalSubnet()
+        {
+            LanEndpoint endpoint;
+            Assert.IsTrue(LanTransport.TryCreateDirectedBroadcastEndpoint(
+                IPAddress.Parse("192.168.0.115"),
+                IPAddress.Parse("255.255.255.0"),
+                LanTransportDefaults.DiscoveryPort,
+                out endpoint));
+
+            Assert.AreEqual("192.168.0.255", endpoint.Address);
+            Assert.AreEqual(LanTransportDefaults.DiscoveryPort, endpoint.Port);
         }
 
         [Test]
