@@ -326,6 +326,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private bool HandleStartupUiState()
         {
+            if (HandleLanRoomTerminalNavigation())
+            {
+                return true;
+            }
+
             if (IsLanPlaying())
             {
                 _startupUiState = StartupUiState.OnlineRoom;
@@ -347,6 +352,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             return _startupUiState != StartupUiState.LocalPlaying;
+        }
+
+        private bool HandleLanRoomTerminalNavigation()
+        {
+            RoomSnapshot snapshot = _lanRoomService?.CurrentSnapshot;
+            if (!IsLanRoomTerminal(snapshot) || _startupUiState == StartupUiState.ModeSelect)
+            {
+                return false;
+            }
+
+            ReturnToModeSelectFromResult();
+            return true;
         }
 
         private void UpdateLocalStartCountdown()
@@ -1576,6 +1593,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
+            ResetPrototypeMatchForEntryUi();
+        }
+
+        private void ResetPrototypeMatchForEntryUi()
+        {
             _runtime?.StartLocalPrototype();
             _runtime?.SetLocalPlayer(_localPlayerId);
             _lastServeBlockReason = ServeBlockReason.None;
@@ -1610,8 +1632,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 HitOffsetInfluenceChanged = value => _runtime?.BounceTuning?.SetHitOffsetInfluenceValue(value),
                 PaddleVelocityInfluenceChanged = value => _runtime?.BounceTuning?.SetPaddleVelocityInfluenceValue(value),
                 MinimumOutwardShareChanged = value => _runtime?.BounceTuning?.SetMinimumOutwardShareValue(value),
-                RestartMatchRequested = RestartLocalPrototype,
-                ResultBackRequested = LeaveLanRoom,
+                RestartMatchRequested = RequestResultRestart,
+                ResultBackRequested = RequestResultBack,
                 InitialLanPlayerName = _lanPlayerName,
                 InitialLanRoomCode = _lanRoomCodeInput,
             };
@@ -1813,6 +1835,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             EnsureLanIdentity();
+            ResetLocalLanSessionTransport();
             _lanTransport?.StartDiscovery();
             bool tcpStarted = _lanTransport != null && _lanTransport.StartTcpHost();
             int tcpPort = _lanTransport?.TcpListenEndpoint.Port ?? 0;
@@ -1842,6 +1865,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             EnsureLanIdentity();
+            ResetLocalLanSessionTransport();
             _lanTransport?.StartDiscovery();
             _lanRoomService.StartDiscovery(_lanClientInstanceId, _lanPlayerName);
             _startupUiState = StartupUiState.OnlineMenu;
@@ -1888,6 +1912,59 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void LeaveLanRoom()
         {
             _lanRoomService?.Leave("ui");
+            ResetLocalLanSessionAfterLeave("ui");
+            _startupUiState = StartupUiState.ModeSelect;
+            _lanEntryUiHiddenForPlaying = false;
+            _sceneBindingService?.ShowModeSelect();
+            RefreshBoundHud();
+        }
+
+        private void RequestResultRestart()
+        {
+            RoomSnapshot snapshot = _lanRoomService?.CurrentSnapshot;
+            if (!IsLanResultRoom(snapshot))
+            {
+                RestartLocalPrototype();
+                return;
+            }
+
+            if (IsLanRoomTerminal(snapshot))
+            {
+                ReturnToModeSelectFromResult();
+                return;
+            }
+
+            bool readyAfterReturn = snapshot.IsHost;
+            if (!_lanRoomService.ReturnToLobbyFromResult(readyAfterReturn))
+            {
+                ReturnToModeSelectFromResult();
+                return;
+            }
+
+            _startupUiState = StartupUiState.OnlineRoom;
+            _lanEntryUiHiddenForPlaying = false;
+            ResetPrototypeMatchForEntryUi();
+            _sceneBindingService?.ShowLanRoomStatus();
+            RefreshBoundHud();
+        }
+
+        private void RequestResultBack()
+        {
+            RoomSnapshot snapshot = _lanRoomService?.CurrentSnapshot;
+            if (!IsLanResultRoom(snapshot) || IsLanRoomTerminal(snapshot))
+            {
+                ReturnToModeSelectFromResult();
+                return;
+            }
+
+            _lanRoomService.Leave(snapshot.IsHost ? "resultBackHost" : "resultBack");
+            ResetLocalLanSessionAfterLeave(snapshot.IsHost ? "resultBackHost" : "resultBack");
+            ReturnToModeSelectFromResult();
+        }
+
+        private void ReturnToModeSelectFromResult()
+        {
+            ResetPrototypeMatchForEntryUi();
             _startupUiState = StartupUiState.ModeSelect;
             _lanEntryUiHiddenForPlaying = false;
             _sceneBindingService?.ShowModeSelect();
@@ -1920,9 +1997,36 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void ShowOnlineBattleMenu()
         {
+            ResetTerminalLocalLanSessionForOnlineEntry();
             _startupUiState = StartupUiState.OnlineMenu;
             _sceneBindingService?.ShowOnlineMenu();
             RefreshBoundHud();
+        }
+
+        private void ResetLocalLanSessionAfterLeave(string reason)
+        {
+            ResetLocalLanSessionTransport();
+            _lanRoomService?.ResetAfterLocalLeave(reason);
+            _lanRoomCodeInput = string.Empty;
+        }
+
+        private void ResetTerminalLocalLanSessionForOnlineEntry()
+        {
+            RoomSnapshot snapshot = _lanRoomService?.CurrentSnapshot;
+            if (snapshot == null ||
+                (snapshot.State != LanRoomState.Left &&
+                 snapshot.State != LanRoomState.Aborted))
+            {
+                return;
+            }
+
+            ResetLocalLanSessionAfterLeave("onlineEntry");
+        }
+
+        private void ResetLocalLanSessionTransport()
+        {
+            _lanTransport?.StopTcpHost();
+            _lanTransport?.StopDiscovery();
         }
 
         private void ToggleLanReady(RoomSnapshot snapshot)
@@ -1984,6 +2088,22 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                    ";human=" + human +
                    ";ai=" + ai +
                    ";total=" + players.Length;
+        }
+
+        private static bool IsLanResultRoom(RoomSnapshot snapshot)
+        {
+            return snapshot != null &&
+                   snapshot.SessionId != 0UL &&
+                   snapshot.State != LanRoomState.Idle &&
+                   snapshot.State != LanRoomState.Discovering &&
+                   snapshot.State != LanRoomState.Joining;
+        }
+
+        private static bool IsLanRoomTerminal(RoomSnapshot snapshot)
+        {
+            return snapshot != null &&
+                   (snapshot.State == LanRoomState.Left ||
+                    (snapshot.State == LanRoomState.Aborted && snapshot.AbortReason == MatchAbortReason.HostLeft));
         }
 
         private void RefreshBoundHud()

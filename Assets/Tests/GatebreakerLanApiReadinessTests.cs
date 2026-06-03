@@ -18,14 +18,6 @@ namespace Gatebreaker.Tests
 {
     public sealed class GatebreakerLanApiReadinessTests
     {
-        private static readonly string[] AotByteFramingCodecCandidates =
-        {
-            "App.AOT.Networking.Lan.LanByteFramingCodec, App.AOT",
-            "App.AOT.Networking.Lan.LanFrameCodec, App.AOT",
-            "App.Shared.Lan.LanByteFramingCodec, App.Shared",
-            "App.Shared.Lockstep.LockstepFrameCodec, App.Shared",
-        };
-
         private static readonly string[] RoomStateMachineCandidates =
         {
             "App.HotUpdate.GatebreakerArena.Network.LanRoomService, App.HotUpdate",
@@ -33,16 +25,6 @@ namespace Gatebreaker.Tests
             "App.HotUpdate.GatebreakerArena.Lockstep.LockstepRoomStateMachine, App.HotUpdate",
             "App.HotUpdate.GatebreakerArena.Networking.GatebreakerRoomStateMachine, App.HotUpdate",
         };
-
-        [Test]
-        public void AotByteFramingCodecRejectsMalformedFramesWhenPublicApiExists()
-        {
-            // TODO: Replace this readiness guard with concrete byte framing roundtrip and malformed frame assertions
-            // once the client AOT LAN framing codec has a public API.
-            IgnoreUntilApiExists(
-                FindType(AotByteFramingCodecCandidates),
-                "AOT LAN byte framing codec public API is not present in Client/Assets.");
-        }
 
         [Test]
         public void HotUpdateCodecRejectsPayloadHashMismatchWhenPublicApiExists()
@@ -127,12 +109,23 @@ namespace Gatebreaker.Tests
                     Reason = MatchAbortReason.MissingInputTimeout,
                     Message = "missing input",
                 })));
+            RoomReturnToLobbyCommand returnToLobby = GatebreakerPayloadCodec.DecodeReturnToLobby(RoundTrip(
+                GatebreakerNetworkMessageType.RoomReturnToLobby,
+                GatebreakerPayloadCodec.EncodeReturnToLobby(new RoomReturnToLobbyCommand
+                {
+                    ClientInstanceId = 123UL,
+                    SlotIndex = 0,
+                    IsReady = true,
+                })));
 
             Assert.IsTrue(ready.IsReady);
             Assert.AreEqual(0, startAck.SlotIndex);
             Assert.AreEqual(10, bundle.FrameIndex);
             Assert.AreEqual(1, bundle.Inputs.Length);
             Assert.AreEqual(MatchAbortReason.MissingInputTimeout, abort.Reason);
+            Assert.AreEqual(123UL, returnToLobby.ClientInstanceId);
+            Assert.AreEqual(0, returnToLobby.SlotIndex);
+            Assert.IsTrue(returnToLobby.IsReady);
         }
 
         [Test]
@@ -376,6 +369,33 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void HostCreateLeaveResetThenCreateHostStartsFreshLobby()
+        {
+            var host = new LanRoomService();
+            ulong hostId = 1001UL;
+
+            host.CreateHost("Host", hostId, 3, "ABC123");
+            host.Leave("ui");
+            Assert.AreEqual(LanRoomState.Left, host.CurrentSnapshot.State);
+
+            host.ResetAfterLocalLeave("ui");
+            RoomSnapshot reset = host.CurrentSnapshot;
+            Assert.AreEqual(LanRoomState.Idle, reset.State);
+            Assert.IsFalse(reset.IsHost);
+            Assert.AreEqual(-1, reset.LocalSlotIndex);
+            Assert.AreEqual(string.Empty, reset.RoomCode);
+            Assert.IsFalse(reset.PlayersFrozen);
+            Assert.AreEqual(0, reset.Players.Length);
+
+            RoomSnapshot recreated = host.CreateHost("Host", hostId, 3, "DEF456", 47780);
+            Assert.AreEqual(LanRoomState.Lobby, recreated.State);
+            Assert.IsTrue(recreated.IsHost);
+            Assert.AreEqual(0, recreated.LocalSlotIndex);
+            Assert.AreEqual("DEF456", recreated.RoomCode);
+            Assert.AreEqual(hostId, recreated.Players.Single(player => player.IsLocal).ClientInstanceId);
+        }
+
+        [Test]
         public void LockstepLocalInputTargetAdvancesSequentiallyAfterStartupBundles()
         {
             var session = new LockstepSession();
@@ -583,6 +603,88 @@ namespace Gatebreaker.Tests
             RoomSnapshot afterReadyClick = host.CurrentSnapshot;
             Assert.IsTrue(afterReadyClick.CanStart);
             Assert.IsTrue(afterReadyClick.Players.Single(player => player.IsHost).IsReady);
+        }
+
+        [Test]
+        public void HostResultRestartReturnsLobbyWithOnlyHostReady()
+        {
+            var host = new LanRoomService();
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            host.CreateHost("Host", hostId, 3, "ABC123");
+            JoinClientAndEnterPlaying(host, clientId);
+
+            Assert.IsTrue(host.ReturnToLobbyFromResult(true));
+
+            RoomSnapshot snapshot = host.CurrentSnapshot;
+            Assert.AreEqual(LanRoomState.Lobby, snapshot.State);
+            Assert.IsFalse(snapshot.PlayersFrozen);
+            Assert.IsTrue(snapshot.Players.Single(player => player.ClientInstanceId == hostId).IsReady);
+            Assert.IsFalse(snapshot.Players.Single(player => player.ClientInstanceId == clientId).IsReady);
+            Assert.IsTrue(snapshot.Players.Where(player => player.IsAi).All(player => player.IsReady));
+            Assert.IsFalse(snapshot.CanStart);
+        }
+
+        [Test]
+        public void ClientResultRestartRequestsLobbyAndReturnsClientNotReady()
+        {
+            var host = new LanRoomService();
+            var client = new LanRoomService();
+            var hostToClient = new Queue<byte[]>();
+            var clientToHost = new Queue<byte[]>();
+            host.ReliableSendRequested += (payload, _) => hostToClient.Enqueue(payload);
+            client.ReliableSendRequested += (payload, _) => clientToHost.Enqueue(payload);
+
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            ConnectClientAndEnterPlaying(host, client, hostId, clientId, hostToClient, clientToHost);
+
+            Assert.IsTrue(client.ReturnToLobbyFromResult(false));
+            Assert.AreEqual(LanRoomState.Lobby, client.CurrentSnapshot.State);
+            Assert.IsFalse(client.CurrentSnapshot.Players.Single(player => player.ClientInstanceId == clientId).IsReady);
+
+            PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+            RoomSnapshot hostSnapshot = host.CurrentSnapshot;
+            Assert.AreEqual(LanRoomState.Lobby, hostSnapshot.State);
+            Assert.IsFalse(hostSnapshot.PlayersFrozen);
+            Assert.IsFalse(hostSnapshot.Players.Single(player => player.ClientInstanceId == hostId).IsReady);
+            Assert.IsFalse(hostSnapshot.Players.Single(player => player.ClientInstanceId == clientId).IsReady);
+
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            RoomSnapshot clientSnapshot = client.CurrentSnapshot;
+            Assert.AreEqual(LanRoomState.Lobby, clientSnapshot.State);
+            Assert.IsFalse(clientSnapshot.Players.Single(player => player.ClientInstanceId == clientId).IsReady);
+        }
+
+        [Test]
+        public void ClientResultBackLeavesRoomWithoutDisbandingHostRoom()
+        {
+            var host = new LanRoomService();
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            host.CreateHost("Host", hostId, 3, "ABC123");
+            JoinClientAndEnterPlaying(host, clientId);
+
+            byte[] leavePacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomLeave,
+                4,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeLeaveNotice(new RoomLeaveNotice
+                {
+                    ClientInstanceId = clientId,
+                    SlotIndex = 1,
+                    Reason = "resultBack",
+                }));
+
+            Assert.IsTrue(host.HandleIncomingPacket(leavePacket, null, new LanConnectionId(1)));
+
+            RoomSnapshot snapshot = host.CurrentSnapshot;
+            Assert.AreEqual(LanRoomState.Lobby, snapshot.State);
+            Assert.IsFalse(snapshot.PlayersFrozen);
+            Assert.AreEqual(MatchAbortReason.None, snapshot.AbortReason);
+            Assert.IsFalse(snapshot.Players.Any(player => player.ClientInstanceId == clientId));
+            Assert.IsTrue(snapshot.Players.Any(player => player.ClientInstanceId == hostId));
         }
 
         [Test]
@@ -1076,16 +1178,6 @@ namespace Gatebreaker.Tests
                 .FirstOrDefault(type => type != null);
         }
 
-        private static void IgnoreUntilApiExists(Type type, string message)
-        {
-            if (type == null)
-            {
-                Assert.Ignore(message);
-            }
-
-            Assert.Inconclusive("TODO: Bind this test to " + type.FullName + " once the public API shape is stable.");
-        }
-
         private static byte[] RoundTrip(GatebreakerNetworkMessageType messageType, byte[] payload)
         {
             byte[] encoded = GatebreakerEnvelopeCodec.Encode(messageType, 1, 123UL, 1U, payload);
@@ -1238,6 +1330,54 @@ namespace Gatebreaker.Tests
                 }));
             Assert.IsTrue(host.HandleIncomingPacket(ackPacket));
             Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
+        }
+
+        private static void ConnectClientAndEnterPlaying(
+            LanRoomService host,
+            LanRoomService client,
+            ulong hostId,
+            ulong clientId,
+            Queue<byte[]> hostToClient,
+            Queue<byte[]> clientToHost)
+        {
+            host.CreateHost("Host", hostId, 4, "ABC123");
+            client.StartDiscovery(clientId, "Client");
+            client.HandleIncomingPacket(CreatePacket(
+                GatebreakerNetworkMessageType.RoomAdvertise,
+                1,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeRoomAdvertise(new RoomAdvertise
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    SessionId = host.SessionId,
+                    ChannelId = host.ChannelId,
+                    RoomCode = "ABC123",
+                    HostClientInstanceId = hostId,
+                    HostPlayerName = "Host",
+                    TcpPort = 47780,
+                    MaxPlayers = 4,
+                    ActivePlayers = 1,
+                    State = LanRoomState.Lobby,
+                })),
+                new LanEndpoint("127.0.0.1", 47680));
+            Assert.IsTrue(client.JoinDiscoveredRoom("ABC123"));
+            PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.AreEqual(LanRoomState.Lobby, host.CurrentSnapshot.State);
+            Assert.AreEqual(LanRoomState.Lobby, client.CurrentSnapshot.State);
+
+            Assert.IsTrue(client.SetReady(true));
+            PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.IsTrue(host.CurrentSnapshot.CanStart);
+            Assert.IsTrue(host.StartLoading());
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.AreEqual(LanRoomState.Loading, client.CurrentSnapshot.State);
+            PumpReliable(clientToHost, host, new LanConnectionId(1), null);
+            PumpReliable(hostToClient, client, null, new LanConnectionId(1));
+            Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
+            Assert.AreEqual(LanRoomState.Playing, client.CurrentSnapshot.State);
         }
 
         private static void ForceComputerSlotsToLoseAiFlag(LanRoomService room)

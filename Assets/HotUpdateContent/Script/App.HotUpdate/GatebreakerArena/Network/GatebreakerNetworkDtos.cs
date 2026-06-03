@@ -15,6 +15,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         RoomPlaying = 8,
         RoomLeave = 9,
         RoomAbort = 10,
+        RoomReturnToLobby = 11,
         LockstepInput = 20,
         LockstepFrameBundle = 21,
         ChecksumReport = 22,
@@ -151,6 +152,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public ulong ClientInstanceId { get; set; }
         public int SlotIndex { get; set; } = -1;
         public string Reason { get; set; } = string.Empty;
+    }
+
+    public sealed class RoomReturnToLobbyCommand
+    {
+        public ulong ClientInstanceId { get; set; }
+        public int SlotIndex { get; set; } = -1;
+        public bool IsReady { get; set; }
     }
 
     public sealed class RoomAbortNotice

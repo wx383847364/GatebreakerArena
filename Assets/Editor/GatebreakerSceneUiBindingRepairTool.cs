@@ -114,6 +114,9 @@ namespace Gatebreaker.Editor
             Require<TMP_Text>(serializedBinding, "_lanLocalIpText", errors);
             Require<TMP_Text>(serializedBinding, "_lanRoomIpText", errors);
             Require<TMP_Text>(serializedBinding, "_lanErrorText", errors);
+            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerInfoTexts", 3, errors);
+            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerNameTexts", 3, errors);
+            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerReadyTexts", 3, errors);
             Require<GameObject>(serializedBinding, "_startCountdownRoot", errors);
             Require<TMP_Text>(serializedBinding, "_startCountdownText", errors);
 
@@ -236,6 +239,18 @@ namespace Gatebreaker.Editor
             Set(serializedBinding, "_lanLocalIpText", FindRequired<TMP_Text>(lanStatusPanel, "LanLocalIpText"));
             Set(serializedBinding, "_lanRoomIpText", FindRequired<TMP_Text>(lanStatusPanel, "LanRoomIpText"));
             Set(serializedBinding, "_lanErrorText", FindRequired<TMP_Text>(lanStatusPanel, "LanErrorText"));
+            SetArray(serializedBinding, "_lanRoomPlayerInfoTexts",
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_1"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_2"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3"));
+            SetArray(serializedBinding, "_lanRoomPlayerNameTexts",
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_1/Name"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_2/Name"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3/Name"));
+            SetArray(serializedBinding, "_lanRoomPlayerReadyTexts",
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_1/Status"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_2/Status"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3/Status"));
             Set(serializedBinding, "_startCountdownRoot", startCountdownPanel.gameObject);
             Set(serializedBinding, "_startCountdownText", FindRequired<TMP_Text>(startCountdownPanel, "StartCountdownText"));
             serializedBinding.ApplyModifiedPropertiesWithoutUndo();

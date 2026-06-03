@@ -294,6 +294,48 @@ namespace App.HotUpdate.GatebreakerArena.Network
             return true;
         }
 
+        public bool ReturnToLobbyFromResult(bool isReady)
+        {
+            if (SessionId == 0UL ||
+                State == LanRoomState.Idle ||
+                State == LanRoomState.Left ||
+                (State == LanRoomState.Aborted && _abortReason == MatchAbortReason.HostLeft))
+            {
+                RecordRoomEvent("ReturnToLobby", "ignored", "state=" + State + ";abort=" + _abortReason);
+                return false;
+            }
+
+            var command = new RoomReturnToLobbyCommand
+            {
+                ClientInstanceId = LocalClientInstanceId,
+                SlotIndex = LocalSlotIndex,
+                IsReady = isReady,
+            };
+
+            if (_isHost)
+            {
+                if (!ApplyReturnToLobby(command, "local"))
+                {
+                    return false;
+                }
+
+                BroadcastRoomSnapshot();
+                PublishSnapshot();
+                return true;
+            }
+
+            if (!ApplyLocalReturnToLobby(command))
+            {
+                return false;
+            }
+
+            SendReliableToHost(
+                GatebreakerNetworkMessageType.RoomReturnToLobby,
+                GatebreakerPayloadCodec.EncodeReturnToLobby(command));
+            RecordRoomEvent("ReturnToLobby", "sent", "ready=" + isReady);
+            return true;
+        }
+
         public void Leave(string reason = null)
         {
             if (State == LanRoomState.Idle || State == LanRoomState.Left)
@@ -325,6 +367,26 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             State = LanRoomState.Left;
             _diagnostics?.Flush();
+            PublishSnapshot();
+        }
+
+        public void ResetAfterLocalLeave(string reason = null)
+        {
+            bool hadLocalRoomState =
+                State != LanRoomState.Idle ||
+                SessionId != 0UL ||
+                LocalSlotIndex >= 0 ||
+                !string.IsNullOrEmpty(_roomCode) ||
+                _isHost ||
+                _playersFrozen;
+
+            if (!hadLocalRoomState)
+            {
+                return;
+            }
+
+            RecordRoomEvent("ResetAfterLocalLeave", "requested", reason ?? string.Empty);
+            ResetRoom();
             PublishSnapshot();
         }
 
@@ -409,6 +471,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
                         return true;
                     case GatebreakerNetworkMessageType.RoomAbort:
                         HandleAbort(GatebreakerPayloadCodec.DecodeAbortNotice(envelope.PayloadBytes));
+                        return true;
+                    case GatebreakerNetworkMessageType.RoomReturnToLobby:
+                        HandleReturnToLobby(GatebreakerPayloadCodec.DecodeReturnToLobby(envelope.PayloadBytes));
                         return true;
                     case GatebreakerNetworkMessageType.LockstepInput:
                         HandleLockstepInput(GatebreakerPayloadCodec.DecodeLockstepInput(envelope.PayloadBytes));
@@ -654,15 +719,29 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     return;
                 }
 
-                if (_playersFrozen)
+                if (_playersFrozen && !IsResultBackLeave(leave))
                 {
                     RecordRoomEvent("LeaveReceive", "clientLeftDuringPlay", "slot=" + slot.SlotIndex);
                     Abort(MatchAbortReason.ClientLeft, "A player left during play.");
                     return;
                 }
 
-                ReplaceSlotWithAi(slot);
-                RecordRoomEvent("LeaveReceive", "aiBackfill", leave.Reason);
+                if (IsResultBackLeave(leave))
+                {
+                    if (State != LanRoomState.Lobby || _playersFrozen)
+                    {
+                        ResetMatchStateForLobby(0UL, false);
+                    }
+
+                    ClearSlot(slot);
+                    RecordRoomEvent("LeaveReceive", "resultBack", leave.Reason);
+                }
+                else
+                {
+                    ReplaceSlotWithAi(slot);
+                    RecordRoomEvent("LeaveReceive", "aiBackfill", leave.Reason);
+                }
+
                 BroadcastRoomSnapshot();
                 PublishSnapshot();
                 return;
@@ -681,6 +760,72 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             ApplyAbort(notice.Reason, notice.Message);
             RecordRoomEvent("AbortReceive", notice.Reason.ToString(), notice.Message);
+        }
+
+        private void HandleReturnToLobby(RoomReturnToLobbyCommand command)
+        {
+            if (!_isHost || command == null)
+            {
+                return;
+            }
+
+            if (!ApplyReturnToLobby(command, "remote"))
+            {
+                return;
+            }
+
+            BroadcastRoomSnapshot();
+            PublishSnapshot();
+        }
+
+        private bool ApplyReturnToLobby(RoomReturnToLobbyCommand command, string source)
+        {
+            if (!_isHost || command == null)
+            {
+                return false;
+            }
+
+            RoomSlot requester = FindSlot(command.ClientInstanceId, command.SlotIndex);
+            if (requester == null || requester.IsAi)
+            {
+                RecordRoomEvent("ReturnToLobby", "requesterMissing", source ?? string.Empty);
+                return false;
+            }
+
+            if (State != LanRoomState.Lobby || _playersFrozen)
+            {
+                ResetMatchStateForLobby(command.ClientInstanceId, command.IsReady);
+            }
+            else
+            {
+                ApplyRequesterReady(requester, command.IsReady);
+            }
+
+            RecordRoomEvent("ReturnToLobby", source ?? "ok", "slot=" + requester.SlotIndex + ";ready=" + command.IsReady);
+            return true;
+        }
+
+        private bool ApplyLocalReturnToLobby(RoomReturnToLobbyCommand command)
+        {
+            RoomSlot requester = FindSlot(command.ClientInstanceId, command.SlotIndex);
+            if (requester == null || requester.IsAi)
+            {
+                RecordRoomEvent("ReturnToLobby", "localMissing", string.Empty);
+                return false;
+            }
+
+            if (State != LanRoomState.Lobby || _playersFrozen)
+            {
+                ResetMatchStateForLobby(command.ClientInstanceId, command.IsReady);
+            }
+            else
+            {
+                ApplyRequesterReady(requester, command.IsReady);
+            }
+
+            RecordRoomEvent("ReturnToLobby", "local", "slot=" + requester.SlotIndex + ";ready=" + command.IsReady);
+            PublishSnapshot();
+            return true;
         }
 
         private void HandleLockstepInput(LockstepInputFrame input)
@@ -1099,6 +1244,61 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private RoomSlot FindLocalSlot()
         {
             return _slots.FirstOrDefault(slot => slot.IsActive && slot.ClientInstanceId == LocalClientInstanceId);
+        }
+
+        private RoomSlot FindSlot(ulong clientInstanceId, int slotIndex)
+        {
+            return _slots.FirstOrDefault(slot =>
+                slot.IsActive &&
+                slot.ClientInstanceId == clientInstanceId &&
+                (slotIndex < 0 || slot.SlotIndex == slotIndex));
+        }
+
+        private void ResetMatchStateForLobby(ulong readyClientInstanceId, bool requesterReady)
+        {
+            State = LanRoomState.Lobby;
+            _playersFrozen = false;
+            _lastError = string.Empty;
+            _abortReason = MatchAbortReason.None;
+            _abortMessage = string.Empty;
+            _checksumReportsByFrame.Clear();
+            _lockstepSession.Reset();
+            _lastDiagnosticSyncState = LockstepSyncState.Idle;
+            _lastDiagnosticWaitingSlots = string.Empty;
+
+            foreach (RoomSlot slot in _slots)
+            {
+                if (!slot.IsActive)
+                {
+                    continue;
+                }
+
+                if (slot.IsAi)
+                {
+                    slot.IsReady = true;
+                    slot.IsLoadingAcked = true;
+                    continue;
+                }
+
+                slot.IsLoadingAcked = false;
+                slot.IsReady = slot.ClientInstanceId == readyClientInstanceId && requesterReady;
+            }
+        }
+
+        private static void ApplyRequesterReady(RoomSlot requester, bool isReady)
+        {
+            if (requester == null || requester.IsAi)
+            {
+                return;
+            }
+
+            requester.IsReady = isReady;
+            requester.IsLoadingAcked = false;
+        }
+
+        private static bool IsResultBackLeave(RoomLeaveNotice leave)
+        {
+            return string.Equals(leave?.Reason, "resultBack", StringComparison.OrdinalIgnoreCase);
         }
 
         private void ClearSlot(RoomSlot slot)

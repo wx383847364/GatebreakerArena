@@ -34,6 +34,14 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
         public TMP_FontAsset ResolveFallbackTmpFont()
         {
+            TMP_FontAsset pixelChineseFont = roleProfile != null
+                ? roleProfile.GetTmpFont(GatebreakerFontRole.PixelChinese)
+                : null;
+            if (pixelChineseFont != null)
+            {
+                return pixelChineseFont;
+            }
+
             if (defaultFallbackFont != null)
             {
                 return defaultFallbackFont;

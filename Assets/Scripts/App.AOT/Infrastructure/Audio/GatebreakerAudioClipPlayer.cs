@@ -96,7 +96,12 @@ namespace App.AOT.Infrastructure.Audio
 
             if (_localSource == null)
             {
-                _localSource = gameObject.GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+                _localSource = gameObject.GetComponent<AudioSource>();
+                if (_localSource == null)
+                {
+                    _localSource = gameObject.AddComponent<AudioSource>();
+                }
+
                 _localSource.playOnAwake = false;
             }
 

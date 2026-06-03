@@ -53,6 +53,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 case GatebreakerNetworkMessageType.RoomPlaying:
                 case GatebreakerNetworkMessageType.RoomLeave:
                 case GatebreakerNetworkMessageType.RoomAbort:
+                case GatebreakerNetworkMessageType.RoomReturnToLobby:
                 case GatebreakerNetworkMessageType.LockstepInput:
                 case GatebreakerNetworkMessageType.LockstepFrameBundle:
                 case GatebreakerNetworkMessageType.ChecksumReport:
@@ -313,6 +314,26 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 ClientInstanceId = reader.ReadUInt64(),
                 SlotIndex = reader.ReadInt32(),
                 Reason = reader.ReadString(),
+            };
+        }
+
+        public static byte[] EncodeReturnToLobby(RoomReturnToLobbyCommand value)
+        {
+            var writer = new LittleEndianWriter();
+            writer.WriteUInt64(value?.ClientInstanceId ?? 0UL);
+            writer.WriteInt32(value?.SlotIndex ?? -1);
+            writer.WriteBool(value?.IsReady ?? false);
+            return writer.ToArray();
+        }
+
+        public static RoomReturnToLobbyCommand DecodeReturnToLobby(byte[] payload)
+        {
+            var reader = new LittleEndianReader(payload);
+            return new RoomReturnToLobbyCommand
+            {
+                ClientInstanceId = reader.ReadUInt64(),
+                SlotIndex = reader.ReadInt32(),
+                IsReady = reader.ReadBool(),
             };
         }
 

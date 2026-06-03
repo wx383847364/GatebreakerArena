@@ -200,7 +200,11 @@ namespace App.AOT.Infrastructure.Audio
             }
 
             _root = new GameObject("App Audio Service");
-            Object.DontDestroyOnLoad(_root);
+            if (Application.isPlaying)
+            {
+                Object.DontDestroyOnLoad(_root);
+            }
+
             _musicSource = CreateSource("Music", _root.transform);
             for (int i = 0; i < _sfxPoolSize; i++)
             {

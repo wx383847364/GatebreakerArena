@@ -54,18 +54,18 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 return current;
             }
 
-            TMP_FontAsset defaultAsset = TMP_Settings.defaultFontAsset;
-            if (SupportsText(defaultAsset, sample))
-            {
-                return defaultAsset;
-            }
-
             TMP_FontAsset settingsFallback = _runtimeSettings != null
                 ? _runtimeSettings.ResolveFallbackTmpFont()
                 : null;
             if (SupportsText(settingsFallback, sample))
             {
                 return settingsFallback;
+            }
+
+            TMP_FontAsset defaultAsset = TMP_Settings.defaultFontAsset;
+            if (SupportsText(defaultAsset, sample))
+            {
+                return defaultAsset;
             }
 
             TMP_FontAsset globalFallback = FindSupportingGlobalFallback(sample);

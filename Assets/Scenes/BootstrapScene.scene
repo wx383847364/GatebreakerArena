@@ -446,8 +446,14 @@ MonoBehaviour:
   - {fileID: 606128414}
   - {fileID: 521963557}
   - {fileID: 1645621242}
-  _lanRoomPlayerNameTexts: []
-  _lanRoomPlayerReadyTexts: []
+  _lanRoomPlayerNameTexts:
+  - {fileID: 415455311}
+  - {fileID: 129461510}
+  - {fileID: 63143449}
+  _lanRoomPlayerReadyTexts:
+  - {fileID: 1277562329}
+  - {fileID: 656307701}
+  - {fileID: 149228947}
   _startCountdownRoot: {fileID: 1177144781}
   _startCountdownText: {fileID: 742872427}
 --- !u!1 &400

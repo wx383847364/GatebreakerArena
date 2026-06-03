@@ -16,7 +16,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public async Task AudioClipPlayer_UsesDraggedClipBeforeAssetLocation()
+        public void AudioClipPlayer_UsesDraggedClipBeforeAssetLocation()
         {
             var fakeAudio = new RecordingAudioService();
             AudioServiceRegistry.Register(fakeAudio);
@@ -27,7 +27,7 @@ namespace Gatebreaker.Tests
             player.AssignForEditor(clip, "Assets/Audio/ignored.wav", AudioChannel.Music, false, true, 0.5f, true);
             playerObject.SetActive(true);
 
-            await player.PlayAsync();
+            player.PlayAsync().GetAwaiter().GetResult();
 
             Assert.AreSame(clip, fakeAudio.MusicClip);
             Assert.IsNull(fakeAudio.MusicLocation);
@@ -39,7 +39,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public async Task AudioClipPlayer_UsesAssetLocationWhenClipIsMissing()
+        public void AudioClipPlayer_UsesAssetLocationWhenClipIsMissing()
         {
             var fakeAudio = new RecordingAudioService();
             AudioServiceRegistry.Register(fakeAudio);
@@ -49,7 +49,7 @@ namespace Gatebreaker.Tests
             player.AssignForEditor(null, "Assets/Audio/click.wav", AudioChannel.Sfx, false, false, 0.75f, true);
             playerObject.SetActive(true);
 
-            await player.PlayAsync();
+            player.PlayAsync().GetAwaiter().GetResult();
 
             Assert.AreEqual("Assets/Audio/click.wav", fakeAudio.SfxLocation);
             Assert.IsNull(fakeAudio.SfxClip);
@@ -60,7 +60,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public async Task AudioClipPlayer_FallsBackToLocalAudioSourceWithoutAudioService()
+        public void AudioClipPlayer_FallsBackToLocalAudioSourceWithoutAudioService()
         {
             AudioClip clip = CreateClip("local");
             var playerObject = new GameObject("Audio Player");
@@ -69,7 +69,7 @@ namespace Gatebreaker.Tests
             player.AssignForEditor(clip, string.Empty, AudioChannel.Sfx, false, true, 0.25f, true);
             playerObject.SetActive(true);
 
-            await player.PlayAsync();
+            player.PlayAsync().GetAwaiter().GetResult();
 
             Assert.IsNotNull(player.LocalAudioSource);
             Assert.AreSame(clip, player.LocalAudioSource.clip);
@@ -81,7 +81,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public async Task UnityAudioService_LoadsLocationThroughAssetsRuntime()
+        public void UnityAudioService_LoadsLocationThroughAssetsRuntime()
         {
             AudioClip clip = CreateClip("loaded");
             var assetsRuntime = new FakeAssetsRuntime();
@@ -89,7 +89,9 @@ namespace Gatebreaker.Tests
             var service = new UnityAudioService(assetsRuntime, null, 2);
             service.Initialize();
 
-            await service.PlayMusicAsync("Assets/Audio/bgm.wav", new AudioPlayParameters(true, 0.4f));
+            service.PlayMusicAsync("Assets/Audio/bgm.wav", new AudioPlayParameters(true, 0.4f))
+                .GetAwaiter()
+                .GetResult();
 
             CollectionAssert.AreEqual(new[] { "Assets/Audio/bgm.wav" }, assetsRuntime.LoadedLocations);
             Assert.AreSame(clip, service.MusicSource.clip);
