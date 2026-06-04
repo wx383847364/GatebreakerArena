@@ -19,7 +19,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private const int MaxCollisionIterations = 12;
         private const float CollisionEpsilon = 0.0001f;
         private const float CollisionSkin = 0.02f;
-        private const float BallCollisionRadius = 0.225f;
+        private const float BallWallLineCollisionRadius = 0.08f;
+        private const float BallWallEndpointCollisionRadius = 0.12f;
         private const int DefaultPlayerCount = 4;
         private const int MaxPlayerCount = 4;
         private const uint ChecksumOffsetBasis = 2166136261u;
@@ -1425,7 +1426,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
-            Vector2 offset = wallStart + inwardNormal * BallCollisionRadius - start;
+            Vector2 offset = wallStart + inwardNormal * BallWallLineCollisionRadius - start;
             float hitTime = Cross(offset, edge) / denominator;
             float edgeTime = Cross(offset, movement) / denominator;
             if (hitTime < -CollisionEpsilon ||
@@ -1456,7 +1457,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             float b = 2f * Vector2.Dot(relativeStart, movement);
-            float c = Vector2.Dot(relativeStart, relativeStart) - BallCollisionRadius * BallCollisionRadius;
+            float c = Vector2.Dot(relativeStart, relativeStart) - BallWallEndpointCollisionRadius * BallWallEndpointCollisionRadius;
             float discriminant = b * b - 4f * a * c;
             if (discriminant < -CollisionEpsilon)
             {
@@ -1752,12 +1753,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 }
 
                 float distanceInside = Vector2.Dot(position - segment.Start, segment.InwardNormal);
-                if (distanceInside >= BallCollisionRadius)
+                if (distanceInside >= BallWallLineCollisionRadius)
                 {
                     continue;
                 }
 
-                position += segment.InwardNormal * (BallCollisionRadius - distanceInside);
+                position += segment.InwardNormal * (BallWallLineCollisionRadius - distanceInside);
                 float normalSpeed = Vector2.Dot(velocity, segment.InwardNormal);
                 if (normalSpeed < 0f)
                 {

@@ -538,11 +538,11 @@ namespace Gatebreaker.Tests
             ball.Position = target + topWall.InwardNormal * 0.28f;
             ball.Velocity = -topWall.InwardNormal * 7.5f;
 
-            runtime.Tick(0.02f);
+            runtime.Tick(0.03f);
 
             Assert.AreEqual(0, runtime.FindPlayer(1).Score);
             Assert.AreEqual(1, runtime.Balls.Count);
-            Assert.Greater(Vector2.Dot(ball.Position - topWall.Start, topWall.InwardNormal), 0.22f);
+            Assert.Greater(Vector2.Dot(ball.Position - topWall.Start, topWall.InwardNormal), 0.07f);
             Assert.Greater(Vector2.Dot(ball.Velocity, topWall.InwardNormal), 0f);
         }
 
