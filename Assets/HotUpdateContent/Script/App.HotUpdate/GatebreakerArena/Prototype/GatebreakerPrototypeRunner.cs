@@ -44,10 +44,13 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const int LanDiagnosticsTitleFontSize = 22;
         private const int LanDiagnosticsBodyFontSize = 16;
         private const int LanDiagnosticsSmallFontSize = 14;
+        private const float ScoredBallVisualLifetime = 0.09f;
+        private const float FallbackBallVisualWorldSize = 0.45f;
 
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, int> _ballViewSlots = new Dictionary<int, int>();
         private readonly Dictionary<int, VisualPoseState> _ballVisualPoses = new Dictionary<int, VisualPoseState>();
+        private readonly Dictionary<int, ScoredBallVisualState> _scoredBallVisuals = new Dictionary<int, ScoredBallVisualState>();
         private readonly Dictionary<int, Transform> _paddleViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, VisualPoseState> _paddleVisualPoses = new Dictionary<int, VisualPoseState>();
         private readonly Dictionary<int, Renderer> _paddleRenderers = new Dictionary<int, Renderer>();
@@ -125,6 +128,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             public Vector3 PreviousPosition { get; set; }
             public Vector3 CurrentPosition { get; set; }
+        }
+
+        private sealed class ScoredBallVisualState
+        {
+            public ScoredBallVisualState(Vector3 position)
+            {
+                Position = position;
+            }
+
+            public Vector3 Position { get; }
+            public float Elapsed { get; set; }
         }
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
@@ -502,6 +516,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void ResetVisualInterpolation()
         {
             _ballVisualPoses.Clear();
+            _scoredBallVisuals.Clear();
             _paddleVisualPoses.Clear();
             _lastVisualFrameIndex = _runtime != null ? _runtime.LastFrameIndex : int.MinValue;
             _visualFrameAdvanced = true;
@@ -603,6 +618,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (!string.IsNullOrEmpty(diagnostics.LastWriteError))
             {
                 GUILayout.Label("writeError=" + diagnostics.LastWriteError, bodyStyle);
+            }
+
+            if (!string.IsNullOrEmpty(_runtime?.LastGoalContactDiagnostic))
+            {
+                GUILayout.Label("lastGoal=" + _runtime.LastGoalContactDiagnostic, eventStyle);
             }
 
             GUILayout.BeginHorizontal();
@@ -760,6 +780,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 _usePrefabVisuals = true;
                 CreatePrefabScene();
                 ApplyPrefabPaddleLengthCalibration();
+                ApplyPrefabBallContactRadiusCalibration();
                 RebuildDebugCollisionOverlay();
                 ConfigurePrototypeCamera();
                 return;
@@ -939,6 +960,70 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             length = bounds.size.x;
             return true;
+        }
+
+        private void ApplyPrefabBallContactRadiusCalibration()
+        {
+            if (_runtime == null || !_usePrefabVisuals)
+            {
+                return;
+            }
+
+            float radius = 0f;
+            bool hasRadius = false;
+            for (int playerId = 1; playerId <= 4; playerId++)
+            {
+                GatebreakerLoadedPrefab ballPrefab = _visualAssets?.GetBallForPlayerId(playerId);
+                if (TryCalculateBallGoalContactRadius(ballPrefab?.Prefab, out float playerRadius))
+                {
+                    radius = Mathf.Max(radius, playerRadius);
+                    hasRadius = true;
+                }
+            }
+
+            if (hasRadius)
+            {
+                _runtime.SetBallGoalContactRadius(radius);
+            }
+        }
+
+        private bool TryCalculateBallGoalContactRadius(GameObject prefab, out float radius)
+        {
+            radius = 0f;
+            if (prefab == null)
+            {
+                return false;
+            }
+
+            CircleCollider2D collider = prefab.GetComponentInChildren<CircleCollider2D>(true);
+            if (collider == null || collider.radius <= 0.001f)
+            {
+                return false;
+            }
+
+            Vector3 colliderScale = GetRelativeScale(collider.transform, prefab.transform);
+            float visualRadius = collider.radius * Mathf.Max(Mathf.Abs(colliderScale.x), Mathf.Abs(colliderScale.y));
+            float prefabScale = GetPrefabVisualUniformScale();
+            radius = visualRadius / Mathf.Max(0.001f, prefabScale);
+            return radius > 0.001f;
+        }
+
+        private static Vector3 GetRelativeScale(Transform transform, Transform root)
+        {
+            Vector3 scale = Vector3.one;
+            Transform current = transform;
+            while (current != null)
+            {
+                scale = Vector3.Scale(scale, current.localScale);
+                if (current == root)
+                {
+                    break;
+                }
+
+                current = current.parent;
+            }
+
+            return scale;
         }
 
         private static bool TryCalculateLocalRendererBounds(GameObject root, out Bounds localBounds)
@@ -1517,18 +1602,20 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 }
 
                 _liveBallIds.Add(ball.BallId);
-                Transform ballView = EnsureBallView(ball);
+                _scoredBallVisuals.Remove(ball.BallId);
+                Vector3 targetPosition = ToVisualPosition(ball.Position, 0.35f);
+                Transform ballView = EnsureBallView(ball, targetPosition);
                 ballView.localPosition = GetInterpolatedVisualPosition(
                     _ballVisualPoses,
                     ball.BallId,
-                    ToVisualPosition(ball.Position, 0.35f));
-                ballView.localScale = GetCompensatedVisualScale(0.45f);
+                    targetPosition);
+                ballView.localScale = GetBallVisualScale(ball.OwnerPlayerId);
             }
 
             RemoveStaleBallViews();
         }
 
-        private Transform EnsureBallView(BallRuntimeState ball)
+        private Transform EnsureBallView(BallRuntimeState ball, Vector3 initialPosition)
         {
             int ballId = ball != null ? ball.BallId : 0;
             if (_ballViews.TryGetValue(ballId, out Transform ballView))
@@ -1540,8 +1627,13 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             GameObject ballObject = AcquireBallViewObject(ownerPlayerId);
             ballObject.name = $"Ball {ballId}";
             ballObject.transform.SetParent(_visualRoot, false);
+            DisableBallViewPhysics(ballObject);
+            SetBallTrailEmission(ballObject, false);
+            ballObject.transform.localPosition = initialPosition;
+            ballObject.transform.localRotation = Quaternion.identity;
+            ballObject.transform.localScale = GetBallVisualScale(ownerPlayerId);
             ballObject.SetActive(true);
-            ballObject.transform.localScale = GetCompensatedVisualScale(0.45f);
+            ResetBallTrails(ballObject, true);
 
             _ballViewSlots[ballId] = ownerPlayerId;
             _ballViews[ballId] = ballObject.transform;
@@ -1564,13 +1656,60 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 int ballId = staleIds[i];
                 if (_ballViews.TryGetValue(ballId, out Transform ballView))
                 {
+                    if (UpdateScoredBallVisual(ballId, ballView))
+                    {
+                        continue;
+                    }
+
                     ReleaseBallViewObject(ballId, ballView.gameObject);
                 }
 
                 _ballViews.Remove(ballId);
                 _ballViewSlots.Remove(ballId);
                 _ballVisualPoses.Remove(ballId);
+                _scoredBallVisuals.Remove(ballId);
             }
+        }
+
+        private bool UpdateScoredBallVisual(int ballId, Transform ballView)
+        {
+            if (ballView == null)
+            {
+                return false;
+            }
+
+            if (!_scoredBallVisuals.TryGetValue(ballId, out ScoredBallVisualState scoredVisual))
+            {
+                scoredVisual = CreateScoredBallVisual(ballId, ballView);
+                if (scoredVisual == null)
+                {
+                    return false;
+                }
+
+                _scoredBallVisuals[ballId] = scoredVisual;
+            }
+
+            float frameDelta = _runtime != null ? _runtime.FrameDelta : 1f / 30f;
+            scoredVisual.Elapsed += Mathf.Max(Time.deltaTime, frameDelta);
+            float alpha = Mathf.Clamp01(scoredVisual.Elapsed / Mathf.Max(0.001f, ScoredBallVisualLifetime));
+            ballView.localPosition = scoredVisual.Position;
+            int ownerPlayerId = _ballViewSlots.TryGetValue(ballId, out int playerId) ? playerId : 1;
+            ballView.localScale = GetBallVisualScale(ownerPlayerId);
+            return alpha < 1f;
+        }
+
+        private ScoredBallVisualState CreateScoredBallVisual(int ballId, Transform ballView)
+        {
+            DisableBallViewPhysics(ballView != null ? ballView.gameObject : null);
+            ResetBallTrails(ballView != null ? ballView.gameObject : null, false);
+            if (_runtime != null && _runtime.LastGoalContactBallId == ballId)
+            {
+                return new ScoredBallVisualState(ToVisualPosition(_runtime.LastGoalContactPosition, 0.35f));
+            }
+
+            return ballView != null
+                ? new ScoredBallVisualState(ballView.localPosition)
+                : null;
         }
 
         private GameObject AcquireBallViewObject(int ownerPlayerId)
@@ -1595,10 +1734,87 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
+            DisableBallViewPhysics(ballObject);
+            ResetBallTrails(ballObject, false);
             ballObject.SetActive(false);
             ballObject.transform.SetParent(_poolRoot != null ? _poolRoot : _visualRoot, false);
             int ownerPlayerId = _ballViewSlots.TryGetValue(ballId, out int playerId) ? playerId : 1;
             GetBallViewPool(ownerPlayerId).Push(ballObject);
+        }
+
+        private static void DisableBallViewPhysics(GameObject ballObject)
+        {
+            if (ballObject == null)
+            {
+                return;
+            }
+
+            Rigidbody2D[] bodies = ballObject.GetComponentsInChildren<Rigidbody2D>(true);
+            for (int i = 0; i < bodies.Length; i++)
+            {
+                Rigidbody2D body = bodies[i];
+                if (body == null)
+                {
+                    continue;
+                }
+
+                body.velocity = Vector2.zero;
+                body.angularVelocity = 0f;
+                body.gravityScale = 0f;
+                body.simulated = false;
+            }
+
+            Collider2D[] colliders = ballObject.GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider2D collider = colliders[i];
+                if (collider != null)
+                {
+                    collider.enabled = false;
+                }
+            }
+        }
+
+        private static void ResetBallTrails(GameObject ballObject, bool emitting)
+        {
+            SetBallTrailEmission(ballObject, emitting);
+            ClearBallTrails(ballObject);
+        }
+
+        private static void SetBallTrailEmission(GameObject ballObject, bool emitting)
+        {
+            if (ballObject == null)
+            {
+                return;
+            }
+
+            TrailRenderer[] trails = ballObject.GetComponentsInChildren<TrailRenderer>(true);
+            for (int i = 0; i < trails.Length; i++)
+            {
+                TrailRenderer trail = trails[i];
+                if (trail != null)
+                {
+                    trail.emitting = emitting;
+                }
+            }
+        }
+
+        private static void ClearBallTrails(GameObject ballObject)
+        {
+            if (ballObject == null)
+            {
+                return;
+            }
+
+            TrailRenderer[] trails = ballObject.GetComponentsInChildren<TrailRenderer>(true);
+            for (int i = 0; i < trails.Length; i++)
+            {
+                TrailRenderer trail = trails[i];
+                if (trail != null)
+                {
+                    trail.Clear();
+                }
+            }
         }
 
         private Stack<GameObject> GetBallViewPool(int ownerPlayerId)
@@ -1688,6 +1904,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             _runtime?.StartLocalPrototype();
             _runtime?.SetLocalPlayer(_localPlayerId);
+            ApplyPrefabBallContactRadiusCalibration();
             _lastServeBlockReason = ServeBlockReason.None;
             _guiServePressed = false;
             _guiMoveAxis = 0f;
@@ -2421,6 +2638,21 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 worldSize / Mathf.Max(0.001f, scale.x),
                 worldSize / Mathf.Max(0.001f, scale.y),
                 worldSize / Mathf.Max(0.001f, scale.z));
+        }
+
+        private Vector3 GetBallVisualScale(int ownerPlayerId)
+        {
+            if (_usePrefabVisuals)
+            {
+                int safePlayerId = Mathf.Clamp(ownerPlayerId, 1, 4);
+                GatebreakerLoadedPrefab ballPrefab = _visualAssets?.GetBallForPlayerId(safePlayerId);
+                if (ballPrefab?.Prefab != null)
+                {
+                    return ballPrefab.Prefab.transform.localScale;
+                }
+            }
+
+            return GetCompensatedVisualScale(FallbackBallVisualWorldSize);
         }
 
         private Vector3 GetVisualDirection(Vector2 direction)

@@ -272,7 +272,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return new Vector2(normal.x > 0f ? -HalfWidth : HalfWidth, 0f);
         }
 
-        public bool TryGetGoalOwner(Vector2 position, int playerCount, SpawnLayoutType layoutType, out int playerIndex)
+        public bool TryGetGoalOwner(
+            Vector2 position,
+            int playerCount,
+            SpawnLayoutType layoutType,
+            out int playerIndex,
+            float goalContactRadius = 0f)
         {
             playerIndex = -1;
             if (playerCount <= 0)
@@ -295,7 +300,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                         continue;
                     }
 
-                    if (segment.IsPastGoalLine(position))
+                    if (segment.IsPastGoalLine(position, goalContactRadius))
                     {
                         playerIndex = segment.GoalPlayerIndex;
                         return true;
@@ -305,25 +310,26 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return false;
             }
 
-            if (position.y < -HalfHeight)
+            float contactRadius = Math.Max(0f, goalContactRadius);
+            if (position.y <= -HalfHeight + contactRadius)
             {
                 playerIndex = 0;
                 return playerIndex < playerCount;
             }
 
-            if (position.y > HalfHeight)
+            if (position.y >= HalfHeight - contactRadius)
             {
                 playerIndex = layoutType == SpawnLayoutType.DualFront ? 1 : 1;
                 return playerIndex < playerCount;
             }
 
-            if (layoutType != SpawnLayoutType.DualFront && position.x > HalfWidth)
+            if (layoutType != SpawnLayoutType.DualFront && position.x >= HalfWidth - contactRadius)
             {
                 playerIndex = 2;
                 return playerIndex < playerCount;
             }
 
-            if (layoutType != SpawnLayoutType.DualFront && position.x < -HalfWidth)
+            if (layoutType != SpawnLayoutType.DualFront && position.x <= -HalfWidth + contactRadius)
             {
                 playerIndex = 3;
                 return playerIndex < playerCount;
@@ -462,13 +468,17 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return Math.Abs(Vector2.Dot(point - GoalCenter, tangent)) <= GoalHalfLength;
         }
 
-        public bool IsPastGoalLine(Vector2 point)
+        public bool IsPastGoalLine(Vector2 point, float goalContactRadius = 0f)
         {
             return GoalPlayerIndex >= 0 &&
                    ContainsGoalPoint(point) &&
-                   Vector2.Dot(point - GoalCenter, InwardNormal) <= GoalTriggerInset;
+                   Vector2.Dot(point - GoalCenter, InwardNormal) <= Math.Max(0f, goalContactRadius);
         }
 
+        public Vector2 GoalOuterStart => GoalCenter - Tangent * GoalHalfLength;
+        public Vector2 GoalOuterEnd => GoalCenter + Tangent * GoalHalfLength;
+        public Vector2 GetGoalContactStart(float goalContactRadius) => GoalOuterStart + InwardNormal * Math.Max(0f, goalContactRadius);
+        public Vector2 GetGoalContactEnd(float goalContactRadius) => GoalOuterEnd + InwardNormal * Math.Max(0f, goalContactRadius);
         public Vector2 GoalTriggerStart => GoalCenter - Tangent * GoalHalfLength + InwardNormal * GoalTriggerInset;
         public Vector2 GoalTriggerEnd => GoalCenter + Tangent * GoalHalfLength + InwardNormal * GoalTriggerInset;
     }

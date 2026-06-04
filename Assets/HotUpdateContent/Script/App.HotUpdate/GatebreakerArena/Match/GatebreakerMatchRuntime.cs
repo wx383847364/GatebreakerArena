@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using App.HotUpdate.GatebreakerArena.AI;
 using App.HotUpdate.GatebreakerArena.Application;
@@ -19,7 +20,9 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private const int MaxCollisionIterations = 12;
         private const float CollisionEpsilon = 0.0001f;
         private const float CollisionSkin = 0.02f;
+        private const float PaddleEndpointCollisionRadius = 0.12f;
         private const float BallWallLineCollisionRadius = 0.08f;
+        private const float DefaultBallGoalContactRadius = BallWallLineCollisionRadius;
         private const float BallWallEndpointCollisionRadius = 0.12f;
         private const int DefaultPlayerCount = 4;
         private const int MaxPlayerCount = 4;
@@ -41,6 +44,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private readonly List<int> _overtimeEligiblePlayerIds = new List<int>();
         private readonly Dictionary<int, PlayerInputFrame> _inputFrames = new Dictionary<int, PlayerInputFrame>();
         private readonly Dictionary<int, List<GatebreakerFrameInput>> _stepInputBuffer = new Dictionary<int, List<GatebreakerFrameInput>>();
+        private float _ballGoalContactRadius = DefaultBallGoalContactRadius;
         private int _nextBallId = 1;
         private int _nextScoreReachOrder = 1;
         private bool _hasWinner;
@@ -88,8 +92,24 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public IReadOnlyList<PaddleRuntimeState> Paddles => _paddles;
         public IReadOnlyList<ZoneRuntimeState> Zones => _zones;
         public IReadOnlyList<BallRuntimeState> Balls => _balls;
+        public float BallGoalContactRadius => _ballGoalContactRadius;
+        public string LastGoalContactDiagnostic { get; private set; } = string.Empty;
+        public int LastGoalContactBallId { get; private set; }
+        public Vector2 LastGoalContactPosition { get; private set; }
         public bool HasWinner => _hasWinner;
         public int WinnerPlayerId => _winnerPlayerId;
+
+        public bool SetBallGoalContactRadius(float radius)
+        {
+            float nextRadius = Mathf.Clamp(radius, 0.01f, 0.5f);
+            if (Mathf.Abs(_ballGoalContactRadius - nextRadius) <= 0.0001f)
+            {
+                return false;
+            }
+
+            _ballGoalContactRadius = nextRadius;
+            return true;
+        }
 
         public bool SetArenaPaddleLength(float paddleLength)
         {
@@ -192,8 +212,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
             _balls.Clear();
             _inputFrames.Clear();
             _stepInputBuffer.Clear();
+            LastGoalContactDiagnostic = string.Empty;
+            LastGoalContactBallId = 0;
+            LastGoalContactPosition = Vector2.zero;
             _nextBallId = 1;
             _nextScoreReachOrder = 1;
+            _ballGoalContactRadius = DefaultBallGoalContactRadius;
             Arena = ArenaGeometry.CreateForMap(EffectiveRule.Map, activePlayerIds);
             ApplyTuningValues(config.TuningValues);
 
@@ -419,6 +443,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             HashInt(ref hash, BounceTuning.HitOffsetInfluenceValue);
             HashInt(ref hash, BounceTuning.PaddleVelocityInfluenceValue);
             HashInt(ref hash, BounceTuning.MinimumOutwardShareValue);
+            HashInt(ref hash, QuantizeFloat(_ballGoalContactRadius));
 
             HashInt(ref hash, _players.Count);
             foreach (PlayerRuntimeState player in _players.OrderBy(player => player.PlayerId))
@@ -1063,6 +1088,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 }
 
                 Vector2 start = ball.Position;
+                if (ResolvePaddleHit(ball))
+                {
+                    continue;
+                }
+
                 if (TryResolveGoal(ball))
                 {
                     return;
@@ -1079,6 +1109,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
                         out SweepHit hit))
                 {
                     ball.Position = end;
+                    if (ResolvePaddleHit(ball))
+                    {
+                        return;
+                    }
+
                     if (!TryResolveGoal(ball))
                     {
                         ResolveUnownedWallBounce(ball);
@@ -1194,6 +1229,16 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Vector2 paddleEnd = motion.GetPosition(segmentEndT);
             float n0 = Vector2.Dot(start - paddleStart, paddle.Normal);
             float n1 = Vector2.Dot(end - paddleEnd, paddle.Normal);
+            TryAddPaddleEndpointSweepHits(
+                motion,
+                start,
+                end,
+                segmentStartT,
+                segmentEndT,
+                elapsedTime,
+                segmentDuration,
+                totalDeltaTime,
+                ref bestHit);
             if (TryAddEmbeddedPaddleSweepHit(
                     motion,
                     start,
@@ -1239,6 +1284,103 @@ namespace App.HotUpdate.GatebreakerArena.Match
             ChooseEarlierHit(hit, ref bestHit);
         }
 
+        private void TryAddPaddleEndpointSweepHits(
+            PaddleMotionState motion,
+            Vector2 start,
+            Vector2 end,
+            float segmentStartT,
+            float segmentEndT,
+            float elapsedTime,
+            float segmentDuration,
+            float totalDeltaTime,
+            ref SweepHit bestHit)
+        {
+            PaddleRuntimeState paddle = motion.Paddle;
+            if (paddle == null)
+            {
+                return;
+            }
+
+            float halfLength = paddle.Length * 0.5f;
+            Vector2 frontOffset = paddle.Normal * paddle.Thickness;
+            TryAddPaddleEndpointSweepHit(
+                motion,
+                start,
+                end,
+                motion.GetPosition(segmentStartT) + frontOffset - paddle.Tangent * halfLength,
+                motion.GetPosition(segmentEndT) + frontOffset - paddle.Tangent * halfLength,
+                -halfLength,
+                elapsedTime,
+                segmentDuration,
+                totalDeltaTime,
+                ref bestHit);
+            TryAddPaddleEndpointSweepHit(
+                motion,
+                start,
+                end,
+                motion.GetPosition(segmentStartT) + frontOffset + paddle.Tangent * halfLength,
+                motion.GetPosition(segmentEndT) + frontOffset + paddle.Tangent * halfLength,
+                halfLength,
+                elapsedTime,
+                segmentDuration,
+                totalDeltaTime,
+                ref bestHit);
+        }
+
+        private static void TryAddPaddleEndpointSweepHit(
+            PaddleMotionState motion,
+            Vector2 start,
+            Vector2 end,
+            Vector2 endpointStart,
+            Vector2 endpointEnd,
+            float endpointTangentDistance,
+            float elapsedTime,
+            float segmentDuration,
+            float totalDeltaTime,
+            ref SweepHit bestHit)
+        {
+            Vector2 relativeStart = start - endpointStart;
+            Vector2 relativeMovement = (end - start) - (endpointEnd - endpointStart);
+            float radius = PaddleEndpointCollisionRadius;
+            float c = Vector2.Dot(relativeStart, relativeStart) - radius * radius;
+            if (c <= CollisionEpsilon)
+            {
+                float segmentStartT = elapsedTime / totalDeltaTime;
+                ChooseEarlierHit(SweepHit.Paddle(0f, segmentStartT, start, motion, endpointTangentDistance), ref bestHit);
+                return;
+            }
+
+            float a = Vector2.Dot(relativeMovement, relativeMovement);
+            if (a <= CollisionEpsilon)
+            {
+                return;
+            }
+
+            float b = 2f * Vector2.Dot(relativeStart, relativeMovement);
+            if (b >= -CollisionEpsilon)
+            {
+                return;
+            }
+
+            float discriminant = b * b - 4f * a * c;
+            if (discriminant < -CollisionEpsilon)
+            {
+                return;
+            }
+
+            float sqrt = Mathf.Sqrt(Mathf.Max(0f, discriminant));
+            float hitTime = (-b - sqrt) / (2f * a);
+            if (hitTime < -CollisionEpsilon || hitTime > 1f + CollisionEpsilon)
+            {
+                return;
+            }
+
+            hitTime = Mathf.Clamp01(hitTime);
+            float globalHitT = (elapsedTime + segmentDuration * hitTime) / totalDeltaTime;
+            Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
+            ChooseEarlierHit(SweepHit.Paddle(hitTime, globalHitT, hitPoint, motion, endpointTangentDistance), ref bestHit);
+        }
+
         private bool TryAddEmbeddedPaddleSweepHit(
             PaddleMotionState motion,
             Vector2 start,
@@ -1276,11 +1418,20 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Vector2 inwardNormal,
             ref SweepHit bestHit)
         {
+            bool isGoalSide = HasZoneForSide(inwardNormal);
+            float contactBoundary = boundary;
+            if (isGoalSide)
+            {
+                contactBoundary += horizontal
+                    ? inwardNormal.y * _ballGoalContactRadius
+                    : inwardNormal.x * _ballGoalContactRadius;
+            }
+
             float startAxis = horizontal ? start.y : start.x;
             float endAxis = horizontal ? end.y : end.x;
             bool crosses = inwardNormal.y > 0f || inwardNormal.x > 0f
-                ? startAxis >= boundary && endAxis < boundary
-                : startAxis <= boundary && endAxis > boundary;
+                ? startAxis >= contactBoundary && endAxis < contactBoundary
+                : startAxis <= contactBoundary && endAxis > contactBoundary;
             if (!crosses)
             {
                 return;
@@ -1292,7 +1443,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
-            float hitTime = (startAxis - boundary) / denominator;
+            float hitTime = (startAxis - contactBoundary) / denominator;
             if (hitTime < -CollisionEpsilon || hitTime > 1f + CollisionEpsilon)
             {
                 return;
@@ -1300,10 +1451,14 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             hitTime = Mathf.Clamp01(hitTime);
             Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
-            if (HasZoneForSide(inwardNormal))
+            if (isGoalSide)
             {
-                Vector2 outsidePoint = hitPoint - inwardNormal * CollisionSkin;
-                if (Arena.TryGetGoalOwner(outsidePoint, _players.Count, EffectiveRule.Map.SpawnLayoutType, out int playerIndex))
+                if (Arena.TryGetGoalOwner(
+                        hitPoint,
+                        _players.Count,
+                        EffectiveRule.Map.SpawnLayoutType,
+                        out int playerIndex,
+                        _ballGoalContactRadius))
                 {
                     ChooseEarlierHit(SweepHit.Goal(hitTime, hitPoint, playerIndex), ref bestHit);
                 }
@@ -1328,7 +1483,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             if (boundary.GoalPlayerIndex >= 0 && boundary.GoalPlayerIndex < _players.Count)
             {
-                TryAddGoalTriggerSweepHit(start, end, boundary, ref bestHit);
+                TryAddGoalContactSweepHit(start, end, boundary, ref bestHit);
                 TryAddActiveGoalWallSweepHits(start, end, boundary, ref bestHit);
                 return;
             }
@@ -1488,22 +1643,24 @@ namespace App.HotUpdate.GatebreakerArena.Match
             ChooseEarlierHit(SweepHit.Wall(hitTime, hitPoint, normal), ref bestHit);
         }
 
-        private void TryAddGoalTriggerSweepHit(
+        private void TryAddGoalContactSweepHit(
             Vector2 start,
             Vector2 end,
             ArenaBoundarySegment boundary,
             ref SweepHit bestHit)
         {
             Vector2 movement = end - start;
-            Vector2 triggerEdge = boundary.GoalTriggerEnd - boundary.GoalTriggerStart;
-            float denominator = Cross(movement, triggerEdge);
+            Vector2 contactStart = boundary.GetGoalContactStart(_ballGoalContactRadius);
+            Vector2 contactEnd = boundary.GetGoalContactEnd(_ballGoalContactRadius);
+            Vector2 contactEdge = contactEnd - contactStart;
+            float denominator = Cross(movement, contactEdge);
             if (Mathf.Abs(denominator) <= CollisionEpsilon)
             {
                 return;
             }
 
-            Vector2 offset = boundary.GoalTriggerStart - start;
-            float hitTime = Cross(offset, triggerEdge) / denominator;
+            Vector2 offset = contactStart - start;
+            float hitTime = Cross(offset, contactEdge) / denominator;
             float edgeTime = Cross(offset, movement) / denominator;
             if (hitTime < -CollisionEpsilon ||
                 hitTime > 1f + CollisionEpsilon ||
@@ -1515,7 +1672,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             hitTime = Mathf.Clamp01(hitTime);
             Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
-            if (boundary.IsPastGoalLine(hitPoint))
+            if (boundary.IsPastGoalLine(hitPoint, _ballGoalContactRadius))
             {
                 ChooseEarlierHit(SweepHit.Goal(hitTime, hitPoint, boundary.GoalPlayerIndex), ref bestHit);
             }
@@ -1567,6 +1724,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 zoneOwner.Zone.LastEnteredBallId = ball.BallId;
             }
 
+            RecordGoalContactDiagnostic(ball, hit.PlayerIndex, "swept");
             ResolveGoalEntry(ball.BallId, zoneOwner.PlayerId, zoneOwner.Paddle != null ? zoneOwner.Paddle.Normal : Vector2.up);
         }
 
@@ -1600,19 +1758,28 @@ namespace App.HotUpdate.GatebreakerArena.Match
                     continue;
                 }
 
+                if (ResolvePaddleHit(ball))
+                {
+                    continue;
+                }
+
                 if (TryResolveGoal(ball))
                 {
                     continue;
                 }
 
-                ResolvePaddleHit(ball);
                 ResolveUnownedWallBounce(ball);
             }
         }
 
         private bool TryResolveGoal(BallRuntimeState ball)
         {
-            if (!Arena.TryGetGoalOwner(ball.Position, _players.Count, EffectiveRule.Map.SpawnLayoutType, out int playerIndex))
+            if (!Arena.TryGetGoalOwner(
+                    ball.Position,
+                    _players.Count,
+                    EffectiveRule.Map.SpawnLayoutType,
+                    out int playerIndex,
+                    _ballGoalContactRadius))
             {
                 return false;
             }
@@ -1623,11 +1790,83 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 zoneOwner.Zone.LastEnteredBallId = ball.BallId;
             }
 
+            RecordGoalContactDiagnostic(ball, playerIndex, "static");
             ResolveGoalEntry(ball.BallId, zoneOwner.PlayerId, zoneOwner.Paddle != null ? zoneOwner.Paddle.Normal : Vector2.up);
             return ball.BallState == BallState.Destroyed || ball.BallState == BallState.GoalRebound;
         }
 
-        private void ResolvePaddleHit(BallRuntimeState ball)
+        private void RecordGoalContactDiagnostic(BallRuntimeState ball, int playerIndex, string source)
+        {
+            if (ball == null)
+            {
+                return;
+            }
+
+            LastGoalContactBallId = ball.BallId;
+            LastGoalContactPosition = ball.Position;
+            string diagnostic = BuildGoalContactDiagnostic(ball, playerIndex, source);
+            LastGoalContactDiagnostic = diagnostic;
+            _logger?.LogInfo("Gatebreaker goal contact: {0}", diagnostic);
+        }
+
+        private string BuildGoalContactDiagnostic(BallRuntimeState ball, int playerIndex, string source)
+        {
+            if (Arena == null)
+            {
+                return string.Empty;
+            }
+
+            if (Arena.TryGetGoalSegmentForPlayer(playerIndex, out ArenaBoundarySegment segment))
+            {
+                float signedDistance = Vector2.Dot(ball.Position - segment.GoalCenter, segment.InwardNormal);
+                float edgeGap = signedDistance - _ballGoalContactRadius;
+                float tangentDistance = Vector2.Dot(ball.Position - segment.GoalCenter, segment.Tangent);
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "source={0} ball={1} playerIndex={2} pos=({3:0.0000},{4:0.0000}) goalCenter=({5:0.0000},{6:0.0000}) signedDistance={7:0.0000} contactRadius={8:0.0000} edgeGap={9:0.0000} tangentDistance={10:0.0000} goalHalfLength={11:0.0000}",
+                    source,
+                    ball.BallId,
+                    playerIndex,
+                    ball.Position.x,
+                    ball.Position.y,
+                    segment.GoalCenter.x,
+                    segment.GoalCenter.y,
+                    signedDistance,
+                    _ballGoalContactRadius,
+                    edgeGap,
+                    tangentDistance,
+                    segment.GoalHalfLength);
+            }
+
+            Vector2 normal = Arena.GetSideNormal(EffectiveRule.Map.SpawnLayoutType, playerIndex);
+            float signedDefaultDistance = CalculateDefaultGoalSignedDistance(ball.Position, normal);
+            float defaultEdgeGap = signedDefaultDistance - _ballGoalContactRadius;
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "source={0} ball={1} playerIndex={2} pos=({3:0.0000},{4:0.0000}) signedDistance={5:0.0000} contactRadius={6:0.0000} edgeGap={7:0.0000} normal=({8:0.0000},{9:0.0000})",
+                source,
+                ball.BallId,
+                playerIndex,
+                ball.Position.x,
+                ball.Position.y,
+                signedDefaultDistance,
+                _ballGoalContactRadius,
+                defaultEdgeGap,
+                normal.x,
+                normal.y);
+        }
+
+        private float CalculateDefaultGoalSignedDistance(Vector2 position, Vector2 normal)
+        {
+            if (Mathf.Abs(normal.y) > 0.5f)
+            {
+                return normal.y > 0f ? position.y + Arena.HalfHeight : Arena.HalfHeight - position.y;
+            }
+
+            return normal.x > 0f ? position.x + Arena.HalfWidth : Arena.HalfWidth - position.x;
+        }
+
+        private bool ResolvePaddleHit(BallRuntimeState ball)
         {
             for (int i = 0; i < _paddles.Count; i++)
             {
@@ -1648,24 +1887,59 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 float tangentDistance = Vector2.Dot(relative, paddle.Tangent);
                 if (Mathf.Abs(tangentDistance) > paddle.Length * 0.5f)
                 {
-                    continue;
+                    if (!TryResolvePaddleEndpointHit(ball, paddle, tangentDistance))
+                    {
+                        continue;
+                    }
+
+                    return true;
                 }
 
-                float hitOffset = tangentDistance / Mathf.Max(0.001f, paddle.Length * 0.5f);
-                ball.Position = paddle.Position
-                                + paddle.Tangent * tangentDistance
-                                + paddle.Normal * (paddle.Thickness + 0.02f);
-                ball.Velocity = _paddleBounceCalculator.CalculateBounce(
-                    ball.Velocity,
-                    hitOffset,
-                    BallRule,
-                    paddle.Normal,
-                    paddle.Tangent,
-                    BounceTuning,
-                    GetNormalizedPaddleVelocity(paddle));
-                _ballSimulation.ClampSpeed(ball, BallRule);
-                return;
+                ResolvePaddleHit(ball, paddle, tangentDistance, GetNormalizedPaddleVelocity(paddle));
+                return true;
             }
+
+            return false;
+        }
+
+        private bool TryResolvePaddleEndpointHit(BallRuntimeState ball, PaddleRuntimeState paddle, float tangentDistance)
+        {
+            float halfLength = paddle.Length * 0.5f;
+            float endpointTangentDistance = tangentDistance < 0f ? -halfLength : halfLength;
+            Vector2 endpoint = paddle.Position
+                               + paddle.Normal * paddle.Thickness
+                               + paddle.Tangent * endpointTangentDistance;
+            Vector2 relativeEndpoint = ball.Position - endpoint;
+            if (relativeEndpoint.sqrMagnitude > PaddleEndpointCollisionRadius * PaddleEndpointCollisionRadius)
+            {
+                return false;
+            }
+
+            ResolvePaddleHit(ball, paddle, endpointTangentDistance, GetNormalizedPaddleVelocity(paddle));
+            return true;
+        }
+
+        private void ResolvePaddleHit(
+            BallRuntimeState ball,
+            PaddleRuntimeState paddle,
+            float tangentDistance,
+            float normalizedPaddleVelocity)
+        {
+            float halfLength = Mathf.Max(0.001f, paddle.Length * 0.5f);
+            float clampedTangentDistance = Mathf.Clamp(tangentDistance, -halfLength, halfLength);
+            float hitOffset = clampedTangentDistance / halfLength;
+            ball.Position = paddle.Position
+                            + paddle.Tangent * clampedTangentDistance
+                            + paddle.Normal * (paddle.Thickness + CollisionSkin);
+            ball.Velocity = _paddleBounceCalculator.CalculateBounce(
+                ball.Velocity,
+                hitOffset,
+                BallRule,
+                paddle.Normal,
+                paddle.Tangent,
+                BounceTuning,
+                normalizedPaddleVelocity);
+            _ballSimulation.ClampSpeed(ball, BallRule);
         }
 
         private static float GetNormalizedPaddleVelocity(PaddleRuntimeState paddle)
@@ -1829,7 +2103,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private Vector2 GetServePosition(PlayerRuntimeState player)
         {
             return player != null && player.Paddle != null
-                ? player.Paddle.Position + player.Paddle.Normal * 0.45f
+                ? player.Paddle.Position
                 : Vector2.zero;
         }
 

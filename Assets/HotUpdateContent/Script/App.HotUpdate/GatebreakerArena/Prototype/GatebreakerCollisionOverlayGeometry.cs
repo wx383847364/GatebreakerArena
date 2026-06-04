@@ -113,12 +113,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             Vector2 goalOuterStart = segment.Start + tangent * goalStartDistance;
             Vector2 goalOuterEnd = segment.Start + tangent * goalEndDistance;
-            Vector2 goalTriggerStart = goalOuterStart + segment.InwardNormal * segment.GoalTriggerInset;
-            Vector2 goalTriggerEnd = goalOuterEnd + segment.InwardNormal * segment.GoalTriggerInset;
-            AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalTrigger, goalTriggerStart, goalTriggerEnd, segment.GoalPlayerIndex);
+            Vector2 goalBandInnerStart = goalOuterStart + segment.InwardNormal * segment.GoalTriggerInset;
+            Vector2 goalBandInnerEnd = goalOuterEnd + segment.InwardNormal * segment.GoalTriggerInset;
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalOuterEnd, segment.GoalPlayerIndex);
-            AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalTriggerStart, segment.GoalPlayerIndex);
-            AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterEnd, goalTriggerEnd, segment.GoalPlayerIndex);
+            AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalBandInnerStart, segment.GoalPlayerIndex);
+            AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterEnd, goalBandInnerEnd, segment.GoalPlayerIndex);
             if (!includeStaticPaddleContact)
             {
                 return;
