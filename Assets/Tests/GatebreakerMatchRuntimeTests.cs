@@ -404,13 +404,18 @@ namespace Gatebreaker.Tests
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 3);
+            ArenaBoundarySegment rightGoal = runtime.Arena.BoundarySegments[1];
+            PlayerRuntimeState rightPlayer = runtime.FindPlayer(2);
             BallRuntimeState ball = runtime.Balls[0];
             ball.OwnerPlayerId = 1;
             ball.OwnerTeamId = 1;
-            ball.Position = new Vector2(2.0f, 1.0f);
-            ball.Velocity = Vector2.right * 7.5f;
+            float offsetOutsidePaddle = rightPlayer.Paddle.Length * 0.5f + 0.2f;
+            ball.Position = rightGoal.GoalCenter
+                            + rightGoal.Tangent * offsetOutsidePaddle
+                            + rightGoal.InwardNormal * (rightGoal.GoalTriggerInset + 0.4f);
+            ball.Velocity = -rightGoal.InwardNormal * 7.5f;
 
-            runtime.TickLocalPrototype(0.2f);
+            runtime.Tick(0.2f);
 
             Assert.AreEqual(1, runtime.FindPlayer(1).Score);
             Assert.AreEqual(0, runtime.Balls.Count);
@@ -422,13 +427,38 @@ namespace Gatebreaker.Tests
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 3);
             ArenaBoundarySegment bottomGoal = runtime.Arena.BoundarySegments[5];
+            PlayerRuntimeState bottomPlayer = runtime.FindPlayer(1);
             BallRuntimeState ball = runtime.Balls[0];
-            ball.OwnerPlayerId = 3;
-            ball.OwnerTeamId = 3;
+            ball.OwnerPlayerId = 2;
+            ball.OwnerTeamId = 2;
             ball.Position = bottomGoal.GoalCenter + bottomGoal.InwardNormal * (bottomGoal.GoalTriggerInset + 0.4f);
             ball.Velocity = -bottomGoal.InwardNormal * 7.5f;
 
-            runtime.TickLocalPrototype(0.2f);
+            runtime.Tick(0.2f);
+
+            Assert.AreEqual(0, runtime.FindPlayer(2).Score);
+            Assert.AreEqual(1, runtime.Balls.Count);
+            Assert.AreEqual(BallState.Flying, ball.BallState);
+            Assert.Greater(Vector2.Dot(ball.Velocity, bottomPlayer.Paddle.Normal), 0f);
+        }
+
+        [Test]
+        public void SweptCollisionScoresWhenCrossingBottomNetTriggerOutsidePaddleSpan()
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 3);
+            ArenaBoundarySegment bottomGoal = runtime.Arena.BoundarySegments[5];
+            PlayerRuntimeState bottomPlayer = runtime.FindPlayer(1);
+            BallRuntimeState ball = runtime.Balls[0];
+            ball.OwnerPlayerId = 3;
+            ball.OwnerTeamId = 3;
+            float offsetOutsidePaddle = bottomPlayer.Paddle.Length * 0.5f + 0.2f;
+            ball.Position = bottomGoal.GoalCenter
+                            + bottomGoal.Tangent * offsetOutsidePaddle
+                            + bottomGoal.InwardNormal * (bottomGoal.GoalTriggerInset + 0.4f);
+            ball.Velocity = -bottomGoal.InwardNormal * 7.5f;
+
+            runtime.Tick(0.2f);
 
             Assert.AreEqual(1, runtime.FindPlayer(3).Score);
             Assert.AreEqual(0, runtime.Balls.Count);
@@ -447,7 +477,7 @@ namespace Gatebreaker.Tests
             ball.Position = targetHit + rightGoal.InwardNormal * 0.5f;
             ball.Velocity = -rightGoal.InwardNormal * 7.5f;
 
-            runtime.TickLocalPrototype(0.2f);
+            runtime.Tick(0.2f);
 
             Assert.AreEqual(0, runtime.FindPlayer(1).Score);
             Assert.AreEqual(1, runtime.Balls.Count);
@@ -466,7 +496,7 @@ namespace Gatebreaker.Tests
             ball.Position = position04NotNet.GoalCenter + position04NotNet.InwardNormal * 0.5f;
             ball.Velocity = -position04NotNet.InwardNormal * 7.5f;
 
-            runtime.TickLocalPrototype(0.2f);
+            runtime.Tick(0.2f);
 
             Assert.AreEqual(0, runtime.FindPlayer(1).Score);
             Assert.AreEqual(1, runtime.Balls.Count);
@@ -563,19 +593,20 @@ namespace Gatebreaker.Tests
         {
             GatebreakerMatchRuntime runtime = CreateRuntime();
             runtime.StartLocalPrototype(aiCount: 3);
+            ArenaBoundarySegment rightGoal = runtime.Arena.BoundarySegments[1];
             BallRuntimeState ball = runtime.Balls[0];
             ball.OwnerPlayerId = 2;
             ball.OwnerTeamId = 2;
-            Vector2 entryPosition = new Vector2(runtime.Arena.HalfWidth + 0.1f, 0f);
+            Vector2 entryPosition = rightGoal.GoalCenter - rightGoal.InwardNormal * 0.2f;
             ball.Position = entryPosition;
-            ball.Velocity = Vector2.right;
+            ball.Velocity = -rightGoal.InwardNormal;
 
-            runtime.TickLocalPrototype(0f);
+            runtime.Tick(0f);
 
             Assert.AreEqual(0, runtime.FindPlayer(2).Score);
             Assert.AreEqual(BallState.GoalRebound, ball.BallState);
             Assert.AreEqual(entryPosition, ball.Position);
-            Assert.Less(ball.Velocity.x, 0f);
+            Assert.Greater(Vector2.Dot(ball.Velocity, rightGoal.InwardNormal), 0f);
         }
 
         [Test]
@@ -590,7 +621,7 @@ namespace Gatebreaker.Tests
             ball.Position = rightGoal.GoalCenter - rightGoal.InwardNormal * 0.2f;
             ball.Velocity = -rightGoal.InwardNormal;
 
-            runtime.TickLocalPrototype(0f);
+            runtime.Tick(0f);
 
             Assert.AreEqual(1, runtime.FindPlayer(1).Score);
             Assert.AreEqual(0, runtime.Balls.Count);
@@ -608,7 +639,7 @@ namespace Gatebreaker.Tests
             ball.Position = entryPosition;
             ball.Velocity = Vector2.down;
 
-            runtime.TickLocalPrototype(0f);
+            runtime.Tick(0f);
 
             Assert.AreEqual(0, runtime.FindPlayer(1).Score);
             Assert.AreEqual(BallState.GoalRebound, ball.BallState);
@@ -651,7 +682,7 @@ namespace Gatebreaker.Tests
             runtime.StartLocalPrototype(aiCount: 1);
             PlayerRuntimeState player = runtime.FindPlayer(1);
             BallRuntimeState ball = runtime.Balls[0];
-            ball.Position = player.Paddle.Position + player.Paddle.Normal * 0.1f;
+            ball.Position = player.Paddle.Position + player.Paddle.Normal * (player.Paddle.Thickness * 0.5f);
             ball.Velocity = Vector2.down * 7.5f;
 
             runtime.TickLocalPrototype(0f);
@@ -668,7 +699,7 @@ namespace Gatebreaker.Tests
             PlayerRuntimeState player = runtime.FindPlayer(1);
             BallRuntimeState ball = runtime.Balls[0];
             ball.Position = player.Paddle.Position
-                            + player.Paddle.Normal * 0.1f
+                            + player.Paddle.Normal * (player.Paddle.Thickness * 0.5f)
                             - player.Paddle.Tangent * (player.Paddle.Length * 0.45f);
             ball.Velocity = Vector2.down * 7.5f;
 
@@ -687,11 +718,11 @@ namespace Gatebreaker.Tests
             float expectedTangentDistance = -player.Paddle.Length * 0.45f;
             BallRuntimeState ball = runtime.Balls[0];
             ball.Position = player.Paddle.Position
-                            + player.Paddle.Normal * 0.1f
+                            + player.Paddle.Normal * (player.Paddle.Thickness * 0.5f)
                             + player.Paddle.Tangent * expectedTangentDistance;
             ball.Velocity = Vector2.down * 7.5f;
 
-            runtime.TickLocalPrototype(0f);
+            runtime.Tick(0f);
 
             float actualTangentDistance = Vector2.Dot(ball.Position - player.Paddle.Position, player.Paddle.Tangent);
             Assert.AreEqual(expectedTangentDistance, actualTangentDistance, 0.001f);
@@ -777,7 +808,7 @@ namespace Gatebreaker.Tests
             runtime.Tick(0.2f);
             ball.Position = defenderGoal.GoalCenter - defenderGoal.InwardNormal * 0.2f;
             ball.Velocity = -defenderGoal.InwardNormal * runtime.BallRule.InitialSpeed;
-            runtime.TickLocalPrototype(0f);
+            runtime.Tick(0f);
 
             Assert.AreEqual(1, owner.Score);
             Assert.AreEqual(0, defender.Score);
@@ -801,7 +832,7 @@ namespace Gatebreaker.Tests
             runtime.Tick(0.2f);
             ball.Position = ownerGoal.GoalCenter - ownerGoal.InwardNormal * 0.2f;
             ball.Velocity = -ownerGoal.InwardNormal * runtime.BallRule.InitialSpeed;
-            runtime.TickLocalPrototype(0f);
+            runtime.Tick(0f);
 
             Assert.AreEqual(owner.PlayerId, ball.OwnerPlayerId);
             Assert.AreEqual(owner.TeamId, ball.OwnerTeamId);
@@ -822,7 +853,7 @@ namespace Gatebreaker.Tests
             float contactY = player.Paddle.Position.y + player.Paddle.Thickness;
             ball.OwnerPlayerId = 2;
             ball.OwnerTeamId = 2;
-            ball.Position = new Vector2(0.8f, contactY + 0.6f);
+            ball.Position = new Vector2(0.35f, contactY + 0.6f);
             ball.Velocity = Vector2.down * 6f;
 
             runtime.ApplyInputFrame(new PlayerInputFrame(1, 1f, false, Vector2.zero));
@@ -843,7 +874,7 @@ namespace Gatebreaker.Tests
             float contactY = player.Paddle.Position.y + player.Paddle.Thickness;
             ball.OwnerPlayerId = 2;
             ball.OwnerTeamId = 2;
-            ball.Position = new Vector2(2.4f, contactY + 0.6f);
+            ball.Position = new Vector2(0.9f, contactY + 0.6f);
             ball.Velocity = Vector2.down * 6f;
 
             runtime.ApplyInputFrame(new PlayerInputFrame(1, 1f, false, Vector2.zero));

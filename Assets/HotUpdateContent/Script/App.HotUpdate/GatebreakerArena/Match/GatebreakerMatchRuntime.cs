@@ -1063,6 +1063,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 }
 
                 Vector2 start = ball.Position;
+                if (TryResolveGoal(ball))
+                {
+                    return;
+                }
+
                 Vector2 end = start + ball.Velocity * remainingTime;
                 if (!TryFindEarliestSweepHit(
                         start,
