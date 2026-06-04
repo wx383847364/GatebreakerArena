@@ -76,6 +76,8 @@ namespace App.AOT.Bootstrap
 
         private void InitializeInfrastructure()
         {
+            RuntimeFrameRateSettings.Apply();
+
             _serviceContainer = new ServiceContainer();
 
             _logger = new UnityLogger();

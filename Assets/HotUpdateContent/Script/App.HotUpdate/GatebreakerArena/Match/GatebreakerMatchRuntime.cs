@@ -19,6 +19,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private const int MaxCollisionIterations = 12;
         private const float CollisionEpsilon = 0.0001f;
         private const float CollisionSkin = 0.02f;
+        private const float BallCollisionRadius = 0.225f;
         private const int DefaultPlayerCount = 4;
         private const int MaxPlayerCount = 4;
         private const uint ChecksumOffsetBasis = 2166136261u;
@@ -170,9 +171,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             BallRule = _modeCatalog.GetBall(string.IsNullOrEmpty(config.BallTypeId) ? "BALL_NORMAL" : config.BallTypeId);
             MatchId = config.MatchId ?? string.Empty;
             Seed = config.Seed;
-            SimulationFps = config.SimulationFps > 0
-                ? config.SimulationFps
-                : GatebreakerMatchStartConfig.DefaultSimulationFps;
+            SimulationFps = GatebreakerMatchStartConfig.DefaultSimulationFps;
             InputDelayFrames = Math.Max(0, config.InputDelayFrames);
             LocalPlayerId = config.LocalPlayerId > 0 && activePlayerIds.Contains(config.LocalPlayerId)
                 ? config.LocalPlayerId
@@ -1079,6 +1078,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
                         out SweepHit hit))
                 {
                     ball.Position = end;
+                    if (!TryResolveGoal(ball))
+                    {
+                        ResolveUnownedWallBounce(ball);
+                    }
+
                     return;
                 }
 
@@ -1324,16 +1328,104 @@ namespace App.HotUpdate.GatebreakerArena.Match
             if (boundary.GoalPlayerIndex >= 0 && boundary.GoalPlayerIndex < _players.Count)
             {
                 TryAddGoalTriggerSweepHit(start, end, boundary, ref bestHit);
+                TryAddActiveGoalWallSweepHits(start, end, boundary, ref bestHit);
+                return;
             }
 
+            TryAddBoundaryWallSpanSweepHit(
+                start,
+                end,
+                boundary.Start,
+                boundary.End,
+                boundary.InwardNormal,
+                true,
+                true,
+                ref bestHit);
+        }
+
+        private void TryAddActiveGoalWallSweepHits(
+            Vector2 start,
+            Vector2 end,
+            ArenaBoundarySegment boundary,
+            ref SweepHit bestHit)
+        {
             Vector2 edge = boundary.End - boundary.Start;
+            float edgeLength = edge.magnitude;
+            if (edgeLength <= CollisionEpsilon)
+            {
+                return;
+            }
+
+            Vector2 tangent = edge / edgeLength;
+            float goalCenterDistance = Vector2.Dot(boundary.GoalCenter - boundary.Start, tangent);
+            float goalStartDistance = Mathf.Clamp(goalCenterDistance - boundary.GoalHalfLength, 0f, edgeLength);
+            float goalEndDistance = Mathf.Clamp(goalCenterDistance + boundary.GoalHalfLength, 0f, edgeLength);
+
+            TryAddBoundaryWallSpanSweepHit(
+                start,
+                end,
+                boundary.Start,
+                boundary.Start + tangent * goalStartDistance,
+                boundary.InwardNormal,
+                true,
+                false,
+                ref bestHit);
+            TryAddBoundaryWallSpanSweepHit(
+                start,
+                end,
+                boundary.Start + tangent * goalEndDistance,
+                boundary.End,
+                boundary.InwardNormal,
+                false,
+                true,
+                ref bestHit);
+        }
+
+        private void TryAddBoundaryWallSpanSweepHit(
+            Vector2 start,
+            Vector2 end,
+            Vector2 wallStart,
+            Vector2 wallEnd,
+            Vector2 inwardNormal,
+            bool includeStartCap,
+            bool includeEndCap,
+            ref SweepHit bestHit)
+        {
+            Vector2 edge = wallEnd - wallStart;
+            if (edge.sqrMagnitude <= CollisionEpsilon * CollisionEpsilon)
+            {
+                return;
+            }
+
+            TryAddBoundaryWallLineSweepHit(start, end, wallStart, wallEnd, inwardNormal, ref bestHit);
+            if (includeStartCap)
+            {
+                TryAddBoundaryWallEndpointSweepHit(start, end, wallStart, ref bestHit);
+            }
+
+            if (includeEndCap)
+            {
+                TryAddBoundaryWallEndpointSweepHit(start, end, wallEnd, ref bestHit);
+            }
+        }
+
+        private void TryAddBoundaryWallLineSweepHit(
+            Vector2 start,
+            Vector2 end,
+            Vector2 wallStart,
+            Vector2 wallEnd,
+            Vector2 inwardNormal,
+            ref SweepHit bestHit)
+        {
+            Vector2 movement = end - start;
+            Vector2 edge = wallEnd - wallStart;
             float denominator = Cross(movement, edge);
             if (Mathf.Abs(denominator) <= CollisionEpsilon)
             {
                 return;
             }
 
-            Vector2 offset = boundary.Start - start;
+            Vector2 offset = wallStart + inwardNormal * BallCollisionRadius - start;
             float hitTime = Cross(offset, edge) / denominator;
             float edgeTime = Cross(offset, movement) / denominator;
             if (hitTime < -CollisionEpsilon ||
@@ -1346,16 +1438,53 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             hitTime = Mathf.Clamp01(hitTime);
             Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
-            if (boundary.GoalPlayerIndex >= 0 &&
-                boundary.GoalPlayerIndex < _players.Count &&
-                boundary.IsPastGoalLine(hitPoint))
+            ChooseEarlierHit(SweepHit.Wall(hitTime, hitPoint, inwardNormal), ref bestHit);
+        }
+
+        private void TryAddBoundaryWallEndpointSweepHit(
+            Vector2 start,
+            Vector2 end,
+            Vector2 endpoint,
+            ref SweepHit bestHit)
+        {
+            Vector2 movement = end - start;
+            Vector2 relativeStart = start - endpoint;
+            float a = Vector2.Dot(movement, movement);
+            if (a <= CollisionEpsilon)
             {
-                ChooseEarlierHit(SweepHit.Goal(hitTime, hitPoint, boundary.GoalPlayerIndex), ref bestHit);
+                return;
             }
-            else
+
+            float b = 2f * Vector2.Dot(relativeStart, movement);
+            float c = Vector2.Dot(relativeStart, relativeStart) - BallCollisionRadius * BallCollisionRadius;
+            float discriminant = b * b - 4f * a * c;
+            if (discriminant < -CollisionEpsilon)
             {
-                ChooseEarlierHit(SweepHit.Wall(hitTime, hitPoint, boundary.InwardNormal), ref bestHit);
+                return;
             }
+
+            float sqrt = Mathf.Sqrt(Mathf.Max(0f, discriminant));
+            float hitTime = (-b - sqrt) / (2f * a);
+            if (hitTime < -CollisionEpsilon || hitTime > 1f + CollisionEpsilon)
+            {
+                return;
+            }
+
+            hitTime = Mathf.Clamp01(hitTime);
+            Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
+            Vector2 normal = hitPoint - endpoint;
+            if (normal.sqrMagnitude <= CollisionEpsilon * CollisionEpsilon)
+            {
+                return;
+            }
+
+            normal.Normalize();
+            if (Vector2.Dot(movement, normal) >= -CollisionEpsilon)
+            {
+                return;
+            }
+
+            ChooseEarlierHit(SweepHit.Wall(hitTime, hitPoint, normal), ref bestHit);
         }
 
         private void TryAddGoalTriggerSweepHit(
@@ -1623,12 +1752,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 }
 
                 float distanceInside = Vector2.Dot(position - segment.Start, segment.InwardNormal);
-                if (distanceInside >= 0f)
+                if (distanceInside >= BallCollisionRadius)
                 {
                     continue;
                 }
 
-                position += segment.InwardNormal * -distanceInside;
+                position += segment.InwardNormal * (BallCollisionRadius - distanceInside);
                 float normalSpeed = Vector2.Dot(velocity, segment.InwardNormal);
                 if (normalSpeed < 0f)
                 {

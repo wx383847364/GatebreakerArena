@@ -47,7 +47,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private readonly Dictionary<int, Transform> _ballViews = new Dictionary<int, Transform>();
         private readonly Dictionary<int, int> _ballViewSlots = new Dictionary<int, int>();
+        private readonly Dictionary<int, VisualPoseState> _ballVisualPoses = new Dictionary<int, VisualPoseState>();
         private readonly Dictionary<int, Transform> _paddleViews = new Dictionary<int, Transform>();
+        private readonly Dictionary<int, VisualPoseState> _paddleVisualPoses = new Dictionary<int, VisualPoseState>();
         private readonly Dictionary<int, Renderer> _paddleRenderers = new Dictionary<int, Renderer>();
         private readonly Dictionary<int, Renderer> _guardRenderers = new Dictionary<int, Renderer>();
         private readonly List<LineRenderer> _debugCollisionLines = new List<LineRenderer>();
@@ -100,6 +102,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private StartupUiState _startupUiState = StartupUiState.ModeSelect;
         private float _localStartCountdownElapsed;
         private string _lastStartCountdownText;
+        private int _lastVisualFrameIndex = int.MinValue;
+        private bool _visualFrameAdvanced = true;
+        private float _visualInterpolationElapsed;
 
         private enum StartupUiState
         {
@@ -108,6 +113,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             LocalPlaying,
             OnlineMenu,
             OnlineRoom,
+        }
+
+        private sealed class VisualPoseState
+        {
+            public VisualPoseState(Vector3 position)
+            {
+                PreviousPosition = position;
+                CurrentPosition = position;
+            }
+
+            public Vector3 PreviousPosition { get; set; }
+            public Vector3 CurrentPosition { get; set; }
         }
 
         private float ArenaHalfWidth => _runtime?.Arena != null ? _runtime.Arena.HalfWidth : 8f;
@@ -161,6 +178,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _runtime.SetLocalPlayer(_localPlayerId);
 
             await EnsureSceneAsync();
+            ResetVisualInterpolation();
             SyncPlayerViews();
             SyncBallViews();
             _initialized = true;
@@ -215,6 +233,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (IsLanPlaying())
             {
                 SubmitLanInputAtFixedRate(frame);
+                UpdateVisualInterpolationClock();
                 SyncPlayerViews();
                 SyncBallViews();
                 RefreshBoundHud();
@@ -231,6 +250,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 _lastServeBlockReason = localPlayer?.ServeResource?.LastBlockReason ?? ServeBlockReason.PlayerDisabled;
             }
 
+            UpdateVisualInterpolationClock();
             SyncPlayerViews();
             SyncBallViews();
             RefreshBoundHud();
@@ -457,6 +477,66 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             ConfigurePrototypeCamera();
+        }
+
+        private void UpdateVisualInterpolationClock()
+        {
+            if (_runtime == null)
+            {
+                return;
+            }
+
+            int frameIndex = _runtime.LastFrameIndex;
+            if (frameIndex != _lastVisualFrameIndex)
+            {
+                _lastVisualFrameIndex = frameIndex;
+                _visualFrameAdvanced = true;
+                _visualInterpolationElapsed = 0f;
+                return;
+            }
+
+            _visualFrameAdvanced = false;
+            _visualInterpolationElapsed += Mathf.Max(0f, Time.deltaTime);
+        }
+
+        private void ResetVisualInterpolation()
+        {
+            _ballVisualPoses.Clear();
+            _paddleVisualPoses.Clear();
+            _lastVisualFrameIndex = _runtime != null ? _runtime.LastFrameIndex : int.MinValue;
+            _visualFrameAdvanced = true;
+            _visualInterpolationElapsed = 0f;
+        }
+
+        private float GetVisualInterpolationAlpha()
+        {
+            float frameDelta = _runtime != null ? _runtime.FrameDelta : 1f / 30f;
+            return Mathf.Clamp01(_visualInterpolationElapsed / Mathf.Max(0.001f, frameDelta));
+        }
+
+        private Vector3 GetInterpolatedVisualPosition(
+            Dictionary<int, VisualPoseState> poses,
+            int id,
+            Vector3 targetPosition)
+        {
+            if (!poses.TryGetValue(id, out VisualPoseState pose))
+            {
+                pose = new VisualPoseState(targetPosition);
+                poses[id] = pose;
+                return targetPosition;
+            }
+
+            if (_visualFrameAdvanced)
+            {
+                pose.PreviousPosition = pose.CurrentPosition;
+                pose.CurrentPosition = targetPosition;
+            }
+            else
+            {
+                pose.CurrentPosition = targetPosition;
+            }
+
+            return Vector3.Lerp(pose.PreviousPosition, pose.CurrentPosition, GetVisualInterpolationAlpha());
         }
 
         private void OnGUI()
@@ -1291,7 +1371,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 }
 
                 Transform paddle = EnsurePaddleView(player.PlayerId);
-                paddle.localPosition = GetPaddlePosition(player);
+                paddle.localPosition = GetInterpolatedVisualPosition(
+                    _paddleVisualPoses,
+                    player.PlayerId,
+                    GetPaddlePosition(player));
                 paddle.localRotation = GetPaddleRotation(player.Paddle);
                 paddle.localScale = GetPaddleVisualScale(player.Paddle);
 
@@ -1352,6 +1435,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _paddleViews.Remove(playerId);
+            _paddleVisualPoses.Remove(playerId);
             _paddleRenderers.Remove(playerId);
             if (_guardRenderers.TryGetValue(playerId, out Renderer guard) && guard != null)
             {
@@ -1434,7 +1518,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
                 _liveBallIds.Add(ball.BallId);
                 Transform ballView = EnsureBallView(ball);
-                ballView.localPosition = ToVisualPosition(ball.Position, 0.35f);
+                ballView.localPosition = GetInterpolatedVisualPosition(
+                    _ballVisualPoses,
+                    ball.BallId,
+                    ToVisualPosition(ball.Position, 0.35f));
                 ballView.localScale = GetCompensatedVisualScale(0.45f);
             }
 
@@ -1482,6 +1569,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
                 _ballViews.Remove(ballId);
                 _ballViewSlots.Remove(ballId);
+                _ballVisualPoses.Remove(ballId);
             }
         }
 
@@ -1603,6 +1691,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _lastServeBlockReason = ServeBlockReason.None;
             _guiServePressed = false;
             _guiMoveAxis = 0f;
+            ResetVisualInterpolation();
             RebuildDebugCollisionOverlay();
             RefreshBoundHud();
         }

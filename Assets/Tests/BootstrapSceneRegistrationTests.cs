@@ -1,5 +1,7 @@
 using System.Linq;
 using App.AOT.Bootstrap;
+using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Network;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -38,6 +40,14 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(
                 binding.HasRequiredBindings,
                 "Gatebreaker scene UI binding should include Skill/BallCount and player Score/Hit panel references.");
+        }
+
+        [Test]
+        public void RuntimeFramePolicyUsesSixtyDisplayAndThirtyLogicFps()
+        {
+            Assert.AreEqual(60, RuntimeFrameRateSettings.MaxDisplayFps);
+            Assert.AreEqual(30, GatebreakerMatchStartConfig.DefaultSimulationFps);
+            Assert.AreEqual(GatebreakerMatchStartConfig.DefaultSimulationFps, LockstepSession.SimulationFps);
         }
     }
 }
