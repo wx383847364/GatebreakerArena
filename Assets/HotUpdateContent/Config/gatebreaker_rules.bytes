@@ -26,6 +26,7 @@
       "PaddleBounceFactor": 1.0,
       "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
       "SpeedGainOnPaddleHit": 0.15,
+      "BallContactRadius": 0.08,
       "TrailStyle": "Default",
       "WallBounceFactor": 1.0
     }
@@ -42,6 +43,66 @@
       "MaxBallsModifier": 16,
       "MaxOwnedBallsInField": 5,
       "MaxServeAmmo": 5,
+      "ArenaHalfWidth": 2.81,
+      "ArenaHalfHeight": 2.456,
+      "PaddleInset": 0.18,
+      "PaddleLength": 0.78,
+      "PaddleThickness": 0.05,
+      "GoalHalfLength": 1.06,
+      "GoalTriggerInset": 0.14,
+      "GoalContactLineInset": 0.04,
+      "BoundaryPoints": [
+        {
+          "X": 1.379,
+          "Y": -2.456
+        },
+        {
+          "X": 2.809,
+          "Y": 0.021
+        },
+        {
+          "X": 1.411,
+          "Y": 2.443
+        },
+        {
+          "X": -1.416,
+          "Y": 2.443
+        },
+        {
+          "X": -2.809,
+          "Y": 0.031
+        },
+        {
+          "X": -1.373,
+          "Y": -2.456
+        }
+      ],
+      "GoalCenters": [
+        {
+          "X": 2.086,
+          "Y": -1.231
+        },
+        {
+          "X": 2.118,
+          "Y": 1.218
+        },
+        {
+          "X": 0.0,
+          "Y": 2.443
+        },
+        {
+          "X": -2.114,
+          "Y": 1.234
+        },
+        {
+          "X": -2.094,
+          "Y": -1.207
+        },
+        {
+          "X": 0.0,
+          "Y": -2.456
+        }
+      ],
       "PaddleMoveSpeed": 3.2,
       "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
       "PlayerSideBindings": [
@@ -94,9 +155,14 @@
       "FinalPhaseBallSpeedScale": 1.05,
       "FinalPhaseCooldownScale": 0.95,
       "FinalPhaseStartTime": 30,
+      "TuningValues": {
+        "HitOffsetInfluenceValue": 90,
+        "PaddleVelocityInfluenceValue": 55,
+        "MinimumOutwardShareValue": 25
+      },
       "GoalPauseTime": 0.4,
-      "InitialBallsInMatch": 1,
-      "InitialServeAmmo": 1,
+      "InitialBallsInMatch": 0,
+      "InitialServeAmmo": 2,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
@@ -130,9 +196,14 @@
       "FinalPhaseBallSpeedScale": 1.1,
       "FinalPhaseCooldownScale": 0.9,
       "FinalPhaseStartTime": 30,
+      "TuningValues": {
+        "HitOffsetInfluenceValue": 90,
+        "PaddleVelocityInfluenceValue": 55,
+        "MinimumOutwardShareValue": 25
+      },
       "GoalPauseTime": 0.4,
-      "InitialBallsInMatch": 1,
-      "InitialServeAmmo": 1,
+      "InitialBallsInMatch": 0,
+      "InitialServeAmmo": 2,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
@@ -166,9 +237,14 @@
       "FinalPhaseBallSpeedScale": 1.1,
       "FinalPhaseCooldownScale": 0.92,
       "FinalPhaseStartTime": 30,
+      "TuningValues": {
+        "HitOffsetInfluenceValue": 90,
+        "PaddleVelocityInfluenceValue": 55,
+        "MinimumOutwardShareValue": 25
+      },
       "GoalPauseTime": 0.4,
-      "InitialBallsInMatch": 1,
-      "InitialServeAmmo": 1,
+      "InitialBallsInMatch": 0,
+      "InitialServeAmmo": 2,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,

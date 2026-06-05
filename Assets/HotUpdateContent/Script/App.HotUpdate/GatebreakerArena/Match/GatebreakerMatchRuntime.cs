@@ -20,10 +20,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private const int MaxCollisionIterations = 12;
         private const float CollisionEpsilon = 0.0001f;
         private const float CollisionSkin = 0.02f;
-        private const float PaddleEndpointCollisionRadius = 0.12f;
-        private const float BallWallLineCollisionRadius = 0.08f;
-        private const float DefaultBallGoalContactRadius = BallWallLineCollisionRadius;
-        private const float BallWallEndpointCollisionRadius = 0.12f;
+        private const float EditorFallbackBallContactRadius = 0.08f;
         private const int DefaultPlayerCount = 4;
         private const int MaxPlayerCount = 4;
         private const uint ChecksumOffsetBasis = 2166136261u;
@@ -44,7 +41,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private readonly List<int> _overtimeEligiblePlayerIds = new List<int>();
         private readonly Dictionary<int, PlayerInputFrame> _inputFrames = new Dictionary<int, PlayerInputFrame>();
         private readonly Dictionary<int, List<GatebreakerFrameInput>> _stepInputBuffer = new Dictionary<int, List<GatebreakerFrameInput>>();
-        private float _ballGoalContactRadius = DefaultBallGoalContactRadius;
+        private float _ballContactRadius = EditorFallbackBallContactRadius;
         private int _nextBallId = 1;
         private int _nextScoreReachOrder = 1;
         private bool _hasWinner;
@@ -92,22 +89,51 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public IReadOnlyList<PaddleRuntimeState> Paddles => _paddles;
         public IReadOnlyList<ZoneRuntimeState> Zones => _zones;
         public IReadOnlyList<BallRuntimeState> Balls => _balls;
-        public float BallGoalContactRadius => _ballGoalContactRadius;
+        public float BallContactRadius => _ballContactRadius;
+        public float BallGoalContactRadius => _ballContactRadius;
         public string LastGoalContactDiagnostic { get; private set; } = string.Empty;
         public int LastGoalContactBallId { get; private set; }
         public Vector2 LastGoalContactPosition { get; private set; }
         public bool HasWinner => _hasWinner;
         public int WinnerPlayerId => _winnerPlayerId;
 
-        public bool SetBallGoalContactRadius(float radius)
+        public bool SetBallContactRadius(float radius)
         {
             float nextRadius = Mathf.Clamp(radius, 0.01f, 0.5f);
-            if (Mathf.Abs(_ballGoalContactRadius - nextRadius) <= 0.0001f)
+            bool changed = Mathf.Abs(_ballContactRadius - nextRadius) > 0.0001f;
+            _ballContactRadius = nextRadius;
+            for (int i = 0; i < _balls.Count; i++)
+            {
+                if (_balls[i] != null)
+                {
+                    changed |= Mathf.Abs(GetBallContactRadius(_balls[i]) - nextRadius) > 0.0001f;
+                    _balls[i].ContactRadius = nextRadius;
+                }
+            }
+
+            return changed;
+        }
+
+        public bool SetBallGoalContactRadius(float radius)
+        {
+            return SetBallContactRadius(radius);
+        }
+
+        public bool SetBallContactRadiusForBall(int ballId, float radius)
+        {
+            BallRuntimeState ball = _balls.FirstOrDefault(item => item != null && item.BallId == ballId);
+            if (ball == null)
             {
                 return false;
             }
 
-            _ballGoalContactRadius = nextRadius;
+            float nextRadius = Mathf.Clamp(radius, 0.01f, 0.5f);
+            if (Mathf.Abs(GetBallContactRadius(ball) - nextRadius) <= 0.0001f)
+            {
+                return false;
+            }
+
+            ball.ContactRadius = nextRadius;
             return true;
         }
 
@@ -217,9 +243,14 @@ namespace App.HotUpdate.GatebreakerArena.Match
             LastGoalContactPosition = Vector2.zero;
             _nextBallId = 1;
             _nextScoreReachOrder = 1;
-            _ballGoalContactRadius = DefaultBallGoalContactRadius;
+            if (BallRule == null || BallRule.BallContactRadius <= 0f)
+            {
+                throw new InvalidOperationException("Gatebreaker ball contact radius must be configured by JSON before match start.");
+            }
+
+            _ballContactRadius = Mathf.Clamp(BallRule.BallContactRadius, 0.01f, 0.5f);
             Arena = ArenaGeometry.CreateForMap(EffectiveRule.Map, activePlayerIds);
-            ApplyTuningValues(config.TuningValues);
+            ApplyTuningValues(EffectiveRule.Mode.TuningValues, config.TuningValues);
 
             HashSet<int> aiPlayerIds = ResolveAiPlayerIds(config);
             for (int i = 0; i < activePlayerIds.Count; i++)
@@ -443,7 +474,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             HashInt(ref hash, BounceTuning.HitOffsetInfluenceValue);
             HashInt(ref hash, BounceTuning.PaddleVelocityInfluenceValue);
             HashInt(ref hash, BounceTuning.MinimumOutwardShareValue);
-            HashInt(ref hash, QuantizeFloat(_ballGoalContactRadius));
+            HashInt(ref hash, QuantizeFloat(_ballContactRadius));
 
             HashInt(ref hash, _players.Count);
             foreach (PlayerRuntimeState player in _players.OrderBy(player => player.PlayerId))
@@ -487,6 +518,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 HashInt(ref hash, (int)ball.BallState);
                 HashVector(ref hash, ball.Position);
                 HashVector(ref hash, ball.Velocity);
+                HashInt(ref hash, QuantizeFloat(GetBallContactRadius(ball)));
             }
 
             return new GatebreakerMatchChecksum(frameIndex, hash);
@@ -631,9 +663,17 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return result;
         }
 
-        private void ApplyTuningValues(IReadOnlyDictionary<string, int> tuningValues)
+        private void ApplyTuningValues(
+            IReadOnlyDictionary<string, int> modeTuningValues,
+            IReadOnlyDictionary<string, int> startConfigTuningValues)
         {
             BounceTuning.ResetToDefaults();
+            ApplyTuningValueMap(modeTuningValues);
+            ApplyTuningValueMap(startConfigTuningValues);
+        }
+
+        private void ApplyTuningValueMap(IReadOnlyDictionary<string, int> tuningValues)
+        {
             if (tuningValues == null)
             {
                 return;
@@ -886,6 +926,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 BallRule,
                 position,
                 direction);
+            ball.ContactRadius = _ballContactRadius;
             _balls.Add(ball);
             if (countOwnedBall)
             {
@@ -893,6 +934,16 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             return ball;
+        }
+
+        private float GetBallContactRadius(BallRuntimeState ball)
+        {
+            if (ball != null && ball.ContactRadius > 0f)
+            {
+                return Mathf.Clamp(ball.ContactRadius, 0.01f, 0.5f);
+            }
+
+            return Mathf.Clamp(_ballContactRadius, 0.01f, 0.5f);
         }
 
         private void RemoveBall(BallRuntimeState ball)
@@ -1100,6 +1151,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
                 Vector2 end = start + ball.Velocity * remainingTime;
                 if (!TryFindEarliestSweepHit(
+                        ball,
                         start,
                         end,
                         elapsedTime,
@@ -1155,6 +1207,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private bool TryFindEarliestSweepHit(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             float elapsedTime,
@@ -1174,6 +1227,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 for (int i = 0; i < paddleMotions.Count; i++)
                 {
                     TryAddPaddleSweepHit(
+                        ball,
                         paddleMotions[i],
                         start,
                         end,
@@ -1188,21 +1242,22 @@ namespace App.HotUpdate.GatebreakerArena.Match
             {
                 for (int i = 0; i < Arena.BoundarySegments.Count; i++)
                 {
-                    TryAddBoundarySegmentSweepHit(start, end, Arena.BoundarySegments[i], ref bestHit);
+                    TryAddBoundarySegmentSweepHit(ball, start, end, Arena.BoundarySegments[i], ref bestHit);
                 }
             }
             else
             {
-                TryAddBoundarySweepHit(start, end, -Arena.HalfHeight, true, Vector2.up, ref bestHit);
-                TryAddBoundarySweepHit(start, end, Arena.HalfHeight, true, Vector2.down, ref bestHit);
-                TryAddBoundarySweepHit(start, end, -Arena.HalfWidth, false, Vector2.right, ref bestHit);
-                TryAddBoundarySweepHit(start, end, Arena.HalfWidth, false, Vector2.left, ref bestHit);
+                TryAddBoundarySweepHit(ball, start, end, -Arena.HalfHeight, true, Vector2.up, ref bestHit);
+                TryAddBoundarySweepHit(ball, start, end, Arena.HalfHeight, true, Vector2.down, ref bestHit);
+                TryAddBoundarySweepHit(ball, start, end, -Arena.HalfWidth, false, Vector2.right, ref bestHit);
+                TryAddBoundarySweepHit(ball, start, end, Arena.HalfWidth, false, Vector2.left, ref bestHit);
             }
 
             return bestHit.Type != SweepHitType.None;
         }
 
         private void TryAddPaddleSweepHit(
+            BallRuntimeState ball,
             PaddleMotionState motion,
             Vector2 start,
             Vector2 end,
@@ -1229,7 +1284,9 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Vector2 paddleEnd = motion.GetPosition(segmentEndT);
             float n0 = Vector2.Dot(start - paddleStart, paddle.Normal);
             float n1 = Vector2.Dot(end - paddleEnd, paddle.Normal);
+            float contactDistance = paddle.Thickness + GetBallContactRadius(ball);
             TryAddPaddleEndpointSweepHits(
+                ball,
                 motion,
                 start,
                 end,
@@ -1245,6 +1302,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                     end,
                     n0,
                     n1,
+                    contactDistance,
                     elapsedTime,
                     segmentDuration,
                     totalDeltaTime,
@@ -1253,7 +1311,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
-            if (n0 <= paddle.Thickness || n1 > paddle.Thickness)
+            if (n0 <= contactDistance || n1 > contactDistance)
             {
                 return;
             }
@@ -1264,7 +1322,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
-            float hitTime = (n0 - paddle.Thickness) / denominator;
+            float hitTime = (n0 - contactDistance) / denominator;
             if (hitTime < -CollisionEpsilon || hitTime > 1f + CollisionEpsilon)
             {
                 return;
@@ -1285,6 +1343,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private void TryAddPaddleEndpointSweepHits(
+            BallRuntimeState ball,
             PaddleMotionState motion,
             Vector2 start,
             Vector2 end,
@@ -1303,6 +1362,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             float halfLength = paddle.Length * 0.5f;
             Vector2 frontOffset = paddle.Normal * paddle.Thickness;
+            float endpointRadius = GetPaddleEndpointCollisionRadius(ball, paddle);
             TryAddPaddleEndpointSweepHit(
                 motion,
                 start,
@@ -1310,6 +1370,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 motion.GetPosition(segmentStartT) + frontOffset - paddle.Tangent * halfLength,
                 motion.GetPosition(segmentEndT) + frontOffset - paddle.Tangent * halfLength,
                 -halfLength,
+                endpointRadius,
                 elapsedTime,
                 segmentDuration,
                 totalDeltaTime,
@@ -1321,6 +1382,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 motion.GetPosition(segmentStartT) + frontOffset + paddle.Tangent * halfLength,
                 motion.GetPosition(segmentEndT) + frontOffset + paddle.Tangent * halfLength,
                 halfLength,
+                endpointRadius,
                 elapsedTime,
                 segmentDuration,
                 totalDeltaTime,
@@ -1334,6 +1396,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Vector2 endpointStart,
             Vector2 endpointEnd,
             float endpointTangentDistance,
+            float endpointRadius,
             float elapsedTime,
             float segmentDuration,
             float totalDeltaTime,
@@ -1341,7 +1404,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         {
             Vector2 relativeStart = start - endpointStart;
             Vector2 relativeMovement = (end - start) - (endpointEnd - endpointStart);
-            float radius = PaddleEndpointCollisionRadius;
+            float radius = Mathf.Max(0.01f, endpointRadius);
             float c = Vector2.Dot(relativeStart, relativeStart) - radius * radius;
             if (c <= CollisionEpsilon)
             {
@@ -1387,13 +1450,14 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Vector2 end,
             float n0,
             float n1,
+            float contactDistance,
             float elapsedTime,
             float segmentDuration,
             float totalDeltaTime,
             ref SweepHit bestHit)
         {
             PaddleRuntimeState paddle = motion.Paddle;
-            if (paddle == null || n0 > paddle.Thickness || n1 >= n0 - CollisionEpsilon)
+            if (paddle == null || n0 > contactDistance || n1 >= n0 - CollisionEpsilon)
             {
                 return false;
             }
@@ -1411,6 +1475,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private void TryAddBoundarySweepHit(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             float boundary,
@@ -1418,13 +1483,14 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Vector2 inwardNormal,
             ref SweepHit bestHit)
         {
+            float contactRadius = GetBallContactRadius(ball);
             bool isGoalSide = HasZoneForSide(inwardNormal);
             float contactBoundary = boundary;
             if (isGoalSide)
             {
                 contactBoundary += horizontal
-                    ? inwardNormal.y * _ballGoalContactRadius
-                    : inwardNormal.x * _ballGoalContactRadius;
+                    ? inwardNormal.y * contactRadius
+                    : inwardNormal.x * contactRadius;
             }
 
             float startAxis = horizontal ? start.y : start.x;
@@ -1458,7 +1524,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                         _players.Count,
                         EffectiveRule.Map.SpawnLayoutType,
                         out int playerIndex,
-                        _ballGoalContactRadius))
+                        contactRadius))
                 {
                     ChooseEarlierHit(SweepHit.Goal(hitTime, hitPoint, playerIndex), ref bestHit);
                 }
@@ -1470,6 +1536,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private void TryAddBoundarySegmentSweepHit(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             ArenaBoundarySegment boundary,
@@ -1483,12 +1550,13 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             if (boundary.GoalPlayerIndex >= 0 && boundary.GoalPlayerIndex < _players.Count)
             {
-                TryAddGoalContactSweepHit(start, end, boundary, ref bestHit);
-                TryAddActiveGoalWallSweepHits(start, end, boundary, ref bestHit);
+                TryAddGoalContactSweepHit(ball, start, end, boundary, ref bestHit);
+                TryAddActiveGoalWallSweepHits(ball, start, end, boundary, ref bestHit);
                 return;
             }
 
             TryAddBoundaryWallSpanSweepHit(
+                ball,
                 start,
                 end,
                 boundary.Start,
@@ -1500,6 +1568,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private void TryAddActiveGoalWallSweepHits(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             ArenaBoundarySegment boundary,
@@ -1518,6 +1587,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             float goalEndDistance = Mathf.Clamp(goalCenterDistance + boundary.GoalHalfLength, 0f, edgeLength);
 
             TryAddBoundaryWallSpanSweepHit(
+                ball,
                 start,
                 end,
                 boundary.Start,
@@ -1527,6 +1597,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 false,
                 ref bestHit);
             TryAddBoundaryWallSpanSweepHit(
+                ball,
                 start,
                 end,
                 boundary.Start + tangent * goalEndDistance,
@@ -1538,6 +1609,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private void TryAddBoundaryWallSpanSweepHit(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             Vector2 wallStart,
@@ -1553,19 +1625,20 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
-            TryAddBoundaryWallLineSweepHit(start, end, wallStart, wallEnd, inwardNormal, ref bestHit);
+            TryAddBoundaryWallLineSweepHit(ball, start, end, wallStart, wallEnd, inwardNormal, ref bestHit);
             if (includeStartCap)
             {
-                TryAddBoundaryWallEndpointSweepHit(start, end, wallStart, ref bestHit);
+                TryAddBoundaryWallEndpointSweepHit(ball, start, end, wallStart, ref bestHit);
             }
 
             if (includeEndCap)
             {
-                TryAddBoundaryWallEndpointSweepHit(start, end, wallEnd, ref bestHit);
+                TryAddBoundaryWallEndpointSweepHit(ball, start, end, wallEnd, ref bestHit);
             }
         }
 
         private void TryAddBoundaryWallLineSweepHit(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             Vector2 wallStart,
@@ -1581,7 +1654,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
-            Vector2 offset = wallStart + inwardNormal * BallWallLineCollisionRadius - start;
+            float contactRadius = GetBallContactRadius(ball);
+            Vector2 offset = wallStart + inwardNormal * contactRadius - start;
             float hitTime = Cross(offset, edge) / denominator;
             float edgeTime = Cross(offset, movement) / denominator;
             if (hitTime < -CollisionEpsilon ||
@@ -1598,6 +1672,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private void TryAddBoundaryWallEndpointSweepHit(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             Vector2 endpoint,
@@ -1612,7 +1687,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             float b = 2f * Vector2.Dot(relativeStart, movement);
-            float c = Vector2.Dot(relativeStart, relativeStart) - BallWallEndpointCollisionRadius * BallWallEndpointCollisionRadius;
+            float contactRadius = GetBallContactRadius(ball);
+            float c = Vector2.Dot(relativeStart, relativeStart) - contactRadius * contactRadius;
             float discriminant = b * b - 4f * a * c;
             if (discriminant < -CollisionEpsilon)
             {
@@ -1644,14 +1720,16 @@ namespace App.HotUpdate.GatebreakerArena.Match
         }
 
         private void TryAddGoalContactSweepHit(
+            BallRuntimeState ball,
             Vector2 start,
             Vector2 end,
             ArenaBoundarySegment boundary,
             ref SweepHit bestHit)
         {
             Vector2 movement = end - start;
-            Vector2 contactStart = boundary.GetGoalContactStart(_ballGoalContactRadius);
-            Vector2 contactEnd = boundary.GetGoalContactEnd(_ballGoalContactRadius);
+            float contactRadius = GetBallContactRadius(ball);
+            Vector2 contactStart = boundary.GetGoalContactStart(contactRadius);
+            Vector2 contactEnd = boundary.GetGoalContactEnd(contactRadius);
             Vector2 contactEdge = contactEnd - contactStart;
             float denominator = Cross(movement, contactEdge);
             if (Mathf.Abs(denominator) <= CollisionEpsilon)
@@ -1672,7 +1750,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             hitTime = Mathf.Clamp01(hitTime);
             Vector2 hitPoint = Vector2.Lerp(start, end, hitTime);
-            if (boundary.IsPastGoalLine(hitPoint, _ballGoalContactRadius))
+            if (boundary.IsPastGoalLine(hitPoint, contactRadius))
             {
                 ChooseEarlierHit(SweepHit.Goal(hitTime, hitPoint, boundary.GoalPlayerIndex), ref bestHit);
             }
@@ -1699,7 +1777,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             float hitOffset = hit.TangentDistance / Mathf.Max(0.001f, paddle.Length * 0.5f);
             ball.Position = hit.PaddleMotion.GetPosition(hit.GlobalTime)
                             + paddle.Tangent * hit.TangentDistance
-                            + paddle.Normal * (paddle.Thickness + CollisionSkin);
+                            + paddle.Normal * (paddle.Thickness + GetBallContactRadius(ball) + CollisionSkin);
             ball.Velocity = _paddleBounceCalculator.CalculateBounce(
                 ball.Velocity,
                 hitOffset,
@@ -1733,7 +1811,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             Vector2 normal = hit.WallNormal.sqrMagnitude > 0.0001f ? hit.WallNormal.normalized : Vector2.up;
             float normalSpeed = Vector2.Dot(ball.Velocity, normal);
             Vector2 tangentVelocity = ball.Velocity - normal * normalSpeed;
-            ball.Position = hit.Point + normal * CollisionSkin;
+            ball.Position = hit.Point + normal * (GetBallContactRadius(ball) + CollisionSkin);
             ball.Velocity = tangentVelocity - normal * normalSpeed * BallRule.WallBounceFactor;
             _ballSimulation.ClampSpeed(ball, BallRule);
         }
@@ -1774,12 +1852,13 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private bool TryResolveGoal(BallRuntimeState ball)
         {
+            float contactRadius = GetBallContactRadius(ball);
             if (!Arena.TryGetGoalOwner(
                     ball.Position,
                     _players.Count,
                     EffectiveRule.Map.SpawnLayoutType,
                     out int playerIndex,
-                    _ballGoalContactRadius))
+                    contactRadius))
             {
                 return false;
             }
@@ -1818,12 +1897,14 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             if (Arena.TryGetGoalSegmentForPlayer(playerIndex, out ArenaBoundarySegment segment))
             {
-                float signedDistance = Vector2.Dot(ball.Position - segment.GoalCenter, segment.InwardNormal);
-                float edgeGap = signedDistance - _ballGoalContactRadius;
+                Vector2 goalContactCenter = segment.GoalContactCenter;
+                float signedDistance = Vector2.Dot(ball.Position - goalContactCenter, segment.InwardNormal);
+                float contactRadius = GetBallContactRadius(ball);
+                float edgeGap = signedDistance - contactRadius;
                 float tangentDistance = Vector2.Dot(ball.Position - segment.GoalCenter, segment.Tangent);
                 return string.Format(
                     CultureInfo.InvariantCulture,
-                    "source={0} ball={1} playerIndex={2} pos=({3:0.0000},{4:0.0000}) goalCenter=({5:0.0000},{6:0.0000}) signedDistance={7:0.0000} contactRadius={8:0.0000} edgeGap={9:0.0000} tangentDistance={10:0.0000} goalHalfLength={11:0.0000}",
+                    "source={0} ball={1} playerIndex={2} pos=({3:0.0000},{4:0.0000}) goalCenter=({5:0.0000},{6:0.0000}) goalContactCenter=({7:0.0000},{8:0.0000}) signedDistance={9:0.0000} contactRadius={10:0.0000} edgeGap={11:0.0000} tangentDistance={12:0.0000} goalHalfLength={13:0.0000}",
                     source,
                     ball.BallId,
                     playerIndex,
@@ -1831,8 +1912,10 @@ namespace App.HotUpdate.GatebreakerArena.Match
                     ball.Position.y,
                     segment.GoalCenter.x,
                     segment.GoalCenter.y,
+                    goalContactCenter.x,
+                    goalContactCenter.y,
                     signedDistance,
-                    _ballGoalContactRadius,
+                    contactRadius,
                     edgeGap,
                     tangentDistance,
                     segment.GoalHalfLength);
@@ -1840,7 +1923,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             Vector2 normal = Arena.GetSideNormal(EffectiveRule.Map.SpawnLayoutType, playerIndex);
             float signedDefaultDistance = CalculateDefaultGoalSignedDistance(ball.Position, normal);
-            float defaultEdgeGap = signedDefaultDistance - _ballGoalContactRadius;
+            float defaultContactRadius = GetBallContactRadius(ball);
+            float defaultEdgeGap = signedDefaultDistance - defaultContactRadius;
             return string.Format(
                 CultureInfo.InvariantCulture,
                 "source={0} ball={1} playerIndex={2} pos=({3:0.0000},{4:0.0000}) signedDistance={5:0.0000} contactRadius={6:0.0000} edgeGap={7:0.0000} normal=({8:0.0000},{9:0.0000})",
@@ -1850,7 +1934,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 ball.Position.x,
                 ball.Position.y,
                 signedDefaultDistance,
-                _ballGoalContactRadius,
+                defaultContactRadius,
                 defaultEdgeGap,
                 normal.x,
                 normal.y);
@@ -1879,7 +1963,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
                 Vector2 relative = ball.Position - paddle.Position;
                 float normalDistance = Vector2.Dot(relative, paddle.Normal);
-                if (normalDistance < -paddle.Thickness || normalDistance > paddle.Thickness)
+                float contactDistance = paddle.Thickness + GetBallContactRadius(ball);
+                if (normalDistance < -contactDistance || normalDistance > contactDistance)
                 {
                     continue;
                 }
@@ -1910,13 +1995,20 @@ namespace App.HotUpdate.GatebreakerArena.Match
                                + paddle.Normal * paddle.Thickness
                                + paddle.Tangent * endpointTangentDistance;
             Vector2 relativeEndpoint = ball.Position - endpoint;
-            if (relativeEndpoint.sqrMagnitude > PaddleEndpointCollisionRadius * PaddleEndpointCollisionRadius)
+            float endpointRadius = GetPaddleEndpointCollisionRadius(ball, paddle);
+            if (relativeEndpoint.sqrMagnitude > endpointRadius * endpointRadius)
             {
                 return false;
             }
 
             ResolvePaddleHit(ball, paddle, endpointTangentDistance, GetNormalizedPaddleVelocity(paddle));
             return true;
+        }
+
+        private float GetPaddleEndpointCollisionRadius(BallRuntimeState ball, PaddleRuntimeState paddle)
+        {
+            float paddleThickness = paddle != null ? Mathf.Max(0f, paddle.Thickness) : 0f;
+            return Mathf.Max(0.01f, GetBallContactRadius(ball) + paddleThickness);
         }
 
         private void ResolvePaddleHit(
@@ -1930,7 +2022,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             float hitOffset = clampedTangentDistance / halfLength;
             ball.Position = paddle.Position
                             + paddle.Tangent * clampedTangentDistance
-                            + paddle.Normal * (paddle.Thickness + CollisionSkin);
+                            + paddle.Normal * (paddle.Thickness + GetBallContactRadius(ball) + CollisionSkin);
             ball.Velocity = _paddleBounceCalculator.CalculateBounce(
                 ball.Velocity,
                 hitOffset,
@@ -1972,30 +2064,31 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             Vector2 position = ball.Position;
             Vector2 velocity = ball.Velocity;
+            float contactRadius = GetBallContactRadius(ball);
             bool bounced = false;
 
             if (!HasZoneForSide(Vector2.up) && position.y < -Arena.HalfHeight)
             {
-                position.y = -Arena.HalfHeight;
+                position.y = -Arena.HalfHeight + contactRadius;
                 velocity.y = Mathf.Abs(velocity.y) * BallRule.WallBounceFactor;
                 bounced = true;
             }
             else if (!HasZoneForSide(Vector2.down) && position.y > Arena.HalfHeight)
             {
-                position.y = Arena.HalfHeight;
+                position.y = Arena.HalfHeight - contactRadius;
                 velocity.y = -Mathf.Abs(velocity.y) * BallRule.WallBounceFactor;
                 bounced = true;
             }
 
             if (!HasZoneForSide(Vector2.right) && position.x < -Arena.HalfWidth)
             {
-                position.x = -Arena.HalfWidth;
+                position.x = -Arena.HalfWidth + contactRadius;
                 velocity.x = Mathf.Abs(velocity.x) * BallRule.WallBounceFactor;
                 bounced = true;
             }
             else if (!HasZoneForSide(Vector2.left) && position.x > Arena.HalfWidth)
             {
-                position.x = Arena.HalfWidth;
+                position.x = Arena.HalfWidth - contactRadius;
                 velocity.x = -Mathf.Abs(velocity.x) * BallRule.WallBounceFactor;
                 bounced = true;
             }
@@ -2014,6 +2107,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         {
             Vector2 position = ball.Position;
             Vector2 velocity = ball.Velocity;
+            float contactRadius = GetBallContactRadius(ball);
             bool bounced = false;
             for (int i = 0; i < Arena.BoundarySegments.Count; i++)
             {
@@ -2027,12 +2121,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 }
 
                 float distanceInside = Vector2.Dot(position - segment.Start, segment.InwardNormal);
-                if (distanceInside >= BallWallLineCollisionRadius)
+                if (distanceInside >= contactRadius)
                 {
                     continue;
                 }
 
-                position += segment.InwardNormal * (BallWallLineCollisionRadius - distanceInside);
+                position += segment.InwardNormal * (contactRadius - distanceInside);
                 float normalSpeed = Vector2.Dot(velocity, segment.InwardNormal);
                 if (normalSpeed < 0f)
                 {

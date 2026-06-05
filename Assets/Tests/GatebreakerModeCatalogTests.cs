@@ -18,9 +18,9 @@ namespace Gatebreaker.Tests
             EffectiveMatchRule effective = catalog.BuildEffectiveRule("PVE_STANDARD", "MAP_ARENA_01");
 
             Assert.AreEqual(60, pve.MatchDuration);
-            Assert.AreEqual(1, pve.InitialBallsInMatch);
+            Assert.AreEqual(0, pve.InitialBallsInMatch);
             Assert.AreEqual(4, pve.MaxBallsInMatch);
-            Assert.AreEqual(1, pve.InitialServeAmmo);
+            Assert.AreEqual(2, pve.InitialServeAmmo);
             Assert.AreEqual(2, pve.MaxServeAmmo);
             Assert.AreEqual(1, pve.MaxOwnedBallsInField);
             Assert.IsTrue(pve.AllowAimServe);
@@ -52,9 +52,9 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(3, map.PlayerSideBindings[2].PlayerId);
             Assert.AreEqual("Position05", map.PlayerSideBindings[2].ScenePosition);
             Assert.AreEqual(3, map.PlayerSideBindings[2].BoundarySegmentIndex);
-            Assert.AreEqual(1, effective.InitialBallsInMatch);
+            Assert.AreEqual(0, effective.InitialBallsInMatch);
             Assert.AreEqual(20, effective.MaxBallsInMatch);
-            Assert.AreEqual(1, effective.InitialServeAmmo);
+            Assert.AreEqual(2, effective.InitialServeAmmo);
             Assert.AreEqual(5, effective.MaxServeAmmo);
             Assert.AreEqual(5, effective.MaxOwnedBallsInField);
             Assert.AreEqual(5.0f, effective.ServeRechargeSeconds);

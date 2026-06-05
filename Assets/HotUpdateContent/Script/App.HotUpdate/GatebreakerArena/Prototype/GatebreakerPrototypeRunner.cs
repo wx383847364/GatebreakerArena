@@ -28,8 +28,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const string ObjPoolRootName = "ObjPool";
         private const string DebugCollisionOverlayName = "DebugCollisionOverlay";
         private const string SceneInstanceName = "Scene3v3";
-        private const float Scene3v3HalfWidth = 2.81f;
-        private const float Scene3v3HalfHeight = 2.456f;
         private const float Scene3v3PaddlePrefabNormalScale = 0.14f;
         private const float SceneVisualBoundsPadding = 0.04f;
         private const float DebugOverlayPrefabDepth = -0.08f;
@@ -779,8 +777,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 _usePrefabVisuals = true;
                 CreatePrefabScene();
-                ApplyPrefabPaddleLengthCalibration();
-                ApplyPrefabBallContactRadiusCalibration();
+                ValidatePrefabPaddleLength();
+                ValidatePrefabBallContactRadius();
                 RebuildDebugCollisionOverlay();
                 ConfigurePrototypeCamera();
                 return;
@@ -918,7 +916,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
-        private void ApplyPrefabPaddleLengthCalibration()
+        private void ValidatePrefabPaddleLength()
         {
             _paddlePrefabLength = 1f;
             if (_runtime?.Arena == null || !_runtime.Arena.HasCustomBoundary)
@@ -932,8 +930,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _paddlePrefabLength = prefabLength;
-            float visualMatchedLength = _runtime.Arena.PaddleLength * prefabLength;
-            _runtime.SetArenaPaddleLength(visualMatchedLength);
+            float configuredLength = _runtime.Arena.PaddleLength;
+            if (configuredLength <= 0f)
+            {
+                Debug.LogWarning("GatebreakerPrototypeRunner: configured paddle length is invalid; check gatebreaker_rules.bytes.");
+            }
         }
 
         private bool TryCalculatePrefabRendererLength(GameObject prefab, out float length)
@@ -962,7 +963,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             return true;
         }
 
-        private void ApplyPrefabBallContactRadiusCalibration()
+        private void ValidatePrefabBallContactRadius()
         {
             if (_runtime == null || !_usePrefabVisuals)
             {
@@ -974,7 +975,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             for (int playerId = 1; playerId <= 4; playerId++)
             {
                 GatebreakerLoadedPrefab ballPrefab = _visualAssets?.GetBallForPlayerId(playerId);
-                if (TryCalculateBallGoalContactRadius(ballPrefab?.Prefab, out float playerRadius))
+                if (TryCalculateBallContactRadius(ballPrefab?.Prefab, out float playerRadius))
                 {
                     radius = Mathf.Max(radius, playerRadius);
                     hasRadius = true;
@@ -983,11 +984,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             if (hasRadius)
             {
-                _runtime.SetBallGoalContactRadius(radius);
+                float configuredRadius = _runtime.BallContactRadius;
+                if (Mathf.Abs(configuredRadius - radius) > 0.02f)
+                {
+                    Debug.LogWarningFormat(
+                        "GatebreakerPrototypeRunner: ball contact radius config differs from prefab collider. configured={0:0.###}, prefab={1:0.###}",
+                        configuredRadius,
+                        radius);
+                }
             }
         }
 
-        private bool TryCalculateBallGoalContactRadius(GameObject prefab, out float radius)
+        private bool TryCalculateBallContactRadius(GameObject prefab, out float radius)
         {
             radius = 0f;
             if (prefab == null)
@@ -1002,6 +1010,28 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             Vector3 colliderScale = GetRelativeScale(collider.transform, prefab.transform);
+            float visualRadius = collider.radius * Mathf.Max(Mathf.Abs(colliderScale.x), Mathf.Abs(colliderScale.y));
+            float prefabScale = GetPrefabVisualUniformScale();
+            radius = visualRadius / Mathf.Max(0.001f, prefabScale);
+            return radius > 0.001f;
+        }
+
+        private bool TryCalculateBallContactRadius(Transform ballView, out float radius)
+        {
+            radius = 0f;
+            if (ballView == null)
+            {
+                return false;
+            }
+
+            CircleCollider2D collider = ballView.GetComponentInChildren<CircleCollider2D>(true);
+            if (collider == null || collider.radius <= 0.001f)
+            {
+                return false;
+            }
+
+            Transform scaleRoot = _visualRoot != null ? _visualRoot : ballView.parent;
+            Vector3 colliderScale = GetRelativeScale(collider.transform, scaleRoot);
             float visualRadius = collider.radius * Mathf.Max(Mathf.Abs(colliderScale.x), Mathf.Abs(colliderScale.y));
             float prefabScale = GetPrefabVisualUniformScale();
             radius = visualRadius / Mathf.Max(0.001f, prefabScale);
@@ -1674,7 +1704,59 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             _ballViewSlots[ballId] = ownerPlayerId;
             _ballViews[ballId] = ballObject.transform;
+            RefreshBallContactRadiusFromView(ball, ballObject.transform);
             return ballObject.transform;
+        }
+
+        private void RefreshBallContactRadiusFromView(BallRuntimeState ball, Transform ballView)
+        {
+            if (_runtime == null || ball == null || ballView == null)
+            {
+                return;
+            }
+
+            if (TryCalculateBallContactRadius(ballView, out float radius))
+            {
+                _runtime.SetBallContactRadiusForBall(ball.BallId, radius);
+            }
+        }
+
+        public bool RefreshBallContactRadiusFromView(int ballId)
+        {
+            if (_runtime == null ||
+                !_ballViews.TryGetValue(ballId, out Transform ballView) ||
+                ballView == null)
+            {
+                return false;
+            }
+
+            BallRuntimeState ball = FindRuntimeBall(ballId);
+            if (ball == null || !TryCalculateBallContactRadius(ballView, out float radius))
+            {
+                return false;
+            }
+
+            return _runtime.SetBallContactRadiusForBall(ballId, radius);
+        }
+
+        private BallRuntimeState FindRuntimeBall(int ballId)
+        {
+            if (_runtime == null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<BallRuntimeState> balls = _runtime.Balls;
+            for (int i = 0; i < balls.Count; i++)
+            {
+                BallRuntimeState ball = balls[i];
+                if (ball != null && ball.BallId == ballId)
+                {
+                    return ball;
+                }
+            }
+
+            return null;
         }
 
         private void RemoveStaleBallViews()
@@ -1738,7 +1820,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private ScoredBallVisualState CreateScoredBallVisual(int ballId, Transform ballView)
         {
             DisableBallViewPhysics(ballView != null ? ballView.gameObject : null);
-            ResetBallTrails(ballView != null ? ballView.gameObject : null, false);
+            SetBallTrailEmission(ballView != null ? ballView.gameObject : null, false);
             if (_runtime != null && _runtime.LastGoalContactBallId == ballId)
             {
                 return new ScoredBallVisualState(ToVisualPosition(_runtime.LastGoalContactPosition, 0.35f));
@@ -1941,7 +2023,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             _runtime?.StartLocalPrototype();
             _runtime?.SetLocalPlayer(_localPlayerId);
-            ApplyPrefabBallContactRadiusCalibration();
+            ValidatePrefabBallContactRadius();
             _lastServeBlockReason = ServeBlockReason.None;
             _guiServePressed = false;
             _guiMoveAxis = 0f;
@@ -2487,12 +2569,26 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private float GetPrefabVisualXScale()
         {
-            return Scene3v3HalfWidth / Mathf.Max(0.001f, ArenaHalfWidth);
+            return GetPrefabSceneHalfWidth() / Mathf.Max(0.001f, ArenaHalfWidth);
         }
 
         private float GetPrefabVisualYScale()
         {
-            return Scene3v3HalfHeight / Mathf.Max(0.001f, ArenaHalfHeight);
+            return GetPrefabSceneHalfHeight() / Mathf.Max(0.001f, ArenaHalfHeight);
+        }
+
+        private float GetPrefabSceneHalfWidth()
+        {
+            return _hasSceneVisualBounds
+                ? Mathf.Max(0.001f, _sceneVisualBounds.extents.x)
+                : Mathf.Max(0.001f, ArenaHalfWidth);
+        }
+
+        private float GetPrefabSceneHalfHeight()
+        {
+            return _hasSceneVisualBounds
+                ? Mathf.Max(0.001f, _sceneVisualBounds.extents.y)
+                : Mathf.Max(0.001f, ArenaHalfHeight);
         }
 
         private float GetPrefabVisualUniformScale()
@@ -2721,10 +2817,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
                 Vector2[] prefabCorners =
                 {
-                    new Vector2(-Scene3v3HalfWidth, -Scene3v3HalfHeight),
-                    new Vector2(-Scene3v3HalfWidth, Scene3v3HalfHeight),
-                    new Vector2(Scene3v3HalfWidth, -Scene3v3HalfHeight),
-                    new Vector2(Scene3v3HalfWidth, Scene3v3HalfHeight),
+                    new Vector2(-GetPrefabSceneHalfWidth(), -GetPrefabSceneHalfHeight()),
+                    new Vector2(-GetPrefabSceneHalfWidth(), GetPrefabSceneHalfHeight()),
+                    new Vector2(GetPrefabSceneHalfWidth(), -GetPrefabSceneHalfHeight()),
+                    new Vector2(GetPrefabSceneHalfWidth(), GetPrefabSceneHalfHeight()),
                 };
                 Vector2 prefabUp = viewUp.sqrMagnitude > 0.0001f ? viewUp.normalized : Vector2.up;
                 Vector2 prefabRight = viewRight.sqrMagnitude > 0.0001f ? viewRight.normalized : Vector2.right;

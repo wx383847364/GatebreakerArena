@@ -39,7 +39,11 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(3, mode.BallSpeedByTime.Count);
             Assert.AreEqual(15f, mode.BallSpeedByTime[0].TimeSeconds);
             Assert.AreEqual(10f, mode.BallSpeedByTime[0].Speed);
+            Assert.AreEqual(120, mode.TuningValues["HitOffsetInfluenceValue"]);
+            Assert.AreEqual(40, mode.TuningValues["PaddleVelocityInfluenceValue"]);
+            Assert.AreEqual(30, mode.TuningValues["MinimumOutwardShareValue"]);
             Assert.AreEqual(9.25f, ball.InitialSpeed);
+            Assert.AreEqual(0.11f, ball.BallContactRadius);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball02.prefab", ball.PrefabLocation);
             Assert.AreEqual("Blue", result.Catalog.GetPlayerColor(2).ColorName);
             Assert.AreEqual(0.48f, result.Catalog.GetPlayerColor(2).Green);
@@ -49,6 +53,20 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(3.2f, map.PaddleMoveSpeed);
+            Assert.AreEqual(2.81f, map.ArenaHalfWidth);
+            Assert.AreEqual(2.456f, map.ArenaHalfHeight);
+            Assert.AreEqual(0.18f, map.PaddleInset);
+            Assert.AreEqual(0.78f, map.PaddleLength);
+            Assert.AreEqual(0.05f, map.PaddleThickness);
+            Assert.AreEqual(1.06f, map.GoalHalfLength);
+            Assert.AreEqual(0.14f, map.GoalTriggerInset);
+            Assert.AreEqual(0.04f, map.GoalContactLineInset);
+            Assert.AreEqual(6, map.BoundaryPoints.Count);
+            Assert.AreEqual(1.379f, map.BoundaryPoints[0].X);
+            Assert.AreEqual(-2.456f, map.BoundaryPoints[0].Y);
+            Assert.AreEqual(6, map.GoalCenters.Count);
+            Assert.AreEqual(2.086f, map.GoalCenters[0].X);
+            Assert.AreEqual(-1.231f, map.GoalCenters[0].Y);
             Assert.AreEqual(3, map.DefaultPlayerCount);
             Assert.AreEqual(3, map.PlayerSideBindings.Count);
             Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);
@@ -77,6 +95,42 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(ScoreRuleType.TeamScore, result.Catalog.GetMode("PVP_TEAM").ScoreRuleType);
             Assert.AreEqual(SpawnLayoutType.Ring, result.Catalog.GetMap("MAP_RING").SpawnLayoutType);
             CollectionAssert.AreEqual(new[] { 2, 4 }, result.Catalog.GetMap("MAP_RING").SupportedPlayerCount);
+        }
+
+        [Test]
+        public void ParseJson_RejectsMissingBallContactRadius()
+        {
+            string json = CreateRulesJson("TeamScore", "FourSide")
+                .Replace("\n\t      \"BallContactRadius\": 0.11,", string.Empty);
+
+            GatebreakerConfigLoadResult result = GatebreakerConfigRuntimeLoader.ParseJson(json);
+
+            Assert.IsFalse(result.Succeeded);
+            Assert.AreEqual(GatebreakerConfigLoadFailureReason.ParseFailed, result.FailureReason);
+            StringAssert.Contains("BallContactRadius", result.Message);
+        }
+
+        [Test]
+        public void ParseJson_RejectsMissingConfiguredBoundaryPoints()
+        {
+            string json = CreateRulesJson("TeamScore", "FourSide")
+                .Replace(
+                    @"	      ""BoundaryPoints"": [
+	        { ""X"": 1.379, ""Y"": -2.456 },
+	        { ""X"": 2.809, ""Y"": 0.021 },
+	        { ""X"": 1.411, ""Y"": 2.443 },
+	        { ""X"": -1.416, ""Y"": 2.443 },
+	        { ""X"": -2.809, ""Y"": 0.031 },
+	        { ""X"": -1.373, ""Y"": -2.456 }
+	      ],
+",
+                    string.Empty);
+
+            GatebreakerConfigLoadResult result = GatebreakerConfigRuntimeLoader.ParseJson(json);
+
+            Assert.IsFalse(result.Succeeded);
+            Assert.AreEqual(GatebreakerConfigLoadFailureReason.ParseFailed, result.FailureReason);
+            StringAssert.Contains("BoundaryPoints", result.Message);
         }
 
         [UnityTest]
@@ -153,10 +207,15 @@ namespace Gatebreaker.Tests
       ""OvertimeEligibleOnly"": false,
       ""OvertimeWinScore"": 2,
       ""AllowAimServe"": true,
-      ""FinalPhaseStartTime"": 20,
-      ""FinalPhaseBallSpeedScale"": 1.2,
-      ""FinalPhaseCooldownScale"": 0.8,
-      ""BallSpeedByTime"": [[15, 10], [30, 15], [45, 20]]
+	      ""FinalPhaseStartTime"": 20,
+	      ""FinalPhaseBallSpeedScale"": 1.2,
+	      ""FinalPhaseCooldownScale"": 0.8,
+	      ""BallSpeedByTime"": [[15, 10], [30, 15], [45, 20]],
+	      ""TuningValues"": {
+	        ""HitOffsetInfluenceValue"": 120,
+	        ""PaddleVelocityInfluenceValue"": 40,
+	        ""MinimumOutwardShareValue"": 30
+	      }
     }}
   ],
   ""DT_BallRule"": [
@@ -170,8 +229,9 @@ namespace Gatebreaker.Tests
       ""GoalReboundFactor"": 0.9,
       ""SpeedGainOnPaddleHit"": 0.2,
       ""MinVerticalVelocity"": 2.5,
-      ""DangerPromptThreshold"": 1.1,
-      ""TrailStyle"": ""Fast"",
+	      ""DangerPromptThreshold"": 1.1,
+	      ""BallContactRadius"": 0.11,
+	      ""TrailStyle"": ""Fast"",
       ""ColorTag"": ""Red"",
       ""PrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Ball02.prefab""
     }}
@@ -202,9 +262,33 @@ namespace Gatebreaker.Tests
       ""ServeCooldownModifier"": -0.5,
       ""MaxServeAmmo"": 5,
       ""MaxOwnedBallsInField"": 4,
-      ""ServeRechargeSeconds"": 4.0,
-      ""PaddleMoveSpeed"": 3.2,
-      ""BallSpeedModifier"": 0.2,
+	      ""ServeRechargeSeconds"": 4.0,
+	      ""PaddleMoveSpeed"": 3.2,
+	      ""ArenaHalfWidth"": 2.81,
+	      ""ArenaHalfHeight"": 2.456,
+	      ""PaddleInset"": 0.18,
+	      ""PaddleLength"": 0.78,
+	      ""PaddleThickness"": 0.05,
+	      ""GoalHalfLength"": 1.06,
+	      ""GoalTriggerInset"": 0.14,
+	      ""GoalContactLineInset"": 0.04,
+	      ""BoundaryPoints"": [
+	        { ""X"": 1.379, ""Y"": -2.456 },
+	        { ""X"": 2.809, ""Y"": 0.021 },
+	        { ""X"": 1.411, ""Y"": 2.443 },
+	        { ""X"": -1.416, ""Y"": 2.443 },
+	        { ""X"": -2.809, ""Y"": 0.031 },
+	        { ""X"": -1.373, ""Y"": -2.456 }
+	      ],
+	      ""GoalCenters"": [
+	        { ""X"": 2.086, ""Y"": -1.231 },
+	        { ""X"": 2.118, ""Y"": 1.218 },
+	        { ""X"": 0.0, ""Y"": 2.443 },
+	        { ""X"": -2.114, ""Y"": 1.234 },
+	        { ""X"": -2.094, ""Y"": -1.207 },
+	        { ""X"": 0.0, ""Y"": -2.456 }
+	      ],
+	      ""BallSpeedModifier"": 0.2,
       ""GoalSizeModifier"": -0.1,
       ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab"",
       ""PaddlePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Baffle.prefab"",

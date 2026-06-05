@@ -31,9 +31,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             return new GatebreakerModeCatalog(
                 new[]
                 {
-                    CreateMode("PVE_STANDARD", "PVE标准", 60, 1, 4, 6.0f, 1, 2, 1, ScoreRuleType.AddScore, 1.05f, 0.95f),
-                    CreateMode("PVP_FFA", "PVP乱斗", 60, 1, 4, 6.0f, 1, 2, 1, ScoreRuleType.AddScore, 1.10f, 0.90f),
-                    CreateMode("PVP_TEAM", "PVP组队乱斗", 60, 1, 4, 6.5f, 1, 2, 1, ScoreRuleType.TeamScore, 1.10f, 0.92f),
+                    CreateMode("PVE_STANDARD", "PVE标准", 60, 0, 4, 6.0f, 2, 2, 1, ScoreRuleType.AddScore, 1.05f, 0.95f),
+                    CreateMode("PVP_FFA", "PVP乱斗", 60, 0, 4, 6.0f, 2, 2, 1, ScoreRuleType.AddScore, 1.10f, 0.90f),
+                    CreateMode("PVP_TEAM", "PVP组队乱斗", 60, 0, 4, 6.5f, 2, 2, 1, ScoreRuleType.TeamScore, 1.10f, 0.92f),
                 },
                 new[]
                 {
@@ -49,6 +49,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         SpeedGainOnPaddleHit = 0.15f,
                         MinVerticalVelocity = 2.0f,
                         DangerPromptThreshold = 1.2f,
+                        BallContactRadius = 0.08f,
                         TrailStyle = "Default",
                         ColorTag = "Neutral",
                         PrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
@@ -91,6 +92,16 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         ScenePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
                         PaddlePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
                         DefaultPlayerCount = 3,
+                        ArenaHalfWidth = 2.81f,
+                        ArenaHalfHeight = 2.456f,
+                        PaddleInset = 0.18f,
+                        PaddleLength = 0.78f,
+                        PaddleThickness = 0.05f,
+                        GoalHalfLength = 1.06f,
+                        GoalTriggerInset = 0.14f,
+                        GoalContactLineInset = 0.04f,
+                        BoundaryPoints = CreateScene3v3BoundaryPoints(),
+                        GoalCenters = CreateScene3v3GoalCenters(),
                         PlayerSideBindings = new[]
                         {
                             CreatePlayerSideBinding(1, "Position01", 5),
@@ -197,6 +208,52 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 FinalPhaseBallSpeedScale = finalSpeedScale,
                 FinalPhaseCooldownScale = finalCooldownScale,
                 BallSpeedByTime = CreateDefaultBallSpeedByTime(),
+                TuningValues = CreateDefaultTuningValues(),
+            };
+        }
+
+        private static IReadOnlyDictionary<string, int> CreateDefaultTuningValues()
+        {
+            return new Dictionary<string, int>
+            {
+                ["HitOffsetInfluenceValue"] = 90,
+                ["PaddleVelocityInfluenceValue"] = 55,
+                ["MinimumOutwardShareValue"] = 25,
+            };
+        }
+
+        private static IReadOnlyList<MapVector2Definition> CreateScene3v3BoundaryPoints()
+        {
+            return new[]
+            {
+                CreateMapPoint(1.379f, -2.456f),
+                CreateMapPoint(2.809f, 0.021f),
+                CreateMapPoint(1.411f, 2.443f),
+                CreateMapPoint(-1.416f, 2.443f),
+                CreateMapPoint(-2.809f, 0.031f),
+                CreateMapPoint(-1.373f, -2.456f),
+            };
+        }
+
+        private static IReadOnlyList<MapVector2Definition> CreateScene3v3GoalCenters()
+        {
+            return new[]
+            {
+                CreateMapPoint(2.086f, -1.231f),
+                CreateMapPoint(2.118f, 1.218f),
+                CreateMapPoint(0f, 2.443f),
+                CreateMapPoint(-2.114f, 1.234f),
+                CreateMapPoint(-2.094f, -1.207f),
+                CreateMapPoint(0f, -2.456f),
+            };
+        }
+
+        private static MapVector2Definition CreateMapPoint(float x, float y)
+        {
+            return new MapVector2Definition
+            {
+                X = x,
+                Y = y,
             };
         }
 

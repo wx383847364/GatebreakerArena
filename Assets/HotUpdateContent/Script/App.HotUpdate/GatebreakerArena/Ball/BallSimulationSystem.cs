@@ -33,6 +33,7 @@ namespace App.HotUpdate.GatebreakerArena.Ball
                 BallState = BallState.Flying,
                 Position = position,
                 Velocity = normalized * rule.InitialSpeed,
+                ContactRadius = Math.Max(0.001f, rule.BallContactRadius),
             };
         }
 

@@ -58,11 +58,10 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             }
             else
             {
-                modeCatalog = GatebreakerModeCatalog.CreateDefault();
-                logger.LogWarning(
-                    "GatebreakerArenaGameBootstrap: 配置加载失败，Editor 原型回退默认值。reason={0}, message={1}",
+                throw new System.InvalidOperationException(string.Format(
+                    "GatebreakerArenaGameBootstrap: Gatebreaker 配置加载失败，正式玩法不能使用代码默认值。reason={0}, message={1}",
                     configLoadResult.FailureReason,
-                    configLoadResult.Message);
+                    configLoadResult.Message));
             }
 
             var ballSimulation = new BallSimulationSystem();

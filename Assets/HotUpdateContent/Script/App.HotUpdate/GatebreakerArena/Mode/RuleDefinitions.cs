@@ -26,6 +26,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float FinalPhaseBallSpeedScale { get; set; }
         public float FinalPhaseCooldownScale { get; set; }
         public IReadOnlyList<BallSpeedTimePointDefinition> BallSpeedByTime { get; set; }
+        public IReadOnlyDictionary<string, int> TuningValues { get; set; }
         public int CountdownSeconds => MatchDuration;
     }
 
@@ -47,6 +48,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float SpeedGainOnPaddleHit { get; set; }
         public float MinVerticalVelocity { get; set; }
         public float DangerPromptThreshold { get; set; }
+        public float BallContactRadius { get; set; }
         public string TrailStyle { get; set; }
         public string ColorTag { get; set; }
         public string PrefabLocation { get; set; }
@@ -85,7 +87,23 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public string ScenePrefabLocation { get; set; }
         public string PaddlePrefabLocation { get; set; }
         public int DefaultPlayerCount { get; set; }
+        public float ArenaHalfWidth { get; set; }
+        public float ArenaHalfHeight { get; set; }
+        public float PaddleInset { get; set; }
+        public float PaddleLength { get; set; }
+        public float PaddleThickness { get; set; }
+        public float GoalHalfLength { get; set; }
+        public float GoalTriggerInset { get; set; }
+        public float GoalContactLineInset { get; set; }
+        public IReadOnlyList<MapVector2Definition> BoundaryPoints { get; set; }
+        public IReadOnlyList<MapVector2Definition> GoalCenters { get; set; }
         public IReadOnlyList<MapPlayerSideBindingDefinition> PlayerSideBindings { get; set; }
+    }
+
+    public sealed class MapVector2Definition
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
     }
 
     public sealed class MapPlayerSideBindingDefinition

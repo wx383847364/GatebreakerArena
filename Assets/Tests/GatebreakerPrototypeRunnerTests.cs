@@ -259,7 +259,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void BallGoalContactRadiusUsesPrefabCircleColliderAndScale()
+        public void BallContactRadiusProbeUsesPrefabCircleColliderAndScale()
         {
             var root = new GameObject("Gatebreaker Prototype Runner Ball Radius Test");
             GameObject prefab = null;
@@ -272,7 +272,7 @@ namespace Gatebreaker.Tests
                 collider.radius = 0.2f;
 
                 object[] arguments = { prefab, 0f };
-                bool calculated = InvokePrivate<bool>(runner, "TryCalculateBallGoalContactRadius", arguments);
+                bool calculated = InvokePrivate<bool>(runner, "TryCalculateBallContactRadius", arguments);
                 float radius = (float)arguments[1];
                 float expectedSceneScale = InvokePrivate<float>(runner, "GetPrefabVisualUniformScale");
 

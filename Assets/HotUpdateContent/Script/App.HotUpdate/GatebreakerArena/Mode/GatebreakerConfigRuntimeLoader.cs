@@ -119,6 +119,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 FinalPhaseBallSpeedScale = ReadFloat(item, "FinalPhaseBallSpeedScale"),
                 FinalPhaseCooldownScale = ReadFloat(item, "FinalPhaseCooldownScale"),
                 BallSpeedByTime = ReadOptionalFloatPairList(item, "BallSpeedByTime"),
+                TuningValues = ReadTuningValues(item),
             };
         }
 
@@ -136,6 +137,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 SpeedGainOnPaddleHit = ReadFloat(item, "SpeedGainOnPaddleHit"),
                 MinVerticalVelocity = ReadFloat(item, "MinVerticalVelocity"),
                 DangerPromptThreshold = ReadFloat(item, "DangerPromptThreshold"),
+                BallContactRadius = ReadPositiveFloat(item, "BallContactRadius"),
                 TrailStyle = ReadString(item, "TrailStyle"),
                 ColorTag = ReadString(item, "ColorTag"),
                 PrefabLocation = ReadOptionalString(item, "PrefabLocation"),
@@ -174,12 +176,22 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 MaxServeAmmo = ReadOptionalInt(item, "MaxServeAmmo"),
                 MaxOwnedBallsInField = ReadOptionalInt(item, "MaxOwnedBallsInField"),
                 ServeRechargeSeconds = ReadOptionalFloat(item, "ServeRechargeSeconds"),
-                PaddleMoveSpeed = ReadOptionalFloat(item, "PaddleMoveSpeed") ?? 0f,
+                PaddleMoveSpeed = ReadPositiveFloat(item, "PaddleMoveSpeed"),
                 BallSpeedModifier = ReadFloat(item, "BallSpeedModifier"),
                 GoalSizeModifier = ReadFloat(item, "GoalSizeModifier"),
                 ScenePrefabLocation = ReadOptionalString(item, "ScenePrefabLocation"),
                 PaddlePrefabLocation = ReadOptionalString(item, "PaddlePrefabLocation"),
                 DefaultPlayerCount = ReadOptionalInt(item, "DefaultPlayerCount") ?? 0,
+                ArenaHalfWidth = ReadPositiveFloat(item, "ArenaHalfWidth"),
+                ArenaHalfHeight = ReadPositiveFloat(item, "ArenaHalfHeight"),
+                PaddleInset = ReadPositiveFloat(item, "PaddleInset"),
+                PaddleLength = ReadPositiveFloat(item, "PaddleLength"),
+                PaddleThickness = ReadPositiveFloat(item, "PaddleThickness"),
+                GoalHalfLength = ReadPositiveFloat(item, "GoalHalfLength"),
+                GoalTriggerInset = ReadNonNegativeFloat(item, "GoalTriggerInset"),
+                GoalContactLineInset = ReadNonNegativeFloat(item, "GoalContactLineInset"),
+                BoundaryPoints = ReadVector2Array(item, "BoundaryPoints", 3),
+                GoalCenters = ReadVector2Array(item, "GoalCenters", 1),
                 PlayerSideBindings = ReadOptionalArray(item, "PlayerSideBindings", ReadPlayerSideBinding),
             };
         }
@@ -260,6 +272,85 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             return result;
         }
 
+        private static IReadOnlyDictionary<string, int> ReadIntMap(Dictionary<string, object> item, string key)
+        {
+            object value = ReadRequired(item, key);
+
+            if (!(value is Dictionary<string, object> map))
+            {
+                throw new FormatException($"JSON field '{key}' must be an object.");
+            }
+
+            var result = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, object> pair in map)
+            {
+                if (pair.Value is double number)
+                {
+                    result[pair.Key] = Convert.ToInt32(number);
+                    continue;
+                }
+
+                if (pair.Value is string text && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
+                {
+                    result[pair.Key] = parsed;
+                    continue;
+                }
+
+                throw new FormatException($"'{key}.{pair.Key}' must be an integer.");
+            }
+
+            return result;
+        }
+
+        private static IReadOnlyDictionary<string, int> ReadTuningValues(Dictionary<string, object> item)
+        {
+            IReadOnlyDictionary<string, int> values = ReadIntMap(item, "TuningValues");
+            RequireTuningValue(values, "HitOffsetInfluenceValue");
+            RequireTuningValue(values, "PaddleVelocityInfluenceValue");
+            RequireTuningValue(values, "MinimumOutwardShareValue");
+            return values;
+        }
+
+        private static void RequireTuningValue(IReadOnlyDictionary<string, int> values, string key)
+        {
+            if (values == null || !values.ContainsKey(key))
+            {
+                throw new FormatException($"Missing required JSON field 'TuningValues.{key}'.");
+            }
+        }
+
+        private static IReadOnlyList<MapVector2Definition> ReadVector2Array(Dictionary<string, object> item, string key, int minCount)
+        {
+            object value = ReadRequired(item, key);
+
+            if (!(value is List<object> array))
+            {
+                throw new FormatException($"JSON field '{key}' must be an array.");
+            }
+
+            if (array.Count < minCount)
+            {
+                throw new FormatException($"JSON field '{key}' must contain at least {minCount} items.");
+            }
+
+            var result = new List<MapVector2Definition>(array.Count);
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (!(array[i] is Dictionary<string, object> point))
+                {
+                    throw new FormatException($"'{key}' item {i} must be an object.");
+                }
+
+                result.Add(new MapVector2Definition
+                {
+                    X = ReadFloat(point, "X"),
+                    Y = ReadFloat(point, "Y"),
+                });
+            }
+
+            return result;
+        }
+
         private static string ReadString(Dictionary<string, object> item, string key)
         {
             object value = ReadRequired(item, key);
@@ -312,6 +403,28 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 return parsed;
 
             throw new FormatException($"'{key}' must be a number.");
+        }
+
+        private static float ReadPositiveFloat(Dictionary<string, object> item, string key)
+        {
+            float value = ReadFloat(item, key);
+            if (value <= 0f)
+            {
+                throw new FormatException($"'{key}' must be greater than 0.");
+            }
+
+            return value;
+        }
+
+        private static float ReadNonNegativeFloat(Dictionary<string, object> item, string key)
+        {
+            float value = ReadFloat(item, key);
+            if (value < 0f)
+            {
+                throw new FormatException($"'{key}' must be greater than or equal to 0.");
+            }
+
+            return value;
         }
 
         private static bool ReadBool(Dictionary<string, object> item, string key)

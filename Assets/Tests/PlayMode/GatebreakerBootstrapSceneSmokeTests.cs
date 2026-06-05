@@ -94,7 +94,7 @@ namespace Gatebreaker.Tests.PlayMode
 
                 Assert.AreEqual(MatchPhase.Playing, context.MatchRuntime.Phase);
                 Assert.GreaterOrEqual(context.MatchRuntime.Players.Count, 2);
-                Assert.GreaterOrEqual(context.MatchRuntime.Balls.Count, 1);
+                Assert.AreEqual(0, context.MatchRuntime.Balls.Count);
 
                 var hud = context.HudPresenter.BuildSnapshot(1);
                 Assert.AreEqual(1, hud.LocalPlayerId);

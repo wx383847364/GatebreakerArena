@@ -8,8 +8,6 @@ namespace App.HotUpdate.GatebreakerArena.Match
 {
     public sealed class ArenaGeometry
     {
-        private const string Scene3v3PrefabName = "Scene3v3";
-
         public ArenaGeometry(
             float halfWidth,
             float halfHeight,
@@ -48,14 +46,60 @@ namespace App.HotUpdate.GatebreakerArena.Match
             MapRuleDefinition map,
             IReadOnlyList<int> activePlayerIds = null)
         {
-            if (map != null &&
-                !string.IsNullOrEmpty(map.ScenePrefabLocation) &&
-                map.ScenePrefabLocation.IndexOf(Scene3v3PrefabName, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (map == null)
             {
-                return CreateScene3v3(map, activePlayerIds);
+                return CreateDefault();
             }
 
-            return CreateDefault();
+            ValidateConfiguredMap(map);
+            return CreateConfiguredMap(map, activePlayerIds);
+        }
+
+        private static void ValidateConfiguredMap(MapRuleDefinition map)
+        {
+            if (map.BoundaryPoints == null || map.BoundaryPoints.Count < 3)
+            {
+                throw new InvalidOperationException($"Map '{map.MapId}' must configure at least 3 BoundaryPoints in JSON.");
+            }
+
+            if (map.GoalCenters == null || map.GoalCenters.Count == 0)
+            {
+                throw new InvalidOperationException($"Map '{map.MapId}' must configure GoalCenters in JSON.");
+            }
+
+            if (map.ArenaHalfWidth <= 0f ||
+                map.ArenaHalfHeight <= 0f ||
+                map.PaddleInset <= 0f ||
+                map.PaddleLength <= 0f ||
+                map.PaddleThickness <= 0f ||
+                map.PaddleMoveSpeed <= 0f ||
+                map.GoalHalfLength <= 0f ||
+                map.GoalTriggerInset < 0f ||
+                map.GoalContactLineInset < 0f)
+            {
+                throw new InvalidOperationException($"Map '{map.MapId}' must configure valid gameplay geometry values in JSON.");
+            }
+        }
+
+        private static ArenaGeometry CreateConfiguredMap(
+            MapRuleDefinition map,
+            IReadOnlyList<int> activePlayerIds)
+        {
+            IReadOnlyList<Vector2> points = ToVector2List(map.BoundaryPoints);
+            IReadOnlyList<Vector2> goalCenters = map.GoalCenters != null && map.GoalCenters.Count > 0
+                ? ToVector2List(map.GoalCenters)
+                : Array.Empty<Vector2>();
+            int[] goalOwners = CreateGoalOwners(map, activePlayerIds, points.Count);
+            float halfWidth = map.ArenaHalfWidth > 0f ? map.ArenaHalfWidth : CalculateHalfExtent(points, true);
+            float halfHeight = map.ArenaHalfHeight > 0f ? map.ArenaHalfHeight : CalculateHalfExtent(points, false);
+            return new ArenaGeometry(
+                halfWidth,
+                halfHeight,
+                map.PaddleInset,
+                map.PaddleLength,
+                map.PaddleThickness,
+                map.PaddleMoveSpeed,
+                CreateBoundarySegments(points, goalOwners, goalCenters, map.GoalHalfLength, map.GoalTriggerInset, map.GoalContactLineInset));
         }
 
         public static ArenaGeometry CreateScene3v3(
@@ -64,6 +108,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         {
             const float scene3v3GoalHalfLength = 1.06f;
             const float scene3v3GoalTriggerInset = 0.14f;
+            const float scene3v3GoalContactLineInset = 0.04f;
             const float scene3v3PaddleLength = 0.78f;
             const float scene3v3PaddleThickness = 0.05f;
             // Derived from Scene3v3 Position01..06 edge-center transforms and rotations.
@@ -77,7 +122,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 new Vector2(-1.373f, -2.456f),
             };
             // Only active child objects named "net" score: Position01, Position03, Position05.
-            int[] goalOwners = CreateScene3v3GoalOwners(map, activePlayerIds);
+            int[] goalOwners = CreateGoalOwners(map, activePlayerIds, points.Length);
             var goalCenters = new[]
             {
                 new Vector2(2.086f, -1.231f),
@@ -94,7 +139,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 scene3v3PaddleLength,
                 scene3v3PaddleThickness,
                 ResolvePaddleMoveSpeed(map, 3.2f),
-                CreateBoundarySegments(points, goalOwners, goalCenters, scene3v3GoalHalfLength, scene3v3GoalTriggerInset));
+                CreateBoundarySegments(points, goalOwners, goalCenters, scene3v3GoalHalfLength, scene3v3GoalTriggerInset, scene3v3GoalContactLineInset));
         }
 
         private static float ResolvePaddleMoveSpeed(MapRuleDefinition map, float defaultSpeed)
@@ -104,11 +149,18 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 : defaultSpeed;
         }
 
-        private static int[] CreateScene3v3GoalOwners(
+        private static int[] CreateGoalOwners(
             MapRuleDefinition map,
-            IReadOnlyList<int> activePlayerIds)
+            IReadOnlyList<int> activePlayerIds,
+            int segmentCount)
         {
-            var goalOwners = new[] { -1, -1, -1, -1, -1, -1 };
+            int safeSegmentCount = Math.Max(0, segmentCount);
+            var goalOwners = new int[safeSegmentCount];
+            for (int i = 0; i < goalOwners.Length; i++)
+            {
+                goalOwners[i] = -1;
+            }
+
             IReadOnlyList<MapPlayerSideBindingDefinition> bindings =
                 map?.PlayerSideBindings != null && map.PlayerSideBindings.Count > 0
                     ? map.PlayerSideBindings
@@ -134,6 +186,29 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             return goalOwners;
+        }
+
+        private static IReadOnlyList<Vector2> ToVector2List(IReadOnlyList<MapVector2Definition> points)
+        {
+            var result = new List<Vector2>(points.Count);
+            for (int i = 0; i < points.Count; i++)
+            {
+                MapVector2Definition point = points[i];
+                result.Add(point != null ? new Vector2(point.X, point.Y) : Vector2.zero);
+            }
+
+            return result;
+        }
+
+        private static float CalculateHalfExtent(IReadOnlyList<Vector2> points, bool xAxis)
+        {
+            float extent = 0f;
+            for (int i = 0; i < points.Count; i++)
+            {
+                extent = Math.Max(extent, Math.Abs(xAxis ? points[i].x : points[i].y));
+            }
+
+            return extent;
         }
 
         private static IReadOnlyList<MapPlayerSideBindingDefinition> CreateDefaultScene3v3PlayerSideBindings()
@@ -372,7 +447,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
             IReadOnlyList<int> goalOwners,
             IReadOnlyList<Vector2> goalCenters,
             float goalHalfLength,
-            float goalTriggerInset)
+            float goalTriggerInset,
+            float goalContactLineInset = 0f)
         {
             var segments = new List<ArenaBoundarySegment>(points.Count);
             for (int i = 0; i < points.Count; i++)
@@ -383,7 +459,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 Vector2 inwardNormal = new Vector2(-edge.y, edge.x).normalized;
                 int goalOwner = i < goalOwners.Count ? goalOwners[i] : -1;
                 Vector2 goalCenter = i < goalCenters.Count ? goalCenters[i] : (start + end) * 0.5f;
-                segments.Add(new ArenaBoundarySegment(start, end, inwardNormal, goalOwner, goalCenter, goalHalfLength, goalTriggerInset));
+                float activeGoalContactLineInset = goalOwner >= 0 ? goalContactLineInset : 0f;
+                segments.Add(new ArenaBoundarySegment(start, end, inwardNormal, goalOwner, goalCenter, goalHalfLength, goalTriggerInset, activeGoalContactLineInset));
             }
 
             return segments;
@@ -438,7 +515,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
             int goalPlayerIndex,
             Vector2 goalCenter,
             float goalHalfLength,
-            float goalTriggerInset)
+            float goalTriggerInset,
+            float goalContactLineInset = 0f)
         {
             Start = start;
             End = end;
@@ -447,6 +525,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             GoalCenter = goalCenter;
             GoalHalfLength = Math.Max(0f, goalHalfLength);
             GoalTriggerInset = Math.Max(0f, goalTriggerInset);
+            GoalContactLineInset = Math.Max(0f, goalContactLineInset);
         }
 
         public Vector2 Start { get; }
@@ -457,6 +536,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public Vector2 GoalCenter { get; }
         public float GoalHalfLength { get; }
         public float GoalTriggerInset { get; }
+        public float GoalContactLineInset { get; }
+        public Vector2 GoalContactCenter => GoalCenter + InwardNormal * GoalContactLineInset;
 
         public bool ContainsGoalPoint(Vector2 point)
         {
@@ -479,13 +560,15 @@ namespace App.HotUpdate.GatebreakerArena.Match
         {
             return GoalPlayerIndex >= 0 &&
                    ContainsGoalPoint(point) &&
-                   Vector2.Dot(point - GoalCenter, InwardNormal) <= Math.Max(0f, goalContactRadius);
+                   Vector2.Dot(point - GoalContactCenter, InwardNormal) <= Math.Max(0f, goalContactRadius);
         }
 
         public Vector2 GoalOuterStart => GoalCenter - Tangent * GoalHalfLength;
         public Vector2 GoalOuterEnd => GoalCenter + Tangent * GoalHalfLength;
-        public Vector2 GetGoalContactStart(float goalContactRadius) => GoalOuterStart + InwardNormal * Math.Max(0f, goalContactRadius);
-        public Vector2 GetGoalContactEnd(float goalContactRadius) => GoalOuterEnd + InwardNormal * Math.Max(0f, goalContactRadius);
+        public Vector2 GoalContactOuterStart => GoalContactCenter - Tangent * GoalHalfLength;
+        public Vector2 GoalContactOuterEnd => GoalContactCenter + Tangent * GoalHalfLength;
+        public Vector2 GetGoalContactStart(float goalContactRadius) => GoalContactOuterStart + InwardNormal * Math.Max(0f, goalContactRadius);
+        public Vector2 GetGoalContactEnd(float goalContactRadius) => GoalContactOuterEnd + InwardNormal * Math.Max(0f, goalContactRadius);
         public Vector2 GoalTriggerStart => GoalCenter - Tangent * GoalHalfLength + InwardNormal * GoalTriggerInset;
         public Vector2 GoalTriggerEnd => GoalCenter + Tangent * GoalHalfLength + InwardNormal * GoalTriggerInset;
     }
