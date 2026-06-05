@@ -35,8 +35,10 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(ScoreRuleType.TeamScore, mode.ScoreRuleType);
             Assert.AreEqual(OvertimeRuleType.TimedScore, mode.OvertimeRuleType);
-            Assert.AreEqual(180, mode.Time);
             Assert.AreEqual(180, mode.MatchDuration);
+            Assert.AreEqual(3, mode.BallSpeedByTime.Count);
+            Assert.AreEqual(15f, mode.BallSpeedByTime[0].TimeSeconds);
+            Assert.AreEqual(10f, mode.BallSpeedByTime[0].Speed);
             Assert.AreEqual(9.25f, ball.InitialSpeed);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball02.prefab", ball.PrefabLocation);
             Assert.AreEqual("Blue", result.Catalog.GetPlayerColor(2).ColorName);
@@ -46,6 +48,7 @@ namespace Gatebreaker.Tests
             CollectionAssert.AreEqual(new[] { 2, 4 }, map.SupportedPlayerCount);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
+            Assert.AreEqual(3.2f, map.PaddleMoveSpeed);
             Assert.AreEqual(3, map.DefaultPlayerCount);
             Assert.AreEqual(3, map.PlayerSideBindings.Count);
             Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);
@@ -135,7 +138,6 @@ namespace Gatebreaker.Tests
     {{
       ""ModeId"": ""PVP_TEAM"",
       ""ModeName"": ""Team"",
-      ""Time"": ""180"",
       ""MatchDuration"": ""180"",
       ""InitialBallsInMatch"": 2,
       ""MaxBallsInMatch"": 6,
@@ -153,7 +155,8 @@ namespace Gatebreaker.Tests
       ""AllowAimServe"": true,
       ""FinalPhaseStartTime"": 20,
       ""FinalPhaseBallSpeedScale"": 1.2,
-      ""FinalPhaseCooldownScale"": 0.8
+      ""FinalPhaseCooldownScale"": 0.8,
+      ""BallSpeedByTime"": [[15, 10], [30, 15], [45, 20]]
     }}
   ],
   ""DT_BallRule"": [
@@ -200,6 +203,7 @@ namespace Gatebreaker.Tests
       ""MaxServeAmmo"": 5,
       ""MaxOwnedBallsInField"": 4,
       ""ServeRechargeSeconds"": 4.0,
+      ""PaddleMoveSpeed"": 3.2,
       ""BallSpeedModifier"": 0.2,
       ""GoalSizeModifier"": -0.1,
       ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab"",

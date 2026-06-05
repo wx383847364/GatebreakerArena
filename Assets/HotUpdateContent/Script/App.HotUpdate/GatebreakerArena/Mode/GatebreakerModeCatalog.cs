@@ -85,6 +85,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         MaxServeAmmo = 5,
                         MaxOwnedBallsInField = 5,
                         ServeRechargeSeconds = 5f,
+                        PaddleMoveSpeed = 3.2f,
                         BallSpeedModifier = 0f,
                         GoalSizeModifier = 0f,
                         ScenePrefabLocation = "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
@@ -177,7 +178,6 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             {
                 ModeId = id,
                 ModeName = name,
-                Time = duration,
                 MatchDuration = duration,
                 InitialBallsInMatch = initialBalls,
                 MaxBallsInMatch = maxBalls,
@@ -196,6 +196,26 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 FinalPhaseStartTime = 30,
                 FinalPhaseBallSpeedScale = finalSpeedScale,
                 FinalPhaseCooldownScale = finalCooldownScale,
+                BallSpeedByTime = CreateDefaultBallSpeedByTime(),
+            };
+        }
+
+        private static IReadOnlyList<BallSpeedTimePointDefinition> CreateDefaultBallSpeedByTime()
+        {
+            return new[]
+            {
+                CreateBallSpeedTimePoint(15f, 10f),
+                CreateBallSpeedTimePoint(30f, 15f),
+                CreateBallSpeedTimePoint(45f, 20f),
+            };
+        }
+
+        private static BallSpeedTimePointDefinition CreateBallSpeedTimePoint(float timeSeconds, float speed)
+        {
+            return new BallSpeedTimePointDefinition
+            {
+                TimeSeconds = timeSeconds,
+                Speed = speed,
             };
         }
 

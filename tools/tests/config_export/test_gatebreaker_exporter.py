@@ -39,11 +39,15 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
 
             self.assertTrue(result.success, "\n".join(result.errors))
             self.assertEqual(result.payload["DT_ModeRule"][0]["ModeId"], "PVE_STANDARD")
-            self.assertEqual(result.payload["DT_ModeRule"][0]["Time"], 60)
             self.assertEqual(result.payload["DT_ModeRule"][0]["MatchDuration"], 60)
+            self.assertNotIn("Time", result.payload["DT_ModeRule"][0])
             self.assertEqual(result.payload["DT_ModeRule"][0]["MaxBallsInMatch"], 4)
+            self.assertEqual(result.payload["DT_ModeRule"][0]["BallSpeedByTime"], [[15, 10], [30, 15], [45, 20]])
             self.assertEqual(result.payload["DT_BallRule"][0]["InitialSpeed"], 5.25)
             self.assertEqual(result.payload["DT_BallRule"][0]["MaxSpeed"], 9.8)
+            self.assertEqual(result.payload["DT_MapRule"][0]["PaddleMoveSpeed"], 3.2)
+            self.assertIn("MatchDuration", result.payload["_FieldComments"]["DT_ModeRule"])
+            self.assertIn("PaddleMoveSpeed", result.payload["_FieldComments"]["DT_MapRule"])
             self.assertEqual(result.payload["DT_PlayerColorRule"][0]["PlayerId"], 1)
             self.assertEqual(result.payload["DT_PlayerColorRule"][0]["ColorName"], "Red")
             self.assertTrue(result.warnings)
@@ -79,7 +83,7 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             self.assertFalse(result.success)
             self.assertTrue(any("expected a non-empty array" in error for error in result.errors))
 
-    def test_mode_time_field_accepts_time_only(self) -> None:
+    def test_mode_time_field_accepts_legacy_time_only(self) -> None:
         with tempfile.TemporaryDirectory(prefix="gatebreaker_export_time_only_") as temp_dir:
             repo_root = Path(temp_dir) / "GatebreakerArena"
             config_root = repo_root / "Assets" / "Config"
@@ -91,8 +95,25 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             result = validate_all(repo_root, config_root, json_root, binary_root)
 
             self.assertTrue(result.success, "\n".join(result.errors))
-            self.assertEqual(result.payload["DT_ModeRule"][0]["Time"], 45)
             self.assertEqual(result.payload["DT_ModeRule"][0]["MatchDuration"], 45)
+            self.assertNotIn("Time", result.payload["DT_ModeRule"][0])
+
+    def test_mode_ball_speed_by_time_rejects_invalid_shape(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gatebreaker_export_ball_speed_invalid_") as temp_dir:
+            repo_root = Path(temp_dir) / "GatebreakerArena"
+            config_root = repo_root / "Assets" / "Config"
+            json_root = config_root / "json"
+            binary_root = repo_root / "Assets" / "HotUpdateContent" / "Config"
+            config_root.mkdir(parents=True)
+            (config_root / "DT_ModeRule.json").write_text(
+                json.dumps([_mode_row(Time=45, BallSpeedByTime=[[15, 10], [10, 20], [30]])]) + "\n",
+                encoding="utf-8")
+
+            result = validate_all(repo_root, config_root, json_root, binary_root)
+
+            self.assertFalse(result.success)
+            self.assertTrue(any("timeSeconds must increase" in error for error in result.errors))
+            self.assertTrue(any("expected [timeSeconds, speed]" in error for error in result.errors))
 
     def test_mode_time_field_accepts_legacy_match_duration_only(self) -> None:
         with tempfile.TemporaryDirectory(prefix="gatebreaker_export_duration_only_") as temp_dir:
@@ -106,8 +127,8 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             result = validate_all(repo_root, config_root, json_root, binary_root)
 
             self.assertTrue(result.success, "\n".join(result.errors))
-            self.assertEqual(result.payload["DT_ModeRule"][0]["Time"], 30)
             self.assertEqual(result.payload["DT_ModeRule"][0]["MatchDuration"], 30)
+            self.assertNotIn("Time", result.payload["DT_ModeRule"][0])
 
     def test_mode_time_field_rejects_conflicting_values(self) -> None:
         with tempfile.TemporaryDirectory(prefix="gatebreaker_export_time_conflict_") as temp_dir:

@@ -95,13 +95,12 @@ namespace App.HotUpdate.GatebreakerArena.Mode
 
         private static ModeRuleDefinition ReadMode(Dictionary<string, object> item)
         {
-            int time = ReadOptionalInt(item, "Time") ?? ReadInt(item, "MatchDuration");
+            int matchDuration = ReadOptionalInt(item, "MatchDuration") ?? ReadInt(item, "Time");
             return new ModeRuleDefinition
             {
                 ModeId = ReadString(item, "ModeId"),
                 ModeName = ReadString(item, "ModeName"),
-                Time = time,
-                MatchDuration = time,
+                MatchDuration = matchDuration,
                 InitialBallsInMatch = ReadInt(item, "InitialBallsInMatch"),
                 MaxBallsInMatch = ReadInt(item, "MaxBallsInMatch"),
                 BaseServeCooldown = ReadFloat(item, "BaseServeCooldown"),
@@ -119,6 +118,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 FinalPhaseStartTime = ReadInt(item, "FinalPhaseStartTime"),
                 FinalPhaseBallSpeedScale = ReadFloat(item, "FinalPhaseBallSpeedScale"),
                 FinalPhaseCooldownScale = ReadFloat(item, "FinalPhaseCooldownScale"),
+                BallSpeedByTime = ReadOptionalFloatPairList(item, "BallSpeedByTime"),
             };
         }
 
@@ -174,6 +174,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 MaxServeAmmo = ReadOptionalInt(item, "MaxServeAmmo"),
                 MaxOwnedBallsInField = ReadOptionalInt(item, "MaxOwnedBallsInField"),
                 ServeRechargeSeconds = ReadOptionalFloat(item, "ServeRechargeSeconds"),
+                PaddleMoveSpeed = ReadOptionalFloat(item, "PaddleMoveSpeed") ?? 0f,
                 BallSpeedModifier = ReadFloat(item, "BallSpeedModifier"),
                 GoalSizeModifier = ReadFloat(item, "GoalSizeModifier"),
                 ScenePrefabLocation = ReadOptionalString(item, "ScenePrefabLocation"),
@@ -373,6 +374,38 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             return result;
         }
 
+        private static IReadOnlyList<BallSpeedTimePointDefinition> ReadOptionalFloatPairList(
+            Dictionary<string, object> item,
+            string key)
+        {
+            if (!item.TryGetValue(key, out object value) || value == null)
+            {
+                return Array.Empty<BallSpeedTimePointDefinition>();
+            }
+
+            if (!(value is List<object> array))
+            {
+                throw new FormatException($"'{key}' must be an array.");
+            }
+
+            var result = new List<BallSpeedTimePointDefinition>(array.Count);
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (!(array[i] is List<object> pair) || pair.Count != 2)
+                {
+                    throw new FormatException($"'{key}' item {i} must be an array with exactly two numbers.");
+                }
+
+                result.Add(new BallSpeedTimePointDefinition
+                {
+                    TimeSeconds = ConvertToFloat(pair[0], $"{key}[{i}][0]"),
+                    Speed = ConvertToFloat(pair[1], $"{key}[{i}][1]"),
+                });
+            }
+
+            return result;
+        }
+
         private static object ReadRequired(Dictionary<string, object> item, string key)
         {
             if (!item.TryGetValue(key, out object value) || value == null)
@@ -381,6 +414,17 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             }
 
             return value;
+        }
+
+        private static float ConvertToFloat(object value, string key)
+        {
+            if (value is double number)
+                return Convert.ToSingle(number);
+
+            if (value is string text && float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed))
+                return parsed;
+
+            throw new FormatException($"'{key}' must be a number.");
         }
 
         private sealed class JsonValueParser

@@ -149,6 +149,116 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void LocalCountdownHidesExistingBallViews()
+        {
+            var root = new GameObject("Gatebreaker Prototype Runner Countdown Ball Test");
+            GameObject ballObject = null;
+            try
+            {
+                GatebreakerPrototypeRunner runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                ballObject = new GameObject("Ball 9");
+                ballObject.transform.SetParent(root.transform, false);
+                TrailRenderer trail = ballObject.AddComponent<TrailRenderer>();
+                trail.emitting = true;
+                Rigidbody2D body = ballObject.AddComponent<Rigidbody2D>();
+                body.simulated = true;
+
+                GetPrivateField<Dictionary<int, Transform>>(runner, "_ballViews")[9] = ballObject.transform;
+                SetStartupUiState(runner, "LocalCountdown");
+
+                InvokePrivate(runner, "SyncBallViews");
+
+                Assert.IsFalse(ballObject.activeSelf);
+                Assert.IsFalse(trail.emitting);
+                Assert.IsFalse(body.simulated);
+                ballObject = null;
+            }
+            finally
+            {
+                if (ballObject != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(ballObject);
+                }
+
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void ModeSelectHidesExistingBallViewsBeforeGameStarts()
+        {
+            var root = new GameObject("Gatebreaker Prototype Runner Mode Select Ball Test");
+            GameObject ballObject = null;
+            try
+            {
+                GatebreakerPrototypeRunner runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                ballObject = new GameObject("Ball 10");
+                ballObject.transform.SetParent(root.transform, false);
+                ballObject.SetActive(true);
+
+                GetPrivateField<Dictionary<int, Transform>>(runner, "_ballViews")[10] = ballObject.transform;
+                SetStartupUiState(runner, "ModeSelect");
+
+                InvokePrivate(runner, "SyncBallViews");
+
+                Assert.IsFalse(ballObject.activeSelf);
+                ballObject = null;
+            }
+            finally
+            {
+                if (ballObject != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(ballObject);
+                }
+
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void HiddenBallViewReactivatesWhenReusedAfterCountdown()
+        {
+            var root = new GameObject("Gatebreaker Prototype Runner Ball Reactivate Test");
+            GameObject ballObject = null;
+            try
+            {
+                GatebreakerPrototypeRunner runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                ballObject = new GameObject("Ball 12");
+                ballObject.transform.SetParent(root.transform, false);
+                TrailRenderer trail = ballObject.AddComponent<TrailRenderer>();
+                trail.emitting = false;
+                ballObject.SetActive(false);
+
+                GetPrivateField<Dictionary<int, Transform>>(runner, "_ballViews")[12] = ballObject.transform;
+                var ball = new BallRuntimeState
+                {
+                    BallId = 12,
+                    OwnerPlayerId = 1,
+                };
+
+                Transform view = InvokePrivate<Transform>(
+                    runner,
+                    "EnsureBallView",
+                    ball,
+                    new Vector3(0.5f, 1f, 0.35f));
+
+                Assert.AreSame(ballObject.transform, view);
+                Assert.IsTrue(ballObject.activeSelf);
+                Assert.IsTrue(trail.emitting);
+                ballObject = null;
+            }
+            finally
+            {
+                if (ballObject != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(ballObject);
+                }
+
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void BallGoalContactRadiusUsesPrefabCircleColliderAndScale()
         {
             var root = new GameObject("Gatebreaker Prototype Runner Ball Radius Test");
@@ -241,6 +351,13 @@ namespace Gatebreaker.Tests
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(field, fieldName);
             field.SetValue(target, value);
+        }
+
+        private static void SetStartupUiState(object target, string stateName)
+        {
+            Type stateType = target.GetType().GetNestedType("StartupUiState", BindingFlags.NonPublic);
+            Assert.IsNotNull(stateType);
+            SetPrivateField(target, "_startupUiState", Enum.Parse(stateType, stateName));
         }
 
         private static T GetPrivateField<T>(object target, string fieldName)

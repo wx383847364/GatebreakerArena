@@ -7,7 +7,6 @@ namespace App.HotUpdate.GatebreakerArena.Mode
     {
         public string ModeId { get; set; }
         public string ModeName { get; set; }
-        public int Time { get; set; }
         public int MatchDuration { get; set; }
         public int InitialBallsInMatch { get; set; }
         public int MaxBallsInMatch { get; set; }
@@ -26,7 +25,14 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int FinalPhaseStartTime { get; set; }
         public float FinalPhaseBallSpeedScale { get; set; }
         public float FinalPhaseCooldownScale { get; set; }
-        public int CountdownSeconds => Time > 0 ? Time : MatchDuration;
+        public IReadOnlyList<BallSpeedTimePointDefinition> BallSpeedByTime { get; set; }
+        public int CountdownSeconds => MatchDuration;
+    }
+
+    public sealed class BallSpeedTimePointDefinition
+    {
+        public float TimeSeconds { get; set; }
+        public float Speed { get; set; }
     }
 
     public sealed class BallRuleDefinition
@@ -73,6 +79,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int? MaxServeAmmo { get; set; }
         public int? MaxOwnedBallsInField { get; set; }
         public float? ServeRechargeSeconds { get; set; }
+        public float PaddleMoveSpeed { get; set; }
         public float BallSpeedModifier { get; set; }
         public float GoalSizeModifier { get; set; }
         public string ScenePrefabLocation { get; set; }

@@ -17,7 +17,6 @@ namespace Gatebreaker.Tests
             MapRuleDefinition map = catalog.GetMap("MAP_ARENA_01");
             EffectiveMatchRule effective = catalog.BuildEffectiveRule("PVE_STANDARD", "MAP_ARENA_01");
 
-            Assert.AreEqual(60, pve.Time);
             Assert.AreEqual(60, pve.MatchDuration);
             Assert.AreEqual(1, pve.InitialBallsInMatch);
             Assert.AreEqual(4, pve.MaxBallsInMatch);
@@ -26,6 +25,9 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(1, pve.MaxOwnedBallsInField);
             Assert.IsTrue(pve.AllowAimServe);
             Assert.AreEqual(OvertimeRuleType.SuddenDeath, pve.OvertimeRuleType);
+            Assert.AreEqual(3, pve.BallSpeedByTime.Count);
+            Assert.AreEqual(15f, pve.BallSpeedByTime[0].TimeSeconds);
+            Assert.AreEqual(10f, pve.BallSpeedByTime[0].Speed);
             Assert.AreEqual(5.25f, ball.InitialSpeed);
             Assert.AreEqual(9.8f, ball.MaxSpeed);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Ball01.prefab", ball.PrefabLocation);
@@ -38,6 +40,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
+            Assert.AreEqual(3.2f, map.PaddleMoveSpeed);
             Assert.AreEqual(3, map.DefaultPlayerCount);
             Assert.AreEqual(3, map.PlayerSideBindings.Count);
             Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);

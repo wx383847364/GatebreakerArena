@@ -1591,6 +1591,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void SyncBallViews()
         {
+            if (!ShouldShowBallViews())
+            {
+                HideLiveBallViews();
+                return;
+            }
+
             _liveBallIds.Clear();
             IReadOnlyList<BallRuntimeState> balls = _runtime.Balls;
             for (int i = 0; i < balls.Count; i++)
@@ -1615,11 +1621,42 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             RemoveStaleBallViews();
         }
 
+        private bool ShouldShowBallViews()
+        {
+            return _startupUiState == StartupUiState.LocalPlaying || IsLanPlaying();
+        }
+
+        private void HideLiveBallViews()
+        {
+            _liveBallIds.Clear();
+            foreach (KeyValuePair<int, Transform> pair in _ballViews)
+            {
+                Transform ballView = pair.Value;
+                if (ballView == null)
+                {
+                    continue;
+                }
+
+                DisableBallViewPhysics(ballView.gameObject);
+                SetBallTrailEmission(ballView.gameObject, false);
+                ballView.gameObject.SetActive(false);
+            }
+
+            _ballVisualPoses.Clear();
+            _scoredBallVisuals.Clear();
+        }
+
         private Transform EnsureBallView(BallRuntimeState ball, Vector3 initialPosition)
         {
             int ballId = ball != null ? ball.BallId : 0;
             if (_ballViews.TryGetValue(ballId, out Transform ballView))
             {
+                if (ballView != null && !ballView.gameObject.activeSelf)
+                {
+                    ballView.gameObject.SetActive(true);
+                    ResetBallTrails(ballView.gameObject, true);
+                }
+
                 return ballView;
             }
 

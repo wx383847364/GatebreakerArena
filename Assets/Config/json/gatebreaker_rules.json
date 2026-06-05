@@ -42,6 +42,7 @@
       "MaxBallsModifier": 16,
       "MaxOwnedBallsInField": 5,
       "MaxServeAmmo": 5,
+      "PaddleMoveSpeed": 3.2,
       "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
       "PlayerSideBindings": [
         {
@@ -74,6 +75,20 @@
   "DT_ModeRule": [
     {
       "AllowAimServe": true,
+      "BallSpeedByTime": [
+        [
+          15,
+          10
+        ],
+        [
+          30,
+          15
+        ],
+        [
+          45,
+          20
+        ]
+      ],
       "BaseServeCooldown": 6.0,
       "EnableOvertime": true,
       "FinalPhaseBallSpeedScale": 1.05,
@@ -92,11 +107,24 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "AddScore",
-      "Time": 60
+      "ScoreRuleType": "AddScore"
     },
     {
       "AllowAimServe": true,
+      "BallSpeedByTime": [
+        [
+          15,
+          10
+        ],
+        [
+          30,
+          15
+        ],
+        [
+          45,
+          20
+        ]
+      ],
       "BaseServeCooldown": 6.0,
       "EnableOvertime": true,
       "FinalPhaseBallSpeedScale": 1.1,
@@ -115,11 +143,24 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "AddScore",
-      "Time": 60
+      "ScoreRuleType": "AddScore"
     },
     {
       "AllowAimServe": true,
+      "BallSpeedByTime": [
+        [
+          15,
+          10
+        ],
+        [
+          30,
+          15
+        ],
+        [
+          45,
+          20
+        ]
+      ],
       "BaseServeCooldown": 6.5,
       "EnableOvertime": true,
       "FinalPhaseBallSpeedScale": 1.1,
@@ -138,8 +179,7 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "TeamScore",
-      "Time": 60
+      "ScoreRuleType": "TeamScore"
     }
   ],
   "DT_PlayerColorRule": [
@@ -176,5 +216,14 @@
       "Red": 1.0
     }
   ],
-  "Version": 1
+  "Version": 1,
+  "_FieldComments": {
+    "DT_MapRule": {
+      "PaddleMoveSpeed": "板子移动速度，单位为场景距离/秒；数值越大，玩家板子沿可移动方向移动越快，最终以策划填写的数据为准。"
+    },
+    "DT_ModeRule": {
+      "BallSpeedByTime": "球移动速度时间表，二维数组格式为 [[时间秒, 速度], ...]；例如 [[15,10],[30,15],[45,20]] 表示比赛进行到 15 秒、30 秒、45 秒时球速分别调整为 10、15、20。",
+      "MatchDuration": "比赛时间，单位秒；表示常规比赛从开局到时间结束的总时长，最终以策划填写的数据为准。"
+    }
+  }
 }

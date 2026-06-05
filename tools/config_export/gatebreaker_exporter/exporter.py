@@ -53,7 +53,10 @@ def export_all(repo_root: Path, config_root: Path, json_root: Path, binary_root:
 def _build_payload(config_root: Path) -> tuple[dict[str, Any], list[str], list[str]]:
     warnings: list[str] = []
     errors: list[str] = []
-    payload: dict[str, Any] = {"Version": 1}
+    payload: dict[str, Any] = {
+        "Version": 1,
+        "_FieldComments": _field_comments(),
+    }
 
     if not config_root.exists():
         warnings.append(f"Config directory is missing, using built-in GDD v0.3 defaults: {config_root}")
@@ -98,6 +101,7 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
                 errors.append(f"{table_name}[{index}]: missing required field {field}.")
         if table_name == "DT_ModeRule":
             _normalize_mode_time_fields(row, index, errors)
+            _validate_ball_speed_by_time(row, index, errors)
         if table_name == "DT_MapRule":
             _validate_map_player_side_bindings(row, index, errors)
 
@@ -106,19 +110,21 @@ def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[st
     has_time = _has_value(row, "Time")
     has_match_duration = _has_value(row, "MatchDuration")
     if not has_time and not has_match_duration:
-        errors.append(f"DT_ModeRule[{index}]: missing required field Time.")
+        errors.append(f"DT_ModeRule[{index}]: missing required field MatchDuration.")
         return
 
     if has_time and not has_match_duration:
         row["MatchDuration"] = row["Time"]
+        row.pop("Time", None)
         return
 
     if has_match_duration and not has_time:
-        row["Time"] = row["MatchDuration"]
         return
 
     if _normalize_number(row["Time"]) != _normalize_number(row["MatchDuration"]):
         errors.append(f"DT_ModeRule[{index}]: Time and MatchDuration must match.")
+
+    row.pop("Time", None)
 
 
 def _validate_map_player_side_bindings(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -158,12 +164,51 @@ def _validate_map_player_side_bindings(row: dict[str, Any], index: int, errors: 
             seen_segments.add(segment_index)
 
 
+def _validate_ball_speed_by_time(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    value = row.get("BallSpeedByTime")
+    if value is None:
+        return
+
+    if not isinstance(value, list):
+        errors.append(f"DT_ModeRule[{index}]: BallSpeedByTime must be an array.")
+        return
+
+    previous_time: float | None = None
+    for point_index, point in enumerate(value):
+        if not isinstance(point, list) or len(point) != 2:
+            errors.append(f"DT_ModeRule[{index}].BallSpeedByTime[{point_index}]: expected [timeSeconds, speed].")
+            continue
+
+        time_seconds = _normalize_float(point[0])
+        speed = _normalize_float(point[1])
+        if time_seconds is None:
+            errors.append(f"DT_ModeRule[{index}].BallSpeedByTime[{point_index}][0]: timeSeconds must be a number.")
+        elif time_seconds < 0:
+            errors.append(f"DT_ModeRule[{index}].BallSpeedByTime[{point_index}][0]: timeSeconds must be non-negative.")
+        elif previous_time is not None and time_seconds <= previous_time:
+            errors.append(f"DT_ModeRule[{index}].BallSpeedByTime[{point_index}][0]: timeSeconds must increase.")
+        else:
+            previous_time = time_seconds
+
+        if speed is None:
+            errors.append(f"DT_ModeRule[{index}].BallSpeedByTime[{point_index}][1]: speed must be a number.")
+        elif speed < 0:
+            errors.append(f"DT_ModeRule[{index}].BallSpeedByTime[{point_index}][1]: speed must be non-negative.")
+
+
 def _normalize_int(value: Any) -> int | None:
     try:
         number = int(value)
     except (TypeError, ValueError):
         return None
     return number
+
+
+def _normalize_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _has_value(row: dict[str, Any], field: str) -> bool:
@@ -186,7 +231,6 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
             {
                 "ModeId": "PVE_STANDARD",
                 "ModeName": "PVE标准",
-                "Time": 60,
                 "MatchDuration": 60,
                 "InitialBallsInMatch": 1,
                 "MaxBallsInMatch": 4,
@@ -205,11 +249,11 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
                 "FinalPhaseStartTime": 30,
                 "FinalPhaseBallSpeedScale": 1.05,
                 "FinalPhaseCooldownScale": 0.95,
+                "BallSpeedByTime": [[15, 10], [30, 15], [45, 20]],
             },
             {
                 "ModeId": "PVP_FFA",
                 "ModeName": "PVP乱斗",
-                "Time": 60,
                 "MatchDuration": 60,
                 "InitialBallsInMatch": 1,
                 "MaxBallsInMatch": 4,
@@ -228,11 +272,11 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
                 "FinalPhaseStartTime": 30,
                 "FinalPhaseBallSpeedScale": 1.10,
                 "FinalPhaseCooldownScale": 0.90,
+                "BallSpeedByTime": [[15, 10], [30, 15], [45, 20]],
             },
             {
                 "ModeId": "PVP_TEAM",
                 "ModeName": "PVP组队乱斗",
-                "Time": 60,
                 "MatchDuration": 60,
                 "InitialBallsInMatch": 1,
                 "MaxBallsInMatch": 4,
@@ -251,6 +295,7 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
                 "FinalPhaseStartTime": 30,
                 "FinalPhaseBallSpeedScale": 1.10,
                 "FinalPhaseCooldownScale": 0.92,
+                "BallSpeedByTime": [[15, 10], [30, 15], [45, 20]],
             },
         ],
         "DT_BallRule": [
@@ -297,6 +342,7 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
                 "MaxServeAmmo": 5,
                 "MaxOwnedBallsInField": 5,
                 "ServeRechargeSeconds": 5.0,
+                "PaddleMoveSpeed": 3.2,
                 "BallSpeedModifier": 0.0,
                 "GoalSizeModifier": 0.0,
                 "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
@@ -357,3 +403,15 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
         ],
     }
     return defaults[table_name]
+
+
+def _field_comments() -> dict[str, dict[str, str]]:
+    return {
+        "DT_ModeRule": {
+            "MatchDuration": "比赛时间，单位秒；表示常规比赛从开局到时间结束的总时长，最终以策划填写的数据为准。",
+            "BallSpeedByTime": "球移动速度时间表，二维数组格式为 [[时间秒, 速度], ...]；例如 [[15,10],[30,15],[45,20]] 表示比赛进行到 15 秒、30 秒、45 秒时球速分别调整为 10、15、20。",
+        },
+        "DT_MapRule": {
+            "PaddleMoveSpeed": "板子移动速度，单位为场景距离/秒；数值越大，玩家板子沿可移动方向移动越快，最终以策划填写的数据为准。",
+        },
+    }

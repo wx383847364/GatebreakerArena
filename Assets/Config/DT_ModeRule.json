@@ -2,7 +2,6 @@
   {
     "ModeId": "PVE_STANDARD",
     "ModeName": "PVE标准",
-    "Time": 60,
     "MatchDuration": 60,
     "InitialBallsInMatch": 1,
     "MaxBallsInMatch": 4,
@@ -20,12 +19,25 @@
     "AllowAimServe": true,
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.05,
-    "FinalPhaseCooldownScale": 0.95
+    "FinalPhaseCooldownScale": 0.95,
+    "BallSpeedByTime": [
+      [
+        15,
+        10
+      ],
+      [
+        30,
+        15
+      ],
+      [
+        45,
+        20
+      ]
+    ]
   },
   {
     "ModeId": "PVP_FFA",
     "ModeName": "PVP乱斗",
-    "Time": 60,
     "MatchDuration": 60,
     "InitialBallsInMatch": 1,
     "MaxBallsInMatch": 4,
@@ -43,12 +55,25 @@
     "AllowAimServe": true,
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.10,
-    "FinalPhaseCooldownScale": 0.90
+    "FinalPhaseCooldownScale": 0.90,
+    "BallSpeedByTime": [
+      [
+        15,
+        10
+      ],
+      [
+        30,
+        15
+      ],
+      [
+        45,
+        20
+      ]
+    ]
   },
   {
     "ModeId": "PVP_TEAM",
     "ModeName": "PVP组队乱斗",
-    "Time": 60,
     "MatchDuration": 60,
     "InitialBallsInMatch": 1,
     "MaxBallsInMatch": 4,
@@ -66,6 +91,20 @@
     "AllowAimServe": true,
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.10,
-    "FinalPhaseCooldownScale": 0.92
+    "FinalPhaseCooldownScale": 0.92,
+    "BallSpeedByTime": [
+      [
+        15,
+        10
+      ],
+      [
+        30,
+        15
+      ],
+      [
+        45,
+        20
+      ]
+    ]
   }
 ]

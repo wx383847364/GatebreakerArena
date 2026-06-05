@@ -93,8 +93,15 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 0.18f,
                 scene3v3PaddleLength,
                 scene3v3PaddleThickness,
-                3.2f,
+                ResolvePaddleMoveSpeed(map, 3.2f),
                 CreateBoundarySegments(points, goalOwners, goalCenters, scene3v3GoalHalfLength, scene3v3GoalTriggerInset));
+        }
+
+        private static float ResolvePaddleMoveSpeed(MapRuleDefinition map, float defaultSpeed)
+        {
+            return map != null && map.PaddleMoveSpeed > 0f
+                ? map.PaddleMoveSpeed
+                : defaultSpeed;
         }
 
         private static int[] CreateScene3v3GoalOwners(
