@@ -11,7 +11,7 @@
     "MaxServeAmmo": 5,
     "MaxOwnedBallsInField": 5,
     "ServeRechargeSeconds": 5.0,
-    "PaddleMoveSpeed": 3.2,
+    "PaddleMoveSpeed": 8,
     "BallSpeedModifier": 0.0,
     "GoalSizeModifier": 0.0,
     "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
