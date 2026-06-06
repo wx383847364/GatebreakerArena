@@ -1109,14 +1109,29 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 if (i < rows.Count)
                 {
                     PlayerScoreSnapshot score = rows[i];
-                    SetTextAt(_resultRankLabelTexts, i, $"No.{i + 1}:");
+                    SetTextAt(_resultRankLabelTexts, i, FormatResultRankLabel(i));
                     SetTextAt(_resultRankNameTexts, i, FormatResultPlayer(score, snapshot));
                 }
                 else
                 {
-                    SetTextAt(_resultRankLabelTexts, i, $"No.{i + 1}:");
+                    SetTextAt(_resultRankLabelTexts, i, FormatResultRankLabel(i));
                     SetTextAt(_resultRankNameTexts, i, string.Empty);
                 }
+            }
+        }
+
+        private static string FormatResultRankLabel(int rowIndex)
+        {
+            switch (rowIndex)
+            {
+                case 0:
+                    return "\u7B2C\u4E00\u540D:";
+                case 1:
+                    return "\u7B2C\u4E8C\u540D:";
+                case 2:
+                    return "\u7B2C\u4E09\u540D:";
+                default:
+                    return $"No.{rowIndex + 1}:";
             }
         }
 

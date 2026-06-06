@@ -131,7 +131,9 @@ namespace Gatebreaker.Tests
                 });
 
             Assert.IsTrue(_binding.ResultRoot.activeSelf);
-            Assert.AreEqual("No.1:", _binding.ResultRankLabelTexts[0].text);
+            Assert.AreEqual("\u7B2C\u4E00\u540D:", _binding.ResultRankLabelTexts[0].text);
+            Assert.AreEqual("\u7B2C\u4E8C\u540D:", _binding.ResultRankLabelTexts[1].text);
+            Assert.AreEqual("\u7B2C\u4E09\u540D:", _binding.ResultRankLabelTexts[2].text);
             StringAssert.Contains("Player3", _binding.ResultRankNameTexts[0].text);
             StringAssert.Contains("WIN", _binding.ResultRankNameTexts[0].text);
         }
