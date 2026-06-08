@@ -17,11 +17,29 @@ from gatebreaker_exporter import export_all, validate_all  # noqa: E402
 def _mode_row(**overrides: object) -> dict[str, object]:
     row: dict[str, object] = {
         "ModeId": "PVE_STANDARD",
-        "InitialBallsInMatch": 1,
+        "ModeName": "PVE标准",
+        "InitialBallsInMatch": 0,
         "MaxBallsInMatch": 4,
-        "InitialServeAmmo": 1,
+        "BaseServeCooldown": 6.0,
+        "InitialServeAmmo": 2,
         "MaxServeAmmo": 2,
         "MaxOwnedBallsInField": 1,
+        "GoalPauseTime": 0.4,
+        "ScoreRuleType": "AddScore",
+        "EnableOvertime": True,
+        "OvertimeRuleType": "SuddenDeath",
+        "OvertimeDuration": 60,
+        "OvertimeEligibleOnly": True,
+        "OvertimeWinScore": 1,
+        "AllowAimServe": True,
+        "FinalPhaseStartTime": 30,
+        "FinalPhaseBallSpeedScale": 1.05,
+        "FinalPhaseCooldownScale": 0.95,
+        "TuningValues": {
+            "HitOffsetInfluenceValue": 90,
+            "PaddleVelocityInfluenceValue": 55,
+            "MinimumOutwardShareValue": 25,
+        },
     }
     row.update(overrides)
     return row
@@ -41,11 +59,13 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             self.assertEqual(result.payload["DT_ModeRule"][0]["ModeId"], "PVE_STANDARD")
             self.assertEqual(result.payload["DT_ModeRule"][0]["MatchDuration"], 60)
             self.assertNotIn("Time", result.payload["DT_ModeRule"][0])
+            self.assertEqual(result.payload["DT_ModeRule"][0]["InitialBallsInMatch"], 0)
+            self.assertEqual(result.payload["DT_ModeRule"][0]["InitialServeAmmo"], 2)
             self.assertEqual(result.payload["DT_ModeRule"][0]["MaxBallsInMatch"], 4)
             self.assertEqual(result.payload["DT_ModeRule"][0]["BallSpeedByTime"], [[15, 10], [30, 15], [45, 20]])
             self.assertEqual(result.payload["DT_BallRule"][0]["InitialSpeed"], 5.25)
             self.assertEqual(result.payload["DT_BallRule"][0]["MaxSpeed"], 9.8)
-            self.assertEqual(result.payload["DT_MapRule"][0]["PaddleMoveSpeed"], 3.2)
+            self.assertEqual(result.payload["DT_MapRule"][0]["PaddleMoveSpeed"], 8)
             self.assertIn("MatchDuration", result.payload["_FieldComments"]["DT_ModeRule"])
             self.assertIn("PaddleMoveSpeed", result.payload["_FieldComments"]["DT_MapRule"])
             self.assertEqual(result.payload["DT_PlayerColorRule"][0]["PlayerId"], 1)
@@ -145,6 +165,22 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
 
             self.assertFalse(result.success)
             self.assertTrue(any("Time and MatchDuration must match" in error for error in result.errors))
+
+    def test_mode_rejects_missing_tuning_values(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gatebreaker_export_missing_tuning_") as temp_dir:
+            repo_root = Path(temp_dir) / "GatebreakerArena"
+            config_root = repo_root / "Assets" / "Config"
+            json_root = config_root / "json"
+            binary_root = repo_root / "Assets" / "HotUpdateContent" / "Config"
+            config_root.mkdir(parents=True)
+            row = _mode_row(MatchDuration=30)
+            row.pop("TuningValues")
+            (config_root / "DT_ModeRule.json").write_text(json.dumps([row]) + "\n", encoding="utf-8")
+
+            result = validate_all(repo_root, config_root, json_root, binary_root)
+
+            self.assertFalse(result.success)
+            self.assertTrue(any("TuningValues" in error for error in result.errors))
 
 
 if __name__ == "__main__":

@@ -3,10 +3,10 @@
     "ModeId": "PVE_STANDARD",
     "ModeName": "PVE标准",
     "MatchDuration": 60,
-    "InitialBallsInMatch": 1,
+    "InitialBallsInMatch": 0,
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.0,
-    "InitialServeAmmo": 1,
+    "InitialServeAmmo": 2,
     "MaxServeAmmo": 2,
     "MaxOwnedBallsInField": 1,
     "GoalPauseTime": 0.4,
@@ -20,6 +20,11 @@
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.05,
     "FinalPhaseCooldownScale": 0.95,
+    "TuningValues": {
+      "HitOffsetInfluenceValue": 90,
+      "PaddleVelocityInfluenceValue": 55,
+      "MinimumOutwardShareValue": 25
+    },
     "BallSpeedByTime": [
       [
         15,
@@ -39,10 +44,10 @@
     "ModeId": "PVP_FFA",
     "ModeName": "PVP乱斗",
     "MatchDuration": 60,
-    "InitialBallsInMatch": 1,
+    "InitialBallsInMatch": 0,
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.0,
-    "InitialServeAmmo": 1,
+    "InitialServeAmmo": 2,
     "MaxServeAmmo": 2,
     "MaxOwnedBallsInField": 1,
     "GoalPauseTime": 0.4,
@@ -56,6 +61,11 @@
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.10,
     "FinalPhaseCooldownScale": 0.90,
+    "TuningValues": {
+      "HitOffsetInfluenceValue": 90,
+      "PaddleVelocityInfluenceValue": 55,
+      "MinimumOutwardShareValue": 25
+    },
     "BallSpeedByTime": [
       [
         15,
@@ -75,10 +85,10 @@
     "ModeId": "PVP_TEAM",
     "ModeName": "PVP组队乱斗",
     "MatchDuration": 60,
-    "InitialBallsInMatch": 1,
+    "InitialBallsInMatch": 0,
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.5,
-    "InitialServeAmmo": 1,
+    "InitialServeAmmo": 2,
     "MaxServeAmmo": 2,
     "MaxOwnedBallsInField": 1,
     "GoalPauseTime": 0.4,
@@ -92,6 +102,11 @@
     "FinalPhaseStartTime": 30,
     "FinalPhaseBallSpeedScale": 1.10,
     "FinalPhaseCooldownScale": 0.92,
+    "TuningValues": {
+      "HitOffsetInfluenceValue": 90,
+      "PaddleVelocityInfluenceValue": 55,
+      "MinimumOutwardShareValue": 25
+    },
     "BallSpeedByTime": [
       [
         15,

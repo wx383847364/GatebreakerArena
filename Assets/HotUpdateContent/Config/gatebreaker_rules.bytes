@@ -15,6 +15,7 @@
   ],
   "DT_BallRule": [
     {
+      "BallContactRadius": 0.08,
       "BallTypeId": "BALL_NORMAL",
       "BallTypeName": "普通球",
       "ColorTag": "Neutral",
@@ -26,31 +27,15 @@
       "PaddleBounceFactor": 1.0,
       "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
       "SpeedGainOnPaddleHit": 0.15,
-      "BallContactRadius": 0.08,
       "TrailStyle": "Default",
       "WallBounceFactor": 1.0
     }
   ],
   "DT_MapRule": [
     {
-      "BallSpeedModifier": 0.0,
-      "DefaultPlayerCount": 3,
-      "GoalSizeModifier": 0.0,
-      "HasObstacle": false,
-      "InitialBallsModifier": 0,
-      "MapId": "MAP_ARENA_01",
-      "MapName": "标准四边场",
-      "MaxBallsModifier": 16,
-      "MaxOwnedBallsInField": 5,
-      "MaxServeAmmo": 5,
-      "ArenaHalfWidth": 2.81,
       "ArenaHalfHeight": 2.456,
-      "PaddleInset": 0.18,
-      "PaddleLength": 0.78,
-      "PaddleThickness": 0.05,
-      "GoalHalfLength": 1.06,
-      "GoalTriggerInset": 0.14,
-      "GoalContactLineInset": 0.04,
+      "ArenaHalfWidth": 2.81,
+      "BallSpeedModifier": 0.0,
       "BoundaryPoints": [
         {
           "X": 1.379,
@@ -77,6 +62,7 @@
           "Y": -2.456
         }
       ],
+      "DefaultPlayerCount": 3,
       "GoalCenters": [
         {
           "X": 2.086,
@@ -103,8 +89,22 @@
           "Y": -2.456
         }
       ],
-      "PaddleMoveSpeed": 3.2,
+      "GoalContactLineInset": 0.04,
+      "GoalHalfLength": 1.0586,
+      "GoalSizeModifier": 0.0,
+      "GoalTriggerInset": 0.14,
+      "HasObstacle": false,
+      "InitialBallsModifier": 0,
+      "MapId": "MAP_ARENA_01",
+      "MapName": "标准四边场",
+      "MaxBallsModifier": 16,
+      "MaxOwnedBallsInField": 5,
+      "MaxServeAmmo": 5,
+      "PaddleInset": 0.18,
+      "PaddleLength": 0.78,
+      "PaddleMoveSpeed": 8,
       "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+      "PaddleThickness": 0.05,
       "PlayerSideBindings": [
         {
           "BoundarySegmentIndex": 5,
@@ -139,15 +139,15 @@
       "BallSpeedByTime": [
         [
           15,
-          10
+          7
         ],
         [
           30,
-          15
+          9
         ],
         [
           45,
-          20
+          12
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -155,11 +155,6 @@
       "FinalPhaseBallSpeedScale": 1.05,
       "FinalPhaseCooldownScale": 0.95,
       "FinalPhaseStartTime": 30,
-      "TuningValues": {
-        "HitOffsetInfluenceValue": 90,
-        "PaddleVelocityInfluenceValue": 55,
-        "MinimumOutwardShareValue": 25
-      },
       "GoalPauseTime": 0.4,
       "InitialBallsInMatch": 0,
       "InitialServeAmmo": 2,
@@ -173,22 +168,27 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "AddScore"
+      "ScoreRuleType": "AddScore",
+      "TuningValues": {
+        "HitOffsetInfluenceValue": 90,
+        "MinimumOutwardShareValue": 25,
+        "PaddleVelocityInfluenceValue": 55
+      }
     },
     {
       "AllowAimServe": true,
       "BallSpeedByTime": [
         [
           15,
-          10
+          7
         ],
         [
           30,
-          15
+          9
         ],
         [
           45,
-          20
+          12
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -196,11 +196,6 @@
       "FinalPhaseBallSpeedScale": 1.1,
       "FinalPhaseCooldownScale": 0.9,
       "FinalPhaseStartTime": 30,
-      "TuningValues": {
-        "HitOffsetInfluenceValue": 90,
-        "PaddleVelocityInfluenceValue": 55,
-        "MinimumOutwardShareValue": 25
-      },
       "GoalPauseTime": 0.4,
       "InitialBallsInMatch": 0,
       "InitialServeAmmo": 2,
@@ -214,22 +209,27 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "AddScore"
+      "ScoreRuleType": "AddScore",
+      "TuningValues": {
+        "HitOffsetInfluenceValue": 90,
+        "MinimumOutwardShareValue": 25,
+        "PaddleVelocityInfluenceValue": 55
+      }
     },
     {
       "AllowAimServe": true,
       "BallSpeedByTime": [
         [
           15,
-          10
+          7
         ],
         [
           30,
-          15
+          9
         ],
         [
           45,
-          20
+          12
         ]
       ],
       "BaseServeCooldown": 6.5,
@@ -237,11 +237,6 @@
       "FinalPhaseBallSpeedScale": 1.1,
       "FinalPhaseCooldownScale": 0.92,
       "FinalPhaseStartTime": 30,
-      "TuningValues": {
-        "HitOffsetInfluenceValue": 90,
-        "PaddleVelocityInfluenceValue": 55,
-        "MinimumOutwardShareValue": 25
-      },
       "GoalPauseTime": 0.4,
       "InitialBallsInMatch": 0,
       "InitialServeAmmo": 2,
@@ -255,7 +250,12 @@
       "OvertimeEligibleOnly": true,
       "OvertimeRuleType": "SuddenDeath",
       "OvertimeWinScore": 1,
-      "ScoreRuleType": "TeamScore"
+      "ScoreRuleType": "TeamScore",
+      "TuningValues": {
+        "HitOffsetInfluenceValue": 90,
+        "MinimumOutwardShareValue": 25,
+        "PaddleVelocityInfluenceValue": 55
+      }
     }
   ],
   "DT_PlayerColorRule": [
@@ -294,12 +294,18 @@
   ],
   "Version": 1,
   "_FieldComments": {
+    "DT_BallRule": {
+      "BallContactRadius": "球体碰撞半径，单位为场景距离；用于球与边界、球门和挡板碰撞判定。"
+    },
     "DT_MapRule": {
+      "BoundaryPoints": "场地边界点，按顺时针或逆时针顺序填写；运行时用相邻点生成碰撞边。",
+      "GoalCenters": "每条边对应的球门中心点；数量应与边界段数量匹配。",
       "PaddleMoveSpeed": "板子移动速度，单位为场景距离/秒；数值越大，玩家板子沿可移动方向移动越快，最终以策划填写的数据为准。"
     },
     "DT_ModeRule": {
       "BallSpeedByTime": "球移动速度时间表，二维数组格式为 [[时间秒, 速度], ...]；例如 [[15,10],[30,15],[45,20]] 表示比赛进行到 15 秒、30 秒、45 秒时球速分别调整为 10、15、20。",
-      "MatchDuration": "比赛时间，单位秒；表示常规比赛从开局到时间结束的总时长，最终以策划填写的数据为准。"
+      "MatchDuration": "比赛时间，单位秒；表示常规比赛从开局到时间结束的总时长，最终以策划填写的数据为准。",
+      "TuningValues": "弹板反弹调参，包含 HitOffsetInfluenceValue、PaddleVelocityInfluenceValue、MinimumOutwardShareValue，运行时按整数档位换算为实际系数。"
     }
   }
 }

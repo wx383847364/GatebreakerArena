@@ -40,7 +40,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
-            Assert.AreEqual(3.2f, map.PaddleMoveSpeed);
+            Assert.AreEqual(8f, map.PaddleMoveSpeed);
             Assert.AreEqual(3, map.DefaultPlayerCount);
             Assert.AreEqual(3, map.PlayerSideBindings.Count);
             Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);

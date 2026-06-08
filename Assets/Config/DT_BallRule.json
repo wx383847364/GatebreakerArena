@@ -10,6 +10,7 @@
     "SpeedGainOnPaddleHit": 0.15,
     "MinVerticalVelocity": 2.0,
     "DangerPromptThreshold": 1.2,
+    "BallContactRadius": 0.08,
     "TrailStyle": "Default",
     "ColorTag": "Neutral",
     "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab"
