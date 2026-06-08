@@ -1885,7 +1885,6 @@ namespace App.HotUpdate.GatebreakerArena.Match
             LastGoalContactPosition = ball.Position;
             string diagnostic = BuildGoalContactDiagnostic(ball, playerIndex, source);
             LastGoalContactDiagnostic = diagnostic;
-            _logger?.LogInfo("Gatebreaker goal contact: {0}", diagnostic);
         }
 
         private string BuildGoalContactDiagnostic(BallRuntimeState ball, int playerIndex, string source)

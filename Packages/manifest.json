@@ -5,10 +5,6 @@
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.collab-proxy": "2.5.1",
     "com.unity.feature.development": "1.0.1",
-    "com.unity.textmeshpro": "3.0.9",
-    "com.unity.timeline": "1.7.7",
-    "com.unity.ugui": "1.0.0",
-    "com.unity.visualscripting": "1.9.4",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.animation": "1.0.0",
@@ -39,15 +35,26 @@
     "com.unity.modules.video": "1.0.0",
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
-    "com.unity.modules.xr": "1.0.0"
+    "com.unity.modules.xr": "1.0.0",
+    "com.unity.textmeshpro": "3.0.9",
+    "com.unity.timeline": "1.7.7",
+    "com.unity.ugui": "1.0.0",
+    "com.unity.visualscripting": "1.9.4",
+    "com.wx.foundation.hybridclr": "git@github.com:wx383847364/GameStartKit.git?path=/Packages/com.wx.foundation.hybridclr#v0.1.4",
+    "com.wx.foundation.runtime": "git@github.com:wx383847364/GameStartKit.git?path=/Packages/com.wx.foundation.runtime#v0.1.4",
+    "com.wx.foundation.shared": "git@github.com:wx383847364/GameStartKit.git?path=/Packages/com.wx.foundation.shared#v0.1.4",
+    "com.wx.foundation.tools": "git@github.com:wx383847364/GameStartKit.git?path=/Packages/com.wx.foundation.tools#v0.1.4",
+    "com.wx.foundation.ui": "git@github.com:wx383847364/GameStartKit.git?path=/Packages/com.wx.foundation.ui#v0.1.4",
+    "com.wx.foundation.unity-contracts": "git@github.com:wx383847364/GameStartKit.git?path=/Packages/com.wx.foundation.unity-contracts#v0.1.4",
+    "com.wx.foundation.yoo": "git@github.com:wx383847364/GameStartKit.git?path=/Packages/com.wx.foundation.yoo#v0.1.4"
   },
   "scopedRegistries": [
     {
       "name": "package.openupm.com",
-      "url": "https://package.openupm.com",
       "scopes": [
         "com.tuyoogame.yooasset"
-      ]
+      ],
+      "url": "https://package.openupm.com"
     }
   ]
 }
