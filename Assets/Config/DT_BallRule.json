@@ -2,7 +2,7 @@
   {
     "BallTypeId": "BALL_NORMAL",
     "BallTypeName": "普通球",
-    "InitialSpeed": 5.25,
+    "InitialSpeed": 3,
     "MaxSpeed": 9.8,
     "PaddleBounceFactor": 1.0,
     "WallBounceFactor": 1.0,
