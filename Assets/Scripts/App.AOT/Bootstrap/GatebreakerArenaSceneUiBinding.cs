@@ -27,6 +27,18 @@ namespace App.AOT.Bootstrap
         [SerializeField] private TMP_Text _timeText;
         [SerializeField] private TMP_Text[] _playerScoreTexts;
         [SerializeField] private TMP_Text[] _playerHitTexts;
+        [SerializeField] private GameObject _topPanel2PRoot;
+        [SerializeField] private GameObject _topPanel3PRoot;
+        [SerializeField] private GameObject _topPanel4PRoot;
+        [SerializeField] private TMP_Text _topPanel2PTimeText;
+        [SerializeField] private TMP_Text _topPanel3PTimeText;
+        [SerializeField] private TMP_Text _topPanel4PTimeText;
+        [SerializeField] private TMP_Text[] _playerScore2PTexts;
+        [SerializeField] private TMP_Text[] _playerHit2PTexts;
+        [SerializeField] private TMP_Text[] _playerScore3PTexts;
+        [SerializeField] private TMP_Text[] _playerHit3PTexts;
+        [SerializeField] private TMP_Text[] _playerScore4PTexts;
+        [SerializeField] private TMP_Text[] _playerHit4PTexts;
         [SerializeField] private GameObject _resultRoot;
         [SerializeField] private TMP_Text _resultTitleText;
         [SerializeField] private TMP_Text _resultBodyText;
@@ -88,6 +100,18 @@ namespace App.AOT.Bootstrap
         public Object TimeTextObject => _timeText;
         public Object[] PlayerScoreTextObjects => _playerScoreTexts;
         public Object[] PlayerHitTextObjects => _playerHitTexts;
+        public Object TopPanel2PRootObject => _topPanel2PRoot;
+        public Object TopPanel3PRootObject => _topPanel3PRoot;
+        public Object TopPanel4PRootObject => _topPanel4PRoot;
+        public Object TopPanel2PTimeTextObject => _topPanel2PTimeText;
+        public Object TopPanel3PTimeTextObject => _topPanel3PTimeText;
+        public Object TopPanel4PTimeTextObject => _topPanel4PTimeText;
+        public Object[] PlayerScore2PTextObjects => _playerScore2PTexts;
+        public Object[] PlayerHit2PTextObjects => _playerHit2PTexts;
+        public Object[] PlayerScore3PTextObjects => _playerScore3PTexts;
+        public Object[] PlayerHit3PTextObjects => _playerHit3PTexts;
+        public Object[] PlayerScore4PTextObjects => _playerScore4PTexts;
+        public Object[] PlayerHit4PTextObjects => _playerHit4PTexts;
         public Object ResultRootObject => _resultRoot;
         public Object ResultTitleTextObject => _resultTitleText;
         public Object ResultBodyTextObject => _resultBodyText;
@@ -144,6 +168,18 @@ namespace App.AOT.Bootstrap
             _timeText != null &&
             HasTextBindings(_playerScoreTexts) &&
             HasTextBindings(_playerHitTexts) &&
+            _topPanel2PRoot != null &&
+            _topPanel3PRoot != null &&
+            _topPanel4PRoot != null &&
+            _topPanel2PTimeText != null &&
+            _topPanel3PTimeText != null &&
+            _topPanel4PTimeText != null &&
+            HasExactTextBindings(_playerScore2PTexts, 2) &&
+            HasExactTextBindings(_playerHit2PTexts, 2) &&
+            HasExactTextBindings(_playerScore3PTexts, 3) &&
+            HasExactTextBindings(_playerHit3PTexts, 3) &&
+            HasExactTextBindings(_playerScore4PTexts, 4) &&
+            HasExactTextBindings(_playerHit4PTexts, 4) &&
             _resultRoot != null &&
             _resultTitleText != null &&
             HasTextBindings(_resultRankLabelTexts) &&
@@ -220,6 +256,13 @@ namespace App.AOT.Bootstrap
             }
 
             return true;
+        }
+
+        private static bool HasExactTextBindings(TMP_Text[] texts, int expectedLength)
+        {
+            return texts != null &&
+                   texts.Length == expectedLength &&
+                   HasTextBindings(texts);
         }
     }
 }

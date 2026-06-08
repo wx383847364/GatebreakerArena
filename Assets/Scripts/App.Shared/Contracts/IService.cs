@@ -190,6 +190,18 @@ namespace App.Shared.Contracts
         UnityEngine.Object TimeTextObject { get; }
         UnityEngine.Object[] PlayerScoreTextObjects { get; }
         UnityEngine.Object[] PlayerHitTextObjects { get; }
+        UnityEngine.Object TopPanel2PRootObject { get; }
+        UnityEngine.Object TopPanel3PRootObject { get; }
+        UnityEngine.Object TopPanel4PRootObject { get; }
+        UnityEngine.Object TopPanel2PTimeTextObject { get; }
+        UnityEngine.Object TopPanel3PTimeTextObject { get; }
+        UnityEngine.Object TopPanel4PTimeTextObject { get; }
+        UnityEngine.Object[] PlayerScore2PTextObjects { get; }
+        UnityEngine.Object[] PlayerHit2PTextObjects { get; }
+        UnityEngine.Object[] PlayerScore3PTextObjects { get; }
+        UnityEngine.Object[] PlayerHit3PTextObjects { get; }
+        UnityEngine.Object[] PlayerScore4PTextObjects { get; }
+        UnityEngine.Object[] PlayerHit4PTextObjects { get; }
         UnityEngine.Object ResultRootObject { get; }
         UnityEngine.Object ResultTitleTextObject { get; }
         UnityEngine.Object ResultBodyTextObject { get; }

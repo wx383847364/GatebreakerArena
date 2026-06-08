@@ -77,6 +77,15 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private TMP_Text _timeText;
         private TMP_Text[] _playerScoreTexts = Array.Empty<TMP_Text>();
         private TMP_Text[] _playerHitTexts = Array.Empty<TMP_Text>();
+        private TMP_Text _topPanel2PTimeText;
+        private TMP_Text _topPanel3PTimeText;
+        private TMP_Text _topPanel4PTimeText;
+        private TMP_Text[] _playerScore2PTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _playerHit2PTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _playerScore3PTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _playerHit3PTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _playerScore4PTexts = Array.Empty<TMP_Text>();
+        private TMP_Text[] _playerHit4PTexts = Array.Empty<TMP_Text>();
         private TMP_Text _resultTitleText;
         private TMP_Text _resultBodyText;
         private TMP_Text _resultScoreText;
@@ -100,6 +109,9 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private Slider _gmPaddleVelocitySlider;
         private Slider _gmMinimumOutwardSlider;
         private GameObject _hudRoot;
+        private GameObject _topPanel2PRoot;
+        private GameObject _topPanel3PRoot;
+        private GameObject _topPanel4PRoot;
         private GameObject _resultRoot;
         private GameObject _gmRoot;
         private GameObject _lanRoot;
@@ -123,8 +135,18 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _gmMinimumOutwardSlider != null;
 
         public bool HasPlayerScorePanelBindings =>
-            HasTextArrayBindings(_playerScoreTexts) &&
-            HasTextArrayBindings(_playerHitTexts);
+            _topPanel2PRoot != null &&
+            _topPanel3PRoot != null &&
+            _topPanel4PRoot != null &&
+            _topPanel2PTimeText != null &&
+            _topPanel3PTimeText != null &&
+            _topPanel4PTimeText != null &&
+            HasExactTextArrayBindings(_playerScore2PTexts, 2) &&
+            HasExactTextArrayBindings(_playerHit2PTexts, 2) &&
+            HasExactTextArrayBindings(_playerScore3PTexts, 3) &&
+            HasExactTextArrayBindings(_playerHit3PTexts, 3) &&
+            HasExactTextArrayBindings(_playerScore4PTexts, 4) &&
+            HasExactTextArrayBindings(_playerHit4PTexts, 4);
 
         public bool HasLanButtonBindings =>
             _lanCreateButton != null &&
@@ -187,6 +209,18 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _timeText = Require<TMP_Text>(binding.TimeTextObject, nameof(binding.TimeTextObject));
             _playerScoreTexts = RequireTextArray(binding.PlayerScoreTextObjects, nameof(binding.PlayerScoreTextObjects));
             _playerHitTexts = RequireTextArray(binding.PlayerHitTextObjects, nameof(binding.PlayerHitTextObjects));
+            _topPanel2PRoot = RequireGameObject(binding.TopPanel2PRootObject, nameof(binding.TopPanel2PRootObject));
+            _topPanel3PRoot = RequireGameObject(binding.TopPanel3PRootObject, nameof(binding.TopPanel3PRootObject));
+            _topPanel4PRoot = RequireGameObject(binding.TopPanel4PRootObject, nameof(binding.TopPanel4PRootObject));
+            _topPanel2PTimeText = Require<TMP_Text>(binding.TopPanel2PTimeTextObject, nameof(binding.TopPanel2PTimeTextObject));
+            _topPanel3PTimeText = Require<TMP_Text>(binding.TopPanel3PTimeTextObject, nameof(binding.TopPanel3PTimeTextObject));
+            _topPanel4PTimeText = Require<TMP_Text>(binding.TopPanel4PTimeTextObject, nameof(binding.TopPanel4PTimeTextObject));
+            _playerScore2PTexts = RequireTextArray(binding.PlayerScore2PTextObjects, nameof(binding.PlayerScore2PTextObjects));
+            _playerHit2PTexts = RequireTextArray(binding.PlayerHit2PTextObjects, nameof(binding.PlayerHit2PTextObjects));
+            _playerScore3PTexts = RequireTextArray(binding.PlayerScore3PTextObjects, nameof(binding.PlayerScore3PTextObjects));
+            _playerHit3PTexts = RequireTextArray(binding.PlayerHit3PTextObjects, nameof(binding.PlayerHit3PTextObjects));
+            _playerScore4PTexts = RequireTextArray(binding.PlayerScore4PTextObjects, nameof(binding.PlayerScore4PTextObjects));
+            _playerHit4PTexts = RequireTextArray(binding.PlayerHit4PTextObjects, nameof(binding.PlayerHit4PTextObjects));
             _resultRoot = RequireGameObject(binding.ResultRootObject, nameof(binding.ResultRootObject));
             _resultTitleText = Require<TMP_Text>(binding.ResultTitleTextObject, nameof(binding.ResultTitleTextObject));
             _resultBodyText = Optional<TMP_Text>(binding.ResultBodyTextObject);
@@ -283,13 +317,14 @@ namespace App.HotUpdate.GatebreakerArena.UI
             UpdateBallCount(snapshot);
             if (snapshot == null)
             {
-                SetText(_timeText, FormatTime(0f));
+                UpdateTimeText(0f);
+                UpdatePlayerScorePanel(null);
                 return;
             }
 
+            UpdateTimeText(snapshot.RemainingTime);
             SetText(_hudTitleText, "Gatebreaker Arena 原型");
             SetText(_hudStatusText, $"阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}");
-            SetText(_timeText, FormatTime(snapshot.RemainingTime));
             SetText(_hudScoreText, $"比分：{FormatScoreLine(snapshot)}");
             UpdatePlayerScorePanel(snapshot);
             SetText(
@@ -506,6 +541,15 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _timeText = null;
             _playerScoreTexts = Array.Empty<TMP_Text>();
             _playerHitTexts = Array.Empty<TMP_Text>();
+            _topPanel2PTimeText = null;
+            _topPanel3PTimeText = null;
+            _topPanel4PTimeText = null;
+            _playerScore2PTexts = Array.Empty<TMP_Text>();
+            _playerHit2PTexts = Array.Empty<TMP_Text>();
+            _playerScore3PTexts = Array.Empty<TMP_Text>();
+            _playerHit3PTexts = Array.Empty<TMP_Text>();
+            _playerScore4PTexts = Array.Empty<TMP_Text>();
+            _playerHit4PTexts = Array.Empty<TMP_Text>();
             _resultTitleText = null;
             _resultBodyText = null;
             _resultScoreText = null;
@@ -529,6 +573,9 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _gmPaddleVelocitySlider = null;
             _gmMinimumOutwardSlider = null;
             _hudRoot = null;
+            _topPanel2PRoot = null;
+            _topPanel3PRoot = null;
+            _topPanel4PRoot = null;
             _resultRoot = null;
             _gmRoot = null;
             _lanRoot = null;
@@ -961,35 +1008,132 @@ namespace App.HotUpdate.GatebreakerArena.UI
             if (snapshot?.PlayerScores == null)
             {
                 ClearPlayerScorePanel();
+                SetActiveScorePanel(0);
                 return;
             }
 
             List<PlayerScoreSnapshot> visibleScores = BuildVisiblePlayerScoreList(snapshot.PlayerScores);
-            int rowCount = Math.Max(_playerScoreTexts.Length, _playerHitTexts.Length);
+            int panelPlayerCount = SelectScorePanelPlayerCount(visibleScores.Count);
+            TMP_Text[] scoreTexts = GetScoreTextsForPlayerCount(panelPlayerCount);
+            TMP_Text[] hitTexts = GetHitTextsForPlayerCount(panelPlayerCount);
+            SetActiveScorePanel(panelPlayerCount);
+            ClearInactiveScorePanels(panelPlayerCount);
+            UpdateScoreRows(scoreTexts, hitTexts, visibleScores);
+            UpdateScoreRows(_playerScoreTexts, _playerHitTexts, visibleScores);
+        }
+
+        private void UpdateScoreRows(
+            TMP_Text[] scoreTexts,
+            TMP_Text[] hitTexts,
+            IReadOnlyList<PlayerScoreSnapshot> visibleScores)
+        {
+            int rowCount = Math.Max(scoreTexts != null ? scoreTexts.Length : 0, hitTexts != null ? hitTexts.Length : 0);
             for (int i = 0; i < rowCount; i++)
             {
                 if (i < visibleScores.Count)
                 {
                     PlayerScoreSnapshot score = visibleScores[i];
-                    SetTextAt(_playerScoreTexts, i, score.Score.ToString(CultureInfo.InvariantCulture));
-                    SetTextAt(_playerHitTexts, i, FormatHitScore(score.HitScore));
+                    SetTextAt(scoreTexts, i, score.Score.ToString(CultureInfo.InvariantCulture));
+                    SetTextAt(hitTexts, i, FormatHitScore(score.HitScore));
                 }
                 else
                 {
-                    SetTextAt(_playerScoreTexts, i, string.Empty);
-                    SetTextAt(_playerHitTexts, i, string.Empty);
+                    SetTextAt(scoreTexts, i, string.Empty);
+                    SetTextAt(hitTexts, i, string.Empty);
                 }
             }
         }
 
         private void ClearPlayerScorePanel()
         {
-            int rowCount = Math.Max(_playerScoreTexts.Length, _playerHitTexts.Length);
+            ClearScoreRows(_playerScoreTexts, _playerHitTexts);
+            ClearScoreRows(_playerScore2PTexts, _playerHit2PTexts);
+            ClearScoreRows(_playerScore3PTexts, _playerHit3PTexts);
+            ClearScoreRows(_playerScore4PTexts, _playerHit4PTexts);
+        }
+
+        private static void ClearScoreRows(TMP_Text[] scoreTexts, TMP_Text[] hitTexts)
+        {
+            int rowCount = Math.Max(scoreTexts != null ? scoreTexts.Length : 0, hitTexts != null ? hitTexts.Length : 0);
             for (int i = 0; i < rowCount; i++)
             {
-                SetTextAt(_playerScoreTexts, i, string.Empty);
-                SetTextAt(_playerHitTexts, i, string.Empty);
+                SetTextAt(scoreTexts, i, string.Empty);
+                SetTextAt(hitTexts, i, string.Empty);
             }
+        }
+
+        private void ClearInactiveScorePanels(int activePlayerCount)
+        {
+            if (activePlayerCount != 2)
+            {
+                ClearScoreRows(_playerScore2PTexts, _playerHit2PTexts);
+            }
+
+            if (activePlayerCount != 3)
+            {
+                ClearScoreRows(_playerScore3PTexts, _playerHit3PTexts);
+            }
+
+            if (activePlayerCount != 4)
+            {
+                ClearScoreRows(_playerScore4PTexts, _playerHit4PTexts);
+            }
+        }
+
+        private void SetActiveScorePanel(int activePlayerCount)
+        {
+            SetActive(_topPanel2PRoot, activePlayerCount == 2);
+            SetActive(_topPanel3PRoot, activePlayerCount == 3);
+            SetActive(_topPanel4PRoot, activePlayerCount == 4);
+        }
+
+        private static int SelectScorePanelPlayerCount(int visiblePlayerCount)
+        {
+            if (visiblePlayerCount >= 4)
+            {
+                return 4;
+            }
+
+            return visiblePlayerCount == 3 ? 3 : 2;
+        }
+
+        private TMP_Text[] GetScoreTextsForPlayerCount(int playerCount)
+        {
+            switch (playerCount)
+            {
+                case 2:
+                    return _playerScore2PTexts;
+                case 3:
+                    return _playerScore3PTexts;
+                case 4:
+                    return _playerScore4PTexts;
+                default:
+                    return Array.Empty<TMP_Text>();
+            }
+        }
+
+        private TMP_Text[] GetHitTextsForPlayerCount(int playerCount)
+        {
+            switch (playerCount)
+            {
+                case 2:
+                    return _playerHit2PTexts;
+                case 3:
+                    return _playerHit3PTexts;
+                case 4:
+                    return _playerHit4PTexts;
+                default:
+                    return Array.Empty<TMP_Text>();
+            }
+        }
+
+        private void UpdateTimeText(float remainingTime)
+        {
+            string value = FormatTime(remainingTime);
+            SetText(_timeText, value);
+            SetText(_topPanel2PTimeText, value);
+            SetText(_topPanel3PTimeText, value);
+            SetText(_topPanel4PTimeText, value);
         }
 
         private static List<PlayerScoreSnapshot> BuildVisiblePlayerScoreList(IReadOnlyList<PlayerScoreSnapshot> playerScores)
@@ -1214,6 +1358,13 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             return true;
+        }
+
+        private static bool HasExactTextArrayBindings(TMP_Text[] texts, int expectedLength)
+        {
+            return texts != null &&
+                   texts.Length == expectedLength &&
+                   HasTextArrayBindings(texts);
         }
 
         private static string FormatTuningValue(string label, int value, float actualValue)

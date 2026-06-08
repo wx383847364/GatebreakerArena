@@ -111,6 +111,7 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.IsNotNull(sceneBinding, "BootstrapScene should register the scene UI binding bridge.");
                 AssertModeSelectVisible(sceneBinding);
                 AssertCountdownAndMovementBindings(sceneBinding, hud);
+                AssertTopPanelBindings(sceneBinding);
                 AssertPlayerScorePanelTexts(sceneBinding, hud);
                 AssertLanBindings(sceneBinding);
 
@@ -192,19 +193,45 @@ namespace Gatebreaker.Tests.PlayMode
             Assert.IsNotNull(sceneBinding.PlayerHitTextObjects, "Player hit text bindings should exist.");
             List<PlayerScoreSnapshot> visibleScores = BuildVisiblePlayerScores(hud);
             Assert.Greater(visibleScores.Count, 0, "HUD should contain at least one visible player score.");
-            Assert.GreaterOrEqual(sceneBinding.PlayerScoreTextObjects.Length, visibleScores.Count);
-            Assert.GreaterOrEqual(sceneBinding.PlayerHitTextObjects.Length, visibleScores.Count);
+            Object[] scoreBindings = SelectScoreBindings(sceneBinding, visibleScores.Count);
+            Object[] hitBindings = SelectHitBindings(sceneBinding, visibleScores.Count);
+            Assert.GreaterOrEqual(scoreBindings.Length, visibleScores.Count);
+            Assert.GreaterOrEqual(hitBindings.Length, visibleScores.Count);
 
             for (int i = 0; i < visibleScores.Count; i++)
             {
                 PlayerScoreSnapshot score = visibleScores[i];
-                TMP_Text scoreText = sceneBinding.PlayerScoreTextObjects[i] as TMP_Text;
-                TMP_Text hitText = sceneBinding.PlayerHitTextObjects[i] as TMP_Text;
+                TMP_Text scoreText = scoreBindings[i] as TMP_Text;
+                TMP_Text hitText = hitBindings[i] as TMP_Text;
                 Assert.IsNotNull(scoreText, $"Player score binding {i} should be a TMP_Text.");
                 Assert.IsNotNull(hitText, $"Player hit binding {i} should be a TMP_Text.");
                 Assert.AreEqual(score.Score.ToString(), scoreText.text, $"playerId={score.PlayerId}");
                 Assert.AreEqual(score.HitScore.ToString(), hitText.text, $"playerId={score.PlayerId}");
             }
+        }
+
+        private static Object[] SelectScoreBindings(IGatebreakerArenaSceneUiBinding sceneBinding, int visiblePlayerCount)
+        {
+            if (visiblePlayerCount >= 4)
+            {
+                return sceneBinding.PlayerScore4PTextObjects;
+            }
+
+            return visiblePlayerCount == 3
+                ? sceneBinding.PlayerScore3PTextObjects
+                : sceneBinding.PlayerScore2PTextObjects;
+        }
+
+        private static Object[] SelectHitBindings(IGatebreakerArenaSceneUiBinding sceneBinding, int visiblePlayerCount)
+        {
+            if (visiblePlayerCount >= 4)
+            {
+                return sceneBinding.PlayerHit4PTextObjects;
+            }
+
+            return visiblePlayerCount == 3
+                ? sceneBinding.PlayerHit3PTextObjects
+                : sceneBinding.PlayerHit2PTextObjects;
         }
 
         private static void AssertCountdownAndMovementBindings(
@@ -222,6 +249,32 @@ namespace Gatebreaker.Tests.PlayMode
             Assert.IsInstanceOf<RectTransform>(sceneBinding.MovementRightArrowInputObject, "Right movement arrow should have an explicit input binding.");
             Assert.IsInstanceOf<Graphic>(sceneBinding.MovementLeftArrowHighlightObject, "Left movement arrow should have an explicit highlight graphic binding.");
             Assert.IsInstanceOf<Graphic>(sceneBinding.MovementRightArrowHighlightObject, "Right movement arrow should have an explicit highlight graphic binding.");
+        }
+
+        private static void AssertTopPanelBindings(IGatebreakerArenaSceneUiBinding sceneBinding)
+        {
+            Assert.IsInstanceOf<GameObject>(sceneBinding.TopPanel2PRootObject, "TopPanel_2P root should be explicitly bound.");
+            Assert.IsInstanceOf<GameObject>(sceneBinding.TopPanel3PRootObject, "TopPanel_3P root should be explicitly bound.");
+            Assert.IsInstanceOf<GameObject>(sceneBinding.TopPanel4PRootObject, "TopPanel_4P root should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.TopPanel2PTimeTextObject, "TopPanel_2P time should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.TopPanel3PTimeTextObject, "TopPanel_3P time should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Text>(sceneBinding.TopPanel4PTimeTextObject, "TopPanel_4P time should be explicitly bound.");
+            AssertPlayerScoreArray(sceneBinding.PlayerScore2PTextObjects, 2, "TopPanel_2P score");
+            AssertPlayerScoreArray(sceneBinding.PlayerHit2PTextObjects, 2, "TopPanel_2P hit");
+            AssertPlayerScoreArray(sceneBinding.PlayerScore3PTextObjects, 3, "TopPanel_3P score");
+            AssertPlayerScoreArray(sceneBinding.PlayerHit3PTextObjects, 3, "TopPanel_3P hit");
+            AssertPlayerScoreArray(sceneBinding.PlayerScore4PTextObjects, 4, "TopPanel_4P score");
+            AssertPlayerScoreArray(sceneBinding.PlayerHit4PTextObjects, 4, "TopPanel_4P hit");
+        }
+
+        private static void AssertPlayerScoreArray(Object[] texts, int expectedLength, string label)
+        {
+            Assert.IsNotNull(texts, $"{label} bindings should exist.");
+            Assert.AreEqual(expectedLength, texts.Length, $"{label} binding count should match the panel player count.");
+            for (int i = 0; i < texts.Length; i++)
+            {
+                Assert.IsInstanceOf<TMP_Text>(texts[i], $"{label} binding {i} should be a TMP_Text.");
+            }
         }
 
         private static void AssertLanBindings(IGatebreakerArenaSceneUiBinding sceneBinding)

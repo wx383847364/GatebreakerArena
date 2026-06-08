@@ -77,6 +77,9 @@ namespace Gatebreaker.Tests
                 ServeBlockReason.None);
 
             Assert.AreEqual("01:00", _binding.TimeText.text);
+            Assert.AreEqual("01:00", _binding.TopPanel2PTimeText.text);
+            Assert.AreEqual("01:00", _binding.TopPanel3PTimeText.text);
+            Assert.AreEqual("01:00", _binding.TopPanel4PTimeText.text);
         }
 
         [Test]
@@ -106,6 +109,42 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("-1", _binding.PlayerHitTexts[1].text);
             Assert.AreEqual(string.Empty, _binding.PlayerScoreTexts[2].text);
             Assert.AreEqual(string.Empty, _binding.PlayerHitTexts[2].text);
+            Assert.IsTrue(_binding.TopPanel2PRoot.activeSelf);
+            Assert.IsFalse(_binding.TopPanel3PRoot.activeSelf);
+            Assert.IsFalse(_binding.TopPanel4PRoot.activeSelf);
+            Assert.AreEqual("1", _binding.PlayerScore2PTexts[0].text);
+            Assert.AreEqual("0", _binding.PlayerHit2PTexts[0].text);
+            Assert.AreEqual("0", _binding.PlayerScore2PTexts[1].text);
+            Assert.AreEqual("-1", _binding.PlayerHit2PTexts[1].text);
+        }
+
+        [Test]
+        public void PlayerScorePanelSwitchesToFourPlayerBindingsForFourVisiblePlayers()
+        {
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks(),
+                null);
+
+            _service.UpdateHud(
+                new GatebreakerHudSnapshot
+                {
+                    Phase = MatchPhase.Playing,
+                    PlayerScores = new[]
+                    {
+                        new PlayerScoreSnapshot(1, 1, false, 1, 0, 1),
+                        new PlayerScoreSnapshot(2, 2, false, 2, -1, 2),
+                        new PlayerScoreSnapshot(3, 3, false, 3, -2, 3),
+                        new PlayerScoreSnapshot(4, 4, false, 4, -3, 4),
+                    },
+                },
+                ServeBlockReason.None);
+
+            Assert.IsFalse(_binding.TopPanel2PRoot.activeSelf);
+            Assert.IsFalse(_binding.TopPanel3PRoot.activeSelf);
+            Assert.IsTrue(_binding.TopPanel4PRoot.activeSelf);
+            Assert.AreEqual("1", _binding.PlayerScore4PTexts[0].text);
+            Assert.AreEqual("-3", _binding.PlayerHit4PTexts[3].text);
         }
 
         [Test]
@@ -490,6 +529,18 @@ namespace Gatebreaker.Tests
             public TMP_Text TimeText { get; private set; }
             public TMP_Text[] PlayerScoreTexts { get; private set; }
             public TMP_Text[] PlayerHitTexts { get; private set; }
+            public GameObject TopPanel2PRoot { get; private set; }
+            public GameObject TopPanel3PRoot { get; private set; }
+            public GameObject TopPanel4PRoot { get; private set; }
+            public TMP_Text TopPanel2PTimeText { get; private set; }
+            public TMP_Text TopPanel3PTimeText { get; private set; }
+            public TMP_Text TopPanel4PTimeText { get; private set; }
+            public TMP_Text[] PlayerScore2PTexts { get; private set; }
+            public TMP_Text[] PlayerHit2PTexts { get; private set; }
+            public TMP_Text[] PlayerScore3PTexts { get; private set; }
+            public TMP_Text[] PlayerHit3PTexts { get; private set; }
+            public TMP_Text[] PlayerScore4PTexts { get; private set; }
+            public TMP_Text[] PlayerHit4PTexts { get; private set; }
             public GameObject ResultRoot { get; private set; }
             public TMP_Text ResultTitleText { get; private set; }
             public TMP_Text ResultBodyText { get; private set; }
@@ -553,6 +604,18 @@ namespace Gatebreaker.Tests
             public Object TimeTextObject => TimeText;
             public Object[] PlayerScoreTextObjects => PlayerScoreTexts;
             public Object[] PlayerHitTextObjects => PlayerHitTexts;
+            public Object TopPanel2PRootObject => TopPanel2PRoot;
+            public Object TopPanel3PRootObject => TopPanel3PRoot;
+            public Object TopPanel4PRootObject => TopPanel4PRoot;
+            public Object TopPanel2PTimeTextObject => TopPanel2PTimeText;
+            public Object TopPanel3PTimeTextObject => TopPanel3PTimeText;
+            public Object TopPanel4PTimeTextObject => TopPanel4PTimeText;
+            public Object[] PlayerScore2PTextObjects => PlayerScore2PTexts;
+            public Object[] PlayerHit2PTextObjects => PlayerHit2PTexts;
+            public Object[] PlayerScore3PTextObjects => PlayerScore3PTexts;
+            public Object[] PlayerHit3PTextObjects => PlayerHit3PTexts;
+            public Object[] PlayerScore4PTextObjects => PlayerScore4PTexts;
+            public Object[] PlayerHit4PTextObjects => PlayerHit4PTexts;
             public Object ResultRootObject => ResultRoot;
             public Object ResultTitleTextObject => ResultTitleText;
             public Object ResultBodyTextObject => ResultBodyText;
@@ -627,6 +690,48 @@ namespace Gatebreaker.Tests
                         Add<TextMeshProUGUI>(parent, "Player1Hit"),
                         Add<TextMeshProUGUI>(parent, "Player2Hit"),
                         Add<TextMeshProUGUI>(parent, "Player3Hit"),
+                    },
+                    TopPanel2PRoot = CreateRoot(parent, "TopPanel_2P"),
+                    TopPanel3PRoot = CreateRoot(parent, "TopPanel_3P"),
+                    TopPanel4PRoot = CreateRoot(parent, "TopPanel_4P"),
+                    TopPanel2PTimeText = Add<TextMeshProUGUI>(parent, "TopPanel2PTime"),
+                    TopPanel3PTimeText = Add<TextMeshProUGUI>(parent, "TopPanel3PTime"),
+                    TopPanel4PTimeText = Add<TextMeshProUGUI>(parent, "TopPanel4PTime"),
+                    PlayerScore2PTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Score2P"),
+                        Add<TextMeshProUGUI>(parent, "Player2Score2P"),
+                    },
+                    PlayerHit2PTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Hit2P"),
+                        Add<TextMeshProUGUI>(parent, "Player2Hit2P"),
+                    },
+                    PlayerScore3PTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Score3P"),
+                        Add<TextMeshProUGUI>(parent, "Player2Score3P"),
+                        Add<TextMeshProUGUI>(parent, "Player3Score3P"),
+                    },
+                    PlayerHit3PTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Hit3P"),
+                        Add<TextMeshProUGUI>(parent, "Player2Hit3P"),
+                        Add<TextMeshProUGUI>(parent, "Player3Hit3P"),
+                    },
+                    PlayerScore4PTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Score4P"),
+                        Add<TextMeshProUGUI>(parent, "Player2Score4P"),
+                        Add<TextMeshProUGUI>(parent, "Player3Score4P"),
+                        Add<TextMeshProUGUI>(parent, "Player4Score4P"),
+                    },
+                    PlayerHit4PTexts = new[]
+                    {
+                        Add<TextMeshProUGUI>(parent, "Player1Hit4P"),
+                        Add<TextMeshProUGUI>(parent, "Player2Hit4P"),
+                        Add<TextMeshProUGUI>(parent, "Player3Hit4P"),
+                        Add<TextMeshProUGUI>(parent, "Player4Hit4P"),
                     },
                     ResultRoot = CreateRoot(parent, "ResultRoot"),
                     ResultTitleText = Add<TextMeshProUGUI>(parent, "ResultTitle"),
