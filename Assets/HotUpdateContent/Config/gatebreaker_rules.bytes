@@ -21,7 +21,7 @@
       "ColorTag": "Neutral",
       "DangerPromptThreshold": 1.2,
       "GoalReboundFactor": 1.0,
-      "InitialSpeed": 5.25,
+      "InitialSpeed": 3,
       "MaxSpeed": 9.8,
       "MinVerticalVelocity": 2.0,
       "PaddleBounceFactor": 1.0,
@@ -139,7 +139,7 @@
       "BallSpeedByTime": [
         [
           15,
-          7
+          6
         ],
         [
           30,

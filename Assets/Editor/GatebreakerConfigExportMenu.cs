@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
@@ -102,11 +103,11 @@ namespace Gatebreaker.Editor
 
                 if (process.ExitCode != 0)
                 {
-                    string message = $"Gatebreaker 配表{(dryRun ? "校验" : "导出")}失败，退出码: {process.ExitCode}";
+                    string message = BuildFailureMessage(dryRun, process.ExitCode, stdout, stderr);
                     Debug.LogError(message);
                     if (showDialog)
                     {
-                        EditorUtility.DisplayDialog("Gatebreaker Config Export", message + "\n请查看 Console 输出。", "OK");
+                        EditorUtility.DisplayDialog("Gatebreaker Config Export", TruncateForDialog(message), "OK");
                     }
 
                     throw new InvalidOperationException(message);
@@ -160,6 +161,51 @@ namespace Gatebreaker.Editor
         private static string Quote(string value)
         {
             return "\"" + value.Replace("\"", "\\\"") + "\"";
+        }
+
+        private static string BuildFailureMessage(bool dryRun, int exitCode, string stdout, string stderr)
+        {
+            var builder = new StringBuilder();
+            builder.Append("Gatebreaker 配表")
+                .Append(dryRun ? "校验" : "导出")
+                .Append("失败，退出码: ")
+                .Append(exitCode)
+                .AppendLine();
+
+            AppendProcessOutput(builder, "stdout", stdout);
+            AppendProcessOutput(builder, "stderr", stderr);
+
+            if (string.IsNullOrWhiteSpace(stdout) && string.IsNullOrWhiteSpace(stderr))
+            {
+                builder.AppendLine("导出脚本没有输出错误详情。请确认 Python 可执行文件、脚本路径和配表文件权限。");
+            }
+
+            return builder.ToString().TrimEnd();
+        }
+
+        private static void AppendProcessOutput(StringBuilder builder, string label, string output)
+        {
+            if (string.IsNullOrWhiteSpace(output))
+            {
+                return;
+            }
+
+            builder.AppendLine()
+                .Append("----- ")
+                .Append(label)
+                .AppendLine(" -----")
+                .AppendLine(output.TrimEnd());
+        }
+
+        private static string TruncateForDialog(string message)
+        {
+            const int maxLength = 3500;
+            if (string.IsNullOrEmpty(message) || message.Length <= maxLength)
+            {
+                return message;
+            }
+
+            return message.Substring(0, maxLength) + "\n...内容过长，完整日志请查看 Console。";
         }
     }
 }
