@@ -70,6 +70,7 @@ namespace App.AOT.Bootstrap
         [SerializeField] private Button _lanLeaveButton;
         [SerializeField] private Button _lanAcknowledgeStartButton;
         [SerializeField] private TMP_InputField _lanPlayerNameInput;
+        [SerializeField] private TMP_Dropdown _lanRoomTypeDropdown;
         [SerializeField] private TMP_InputField _lanRoomCodeInput;
         [SerializeField] private TMP_Text _lanStateText;
         [SerializeField] private TMP_Text _lanRoomCodeText;
@@ -143,6 +144,7 @@ namespace App.AOT.Bootstrap
         public Object LanLeaveButtonObject => _lanLeaveButton;
         public Object LanAcknowledgeStartButtonObject => _lanAcknowledgeStartButton;
         public Object LanPlayerNameInputObject => _lanPlayerNameInput;
+        public Object LanRoomTypeDropdownObject => _lanRoomTypeDropdown;
         public Object LanRoomCodeInputObject => _lanRoomCodeInput;
         public Object LanStateTextObject => _lanStateText;
         public Object LanRoomCodeTextObject => _lanRoomCodeText;
@@ -209,6 +211,7 @@ namespace App.AOT.Bootstrap
             _lanLeaveButton != null &&
             _lanAcknowledgeStartButton != null &&
             _lanPlayerNameInput != null &&
+            _lanRoomTypeDropdown != null &&
             _lanRoomCodeInput != null &&
             _lanStateText != null &&
             _lanRoomCodeText != null &&

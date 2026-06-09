@@ -473,8 +473,39 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("Client", _binding.LanRoomPlayerNameTexts[1].text);
             Assert.AreEqual("not ready", _binding.LanRoomPlayerReadyTexts[1].text);
             Assert.AreEqual("Player3:", _binding.LanRoomPlayerInfoTexts[2].text);
-            Assert.AreEqual("Computer 3", _binding.LanRoomPlayerNameTexts[2].text);
+            Assert.AreEqual("AI", _binding.LanRoomPlayerNameTexts[2].text);
             Assert.AreEqual("ready", _binding.LanRoomPlayerReadyTexts[2].text);
+            Assert.IsFalse(_binding.LanRoomPlayerInfoTexts[3].gameObject.activeSelf);
+        }
+
+        [Test]
+        public void LanRoomUpdateShowsOnlySelectedPlayerRowsAndUsesAiPlaceholder()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+
+            _service.UpdateLanRoom(
+                new RoomSnapshot
+                {
+                    State = LanRoomState.Lobby,
+                    RoomCode = "ABC123",
+                    MaxPlayers = 2,
+                    Players = new[]
+                    {
+                        new RoomPlayerSnapshot { PlayerId = 1, PlayerName = "Host", IsReady = true, IsActive = true },
+                        new RoomPlayerSnapshot { PlayerId = 2, PlayerName = "Computer 2", IsReady = true, IsActive = true, IsAi = true },
+                    },
+                },
+                "192.168.0.220",
+                "192.168.0.115");
+
+            Assert.IsTrue(_binding.LanRoomPlayerInfoTexts[0].gameObject.activeSelf);
+            Assert.IsTrue(_binding.LanRoomPlayerInfoTexts[1].gameObject.activeSelf);
+            Assert.IsFalse(_binding.LanRoomPlayerInfoTexts[2].gameObject.activeSelf);
+            Assert.IsFalse(_binding.LanRoomPlayerInfoTexts[3].gameObject.activeSelf);
+            Assert.AreEqual("Host", _binding.LanRoomPlayerNameTexts[0].text);
+            Assert.AreEqual("AI", _binding.LanRoomPlayerNameTexts[1].text);
+            Assert.AreEqual(string.Empty, _binding.LanRoomPlayerNameTexts[2].text);
+            Assert.AreEqual(string.Empty, _binding.LanRoomPlayerNameTexts[3].text);
         }
 
         [Test]
@@ -503,11 +534,34 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("Host", _binding.NativeLanRoomPlayerNameTexts[0].text);
             Assert.AreEqual("ready", _binding.NativeLanRoomPlayerReadyTexts[0].text);
             Assert.AreEqual("Player2:", _binding.LanRoomPlayerInfoTexts[1].text);
-            Assert.AreEqual("Computer 2", _binding.NativeLanRoomPlayerNameTexts[1].text);
+            Assert.AreEqual("AI", _binding.NativeLanRoomPlayerNameTexts[1].text);
             Assert.AreEqual("ready", _binding.NativeLanRoomPlayerReadyTexts[1].text);
             Assert.AreEqual("Player3:", _binding.LanRoomPlayerInfoTexts[2].text);
-            Assert.AreEqual("Computer 3", _binding.NativeLanRoomPlayerNameTexts[2].text);
+            Assert.AreEqual("AI", _binding.NativeLanRoomPlayerNameTexts[2].text);
             Assert.AreEqual("ready", _binding.NativeLanRoomPlayerReadyTexts[2].text);
+            Assert.IsFalse(_binding.LanRoomPlayerInfoTexts[3].gameObject.activeSelf);
+        }
+
+        [Test]
+        public void RoomTypeDropdownReportsSelectedPlayerCount()
+        {
+            int selectedPlayerCount = 0;
+
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks
+                {
+                    InitialLanRoomPlayerCount = 3,
+                    LanRoomPlayerCountChanged = value => selectedPlayerCount = value,
+                },
+                null);
+
+            Assert.AreEqual(3, selectedPlayerCount);
+            Assert.AreEqual(1, _binding.LanRoomTypeDropdown.value);
+
+            _binding.LanRoomTypeDropdown.onValueChanged.Invoke(2);
+
+            Assert.AreEqual(4, selectedPlayerCount);
         }
 
         private sealed class TestSceneUiBinding : IGatebreakerArenaSceneUiBinding
@@ -572,6 +626,7 @@ namespace Gatebreaker.Tests
             public Button LanLeaveButton { get; private set; }
             public Button LanAcknowledgeStartButton { get; private set; }
             public TMP_InputField LanPlayerNameInput { get; private set; }
+            public TMP_Dropdown LanRoomTypeDropdown { get; private set; }
             public TMP_InputField LanRoomCodeInput { get; private set; }
             public TMP_Text LanStateText { get; private set; }
             public TMP_Text LanRoomCodeText { get; private set; }
@@ -647,6 +702,7 @@ namespace Gatebreaker.Tests
             public Object LanLeaveButtonObject => LanLeaveButton;
             public Object LanAcknowledgeStartButtonObject => LanAcknowledgeStartButton;
             public Object LanPlayerNameInputObject => LanPlayerNameInput;
+            public Object LanRoomTypeDropdownObject => LanRoomTypeDropdown;
             public Object LanRoomCodeInputObject => LanRoomCodeInput;
             public Object LanStateTextObject => LanStateText;
             public Object LanRoomCodeTextObject => LanRoomCodeText;
@@ -774,6 +830,7 @@ namespace Gatebreaker.Tests
                     LanLeaveButton = Add<Button>(parent, "LanLeave"),
                     LanAcknowledgeStartButton = Add<Button>(parent, "LanAck"),
                     LanPlayerNameInput = Add<TMP_InputField>(parent, "LanPlayerName"),
+                    LanRoomTypeDropdown = CreateRoomTypeDropdown(parent),
                     LanRoomCodeInput = Add<TMP_InputField>(parent, "LanRoomCode"),
                     LanStateText = Add<TextMeshProUGUI>(parent, "LanState"),
                     LanRoomCodeText = Add<TextMeshProUGUI>(parent, "LanRoomCodeText"),
@@ -786,18 +843,21 @@ namespace Gatebreaker.Tests
                         Add<TextMeshProUGUI>(parent, "Playerinfo_1"),
                         Add<TextMeshProUGUI>(parent, "Playerinfo_2"),
                         Add<TextMeshProUGUI>(parent, "Playerinfo_3"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_4"),
                     },
                     LanRoomPlayerNameTexts = new[]
                     {
                         Add<TextMeshProUGUI>(parent, "Playerinfo_1_Name"),
                         Add<TextMeshProUGUI>(parent, "Playerinfo_2_Name"),
                         Add<TextMeshProUGUI>(parent, "Playerinfo_3_Name"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_4_Name"),
                     },
                     LanRoomPlayerReadyTexts = new[]
                     {
                         Add<TextMeshProUGUI>(parent, "Playerinfo_1_Status"),
                         Add<TextMeshProUGUI>(parent, "Playerinfo_2_Status"),
                         Add<TextMeshProUGUI>(parent, "Playerinfo_3_Status"),
+                        Add<TextMeshProUGUI>(parent, "Playerinfo_4_Status"),
                     },
                     StartCountdownRoot = CreateRoot(parent, "StartCountdownRoot"),
                     StartCountdownText = Add<TextMeshProUGUI>(parent, "StartCountdownText"),
@@ -824,6 +884,16 @@ namespace Gatebreaker.Tests
                 var gameObject = new GameObject(name);
                 gameObject.transform.SetParent(parent, false);
                 return gameObject;
+            }
+
+            private static TMP_Dropdown CreateRoomTypeDropdown(Transform parent)
+            {
+                TMP_Dropdown dropdown = Add<TMP_Dropdown>(parent, "LanRoomType");
+                dropdown.options.Clear();
+                dropdown.options.Add(new TMP_Dropdown.OptionData("二人对战"));
+                dropdown.options.Add(new TMP_Dropdown.OptionData("三人对战"));
+                dropdown.options.Add(new TMP_Dropdown.OptionData("四人对战"));
+                return dropdown;
             }
 
             private static T Add<T>(Transform parent, string name) where T : Component

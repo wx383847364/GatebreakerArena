@@ -366,6 +366,30 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(6, snapshot.RoomCode.Length);
             Assert.IsTrue(snapshot.RoomCode.All(char.IsDigit));
+            Assert.AreEqual(2, snapshot.MaxPlayers);
+            Assert.AreEqual(2, snapshot.Players.Length);
+            Assert.AreEqual(1, snapshot.Players.Count(player => player.IsAi));
+        }
+
+        [Test]
+        public void HostAiBackfillMatchesSelectedPlayerCount()
+        {
+            var host = new LanRoomService();
+
+            RoomSnapshot twoPlayers = host.CreateHost("Host", 1001UL, 2, "ROOM02");
+            Assert.AreEqual(2, twoPlayers.MaxPlayers);
+            Assert.AreEqual(2, twoPlayers.Players.Length);
+            Assert.AreEqual(1, twoPlayers.Players.Count(player => player.IsAi));
+
+            RoomSnapshot threePlayers = host.CreateHost("Host", 1001UL, 3, "ROOM03");
+            Assert.AreEqual(3, threePlayers.MaxPlayers);
+            Assert.AreEqual(3, threePlayers.Players.Length);
+            Assert.AreEqual(2, threePlayers.Players.Count(player => player.IsAi));
+
+            RoomSnapshot fourPlayers = host.CreateHost("Host", 1001UL, 4, "ROOM04");
+            Assert.AreEqual(4, fourPlayers.MaxPlayers);
+            Assert.AreEqual(4, fourPlayers.Players.Length);
+            Assert.AreEqual(3, fourPlayers.Players.Count(player => player.IsAi));
         }
 
         [Test]
@@ -518,10 +542,11 @@ namespace Gatebreaker.Tests
             RoomSnapshot hostSnapshot = host.CreateHost("Host", hostId, 4, "ABC123");
             Assert.AreEqual(LanRoomState.Lobby, hostSnapshot.State);
             Assert.IsTrue(hostSnapshot.CanStart);
-            Assert.AreEqual(3, hostSnapshot.Players.Length);
-            Assert.AreEqual(2, hostSnapshot.Players.Count(player => player.IsAi));
+            Assert.AreEqual(4, hostSnapshot.Players.Length);
+            Assert.AreEqual(3, hostSnapshot.Players.Count(player => player.IsAi));
             Assert.AreEqual("Computer 2", hostSnapshot.Players.Single(player => player.PlayerId == 2).PlayerName);
             Assert.AreEqual("Computer 3", hostSnapshot.Players.Single(player => player.PlayerId == 3).PlayerName);
+            Assert.AreEqual("Computer 4", hostSnapshot.Players.Single(player => player.PlayerId == 4).PlayerName);
 
             byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
                 GatebreakerNetworkMessageType.RoomJoinRequest,
@@ -540,13 +565,13 @@ namespace Gatebreaker.Tests
                 new LanEndpoint("127.0.0.1", 47780),
                 new LanConnectionId(1)));
             RoomSnapshot joined = host.CurrentSnapshot;
-            Assert.AreEqual(3, joined.Players.Length);
+            Assert.AreEqual(4, joined.Players.Length);
             Assert.IsFalse(joined.CanStart);
             RoomPlayerSnapshot client = joined.Players.Single(player => player.ClientInstanceId == clientId);
             Assert.AreEqual(1, client.SlotIndex);
             Assert.AreEqual(2, client.PlayerId);
             Assert.IsFalse(client.IsAi);
-            Assert.AreEqual(1, joined.Players.Count(player => player.IsAi));
+            Assert.AreEqual(2, joined.Players.Count(player => player.IsAi));
 
             byte[] readyPacket = GatebreakerEnvelopeCodec.Encode(
                 GatebreakerNetworkMessageType.RoomReady,
@@ -564,7 +589,7 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(host.StartLoading());
             RoomSnapshot loading = host.CurrentSnapshot;
             Assert.AreEqual(LanRoomState.Loading, loading.State);
-            Assert.AreEqual(3, loading.Players.Length);
+            Assert.AreEqual(4, loading.Players.Length);
             RoomPlayerSnapshot ai = loading.Players.Single(player => player.PlayerId == 3);
             Assert.IsTrue(ai.IsAi);
             Assert.IsTrue(ai.IsReady);
@@ -586,7 +611,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
             Assert.IsTrue(host.CurrentSnapshot.Players.Single(player => player.PlayerId == 3).IsAi);
             Assert.IsTrue(host.Lockstep.TryDequeueConfirmedFrame(out LockstepFrameBundle firstStartup));
-            Assert.AreEqual(3, firstStartup.Inputs.Length);
+            Assert.AreEqual(4, firstStartup.Inputs.Length);
             Assert.IsTrue(firstStartup.Inputs.Any(input => input.SlotIndex == 2 && input.PlayerId == 3));
         }
 
@@ -1039,7 +1064,7 @@ namespace Gatebreaker.Tests
 
             string joined = string.Join("\n", writer.Lines.ToArray());
             StringAssert.Contains("RoomSnapshotState", joined);
-            StringAssert.Contains("active=3;human=1;ai=2;total=3", joined);
+            StringAssert.Contains("active=4;human=1;ai=3;total=4", joined);
             StringAssert.Contains("slot0/p1/Host/Human/Host/Local/Ready", joined);
             StringAssert.Contains("slot1/p2/Computer 2/AI/Ready", joined);
         }
@@ -1053,7 +1078,7 @@ namespace Gatebreaker.Tests
 
             string summary = diagnostics.CreateSummaryText(snapshot);
             StringAssert.Contains("canStart=true", summary);
-            StringAssert.Contains("players=active=3;human=1;ai=2;total=3;max=4", summary);
+            StringAssert.Contains("players=active=4;human=1;ai=3;total=4;max=4", summary);
             StringAssert.Contains("roster=slot0/p1/Host/Human/Host/Local/Ready", summary);
         }
 

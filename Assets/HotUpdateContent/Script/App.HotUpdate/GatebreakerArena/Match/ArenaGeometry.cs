@@ -85,13 +85,25 @@ namespace App.HotUpdate.GatebreakerArena.Match
             MapRuleDefinition map,
             IReadOnlyList<int> activePlayerIds)
         {
-            IReadOnlyList<Vector2> points = ToVector2List(map.BoundaryPoints);
-            IReadOnlyList<Vector2> goalCenters = map.GoalCenters != null && map.GoalCenters.Count > 0
+            int playerCount = ResolveActivePlayerCount(map, activePlayerIds);
+            bool useScene4Geometry = playerCount >= 4;
+            IReadOnlyList<Vector2> points = useScene4Geometry
+                ? CreateScene4PBoundaryPoints()
+                : ToVector2List(map.BoundaryPoints);
+            IReadOnlyList<Vector2> goalCenters = useScene4Geometry
+                ? CreateScene4PGoalCenters()
+                : map.GoalCenters != null && map.GoalCenters.Count > 0
                 ? ToVector2List(map.GoalCenters)
                 : Array.Empty<Vector2>();
-            int[] goalOwners = CreateGoalOwners(map, activePlayerIds, points.Count);
-            float halfWidth = map.ArenaHalfWidth > 0f ? map.ArenaHalfWidth : CalculateHalfExtent(points, true);
-            float halfHeight = map.ArenaHalfHeight > 0f ? map.ArenaHalfHeight : CalculateHalfExtent(points, false);
+            IReadOnlyList<MapPlayerSideBindingDefinition> sideBindings =
+                CreateScenePlayerSideBindings(playerCount, map.PlayerSideBindings);
+            int[] goalOwners = CreateGoalOwners(sideBindings, activePlayerIds, points.Count);
+            float halfWidth = useScene4Geometry || map.ArenaHalfWidth <= 0f
+                ? CalculateHalfExtent(points, true)
+                : map.ArenaHalfWidth;
+            float halfHeight = useScene4Geometry || map.ArenaHalfHeight <= 0f
+                ? CalculateHalfExtent(points, false)
+                : map.ArenaHalfHeight;
             return new ArenaGeometry(
                 halfWidth,
                 halfHeight,
@@ -106,8 +118,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
             MapRuleDefinition map = null,
             IReadOnlyList<int> activePlayerIds = null)
         {
-            const float scene3v3GoalHalfLength = 1.06f;
-            const float scene3v3GoalTriggerInset = 0.14f;
+            const float scene3v3GoalHalfLength = 1.037f;
+            const float scene3v3GoalTriggerInset = 0.069f;
             const float scene3v3GoalContactLineInset = 0.04f;
             const float scene3v3PaddleLength = 0.78f;
             const float scene3v3PaddleThickness = 0.05f;
@@ -122,7 +134,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 new Vector2(-1.373f, -2.456f),
             };
             // Only active child objects named "net" score: Position01, Position03, Position05.
-            int[] goalOwners = CreateGoalOwners(map, activePlayerIds, points.Length);
+            int playerCount = ResolveActivePlayerCount(map, activePlayerIds);
+            int[] goalOwners = CreateGoalOwners(
+                CreateScenePlayerSideBindings(playerCount, map?.PlayerSideBindings),
+                activePlayerIds,
+                points.Length);
             var goalCenters = new[]
             {
                 new Vector2(2.086f, -1.231f),
@@ -149,8 +165,20 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 : defaultSpeed;
         }
 
-        private static int[] CreateGoalOwners(
+        private static int ResolveActivePlayerCount(
             MapRuleDefinition map,
+            IReadOnlyList<int> activePlayerIds)
+        {
+            if (activePlayerIds != null && activePlayerIds.Count > 0)
+            {
+                return activePlayerIds.Count;
+            }
+
+            return map != null && map.DefaultPlayerCount > 0 ? map.DefaultPlayerCount : 3;
+        }
+
+        private static int[] CreateGoalOwners(
+            IReadOnlyList<MapPlayerSideBindingDefinition> bindings,
             IReadOnlyList<int> activePlayerIds,
             int segmentCount)
         {
@@ -161,14 +189,14 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 goalOwners[i] = -1;
             }
 
-            IReadOnlyList<MapPlayerSideBindingDefinition> bindings =
-                map?.PlayerSideBindings != null && map.PlayerSideBindings.Count > 0
-                    ? map.PlayerSideBindings
-                    : CreateDefaultScene3v3PlayerSideBindings();
+            IReadOnlyList<MapPlayerSideBindingDefinition> resolvedBindings =
+                bindings != null && bindings.Count > 0
+                    ? bindings
+                    : CreateScenePlayerSideBindings(3, null);
 
-            for (int i = 0; i < bindings.Count; i++)
+            for (int i = 0; i < resolvedBindings.Count; i++)
             {
-                MapPlayerSideBindingDefinition binding = bindings[i];
+                MapPlayerSideBindingDefinition binding = resolvedBindings[i];
                 if (binding == null ||
                     binding.BoundarySegmentIndex < 0 ||
                     binding.BoundarySegmentIndex >= goalOwners.Length)
@@ -211,28 +239,80 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return extent;
         }
 
-        private static IReadOnlyList<MapPlayerSideBindingDefinition> CreateDefaultScene3v3PlayerSideBindings()
+        public static IReadOnlyList<MapPlayerSideBindingDefinition> CreateScenePlayerSideBindings(
+            int playerCount,
+            IReadOnlyList<MapPlayerSideBindingDefinition> configuredBindings = null)
+        {
+            if (playerCount <= 2)
+            {
+                return new[]
+                {
+                    CreatePlayerSideBinding(1, "Position01", 5),
+                    CreatePlayerSideBinding(2, "Position04", 2),
+                };
+            }
+
+            if (playerCount >= 4)
+            {
+                return new[]
+                {
+                    CreatePlayerSideBinding(1, "Position01", 7),
+                    CreatePlayerSideBinding(2, "Position03", 1),
+                    CreatePlayerSideBinding(3, "Position05", 3),
+                    CreatePlayerSideBinding(4, "Position07", 5),
+                };
+            }
+
+            return configuredBindings != null && configuredBindings.Count > 0
+                ? configuredBindings
+                : new[]
+                {
+                    CreatePlayerSideBinding(1, "Position01", 5),
+                    CreatePlayerSideBinding(2, "Position03", 1),
+                    CreatePlayerSideBinding(3, "Position05", 3),
+                };
+        }
+
+        private static MapPlayerSideBindingDefinition CreatePlayerSideBinding(
+            int playerId,
+            string scenePosition,
+            int boundarySegmentIndex)
+        {
+            return new MapPlayerSideBindingDefinition
+            {
+                PlayerId = playerId,
+                ScenePosition = scenePosition,
+                BoundarySegmentIndex = boundarySegmentIndex,
+            };
+        }
+
+        private static IReadOnlyList<Vector2> CreateScene4PBoundaryPoints()
         {
             return new[]
             {
-                new MapPlayerSideBindingDefinition
-                {
-                    PlayerId = 1,
-                    ScenePosition = "Position01",
-                    BoundarySegmentIndex = 5,
-                },
-                new MapPlayerSideBindingDefinition
-                {
-                    PlayerId = 2,
-                    ScenePosition = "Position03",
-                    BoundarySegmentIndex = 1,
-                },
-                new MapPlayerSideBindingDefinition
-                {
-                    PlayerId = 3,
-                    ScenePosition = "Position05",
-                    BoundarySegmentIndex = 3,
-                },
+                new Vector2(1.385f, -2.736f),
+                new Vector2(2.763f, -1.356f),
+                new Vector2(2.763f, 1.402f),
+                new Vector2(1.402f, 2.77f),
+                new Vector2(-1.362f, 2.77f),
+                new Vector2(-2.75f, 1.386f),
+                new Vector2(-2.75f, -1.346f),
+                new Vector2(-1.366f, -2.736f),
+            };
+        }
+
+        private static IReadOnlyList<Vector2> CreateScene4PGoalCenters()
+        {
+            return new[]
+            {
+                new Vector2(1.967f, -1.933f),
+                new Vector2(2.763f, 0.023f),
+                new Vector2(1.96f, 1.96f),
+                new Vector2(0.02f, 2.77f),
+                new Vector2(-1.94f, 1.98f),
+                new Vector2(-2.75f, 0.02f),
+                new Vector2(-1.98f, -1.94f),
+                new Vector2(0f, -2.736f),
             };
         }
 
@@ -269,6 +349,69 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 PaddleThickness,
                 PaddleSpeed,
                 BoundarySegments);
+        }
+
+        public ArenaGeometry WithGoalBandDimensions(float goalHalfLength, float goalTriggerInset)
+        {
+            if (!HasCustomBoundary)
+            {
+                return this;
+            }
+
+            float safeGoalHalfLength = Math.Max(0.01f, goalHalfLength);
+            float safeGoalTriggerInset = Math.Max(0f, goalTriggerInset);
+            var segments = new List<ArenaBoundarySegment>(BoundarySegments.Count);
+            for (int i = 0; i < BoundarySegments.Count; i++)
+            {
+                ArenaBoundarySegment segment = BoundarySegments[i];
+                segments.Add(segment != null && segment.GoalPlayerIndex >= 0
+                    ? segment.WithGoalBandDimensions(safeGoalHalfLength, safeGoalTriggerInset)
+                    : segment);
+            }
+
+            return new ArenaGeometry(
+                HalfWidth,
+                HalfHeight,
+                PaddleInset,
+                PaddleLength,
+                PaddleThickness,
+                PaddleSpeed,
+                segments);
+        }
+
+        public ArenaGeometry WithGoalBandDimensions(IReadOnlyDictionary<int, ArenaGoalBandDimensions> dimensionsBySegmentIndex)
+        {
+            if (!HasCustomBoundary || dimensionsBySegmentIndex == null || dimensionsBySegmentIndex.Count == 0)
+            {
+                return this;
+            }
+
+            var segments = new List<ArenaBoundarySegment>(BoundarySegments.Count);
+            for (int i = 0; i < BoundarySegments.Count; i++)
+            {
+                ArenaBoundarySegment segment = BoundarySegments[i];
+                if (segment != null &&
+                    segment.GoalPlayerIndex >= 0 &&
+                    dimensionsBySegmentIndex.TryGetValue(i, out ArenaGoalBandDimensions dimensions))
+                {
+                    segments.Add(segment.WithGoalBandDimensions(
+                        Math.Max(0.01f, dimensions.GoalHalfLength),
+                        Math.Max(0f, dimensions.GoalTriggerInset)));
+                }
+                else
+                {
+                    segments.Add(segment);
+                }
+            }
+
+            return new ArenaGeometry(
+                HalfWidth,
+                HalfHeight,
+                PaddleInset,
+                PaddleLength,
+                PaddleThickness,
+                PaddleSpeed,
+                segments);
         }
 
         public Vector2 GetSideNormal(SpawnLayoutType layoutType, int playerIndex)
@@ -571,5 +714,30 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public Vector2 GetGoalContactEnd(float goalContactRadius) => GoalContactOuterEnd + InwardNormal * Math.Max(0f, goalContactRadius);
         public Vector2 GoalTriggerStart => GoalCenter - Tangent * GoalHalfLength + InwardNormal * GoalTriggerInset;
         public Vector2 GoalTriggerEnd => GoalCenter + Tangent * GoalHalfLength + InwardNormal * GoalTriggerInset;
+
+        public ArenaBoundarySegment WithGoalBandDimensions(float goalHalfLength, float goalTriggerInset)
+        {
+            return new ArenaBoundarySegment(
+                Start,
+                End,
+                InwardNormal,
+                GoalPlayerIndex,
+                GoalCenter,
+                goalHalfLength,
+                goalTriggerInset,
+                GoalContactLineInset);
+        }
+    }
+
+    public readonly struct ArenaGoalBandDimensions
+    {
+        public ArenaGoalBandDimensions(float goalHalfLength, float goalTriggerInset)
+        {
+            GoalHalfLength = goalHalfLength;
+            GoalTriggerInset = goalTriggerInset;
+        }
+
+        public float GoalHalfLength { get; }
+        public float GoalTriggerInset { get; }
     }
 }

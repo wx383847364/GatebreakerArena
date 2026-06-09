@@ -17,11 +17,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _logger = logger;
         }
 
-        public async Task<GatebreakerVisualAssetSet> LoadAsync(EffectiveMatchRule effectiveRule, BallRuleDefinition ballRule)
+        public async Task<GatebreakerVisualAssetSet> LoadAsync(EffectiveMatchRule effectiveRule, BallRuleDefinition ballRule, int playerCount = 0)
         {
             var result = new GatebreakerVisualAssetSet();
             MapRuleDefinition map = effectiveRule?.Map;
-            result.Scene = await LoadPrefabAsync(map?.ScenePrefabLocation, "scene");
+            result.Scene = await LoadPrefabAsync(ResolveScenePrefabLocation(map?.ScenePrefabLocation, playerCount), "scene");
             result.Paddle = await LoadPrefabAsync(map?.PaddlePrefabLocation, "paddle");
             result.Ball = await LoadPrefabAsync(ballRule?.PrefabLocation, "ball");
             result.SetPlayerBall(1, result.Ball);
@@ -34,6 +34,21 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             return result;
+        }
+
+        public static string ResolveScenePrefabLocation(string configuredLocation, int playerCount)
+        {
+            switch (playerCount)
+            {
+                case 2:
+                    return "Assets/HotUpdateContent/Res/prefabs/Scene2P.prefab";
+                case 3:
+                    return "Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab";
+                case 4:
+                    return "Assets/HotUpdateContent/Res/prefabs/Scene4P.prefab";
+                default:
+                    return configuredLocation;
+            }
         }
 
         private Task<GatebreakerLoadedPrefab> LoadOptionalPrefabAsync(string location, string role)

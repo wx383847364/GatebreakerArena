@@ -26,6 +26,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public Action LeaveLanRoomRequested { get; set; }
         public Action AcknowledgeLanStartRequested { get; set; }
         public Action<string> LanPlayerNameChanged { get; set; }
+        public Action<int> LanRoomPlayerCountChanged { get; set; }
         public Action<string> LanRoomCodeChanged { get; set; }
         public Action<float> MoveAxisChanged { get; set; }
         public Action<int> HitOffsetInfluenceChanged { get; set; }
@@ -34,6 +35,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public Action RestartMatchRequested { get; set; }
         public Action ResultBackRequested { get; set; }
         public string InitialLanPlayerName { get; set; }
+        public int InitialLanRoomPlayerCount { get; set; } = 2;
         public string InitialLanRoomCode { get; set; }
     }
 
@@ -41,6 +43,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
     {
         private readonly List<ButtonListener> _buttonListeners = new List<ButtonListener>();
         private readonly List<InputListener> _inputListeners = new List<InputListener>();
+        private readonly List<DropdownListener> _dropdownListeners = new List<DropdownListener>();
         private readonly List<SliderListener> _sliderListeners = new List<SliderListener>();
         private readonly List<EventTriggerListener> _eventTriggerListeners = new List<EventTriggerListener>();
         private Button _skillButton;
@@ -55,6 +58,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private Button _lanLeaveButton;
         private Button _lanAcknowledgeStartButton;
         private TMP_InputField _lanPlayerNameInput;
+        private TMP_Dropdown _lanRoomTypeDropdown;
         private TMP_InputField _lanRoomCodeInput;
         private RectTransform _movementPad;
         private RectTransform _movementHandle;
@@ -252,6 +256,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanLeaveButton = Require<Button>(binding.LanLeaveButtonObject, nameof(binding.LanLeaveButtonObject));
             _lanAcknowledgeStartButton = Require<Button>(binding.LanAcknowledgeStartButtonObject, nameof(binding.LanAcknowledgeStartButtonObject));
             _lanPlayerNameInput = Require<TMP_InputField>(binding.LanPlayerNameInputObject, nameof(binding.LanPlayerNameInputObject));
+            _lanRoomTypeDropdown = Require<TMP_Dropdown>(binding.LanRoomTypeDropdownObject, nameof(binding.LanRoomTypeDropdownObject));
             _lanRoomCodeInput = Require<TMP_InputField>(binding.LanRoomCodeInputObject, nameof(binding.LanRoomCodeInputObject));
             _lanStateText = Require<TMP_Text>(binding.LanStateTextObject, nameof(binding.LanStateTextObject));
             _lanRoomCodeText = Require<TMP_Text>(binding.LanRoomCodeTextObject, nameof(binding.LanRoomCodeTextObject));
@@ -284,6 +289,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddFixedMovementListeners(_movementLeftArrowInput, -1f);
             AddFixedMovementListeners(_movementRightArrowInput, 1f);
             AddInputListener(_lanPlayerNameInput, _callbacks.InitialLanPlayerName, value => _callbacks.LanPlayerNameChanged?.Invoke(value));
+            AddDropdownListener(
+                _lanRoomTypeDropdown,
+                ResolveLanRoomTypeIndex(_lanRoomTypeDropdown, _callbacks.InitialLanRoomPlayerCount),
+                value => _callbacks.LanRoomPlayerCountChanged?.Invoke(ResolveLanRoomTypePlayerCount(_lanRoomTypeDropdown, value)));
             AddInputListener(_lanRoomCodeInput, _callbacks.InitialLanRoomCode, value => _callbacks.LanRoomCodeChanged?.Invoke(value));
             ConfigureSlider(
                 _gmHitOffsetSlider,
@@ -489,6 +498,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             _inputListeners.Clear();
+            for (int i = 0; i < _dropdownListeners.Count; i++)
+            {
+                DropdownListener listener = _dropdownListeners[i];
+                if (listener.Dropdown != null)
+                {
+                    listener.Dropdown.onValueChanged.RemoveListener(listener.Action);
+                }
+            }
+
+            _dropdownListeners.Clear();
             for (int i = 0; i < _sliderListeners.Count; i++)
             {
                 SliderListener listener = _sliderListeners[i];
@@ -519,6 +538,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanLeaveButton = null;
             _lanAcknowledgeStartButton = null;
             _lanPlayerNameInput = null;
+            _lanRoomTypeDropdown = null;
             _lanRoomCodeInput = null;
             _movementPad = null;
             _movementHandle = null;
@@ -757,6 +777,20 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _inputListeners.Add(new InputListener(input, action));
         }
 
+        private void AddDropdownListener(TMP_Dropdown dropdown, int initialIndex, UnityEngine.Events.UnityAction<int> action)
+        {
+            if (dropdown == null)
+            {
+                return;
+            }
+
+            int clampedIndex = Mathf.Clamp(initialIndex, 0, Mathf.Max(0, dropdown.options.Count - 1));
+            dropdown.SetValueWithoutNotify(clampedIndex);
+            dropdown.onValueChanged.AddListener(action);
+            _dropdownListeners.Add(new DropdownListener(dropdown, action));
+            action?.Invoke(clampedIndex);
+        }
+
         private void ConfigureSlider(Slider slider, int min, int max, Action<int> setter)
         {
             if (slider == null)
@@ -966,6 +1000,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 return;
             }
 
+            int visibleRowCount = Mathf.Clamp(snapshot?.MaxPlayers ?? rowCount, 1, rowCount);
             RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
             Array.Sort(players, (left, right) =>
             {
@@ -976,11 +1011,22 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             for (int i = 0; i < rowCount; i++)
             {
+                bool visible = i < visibleRowCount;
+                SetActive(_lanRoomPlayerInfoTexts[i] != null ? _lanRoomPlayerInfoTexts[i].gameObject : null, visible);
+                SetActive(_lanRoomPlayerNameTexts[i] != null ? _lanRoomPlayerNameTexts[i].gameObject : null, visible);
+                SetActive(_lanRoomPlayerReadyTexts[i] != null ? _lanRoomPlayerReadyTexts[i].gameObject : null, visible);
+                if (!visible)
+                {
+                    SetText(_lanRoomPlayerInfoTexts[i], string.Empty);
+                    SetText(_lanRoomPlayerNameTexts[i], string.Empty);
+                    SetText(_lanRoomPlayerReadyTexts[i], string.Empty);
+                    continue;
+                }
+
                 RoomPlayerSnapshot player = i < players.Length ? players[i] : null;
                 int playerId = player != null ? player.PlayerId : i + 1;
-                string fallbackName = "Computer " + playerId.ToString(CultureInfo.InvariantCulture);
-                string playerName = player == null || string.IsNullOrWhiteSpace(player.PlayerName)
-                    ? fallbackName
+                string playerName = player == null || player.IsAi || string.IsNullOrWhiteSpace(player.PlayerName)
+                    ? "AI"
                     : player.PlayerName;
                 string ready = player == null || player.IsAi || player.IsReady ? "ready" : "not ready";
 
@@ -1396,9 +1442,60 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
         }
 
+        public static int ResolveLanRoomTypePlayerCount(TMP_Dropdown dropdown, int optionIndex)
+        {
+            string text = null;
+            if (dropdown != null && dropdown.options != null && optionIndex >= 0 && optionIndex < dropdown.options.Count)
+            {
+                text = dropdown.options[optionIndex]?.text;
+            }
+
+            return ResolveLanRoomTypePlayerCount(text);
+        }
+
+        public static int ResolveLanRoomTypePlayerCount(string optionText)
+        {
+            if (string.IsNullOrWhiteSpace(optionText))
+            {
+                return 2;
+            }
+
+            string text = optionText.Trim();
+            if (text.Contains("四") || text.Contains("4"))
+            {
+                return 4;
+            }
+
+            if (text.Contains("三") || text.Contains("3"))
+            {
+                return 3;
+            }
+
+            return 2;
+        }
+
+        private static int ResolveLanRoomTypeIndex(TMP_Dropdown dropdown, int playerCount)
+        {
+            if (dropdown == null || dropdown.options == null || dropdown.options.Count <= 0)
+            {
+                return 0;
+            }
+
+            int targetPlayerCount = Mathf.Clamp(playerCount, 2, 4);
+            for (int i = 0; i < dropdown.options.Count; i++)
+            {
+                if (ResolveLanRoomTypePlayerCount(dropdown, i) == targetPlayerCount)
+                {
+                    return i;
+                }
+            }
+
+            return 0;
+        }
+
         private static string FormatLanPlayerCount(RoomSnapshot snapshot)
         {
-            int totalPlayers = snapshot?.Players != null ? snapshot.Players.Length : 0;
+            int totalPlayers = Mathf.Max(0, snapshot?.MaxPlayers ?? 0);
             int humanPlayers = 0;
             RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
             for (int i = 0; i < players.Length; i++)
@@ -1437,8 +1534,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
         private static string FormatLanRosterSummary(RoomPlayerSnapshot player)
         {
-            string name = string.IsNullOrWhiteSpace(player.PlayerName)
-                ? "Player" + player.PlayerId.ToString(CultureInfo.InvariantCulture)
+            string name = player.IsAi || string.IsNullOrWhiteSpace(player.PlayerName)
+                ? "AI"
                 : player.PlayerName;
             string ready = player.IsAi || player.IsReady ? "ready" : "not ready";
             return "Player" + player.PlayerId.ToString(CultureInfo.InvariantCulture) + " " + name + " " + ready;
@@ -1476,6 +1573,18 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             public TMP_InputField Input { get; }
             public UnityEngine.Events.UnityAction<string> Action { get; }
+        }
+
+        private readonly struct DropdownListener
+        {
+            public DropdownListener(TMP_Dropdown dropdown, UnityEngine.Events.UnityAction<int> action)
+            {
+                Dropdown = dropdown;
+                Action = action;
+            }
+
+            public TMP_Dropdown Dropdown { get; }
+            public UnityEngine.Events.UnityAction<int> Action { get; }
         }
 
         private readonly struct SliderListener

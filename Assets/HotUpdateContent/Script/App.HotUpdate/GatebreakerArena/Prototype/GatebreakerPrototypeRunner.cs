@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -27,7 +28,6 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const string ArenaRootName = "ArenaRoot";
         private const string ObjPoolRootName = "ObjPool";
         private const string DebugCollisionOverlayName = "DebugCollisionOverlay";
-        private const string SceneInstanceName = "Scene3v3";
         private const float Scene3v3PaddlePrefabNormalScale = 0.14f;
         private const float SceneVisualBoundsPadding = 0.04f;
         private const float DebugOverlayPrefabDepth = -0.08f;
@@ -86,6 +86,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private float _guiMoveAxis;
         private ulong _lanClientInstanceId;
         private string _lanPlayerName = "Player";
+        private int _lanSelectedPlayerCount = 2;
         private string _lanRoomCodeInput = string.Empty;
         private string _cachedLocalLanAddress = "-";
         private string _lastLanDiagnosticsSummary = string.Empty;
@@ -99,6 +100,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private bool _hasSceneVisualBounds;
         private bool _missingInputServiceWarningLogged;
         private bool _lanEntryUiHiddenForPlaying;
+        private int _loadedScenePlayerCount;
+        private bool _sceneReloadInProgress;
         private float _paddlePrefabLength = 1f;
         private StartupUiState _startupUiState = StartupUiState.ModeSelect;
         private float _localStartCountdownElapsed;
@@ -234,6 +237,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             else
             {
                 HandleLocalPlayerSelection();
+            }
+
+            if (EnsureSceneMatchesRuntime())
+            {
+                return;
             }
 
             float screenMoveAxis = ReadMoveAxis();
@@ -729,6 +737,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             _visualAssets?.Dispose();
             DestroyBallViewCache();
+            DestroyPaddleViewCache();
             ClearDebugCollisionOverlay();
             if (_debugCollisionOverlayRoot != null)
             {
@@ -763,19 +772,29 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private async Task EnsureSceneAsync()
         {
-            if (_visualRoot != null)
+            int scenePlayerCount = ResolveRuntimeScenePlayerCount();
+            if (_visualRoot != null && _loadedScenePlayerCount == scenePlayerCount)
             {
                 return;
             }
 
-            ResolveArenaRoot();
+            if (_visualRoot == null)
+            {
+                ResolveArenaRoot();
+            }
+            else
+            {
+                ClearLoadedVisualObjects();
+            }
+
             _visualAssets = _visualAssetService != null
-                ? await _visualAssetService.LoadAsync(_runtime?.EffectiveRule, _runtime?.BallRule)
+                ? await _visualAssetService.LoadAsync(_runtime?.EffectiveRule, _runtime?.BallRule, scenePlayerCount)
                 : null;
 
             if (_visualAssets != null && _visualAssets.IsComplete)
             {
                 _usePrefabVisuals = true;
+                _loadedScenePlayerCount = scenePlayerCount;
                 CreatePrefabScene();
                 ValidatePrefabPaddleLength();
                 ValidatePrefabBallContactRadius();
@@ -787,6 +806,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _visualAssets?.Dispose();
             _visualAssets = null;
             _usePrefabVisuals = false;
+            _loadedScenePlayerCount = scenePlayerCount;
             CreateMaterials();
             ConfigurePrototypeCamera();
             CreateLightIfNeeded();
@@ -798,20 +818,51 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             ConfigurePrototypeCamera();
         }
 
+        private void ClearLoadedVisualObjects()
+        {
+            ClearDebugCollisionOverlay();
+            if (_sceneInstance != null)
+            {
+                Destroy(_sceneInstance);
+                _sceneInstance = null;
+            }
+
+            DestroyBallViewCache();
+            DestroyPaddleViewCache();
+            _visualAssets?.Dispose();
+            _visualAssets = null;
+            _usePrefabVisuals = false;
+            _hasSceneVisualBounds = false;
+            _loadedScenePlayerCount = 0;
+        }
+
+        private int ResolveRuntimeScenePlayerCount()
+        {
+            int playerCount = _runtime?.Players != null ? _runtime.Players.Count : 0;
+            if (playerCount <= 0)
+            {
+                playerCount = _runtime?.EffectiveRule?.Map?.DefaultPlayerCount ?? 0;
+            }
+
+            return Mathf.Clamp(playerCount > 0 ? playerCount : 3, 2, 4);
+        }
+
         private void CreatePrefabScene()
         {
             _sceneInstance = Instantiate(_visualAssets.Scene.Prefab, _visualRoot, false);
-            _sceneInstance.name = SceneInstanceName;
+            _sceneInstance.name = _visualAssets.Scene.Prefab.name;
             _sceneInstance.transform.localPosition = Vector3.zero;
             _sceneInstance.transform.localRotation = Quaternion.identity;
             _sceneInstance.transform.localScale = Vector3.one;
             ApplyScenePlayerSideColors();
+            CalibrateGoalBandFromSceneControls();
             UpdateSceneVisualBounds();
         }
 
         private void ApplyScenePlayerSideColors()
         {
-            IReadOnlyList<MapPlayerSideBindingDefinition> bindings = _runtime?.EffectiveRule?.Map?.PlayerSideBindings;
+            IReadOnlyList<MapPlayerSideBindingDefinition> bindings =
+                ArenaGeometry.CreateScenePlayerSideBindings(ResolveRuntimeScenePlayerCount(), _runtime?.EffectiveRule?.Map?.PlayerSideBindings);
             if (_sceneInstance == null || bindings == null)
             {
                 return;
@@ -899,6 +950,181 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 }
             }
 
+        }
+
+        private void CalibrateGoalBandFromSceneControls()
+        {
+            IReadOnlyList<MapPlayerSideBindingDefinition> bindings =
+                ArenaGeometry.CreateScenePlayerSideBindings(ResolveRuntimeScenePlayerCount(), _runtime?.EffectiveRule?.Map?.PlayerSideBindings);
+            if (_sceneInstance == null || _runtime?.Arena == null || bindings == null)
+            {
+                return;
+            }
+
+            Transform[] transforms = _sceneInstance.GetComponentsInChildren<Transform>(true);
+            var dimensionsBySegmentIndex = new Dictionary<int, ArenaGoalBandDimensions>();
+            for (int i = 0; i < bindings.Count; i++)
+            {
+                MapPlayerSideBindingDefinition binding = bindings[i];
+                if (binding == null ||
+                    string.IsNullOrEmpty(binding.ScenePosition) ||
+                    binding.BoundarySegmentIndex < 0 ||
+                    binding.BoundarySegmentIndex >= _runtime.Arena.BoundarySegments.Count)
+                {
+                    continue;
+                }
+
+                Transform position = FindSceneTransform(transforms, binding.ScenePosition);
+                if (TryCalculateVisibleNetBody(position, out float halfLength, out float triggerInset))
+                {
+                    dimensionsBySegmentIndex[binding.BoundarySegmentIndex] =
+                        new ArenaGoalBandDimensions(halfLength, triggerInset);
+                }
+            }
+
+            if (dimensionsBySegmentIndex.Count <= 0)
+            {
+                return;
+            }
+
+            if (_runtime.SetArenaGoalBandDimensions(dimensionsBySegmentIndex))
+            {
+                Debug.LogFormat(
+                    "GatebreakerPrototypeRunner: goal bands calibrated from scene controls. count={0}",
+                    dimensionsBySegmentIndex.Count);
+            }
+        }
+
+        private static bool TryCalculateVisibleNetBody(
+            Transform position,
+            out float halfLength,
+            out float triggerInset)
+        {
+            halfLength = 0f;
+            triggerInset = 0f;
+            if (position == null)
+            {
+                return false;
+            }
+
+            SpriteRenderer netRenderer = FindActiveNetRenderer(position);
+            if (netRenderer == null || !TryCalculateRendererBoundsInSpace(position, netRenderer, out Bounds netBounds))
+            {
+                return false;
+            }
+
+            float minX = netBounds.min.x;
+            float maxX = netBounds.max.x;
+            SpriteRenderer[] renderers = position.GetComponentsInChildren<SpriteRenderer>(false);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                SpriteRenderer renderer = renderers[i];
+                if (renderer == null || renderer == netRenderer || IsInsideNetTransform(renderer.transform))
+                {
+                    continue;
+                }
+
+                if (!TryCalculateRendererBoundsInSpace(position, renderer, out Bounds coverBounds) ||
+                    !Overlaps(coverBounds.min.y, coverBounds.max.y, netBounds.min.y, netBounds.max.y) ||
+                    !IsLikelyGoalEndCap(renderer, coverBounds, netBounds))
+                {
+                    continue;
+                }
+
+                if (coverBounds.center.x < netBounds.center.x && coverBounds.max.x > minX)
+                {
+                    minX = Mathf.Min(coverBounds.max.x, maxX);
+                }
+                else if (coverBounds.center.x > netBounds.center.x && coverBounds.min.x < maxX)
+                {
+                    maxX = Mathf.Max(coverBounds.min.x, minX);
+                }
+            }
+
+            float visibleWidth = maxX - minX;
+            float triggerLineInset = netBounds.size.y * 0.5f;
+            if (visibleWidth <= 0.001f || triggerLineInset <= 0.001f)
+            {
+                return false;
+            }
+
+            halfLength = visibleWidth * 0.5f;
+            triggerInset = triggerLineInset;
+            return true;
+        }
+
+        private static bool IsLikelyGoalEndCap(SpriteRenderer renderer, Bounds coverBounds, Bounds netBounds)
+        {
+            if (renderer == null)
+            {
+                return false;
+            }
+
+            string name = renderer.name ?? string.Empty;
+            bool hasEndCapName =
+                name.StartsWith("Square", StringComparison.OrdinalIgnoreCase) ||
+                name.IndexOf("Cap", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Cover", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!hasEndCapName)
+            {
+                return false;
+            }
+
+            float netWidth = netBounds.size.x;
+            float coverWidth = coverBounds.size.x;
+            if (netWidth <= 0.001f || coverWidth <= 0.001f || coverWidth >= netWidth * 0.5f)
+            {
+                return false;
+            }
+
+            float edgeZone = netWidth * 0.35f;
+            bool overlapsLeftEnd = coverBounds.min.x <= netBounds.min.x + edgeZone && coverBounds.max.x > netBounds.min.x;
+            bool overlapsRightEnd = coverBounds.max.x >= netBounds.max.x - edgeZone && coverBounds.min.x < netBounds.max.x;
+            return overlapsLeftEnd || overlapsRightEnd;
+        }
+
+        private static SpriteRenderer FindActiveNetRenderer(Transform position)
+        {
+            Transform[] children = position.GetComponentsInChildren<Transform>(false);
+            for (int i = 0; i < children.Length; i++)
+            {
+                Transform child = children[i];
+                if (child == null ||
+                    !child.gameObject.activeInHierarchy ||
+                    !string.Equals(child.name, "net", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                SpriteRenderer renderer = child.GetComponent<SpriteRenderer>();
+                if (renderer != null && renderer.enabled)
+                {
+                    return renderer;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsInsideNetTransform(Transform transform)
+        {
+            Transform current = transform;
+            while (current != null)
+            {
+                if (string.Equals(current.name, "net", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                current = current.parent;
+            }
+
+            return false;
+        }
+
+        private static bool Overlaps(float minA, float maxA, float minB, float maxB)
+        {
+            return maxA > minB && maxB > minA;
         }
 
         private void UpdateSceneVisualBounds()
@@ -1105,6 +1331,72 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             return true;
         }
 
+        private static bool TryCalculateRendererBoundsInSpace(
+            Transform root,
+            Renderer renderer,
+            out Bounds localBounds)
+        {
+            localBounds = default;
+            if (root == null || renderer == null || !renderer.enabled)
+            {
+                return false;
+            }
+
+            if (renderer is SpriteRenderer spriteRenderer && spriteRenderer.sprite != null)
+            {
+                Vector2 size = spriteRenderer.drawMode == SpriteDrawMode.Simple
+                    ? spriteRenderer.sprite.bounds.size
+                    : spriteRenderer.size;
+                if (size.x <= 0.0001f || size.y <= 0.0001f)
+                {
+                    return false;
+                }
+
+                Vector3 spriteMin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+                Vector3 spriteMax = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+                AccumulateRendererLocalCorner(root, spriteRenderer.transform, -size.x * 0.5f, -size.y * 0.5f, ref spriteMin, ref spriteMax);
+                AccumulateRendererLocalCorner(root, spriteRenderer.transform, -size.x * 0.5f, size.y * 0.5f, ref spriteMin, ref spriteMax);
+                AccumulateRendererLocalCorner(root, spriteRenderer.transform, size.x * 0.5f, -size.y * 0.5f, ref spriteMin, ref spriteMax);
+                AccumulateRendererLocalCorner(root, spriteRenderer.transform, size.x * 0.5f, size.y * 0.5f, ref spriteMin, ref spriteMax);
+                localBounds = new Bounds((spriteMin + spriteMax) * 0.5f, spriteMax - spriteMin);
+                return true;
+            }
+
+            Bounds bounds = renderer.bounds;
+            Vector3 extents = bounds.extents;
+            if (extents.x <= 0.0001f && extents.y <= 0.0001f)
+            {
+                return false;
+            }
+
+            Vector3 center = bounds.center;
+            Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            AccumulateSceneBoundsCorner(root, center, extents, -1f, -1f, -1f, ref min, ref max);
+            AccumulateSceneBoundsCorner(root, center, extents, -1f, -1f, 1f, ref min, ref max);
+            AccumulateSceneBoundsCorner(root, center, extents, -1f, 1f, -1f, ref min, ref max);
+            AccumulateSceneBoundsCorner(root, center, extents, -1f, 1f, 1f, ref min, ref max);
+            AccumulateSceneBoundsCorner(root, center, extents, 1f, -1f, -1f, ref min, ref max);
+            AccumulateSceneBoundsCorner(root, center, extents, 1f, -1f, 1f, ref min, ref max);
+            AccumulateSceneBoundsCorner(root, center, extents, 1f, 1f, -1f, ref min, ref max);
+            AccumulateSceneBoundsCorner(root, center, extents, 1f, 1f, 1f, ref min, ref max);
+            localBounds = new Bounds((min + max) * 0.5f, max - min);
+            return true;
+        }
+
+        private static void AccumulateRendererLocalCorner(
+            Transform root,
+            Transform rendererTransform,
+            float localX,
+            float localY,
+            ref Vector3 min,
+            ref Vector3 max)
+        {
+            Vector3 point = root.InverseTransformPoint(rendererTransform.TransformPoint(new Vector3(localX, localY, 0f)));
+            min = Vector3.Min(min, point);
+            max = Vector3.Max(max, point);
+        }
+
         private static bool ShouldIncludeSceneVisualBounds(Renderer renderer)
         {
             return renderer != null &&
@@ -1229,11 +1521,21 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             Vector3 end,
             GatebreakerCollisionOverlayLineKind kind)
         {
-            GetDebugOverlayStyle(kind, out Color color, out float width);
-            AddDebugCollisionLine(new[] { start, end }, color, width);
+            GetDebugOverlayStyle(kind, out Color color, out float width, out int capVertices, out int cornerVertices);
+            AddDebugCollisionLine(new[] { start, end }, color, width, capVertices, cornerVertices);
         }
 
         private void AddDebugCollisionLine(Vector3[] positions, Color color, float width)
+        {
+            AddDebugCollisionLine(positions, color, width, 2, 2);
+        }
+
+        private void AddDebugCollisionLine(
+            Vector3[] positions,
+            Color color,
+            float width,
+            int capVertices,
+            int cornerVertices)
         {
             if (positions == null || positions.Length < 2)
             {
@@ -1257,8 +1559,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             line.endColor = color;
             line.startWidth = width;
             line.endWidth = width;
-            line.numCornerVertices = 2;
-            line.numCapVertices = 2;
+            line.numCornerVertices = Math.Max(0, cornerVertices);
+            line.numCapVertices = Math.Max(0, capVertices);
             line.textureMode = LineTextureMode.Stretch;
             line.alignment = LineAlignment.View;
             line.sortingOrder = DebugOverlaySortingOrder;
@@ -1300,8 +1602,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private static void GetDebugOverlayStyle(
             GatebreakerCollisionOverlayLineKind kind,
             out Color color,
-            out float width)
+            out float width,
+            out int capVertices,
+            out int cornerVertices)
         {
+            capVertices = 2;
+            cornerVertices = 2;
             switch (kind)
             {
                 case GatebreakerCollisionOverlayLineKind.GoalTrigger:
@@ -1310,7 +1616,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     break;
                 case GatebreakerCollisionOverlayLineKind.GoalBand:
                     color = new Color(1.00f, 0.92f, 0.10f, 0.78f);
-                    width = 0.018f;
+                    width = 0.006f;
+                    capVertices = 0;
+                    cornerVertices = 0;
                     break;
                 case GatebreakerCollisionOverlayLineKind.PaddleContact:
                     color = new Color(1.00f, 0.10f, 1.00f, 1f);
@@ -1558,6 +1866,30 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _guardRenderers.Remove(playerId);
+        }
+
+        private void DestroyPaddleViewCache()
+        {
+            foreach (Transform paddle in _paddleViews.Values)
+            {
+                if (paddle != null)
+                {
+                    Destroy(paddle.gameObject);
+                }
+            }
+
+            foreach (Renderer guard in _guardRenderers.Values)
+            {
+                if (guard != null)
+                {
+                    Destroy(guard.gameObject);
+                }
+            }
+
+            _paddleViews.Clear();
+            _paddleVisualPoses.Clear();
+            _paddleRenderers.Clear();
+            _guardRenderers.Clear();
         }
 
         private Vector3 GetPaddlePosition(PlayerRuntimeState player)
@@ -2023,6 +2355,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             _runtime?.StartLocalPrototype();
             _runtime?.SetLocalPlayer(_localPlayerId);
+            EnsureSceneMatchesRuntime();
             ValidatePrefabBallContactRadius();
             _lastServeBlockReason = ServeBlockReason.None;
             _guiServePressed = false;
@@ -2035,6 +2368,45 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void SetGuiMoveAxis(float moveAxis)
         {
             _guiMoveAxis = Mathf.Clamp(moveAxis, -1f, 1f);
+        }
+
+        private bool EnsureSceneMatchesRuntime()
+        {
+            if (_runtime == null || _visualRoot == null)
+            {
+                return false;
+            }
+
+            if (_loadedScenePlayerCount == ResolveRuntimeScenePlayerCount())
+            {
+                return false;
+            }
+
+            if (_sceneReloadInProgress)
+            {
+                return true;
+            }
+
+            _sceneReloadInProgress = true;
+            StartCoroutine(ReloadSceneForRuntimeAsync());
+            return true;
+        }
+
+        private IEnumerator ReloadSceneForRuntimeAsync()
+        {
+            Task reloadTask = EnsureSceneAsync();
+            while (!reloadTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (reloadTask.Exception != null)
+            {
+                Debug.LogException(reloadTask.Exception);
+            }
+
+            ResetVisualInterpolation();
+            _sceneReloadInProgress = false;
         }
 
         private GatebreakerArenaSceneUiCallbacks BuildSceneUiCallbacks()
@@ -2052,6 +2424,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 LeaveLanRoomRequested = LeaveLanRoom,
                 AcknowledgeLanStartRequested = AcknowledgeLanStart,
                 LanPlayerNameChanged = SetLanPlayerName,
+                LanRoomPlayerCountChanged = SetLanRoomPlayerCount,
                 LanRoomCodeChanged = SetLanRoomCode,
                 MoveAxisChanged = SetGuiMoveAxis,
                 HitOffsetInfluenceChanged = value => _runtime?.BounceTuning?.SetHitOffsetInfluenceValue(value),
@@ -2060,6 +2433,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 RestartMatchRequested = RequestResultRestart,
                 ResultBackRequested = RequestResultBack,
                 InitialLanPlayerName = _lanPlayerName,
+                InitialLanRoomPlayerCount = _lanSelectedPlayerCount,
                 InitialLanRoomCode = _lanRoomCodeInput,
             };
         }
@@ -2274,7 +2648,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            RoomSnapshot snapshot = _lanRoomService.CreateHost(_lanPlayerName, _lanClientInstanceId, tcpPort: tcpPort);
+            RoomSnapshot snapshot = _lanRoomService.CreateHost(
+                _lanPlayerName,
+                _lanClientInstanceId,
+                maxPlayers: _lanSelectedPlayerCount,
+                tcpPort: tcpPort);
             _lanRoomCodeInput = snapshot.RoomCode;
             _startupUiState = StartupUiState.OnlineRoom;
             _lanEntryUiHiddenForPlaying = false;
@@ -2404,6 +2782,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void SetLanPlayerName(string value)
         {
             _lanPlayerName = string.IsNullOrWhiteSpace(value) ? "Player" : value.Trim();
+        }
+
+        private void SetLanRoomPlayerCount(int value)
+        {
+            _lanSelectedPlayerCount = Mathf.Clamp(value, 2, 4);
         }
 
         private void SetLanRoomCode(string value)

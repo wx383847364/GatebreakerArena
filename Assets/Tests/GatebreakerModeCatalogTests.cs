@@ -38,11 +38,11 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("Yellow", catalog.GetPlayerColor(4).ColorName);
             Assert.AreEqual(0.18f, ai.ReactionDelay);
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
-            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(8f, map.PaddleMoveSpeed);
             Assert.AreEqual(3, map.DefaultPlayerCount);
-            Assert.AreEqual(3, map.PlayerSideBindings.Count);
+            Assert.AreEqual(4, map.PlayerSideBindings.Count);
             Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);
             Assert.AreEqual("Position01", map.PlayerSideBindings[0].ScenePosition);
             Assert.AreEqual(5, map.PlayerSideBindings[0].BoundarySegmentIndex);
@@ -52,6 +52,9 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(3, map.PlayerSideBindings[2].PlayerId);
             Assert.AreEqual("Position05", map.PlayerSideBindings[2].ScenePosition);
             Assert.AreEqual(3, map.PlayerSideBindings[2].BoundarySegmentIndex);
+            Assert.AreEqual(4, map.PlayerSideBindings[3].PlayerId);
+            Assert.AreEqual("Position07", map.PlayerSideBindings[3].ScenePosition);
+            Assert.AreEqual(5, map.PlayerSideBindings[3].BoundarySegmentIndex);
             Assert.AreEqual(0, effective.InitialBallsInMatch);
             Assert.AreEqual(20, effective.MaxBallsInMatch);
             Assert.AreEqual(2, effective.InitialServeAmmo);

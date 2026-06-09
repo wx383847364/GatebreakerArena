@@ -291,6 +291,47 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void VisibleNetBodyProbeUsesCoverInnerEdges()
+        {
+            var position = new GameObject("Position01");
+            Texture2D texture = null;
+            Sprite sprite = null;
+            try
+            {
+                texture = new Texture2D(1, 1);
+                texture.SetPixel(0, 0, Color.white);
+                texture.Apply();
+                sprite = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+
+                CreateSpriteChild(position.transform, "net", sprite, new Vector3(0f, 0.25f, 0f), new Vector2(3.16f, 0.3f), new Vector3(0.67f, 0.46f, 1f));
+                CreateSpriteChild(position.transform, "Square", sprite, new Vector3(-1.238f, 0.25f, 0f), new Vector2(0.6f, 0.3f), new Vector3(0.67f, 0.46f, 1f));
+                CreateSpriteChild(position.transform, "Square", sprite, new Vector3(1.238f, 0.25f, 0f), new Vector2(0.6f, 0.3f), new Vector3(0.67f, 0.46f, 1f));
+
+                object[] arguments = { position.transform, 0f, 0f };
+                bool calculated = InvokePrivateStatic<bool>("TryCalculateVisibleNetBody", arguments);
+                float halfLength = (float)arguments[1];
+                float triggerInset = (float)arguments[2];
+
+                Assert.IsTrue(calculated);
+                Assert.AreEqual(1.238f - 0.6f * 0.67f * 0.5f, halfLength, 0.0001f);
+                Assert.AreEqual(0.3f * 0.46f * 0.5f, triggerInset, 0.0001f);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(position);
+                if (sprite != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(sprite);
+                }
+
+                if (texture != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(texture);
+                }
+            }
+        }
+
+        [Test]
         public void StaleScoredBallViewHoldsBeforeReturningToPool()
         {
             var root = new GameObject("Gatebreaker Prototype Runner Scored Visual Test");
@@ -386,6 +427,31 @@ namespace Gatebreaker.Tests
             MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, methodName);
             return (T)method.Invoke(target, arguments);
+        }
+
+        private static T InvokePrivateStatic<T>(string methodName, params object[] arguments)
+        {
+            MethodInfo method = typeof(GatebreakerPrototypeRunner).GetMethod(methodName, BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, methodName);
+            return (T)method.Invoke(null, arguments);
+        }
+
+        private static void CreateSpriteChild(
+            Transform parent,
+            string name,
+            Sprite sprite,
+            Vector3 localPosition,
+            Vector2 size,
+            Vector3 localScale)
+        {
+            var child = new GameObject(name);
+            child.transform.SetParent(parent, false);
+            child.transform.localPosition = localPosition;
+            child.transform.localScale = localScale;
+            SpriteRenderer renderer = child.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.drawMode = SpriteDrawMode.Sliced;
+            renderer.size = size;
         }
     }
 }

@@ -308,7 +308,7 @@ namespace Gatebreaker.Tests
             runtime.StartLocalPrototype(aiCount: 3);
 
             Assert.IsTrue(runtime.Arena.HasCustomBoundary);
-            Assert.AreEqual(6, runtime.Arena.BoundarySegments.Count);
+            Assert.AreEqual(8, runtime.Arena.BoundarySegments.Count);
             Assert.IsTrue(runtime.Arena.Contains(Vector2.zero));
             Assert.IsFalse(runtime.Arena.Contains(new Vector2(3f, 0f)));
         }
@@ -342,6 +342,19 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(1, rightOwner);
             Assert.IsTrue(arena.TryGetGoalOwner(leftGoal.GoalCenter - leftGoal.InwardNormal * 0.2f, 3, SpawnLayoutType.FourSide, out int leftOwner));
             Assert.AreEqual(2, leftOwner);
+        }
+
+        [Test]
+        public void Scene4PBoundaryUsesFourPlayerSideBindings()
+        {
+            MapRuleDefinition map = GatebreakerModeCatalog.CreateDefault().GetMap("MAP_ARENA_01");
+            ArenaGeometry arena = ArenaGeometry.CreateForMap(map, new[] { 1, 2, 3, 4 });
+
+            Assert.AreEqual(8, arena.BoundarySegments.Count);
+            AssertGoalOwner(arena, 7, 0, 4);
+            AssertGoalOwner(arena, 1, 1, 4);
+            AssertGoalOwner(arena, 3, 2, 4);
+            AssertGoalOwner(arena, 5, 3, 4);
         }
 
         [Test]
@@ -487,6 +500,16 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(lines.Any(line =>
                 line.Kind == GatebreakerCollisionOverlayLineKind.PaddleContact &&
                 line.GoalPlayerIndex == arena.BoundarySegments[5].GoalPlayerIndex));
+        }
+
+        [Test]
+        public void Scene3v3GoalBandMatchesVisibleNetBody()
+        {
+            ArenaGeometry arena = ArenaGeometry.CreateScene3v3();
+            ArenaBoundarySegment bottomGoal = arena.BoundarySegments[5];
+
+            Assert.AreEqual(1.238f - 0.6f * 0.67f * 0.5f, bottomGoal.GoalHalfLength, 0.0001f);
+            Assert.AreEqual(0.3f * 0.46f * 0.5f, bottomGoal.GoalTriggerInset, 0.0001f);
         }
 
         [Test]
@@ -1480,6 +1503,18 @@ namespace Gatebreaker.Tests
             Assert.Greater(Mathf.Abs(Vector2.Dot(paddle.Tangent, segment.Tangent)), 0.999f);
             Vector2 expectedCenter = segment.GoalCenter + segment.InwardNormal * inset;
             Assert.Less(Vector2.Distance(paddle.Position, expectedCenter), 0.001f);
+        }
+
+        private static void AssertGoalOwner(ArenaGeometry arena, int segmentIndex, int expectedOwner, int activePlayerCount)
+        {
+            ArenaBoundarySegment segment = arena.BoundarySegments[segmentIndex];
+            Assert.IsTrue(
+                arena.TryGetGoalOwner(
+                    segment.GoalCenter - segment.InwardNormal * 0.2f,
+                    activePlayerCount,
+                    SpawnLayoutType.FourSide,
+                    out int owner));
+            Assert.AreEqual(expectedOwner, owner);
         }
     }
 }

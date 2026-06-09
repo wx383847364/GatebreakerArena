@@ -88,7 +88,7 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.IsNotNull(GameObject.Find("Gatebreaker Prototype Runner"), "Prototype runner GameObject should be created.");
                 Assert.IsNotNull(GameObject.Find("ArenaRoot"), "Static arena root should contain configured gameplay visuals.");
                 Assert.IsTrue(
-                    GameObject.Find("Scene3v3") != null || GameObject.Find("Arena Floor") != null,
+                    GameObject.Find("Scene3P") != null || GameObject.Find("Arena Floor") != null,
                     "Configured scene prefab or procedural fallback arena should be visible.");
                 Assert.IsNotNull(GameObject.Find("Player 1 Paddle"), "Local paddle view should be visible.");
 
@@ -294,6 +294,7 @@ namespace Gatebreaker.Tests.PlayMode
             Assert.IsInstanceOf<Button>(sceneBinding.LanLeaveButtonObject, "LAN leave button should be explicitly bound.");
             Assert.IsInstanceOf<Button>(sceneBinding.LanAcknowledgeStartButtonObject, "LAN acknowledge-start button should be explicitly bound.");
             Assert.IsInstanceOf<TMP_InputField>(sceneBinding.LanPlayerNameInputObject, "LAN player-name input should be explicitly bound.");
+            Assert.IsInstanceOf<TMP_Dropdown>(sceneBinding.LanRoomTypeDropdownObject, "LAN room-type dropdown should be explicitly bound.");
             Assert.IsInstanceOf<TMP_InputField>(sceneBinding.LanRoomCodeInputObject, "LAN room-code input should be explicitly bound.");
             Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanStateTextObject, "LAN state text should be explicitly bound.");
             Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanRoomCodeTextObject, "LAN room-code text should be explicitly bound.");
@@ -301,9 +302,9 @@ namespace Gatebreaker.Tests.PlayMode
             Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanLocalIpTextObject, "LAN local-IP text should be explicitly bound.");
             Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanRoomIpTextObject, "LAN room-IP text should be explicitly bound.");
             Assert.IsInstanceOf<TMP_Text>(sceneBinding.LanErrorTextObject, "LAN error text should be explicitly bound.");
-            Assert.AreEqual(3, sceneBinding.LanRoomPlayerInfoTextObjects.Length, "LAN room player-info texts should bind Playerinfo_1 through Playerinfo_3.");
-            Assert.AreEqual(3, sceneBinding.LanRoomPlayerNameTextObjects.Length, "LAN room player-name texts should bind the native Name children.");
-            Assert.AreEqual(3, sceneBinding.LanRoomPlayerReadyTextObjects.Length, "LAN room player-ready texts should bind the native Status children.");
+            Assert.AreEqual(4, sceneBinding.LanRoomPlayerInfoTextObjects.Length, "LAN room player-info texts should bind Playerinfo_1 through Playerinfo_4.");
+            Assert.AreEqual(4, sceneBinding.LanRoomPlayerNameTextObjects.Length, "LAN room player-name texts should bind the native Name children.");
+            Assert.AreEqual(4, sceneBinding.LanRoomPlayerReadyTextObjects.Length, "LAN room player-ready texts should bind the native Status children.");
             for (int i = 0; i < sceneBinding.LanRoomPlayerInfoTextObjects.Length; i++)
             {
                 Assert.IsInstanceOf<TMP_Text>(

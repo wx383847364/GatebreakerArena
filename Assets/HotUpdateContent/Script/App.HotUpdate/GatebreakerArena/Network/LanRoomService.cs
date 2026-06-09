@@ -10,9 +10,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
 {
     public sealed class LanRoomService : ITickable
     {
-        // LAN runtime currently starts MAP_ARENA_01 / Scene3v3, whose default layout is 1v1v1.
-        private const int DefaultLanMapPlayerCount = 3;
+        private const int DefaultLanMapPlayerCount = 2;
         private const int DefaultMaxPlayers = DefaultLanMapPlayerCount;
+        private const int MaxLanPlayers = 4;
         private const float AdvertiseIntervalSeconds = 1f;
 
         private readonly List<RoomSlot> _slots = new List<RoomSlot>();
@@ -97,7 +97,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             LocalClientInstanceId = clientInstanceId;
             LocalPlayerName = NormalizeName(playerName);
             LocalSlotIndex = 0;
-            _maxPlayers = Math.Max(1, maxPlayers);
+            _maxPlayers = Math.Min(MaxLanPlayers, Math.Max(1, maxPlayers));
             _hostTcpPort = tcpPort;
             _roomCode = string.IsNullOrWhiteSpace(roomCode) ? CreateRoomCode(SessionId) : roomCode.Trim().ToUpperInvariant();
             _slots.Add(new RoomSlot
@@ -1070,7 +1070,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 return;
             }
 
-            int targetPlayerCount = DefaultLanMapPlayerCount;
+            int targetPlayerCount = Math.Max(1, _maxPlayers > 0 ? _maxPlayers : DefaultLanMapPlayerCount);
             int activeCount = _slots.Count(slot => slot.IsActive);
             if (activeCount >= targetPlayerCount)
             {

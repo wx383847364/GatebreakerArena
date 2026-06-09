@@ -233,6 +233,7 @@ namespace App.Shared.Contracts
         UnityEngine.Object LanLeaveButtonObject { get; }
         UnityEngine.Object LanAcknowledgeStartButtonObject { get; }
         UnityEngine.Object LanPlayerNameInputObject { get; }
+        UnityEngine.Object LanRoomTypeDropdownObject { get; }
         UnityEngine.Object LanRoomCodeInputObject { get; }
         UnityEngine.Object LanStateTextObject { get; }
         UnityEngine.Object LanRoomCodeTextObject { get; }

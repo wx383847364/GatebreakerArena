@@ -85,6 +85,21 @@ namespace Gatebreaker.Tests
             Object.DestroyImmediate(assetsRuntime.Handles[ball04].AssetObject);
         }
 
+        [Test]
+        public void ResolveScenePrefabLocation_UsesPlayerCountSpecificScenePrefab()
+        {
+            Assert.AreEqual(
+                "Assets/HotUpdateContent/Res/prefabs/Scene2P.prefab",
+                GatebreakerVisualAssetService.ResolveScenePrefabLocation("scene", 2));
+            Assert.AreEqual(
+                "Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab",
+                GatebreakerVisualAssetService.ResolveScenePrefabLocation("scene", 3));
+            Assert.AreEqual(
+                "Assets/HotUpdateContent/Res/prefabs/Scene4P.prefab",
+                GatebreakerVisualAssetService.ResolveScenePrefabLocation("scene", 4));
+            Assert.AreEqual("scene", GatebreakerVisualAssetService.ResolveScenePrefabLocation("scene", 0));
+        }
+
         [UnityTest]
         public IEnumerator LoadAsync_ReturnsIncompleteSetWhenAssetIsMissing()
         {

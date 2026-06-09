@@ -90,9 +90,9 @@
         }
       ],
       "GoalContactLineInset": 0.04,
-      "GoalHalfLength": 1.0586,
+      "GoalHalfLength": 1.037,
       "GoalSizeModifier": 0.0,
-      "GoalTriggerInset": 0.14,
+      "GoalTriggerInset": 0.069,
       "HasObstacle": false,
       "InitialBallsModifier": 0,
       "MapId": "MAP_ARENA_01",
@@ -122,7 +122,7 @@
           "ScenePosition": "Position05"
         }
       ],
-      "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab",
+      "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab",
       "ServeCooldownModifier": 0.0,
       "ServeRechargeSeconds": 5.0,
       "SpawnLayoutType": "FourSide",

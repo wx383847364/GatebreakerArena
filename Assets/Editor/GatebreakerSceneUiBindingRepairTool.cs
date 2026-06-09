@@ -38,6 +38,19 @@ namespace Gatebreaker.Editor
                 "OK");
         }
 
+        [MenuItem("Gatebreaker/UI/Repair Room Type Dropdown")]
+        public static void RepairRoomTypeDropdownMenu()
+        {
+            Scene scene = OpenBootstrapScene();
+            Transform canvas = FindRequired(scene, "UI Camera/Canvas");
+            Transform lanRoot = FindRequired(canvas, "LanRoot");
+            FixRoomTypeDropdown(FindRequired<TMP_Dropdown>(lanRoot, "LanPanel/CreateRoom/RoomType/Dropdown"));
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+            EditorUtility.DisplayDialog("Gatebreaker UI", "RoomType Dropdown template repaired.", "OK");
+        }
+
         public static void RepairBootstrapSceneForBatch()
         {
             RepairBootstrapScene();
@@ -107,6 +120,7 @@ namespace Gatebreaker.Editor
             Require<Button>(serializedBinding, "_lanLeaveButton", errors);
             Require<Button>(serializedBinding, "_lanAcknowledgeStartButton", errors);
             Require<TMP_InputField>(serializedBinding, "_lanPlayerNameInput", errors);
+            Require<TMP_Dropdown>(serializedBinding, "_lanRoomTypeDropdown", errors);
             Require<TMP_InputField>(serializedBinding, "_lanRoomCodeInput", errors);
             Require<TMP_Text>(serializedBinding, "_lanStateText", errors);
             Require<TMP_Text>(serializedBinding, "_lanRoomCodeText", errors);
@@ -114,9 +128,9 @@ namespace Gatebreaker.Editor
             Require<TMP_Text>(serializedBinding, "_lanLocalIpText", errors);
             Require<TMP_Text>(serializedBinding, "_lanRoomIpText", errors);
             Require<TMP_Text>(serializedBinding, "_lanErrorText", errors);
-            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerInfoTexts", 3, errors);
-            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerNameTexts", 3, errors);
-            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerReadyTexts", 3, errors);
+            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerInfoTexts", 4, errors);
+            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerNameTexts", 4, errors);
+            RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerReadyTexts", 4, errors);
             Require<GameObject>(serializedBinding, "_startCountdownRoot", errors);
             Require<TMP_Text>(serializedBinding, "_startCountdownText", errors);
 
@@ -133,7 +147,7 @@ namespace Gatebreaker.Editor
             }
 
             Transform canvas = FindRequired(scene, "UI Camera/Canvas");
-            Transform topPanel = FindRequired(canvas, "TopPanel");
+            Transform topPanel = FindFirstRequired(canvas, "TopPanel_3P", "TopPanel");
             Transform downPanel = FindRequired(canvas, "DownPanel");
             Transform lanRoot = EnsureRectChild(canvas, "LanRoot", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, Vector2.one);
             Transform lanPanel = FindFirstRequired("LanPanel", canvas, lanRoot);
@@ -166,6 +180,7 @@ namespace Gatebreaker.Editor
             SetTextIfExists(lanRoot, "LanPanel/JoinRoom/RoomName", "Room Code:");
             FixInputField(FindRequired<TMP_InputField>(lanRoot, "LanPanel/CreateRoom/RoomName/InputField (TMP)"));
             FixInputField(FindRequired<TMP_InputField>(lanRoot, "LanPanel/JoinRoom/RoomName/InputField (TMP)"));
+            FixRoomTypeDropdown(FindRequired<TMP_Dropdown>(lanRoot, "LanPanel/CreateRoom/RoomType/Dropdown"));
 
             var serializedBinding = new SerializedObject(binding);
             Set(serializedBinding, "_skillButton", FindRequired<Button>(downPanel, "Skill_btn"));
@@ -232,6 +247,7 @@ namespace Gatebreaker.Editor
             Set(serializedBinding, "_lanLeaveButton", FindRequired<Button>(lanRoot, "RoomInfoPanel/BackBtn"));
             Set(serializedBinding, "_lanAcknowledgeStartButton", acknowledgeStartButton.GetComponent<Button>());
             Set(serializedBinding, "_lanPlayerNameInput", FindRequired<TMP_InputField>(lanRoot, "LanPanel/CreateRoom/RoomName/InputField (TMP)"));
+            Set(serializedBinding, "_lanRoomTypeDropdown", FindRequired<TMP_Dropdown>(lanRoot, "LanPanel/CreateRoom/RoomType/Dropdown"));
             Set(serializedBinding, "_lanRoomCodeInput", FindRequired<TMP_InputField>(lanRoot, "LanPanel/JoinRoom/RoomName/InputField (TMP)"));
             Set(serializedBinding, "_lanStateText", FindRequired<TMP_Text>(lanStatusPanel, "LanStateText"));
             Set(serializedBinding, "_lanRoomCodeText", FindRequired<TMP_Text>(lanStatusPanel, "LanRoomCodeText"));
@@ -242,15 +258,18 @@ namespace Gatebreaker.Editor
             SetArray(serializedBinding, "_lanRoomPlayerInfoTexts",
                 FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_1"),
                 FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_2"),
-                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3"));
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_4"));
             SetArray(serializedBinding, "_lanRoomPlayerNameTexts",
                 FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_1/Name"),
                 FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_2/Name"),
-                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3/Name"));
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3/Name"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_4/Name"));
             SetArray(serializedBinding, "_lanRoomPlayerReadyTexts",
                 FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_1/Status"),
                 FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_2/Status"),
-                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3/Status"));
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_3/Status"),
+                FindRequired<TMP_Text>(lanRoot, "RoomInfoPanel/Playerinfo_4/Status"));
             Set(serializedBinding, "_startCountdownRoot", startCountdownPanel.gameObject);
             Set(serializedBinding, "_startCountdownText", FindRequired<TMP_Text>(startCountdownPanel, "StartCountdownText"));
             serializedBinding.ApplyModifiedPropertiesWithoutUndo();
@@ -412,6 +431,109 @@ namespace Gatebreaker.Editor
                 placeholder.color = new Color(1f, 1f, 1f, 0.42f);
                 placeholder.fontStyle = FontStyles.Italic;
             }
+        }
+
+        private static void FixRoomTypeDropdown(TMP_Dropdown dropdown)
+        {
+            if (dropdown == null || dropdown.template == null)
+            {
+                return;
+            }
+
+            RectTransform template = dropdown.template;
+            template.anchorMin = new Vector2(0.5f, 0.5f);
+            template.anchorMax = new Vector2(0.5f, 0.5f);
+            template.pivot = new Vector2(0.5f, 1f);
+            template.anchoredPosition = new Vector2(0f, -18f);
+            template.sizeDelta = new Vector2(300f, 160f);
+
+            ScrollRect scrollRect = template.GetComponent<ScrollRect>();
+            if (scrollRect != null)
+            {
+                scrollRect.horizontal = false;
+                scrollRect.vertical = true;
+                scrollRect.movementType = ScrollRect.MovementType.Clamped;
+                scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+                scrollRect.verticalScrollbarSpacing = -3f;
+            }
+
+            RectTransform viewport = template.Find("Viewport") as RectTransform;
+            RectTransform content = viewport != null ? viewport.Find("Content") as RectTransform : null;
+            RectTransform item = content != null ? content.Find("Item") as RectTransform : null;
+            RectTransform scrollbar = template.Find("Scrollbar") as RectTransform;
+            if (viewport == null || content == null || item == null)
+            {
+                throw new InvalidOperationException("RoomType Dropdown template must contain Viewport/Content/Item.");
+            }
+
+            viewport.anchorMin = Vector2.zero;
+            viewport.anchorMax = Vector2.one;
+            viewport.pivot = new Vector2(0f, 1f);
+            viewport.anchoredPosition = Vector2.zero;
+            viewport.sizeDelta = new Vector2(-17f, 0f);
+
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.anchoredPosition = Vector2.zero;
+            content.sizeDelta = new Vector2(0f, 40f);
+
+            item.anchorMin = new Vector2(0f, 1f);
+            item.anchorMax = new Vector2(1f, 1f);
+            item.pivot = new Vector2(0.5f, 1f);
+            item.anchoredPosition = Vector2.zero;
+            item.sizeDelta = new Vector2(0f, 40f);
+            item.gameObject.SetActive(true);
+
+            RectTransform background = item.Find("Item Background") as RectTransform;
+            if (background != null)
+            {
+                background.anchorMin = Vector2.zero;
+                background.anchorMax = Vector2.one;
+                background.pivot = new Vector2(0.5f, 0.5f);
+                background.anchoredPosition = Vector2.zero;
+                background.sizeDelta = Vector2.zero;
+            }
+
+            RectTransform label = item.Find("Item Label") as RectTransform;
+            if (label != null)
+            {
+                label.anchorMin = Vector2.zero;
+                label.anchorMax = Vector2.one;
+                label.pivot = new Vector2(0.5f, 0.5f);
+                label.anchoredPosition = new Vector2(5f, 0f);
+                label.sizeDelta = new Vector2(-30f, 0f);
+            }
+
+            RectTransform checkmark = item.Find("Item Checkmark") as RectTransform;
+            if (checkmark != null)
+            {
+                checkmark.anchorMin = new Vector2(0f, 0.5f);
+                checkmark.anchorMax = new Vector2(0f, 0.5f);
+                checkmark.pivot = new Vector2(0.5f, 0.5f);
+                checkmark.anchoredPosition = new Vector2(18f, 0f);
+                checkmark.sizeDelta = new Vector2(20f, 20f);
+            }
+
+            if (scrollbar != null)
+            {
+                Scrollbar scrollbarComponent = scrollbar.GetComponent<Scrollbar>();
+                if (scrollbarComponent != null)
+                {
+                    scrollbarComponent.direction = Scrollbar.Direction.BottomToTop;
+                    scrollbarComponent.value = 1f;
+                    scrollbarComponent.size = 0.875f;
+                    scrollbarComponent.interactable = true;
+                    if (scrollRect != null)
+                    {
+                        scrollRect.verticalScrollbar = scrollbarComponent;
+                    }
+                }
+            }
+
+            dropdown.RefreshShownValue();
+            EditorUtility.SetDirty(dropdown);
+            EditorUtility.SetDirty(template);
         }
 
         private static void EnsureSlider(Transform parent, string name, Vector2 anchoredPosition, Vector2 sizeDelta)
@@ -616,6 +738,20 @@ namespace Gatebreaker.Editor
             }
 
             throw new InvalidOperationException("Missing UI path in expected roots: " + path);
+        }
+
+        private static Transform FindFirstRequired(Transform root, params string[] paths)
+        {
+            for (int i = 0; i < paths.Length; i++)
+            {
+                Transform transform = root.Find(paths[i]);
+                if (transform != null)
+                {
+                    return transform;
+                }
+            }
+
+            throw new InvalidOperationException("Missing UI path under " + GetPath(root) + ": " + string.Join(" or ", paths));
         }
 
         private static T FindRequired<T>(Transform root, string path) where T : Component

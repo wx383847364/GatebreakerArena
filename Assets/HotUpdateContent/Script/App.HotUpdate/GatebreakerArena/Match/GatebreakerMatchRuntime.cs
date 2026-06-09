@@ -155,6 +155,69 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return true;
         }
 
+        public bool SetArenaGoalBandDimensions(float goalHalfLength, float goalTriggerInset)
+        {
+            if (Arena == null || !Arena.HasCustomBoundary)
+            {
+                return false;
+            }
+
+            float nextHalfLength = Math.Max(0.01f, goalHalfLength);
+            float nextTriggerInset = Math.Max(0f, goalTriggerInset);
+            ArenaBoundarySegment currentGoal = Arena.BoundarySegments.FirstOrDefault(segment => segment != null && segment.GoalPlayerIndex >= 0);
+            if (currentGoal != null &&
+                Mathf.Abs(currentGoal.GoalHalfLength - nextHalfLength) <= 0.0001f &&
+                Mathf.Abs(currentGoal.GoalTriggerInset - nextTriggerInset) <= 0.0001f)
+            {
+                return false;
+            }
+
+            Arena = Arena.WithGoalBandDimensions(nextHalfLength, nextTriggerInset);
+            RefreshPaddleGeometryFromArena();
+            return true;
+        }
+
+        public bool SetArenaGoalBandDimensions(IReadOnlyDictionary<int, ArenaGoalBandDimensions> dimensionsBySegmentIndex)
+        {
+            if (Arena == null ||
+                !Arena.HasCustomBoundary ||
+                dimensionsBySegmentIndex == null ||
+                dimensionsBySegmentIndex.Count == 0)
+            {
+                return false;
+            }
+
+            bool hasChanged = false;
+            for (int i = 0; i < Arena.BoundarySegments.Count; i++)
+            {
+                ArenaBoundarySegment segment = Arena.BoundarySegments[i];
+                if (segment == null ||
+                    segment.GoalPlayerIndex < 0 ||
+                    !dimensionsBySegmentIndex.TryGetValue(i, out ArenaGoalBandDimensions dimensions))
+                {
+                    continue;
+                }
+
+                float nextHalfLength = Math.Max(0.01f, dimensions.GoalHalfLength);
+                float nextTriggerInset = Math.Max(0f, dimensions.GoalTriggerInset);
+                if (Mathf.Abs(segment.GoalHalfLength - nextHalfLength) > 0.0001f ||
+                    Mathf.Abs(segment.GoalTriggerInset - nextTriggerInset) > 0.0001f)
+                {
+                    hasChanged = true;
+                    break;
+                }
+            }
+
+            if (!hasChanged)
+            {
+                return false;
+            }
+
+            Arena = Arena.WithGoalBandDimensions(dimensionsBySegmentIndex);
+            RefreshPaddleGeometryFromArena();
+            return true;
+        }
+
         public void StartLocalPrototype(
             int aiCount = -1,
             string modeId = "PVE_STANDARD",

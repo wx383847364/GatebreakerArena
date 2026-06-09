@@ -49,8 +49,8 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(0.48f, result.Catalog.GetPlayerColor(2).Green);
             Assert.AreEqual(0.1f, ai.ReactionDelay);
             Assert.AreEqual(SpawnLayoutType.FourSide, map.SpawnLayoutType);
-            CollectionAssert.AreEqual(new[] { 2, 4 }, map.SupportedPlayerCount);
-            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab", map.ScenePrefabLocation);
+            CollectionAssert.AreEqual(new[] { 2, 3, 4 }, map.SupportedPlayerCount);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab", map.ScenePrefabLocation);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(3.2f, map.PaddleMoveSpeed);
             Assert.AreEqual(2.81f, map.ArenaHalfWidth);
@@ -58,8 +58,8 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(0.18f, map.PaddleInset);
             Assert.AreEqual(0.78f, map.PaddleLength);
             Assert.AreEqual(0.05f, map.PaddleThickness);
-            Assert.AreEqual(1.06f, map.GoalHalfLength);
-            Assert.AreEqual(0.14f, map.GoalTriggerInset);
+            Assert.AreEqual(1.037f, map.GoalHalfLength);
+            Assert.AreEqual(0.069f, map.GoalTriggerInset);
             Assert.AreEqual(0.04f, map.GoalContactLineInset);
             Assert.AreEqual(6, map.BoundaryPoints.Count);
             Assert.AreEqual(1.379f, map.BoundaryPoints[0].X);
@@ -269,8 +269,8 @@ namespace Gatebreaker.Tests
 	      ""PaddleInset"": 0.18,
 	      ""PaddleLength"": 0.78,
 	      ""PaddleThickness"": 0.05,
-	      ""GoalHalfLength"": 1.06,
-	      ""GoalTriggerInset"": 0.14,
+	      ""GoalHalfLength"": 1.037,
+	      ""GoalTriggerInset"": 0.069,
 	      ""GoalContactLineInset"": 0.04,
 	      ""BoundaryPoints"": [
 	        { ""X"": 1.379, ""Y"": -2.456 },
@@ -290,7 +290,7 @@ namespace Gatebreaker.Tests
 	      ],
 	      ""BallSpeedModifier"": 0.2,
       ""GoalSizeModifier"": -0.1,
-      ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3v3.prefab"",
+      ""ScenePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab"",
       ""PaddlePrefabLocation"": ""Assets/HotUpdateContent/Res/prefabs/Baffle.prefab"",
       ""DefaultPlayerCount"": 3,
       ""PlayerSideBindings"": [
