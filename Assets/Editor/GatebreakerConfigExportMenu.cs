@@ -34,10 +34,10 @@ namespace Gatebreaker.Editor
         private static void RunExporter(bool dryRun, bool showDialog)
         {
             string projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? string.Empty;
-            string scriptPath = Path.Combine(projectRoot, ExportScriptPath);
+            string scriptPath = ResolveExportScriptPath(projectRoot);
             if (!File.Exists(scriptPath))
             {
-                string message = $"找不到 Gatebreaker 配表导出脚本: {scriptPath}";
+                string message = $"找不到 Gatebreaker 配表导出脚本。\n当前 Unity 项目目录: {projectRoot}\n请确认打开的是 Client 工程，或已同步 tools/config_export。";
                 Debug.LogError(message);
                 if (showDialog)
                 {
@@ -45,6 +45,21 @@ namespace Gatebreaker.Editor
                 }
 
                 throw new FileNotFoundException(message, scriptPath);
+            }
+
+            string exporterPackagePath = Path.Combine(Path.GetDirectoryName(scriptPath) ?? string.Empty, "gatebreaker_exporter");
+            if (!Directory.Exists(exporterPackagePath))
+            {
+                string message =
+                    $"Gatebreaker 配表导出器缺少 Python 包目录: {exporterPackagePath}\n" +
+                    "请确认打开的是 GatebreakerArena/Client 工程，或同步完整 tools/config_export 目录。";
+                Debug.LogError(message);
+                if (showDialog)
+                {
+                    EditorUtility.DisplayDialog("Gatebreaker Config Export", message, "OK");
+                }
+
+                throw new DirectoryNotFoundException(message);
             }
 
             string arguments = Quote(scriptPath) + (dryRun ? " --dry-run" : string.Empty);
@@ -161,6 +176,26 @@ namespace Gatebreaker.Editor
         private static string Quote(string value)
         {
             return "\"" + value.Replace("\"", "\\\"") + "\"";
+        }
+
+        private static string ResolveExportScriptPath(string projectRoot)
+        {
+            string[] candidates =
+            {
+                Path.Combine(projectRoot, "Client", ExportScriptPath),
+                Path.Combine(projectRoot, ExportScriptPath),
+                Path.Combine(Directory.GetParent(projectRoot)?.FullName ?? string.Empty, "Client", ExportScriptPath),
+            };
+
+            foreach (string candidate in candidates)
+            {
+                if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return Path.Combine(projectRoot, ExportScriptPath);
         }
 
         private static string BuildFailureMessage(bool dryRun, int exitCode, string stdout, string stderr)
