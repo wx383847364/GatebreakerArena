@@ -13,6 +13,7 @@ namespace Gatebreaker.Editor
     {
         private const string MenuRoot = "Gatebreaker/Config";
         private const string ExportScriptPath = "tools/config_export/export_gatebreaker_config.py";
+        private const string CollisionLayoutScriptPath = "tools/config_export/extract_collision_layouts.py";
 
         [MenuItem(MenuRoot + "/Generate Rules Binary")]
         public static void ExportFromMenu()
@@ -24,6 +25,12 @@ namespace Gatebreaker.Editor
         public static void ValidateFromMenu()
         {
             RunExporter(dryRun: true, showDialog: true);
+        }
+
+        [MenuItem(MenuRoot + "/Extract Collision Layouts From Prefabs")]
+        public static void ExtractCollisionLayoutsFromMenu()
+        {
+            RunCollisionLayoutExtractor(showDialog: true);
         }
 
         public static void ExportFromBatchMode()
@@ -144,6 +151,102 @@ namespace Gatebreaker.Editor
             }
         }
 
+        private static void RunCollisionLayoutExtractor(bool showDialog)
+        {
+            string projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? string.Empty;
+            string scriptPath = ResolveToolScriptPath(projectRoot, CollisionLayoutScriptPath);
+            if (!File.Exists(scriptPath))
+            {
+                string message = $"找不到 Gatebreaker 阻挡线提取脚本。\n当前 Unity 项目目录: {projectRoot}\n请确认已同步 tools/config_export。";
+                Debug.LogError(message);
+                if (showDialog)
+                {
+                    EditorUtility.DisplayDialog("Gatebreaker Collision Layout", message, "OK");
+                }
+
+                throw new FileNotFoundException(message, scriptPath);
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = ResolvePythonExecutable(),
+                Arguments = Quote(scriptPath),
+                WorkingDirectory = projectRoot,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+
+            RunProcess(startInfo, "Gatebreaker 阻挡线提取", showDialog);
+            RunExporter(dryRun: false, showDialog: false);
+
+            const string summary = "Gatebreaker 阻挡线配置已从 Scene2P/Scene3P/Scene4P prefab 提取，并已重新生成运行时规则 JSON/bytes。";
+            Debug.Log(summary);
+            if (showDialog)
+            {
+                EditorUtility.DisplayDialog("Gatebreaker Collision Layout", summary, "OK");
+            }
+        }
+
+        private static void RunProcess(ProcessStartInfo startInfo, string label, bool showDialog)
+        {
+            Process process;
+            try
+            {
+                process = Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                string message = $"启动 {label} 进程失败，请检查 Python 路径。当前 Python: {startInfo.FileName}\n{ex.Message}";
+                Debug.LogError(message);
+                if (showDialog)
+                {
+                    EditorUtility.DisplayDialog(label, message, "OK");
+                }
+
+                throw new InvalidOperationException(message, ex);
+            }
+
+            using (process)
+            {
+                if (process == null)
+                {
+                    throw new InvalidOperationException($"启动 {label} 进程失败。");
+                }
+
+                var stdoutTask = process.StandardOutput.ReadToEndAsync();
+                var stderrTask = process.StandardError.ReadToEndAsync();
+                process.WaitForExit();
+                stdoutTask.Wait();
+                stderrTask.Wait();
+                string stdout = stdoutTask.Result;
+                string stderr = stderrTask.Result;
+
+                if (!string.IsNullOrWhiteSpace(stdout))
+                {
+                    Debug.Log(stdout.TrimEnd());
+                }
+
+                if (!string.IsNullOrWhiteSpace(stderr))
+                {
+                    Debug.LogWarning(stderr.TrimEnd());
+                }
+
+                if (process.ExitCode != 0)
+                {
+                    string message = $"{label}失败，退出码: {process.ExitCode}\n{stdout}\n{stderr}".Trim();
+                    Debug.LogError(message);
+                    if (showDialog)
+                    {
+                        EditorUtility.DisplayDialog(label, TruncateForDialog(message), "OK");
+                    }
+
+                    throw new InvalidOperationException(message);
+                }
+            }
+        }
+
         private static string ResolvePythonExecutable()
         {
             string configured = Environment.GetEnvironmentVariable("GATEBREAKER_PYTHON");
@@ -180,11 +283,16 @@ namespace Gatebreaker.Editor
 
         private static string ResolveExportScriptPath(string projectRoot)
         {
+            return ResolveToolScriptPath(projectRoot, ExportScriptPath);
+        }
+
+        private static string ResolveToolScriptPath(string projectRoot, string scriptPath)
+        {
             string[] candidates =
             {
-                Path.Combine(projectRoot, "Client", ExportScriptPath),
-                Path.Combine(projectRoot, ExportScriptPath),
-                Path.Combine(Directory.GetParent(projectRoot)?.FullName ?? string.Empty, "Client", ExportScriptPath),
+                Path.Combine(projectRoot, "Client", scriptPath),
+                Path.Combine(projectRoot, scriptPath),
+                Path.Combine(Directory.GetParent(projectRoot)?.FullName ?? string.Empty, "Client", scriptPath),
             };
 
             foreach (string candidate in candidates)
@@ -195,7 +303,7 @@ namespace Gatebreaker.Editor
                 }
             }
 
-            return Path.Combine(projectRoot, ExportScriptPath);
+            return Path.Combine(projectRoot, scriptPath);
         }
 
         private static string BuildFailureMessage(bool dryRun, int exitCode, string stdout, string stderr)

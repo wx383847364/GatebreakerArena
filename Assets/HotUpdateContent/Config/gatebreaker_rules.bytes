@@ -62,6 +62,348 @@
           "Y": -2.456
         }
       ],
+      "CollisionLayouts": [
+        {
+          "BoundarySegments": [
+            {
+              "End": {
+                "X": 1.3787,
+                "Y": -2.456
+              },
+              "GoalCenter": {
+                "X": 0.0,
+                "Y": -2.456
+              },
+              "GoalHalfLength": 1.0586,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position01",
+              "Start": {
+                "X": -1.3729,
+                "Y": -2.456
+              }
+            },
+            {
+              "End": {
+                "X": 2.809,
+                "Y": 0.0212
+              },
+              "ScenePosition": "Position02",
+              "Start": {
+                "X": 1.3787,
+                "Y": -2.456
+              }
+            },
+            {
+              "End": {
+                "X": 1.4107,
+                "Y": 2.443
+              },
+              "ScenePosition": "Position03",
+              "Start": {
+                "X": 2.809,
+                "Y": 0.0212
+              }
+            },
+            {
+              "End": {
+                "X": -1.416,
+                "Y": 2.443
+              },
+              "GoalCenter": {
+                "X": 0.0,
+                "Y": 2.443
+              },
+              "GoalHalfLength": 1.0586,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position04",
+              "Start": {
+                "X": 1.4107,
+                "Y": 2.443
+              }
+            },
+            {
+              "End": {
+                "X": -2.8087,
+                "Y": 0.0308
+              },
+              "ScenePosition": "Position05",
+              "Start": {
+                "X": -1.416,
+                "Y": 2.443
+              }
+            },
+            {
+              "End": {
+                "X": -1.3729,
+                "Y": -2.456
+              },
+              "ScenePosition": "Position06",
+              "Start": {
+                "X": -2.8087,
+                "Y": 0.0308
+              }
+            }
+          ],
+          "PlayerCount": 2,
+          "PlayerSideBindings": [
+            {
+              "BoundarySegmentIndex": 0,
+              "PlayerId": 1,
+              "ScenePosition": "Position01"
+            },
+            {
+              "BoundarySegmentIndex": 3,
+              "PlayerId": 2,
+              "ScenePosition": "Position04"
+            }
+          ]
+        },
+        {
+          "BoundarySegments": [
+            {
+              "End": {
+                "X": 1.3787,
+                "Y": -2.456
+              },
+              "GoalCenter": {
+                "X": 0.0,
+                "Y": -2.456
+              },
+              "GoalHalfLength": 1.0586,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position01",
+              "Start": {
+                "X": -1.3729,
+                "Y": -2.456
+              }
+            },
+            {
+              "End": {
+                "X": 2.809,
+                "Y": 0.0212
+              },
+              "ScenePosition": "Position02",
+              "Start": {
+                "X": 1.3787,
+                "Y": -2.456
+              }
+            },
+            {
+              "End": {
+                "X": 1.4107,
+                "Y": 2.443
+              },
+              "GoalCenter": {
+                "X": 2.118,
+                "Y": 1.218
+              },
+              "GoalHalfLength": 1.0586,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position03",
+              "Start": {
+                "X": 2.809,
+                "Y": 0.0212
+              }
+            },
+            {
+              "End": {
+                "X": -1.416,
+                "Y": 2.443
+              },
+              "ScenePosition": "Position04",
+              "Start": {
+                "X": 1.4107,
+                "Y": 2.443
+              }
+            },
+            {
+              "End": {
+                "X": -2.8087,
+                "Y": 0.0308
+              },
+              "GoalCenter": {
+                "X": -2.114,
+                "Y": 1.234
+              },
+              "GoalHalfLength": 1.0586,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position05",
+              "Start": {
+                "X": -1.416,
+                "Y": 2.443
+              }
+            },
+            {
+              "End": {
+                "X": -1.3729,
+                "Y": -2.456
+              },
+              "ScenePosition": "Position06",
+              "Start": {
+                "X": -2.8087,
+                "Y": 0.0308
+              }
+            }
+          ],
+          "PlayerCount": 3,
+          "PlayerSideBindings": [
+            {
+              "BoundarySegmentIndex": 0,
+              "PlayerId": 1,
+              "ScenePosition": "Position01"
+            },
+            {
+              "BoundarySegmentIndex": 2,
+              "PlayerId": 2,
+              "ScenePosition": "Position03"
+            },
+            {
+              "BoundarySegmentIndex": 4,
+              "PlayerId": 3,
+              "ScenePosition": "Position05"
+            }
+          ]
+        },
+        {
+          "BoundarySegments": [
+            {
+              "End": {
+                "X": 1.164,
+                "Y": -2.736
+              },
+              "GoalCenter": {
+                "X": 0.0,
+                "Y": -2.736
+              },
+              "GoalHalfLength": 0.8998,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position01",
+              "Start": {
+                "X": -1.184,
+                "Y": -2.736
+              }
+            },
+            {
+              "End": {
+                "X": 2.763,
+                "Y": -1.137
+              },
+              "ScenePosition": "Position02",
+              "Start": {
+                "X": 1.164,
+                "Y": -2.736
+              }
+            },
+            {
+              "End": {
+                "X": 2.763,
+                "Y": 1.157
+              },
+              "GoalCenter": {
+                "X": 2.763,
+                "Y": 0.023
+              },
+              "GoalHalfLength": 0.8998,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position03",
+              "Start": {
+                "X": 2.763,
+                "Y": -1.137
+              }
+            },
+            {
+              "End": {
+                "X": 1.15,
+                "Y": 2.77
+              },
+              "ScenePosition": "Position04",
+              "Start": {
+                "X": 2.763,
+                "Y": 1.157
+              }
+            },
+            {
+              "End": {
+                "X": -1.15,
+                "Y": 2.77
+              },
+              "GoalCenter": {
+                "X": 0.02,
+                "Y": 2.77
+              },
+              "GoalHalfLength": 0.8998,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position05",
+              "Start": {
+                "X": 1.15,
+                "Y": 2.77
+              }
+            },
+            {
+              "End": {
+                "X": -2.75,
+                "Y": 1.17
+              },
+              "ScenePosition": "Position06",
+              "Start": {
+                "X": -1.15,
+                "Y": 2.77
+              }
+            },
+            {
+              "End": {
+                "X": -2.75,
+                "Y": -1.17
+              },
+              "GoalCenter": {
+                "X": -2.75,
+                "Y": 0.02
+              },
+              "GoalHalfLength": 0.8998,
+              "GoalTriggerInset": 0.069,
+              "ScenePosition": "Position07",
+              "Start": {
+                "X": -2.75,
+                "Y": 1.17
+              }
+            },
+            {
+              "End": {
+                "X": -1.184,
+                "Y": -2.736
+              },
+              "ScenePosition": "Position08",
+              "Start": {
+                "X": -2.75,
+                "Y": -1.17
+              }
+            }
+          ],
+          "PlayerCount": 4,
+          "PlayerSideBindings": [
+            {
+              "BoundarySegmentIndex": 0,
+              "PlayerId": 1,
+              "ScenePosition": "Position01"
+            },
+            {
+              "BoundarySegmentIndex": 2,
+              "PlayerId": 2,
+              "ScenePosition": "Position03"
+            },
+            {
+              "BoundarySegmentIndex": 4,
+              "PlayerId": 3,
+              "ScenePosition": "Position05"
+            },
+            {
+              "BoundarySegmentIndex": 6,
+              "PlayerId": 4,
+              "ScenePosition": "Position07"
+            }
+          ]
+        }
+      ],
       "DefaultPlayerCount": 3,
       "GoalCenters": [
         {
@@ -148,6 +490,10 @@
         [
           45,
           12
+        ],
+        [
+          60,
+          14
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -160,8 +506,8 @@
       "InitialServeAmmo": 2,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
-      "MaxOwnedBallsInField": 1,
-      "MaxServeAmmo": 2,
+      "MaxOwnedBallsInField": 4,
+      "MaxServeAmmo": 1,
       "ModeId": "PVE_STANDARD",
       "ModeName": "PVE标准",
       "OvertimeDuration": 60,
@@ -189,6 +535,10 @@
         [
           45,
           12
+        ],
+        [
+          60,
+          14
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -202,7 +552,7 @@
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
-      "MaxServeAmmo": 2,
+      "MaxServeAmmo": 1,
       "ModeId": "PVP_FFA",
       "ModeName": "PVP乱斗",
       "OvertimeDuration": 60,
@@ -230,6 +580,10 @@
         [
           45,
           12
+        ],
+        [
+          60,
+          14
         ]
       ],
       "BaseServeCooldown": 6.5,
@@ -243,7 +597,7 @@
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
-      "MaxServeAmmo": 2,
+      "MaxServeAmmo": 1,
       "ModeId": "PVP_TEAM",
       "ModeName": "PVP组队乱斗",
       "OvertimeDuration": 60,
@@ -299,6 +653,7 @@
     },
     "DT_MapRule": {
       "BoundaryPoints": "场地边界点，按顺时针或逆时针顺序填写；运行时用相邻点生成碰撞边。",
+      "CollisionLayouts": "按玩家人数记录的地图阻挡线数据；运行时优先用它生成边界、进球判定和调试红线。",
       "GoalCenters": "每条边对应的球门中心点；数量应与边界段数量匹配。",
       "PaddleMoveSpeed": "板子移动速度，单位为场景距离/秒；数值越大，玩家板子沿可移动方向移动越快，最终以策划填写的数据为准。"
     },

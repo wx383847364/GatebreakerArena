@@ -98,6 +98,77 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void ParseJson_LoadsCollisionLayouts()
+        {
+            string json = CreateRulesJson("TeamScore", "FourSide")
+                .Replace(
+                    @"      ""PlayerSideBindings"": [
+        {",
+                    @"      ""CollisionLayouts"": [
+        {
+          ""PlayerCount"": 4,
+          ""BoundarySegments"": [
+            {
+              ""ScenePosition"": ""Position01"",
+              ""Start"": { ""X"": -1.4, ""Y"": -2.7 },
+              ""End"": { ""X"": 1.4, ""Y"": -2.7 },
+              ""GoalCenter"": { ""X"": 0.0, ""Y"": -2.7 },
+              ""GoalHalfLength"": 0.9,
+              ""GoalTriggerInset"": 0.069
+            },
+            {
+              ""ScenePosition"": ""Position02"",
+              ""Start"": { ""X"": 1.4, ""Y"": -2.7 },
+              ""End"": { ""X"": 2.7, ""Y"": -1.4 }
+            },
+            {
+              ""ScenePosition"": ""Position03"",
+              ""Start"": { ""X"": 2.7, ""Y"": -1.4 },
+              ""End"": { ""X"": 2.7, ""Y"": 1.4 },
+              ""GoalCenter"": { ""X"": 2.7, ""Y"": 0.0 },
+              ""GoalHalfLength"": 0.8,
+              ""GoalTriggerInset"": 0.07
+            },
+            {
+              ""ScenePosition"": ""Position04"",
+              ""Start"": { ""X"": 2.7, ""Y"": 1.4 },
+              ""End"": { ""X"": 1.4, ""Y"": 2.7 }
+            }
+          ],
+          ""PlayerSideBindings"": [
+            {
+              ""PlayerId"": 1,
+              ""ScenePosition"": ""Position01"",
+              ""BoundarySegmentIndex"": 0
+            },
+            {
+              ""PlayerId"": 2,
+              ""ScenePosition"": ""Position03"",
+              ""BoundarySegmentIndex"": 2
+            }
+          ]
+        }
+      ],
+      ""PlayerSideBindings"": [
+        {");
+
+            GatebreakerConfigLoadResult result = GatebreakerConfigRuntimeLoader.ParseJson(json);
+            Assert.IsTrue(result.Succeeded, result.Message);
+
+            MapRuleDefinition map = result.Catalog.GetMap("MAP_RING");
+            MapCollisionLayoutDefinition layout = map.CollisionLayouts[0];
+
+            Assert.AreEqual(1, map.CollisionLayouts.Count);
+            Assert.AreEqual(4, layout.PlayerCount);
+            Assert.AreEqual(4, layout.BoundarySegments.Count);
+            Assert.AreEqual("Position01", layout.BoundarySegments[0].ScenePosition);
+            Assert.AreEqual(-1.4f, layout.BoundarySegments[0].Start.X);
+            Assert.AreEqual(0.9f, layout.BoundarySegments[0].GoalHalfLength);
+            Assert.AreEqual(2, layout.PlayerSideBindings.Count);
+            Assert.AreEqual(2, layout.PlayerSideBindings[1].BoundarySegmentIndex);
+        }
+
+        [Test]
         public void ParseJson_RejectsMissingBallContactRadius()
         {
             string json = CreateRulesJson("TeamScore", "FourSide")

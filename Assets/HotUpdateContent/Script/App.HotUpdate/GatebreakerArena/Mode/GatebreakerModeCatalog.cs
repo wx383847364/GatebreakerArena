@@ -108,6 +108,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                             CreatePlayerSideBinding(2, "Position03", 1),
                             CreatePlayerSideBinding(3, "Position05", 3),
                         },
+                        CollisionLayouts = CreateDefaultCollisionLayouts(),
                     },
                 },
                 new[]
@@ -246,6 +247,105 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 CreateMapPoint(-2.094f, -1.207f),
                 CreateMapPoint(0f, -2.456f),
             };
+        }
+
+        private static IReadOnlyList<MapCollisionLayoutDefinition> CreateDefaultCollisionLayouts()
+        {
+            return new[]
+            {
+                new MapCollisionLayoutDefinition
+                {
+                    PlayerCount = 2,
+                    BoundarySegments = new[]
+                    {
+                        CreateBoundarySegment("Position01", -1.3729f, -2.456f, 1.3787f, -2.456f, 0f, -2.456f, 1.0586f, 0.069f),
+                        CreateBoundarySegment("Position02", 1.3787f, -2.456f, 2.809f, 0.0212f),
+                        CreateBoundarySegment("Position03", 2.809f, 0.0212f, 1.4107f, 2.443f),
+                        CreateBoundarySegment("Position04", 1.4107f, 2.443f, -1.416f, 2.443f, 0f, 2.443f, 1.0586f, 0.069f),
+                        CreateBoundarySegment("Position05", -1.416f, 2.443f, -2.8087f, 0.0308f),
+                        CreateBoundarySegment("Position06", -2.8087f, 0.0308f, -1.3729f, -2.456f),
+                    },
+                    PlayerSideBindings = new[]
+                    {
+                        CreatePlayerSideBinding(1, "Position01", 0),
+                        CreatePlayerSideBinding(2, "Position04", 3),
+                    },
+                },
+                new MapCollisionLayoutDefinition
+                {
+                    PlayerCount = 3,
+                    BoundarySegments = new[]
+                    {
+                        CreateBoundarySegment("Position01", -1.3729f, -2.456f, 1.3787f, -2.456f, 0f, -2.456f, 1.0586f, 0.069f),
+                        CreateBoundarySegment("Position02", 1.3787f, -2.456f, 2.809f, 0.0212f),
+                        CreateBoundarySegment("Position03", 2.809f, 0.0212f, 1.4107f, 2.443f, 2.118f, 1.218f, 1.0586f, 0.069f),
+                        CreateBoundarySegment("Position04", 1.4107f, 2.443f, -1.416f, 2.443f),
+                        CreateBoundarySegment("Position05", -1.416f, 2.443f, -2.8087f, 0.0308f, -2.114f, 1.234f, 1.0586f, 0.069f),
+                        CreateBoundarySegment("Position06", -2.8087f, 0.0308f, -1.3729f, -2.456f),
+                    },
+                    PlayerSideBindings = new[]
+                    {
+                        CreatePlayerSideBinding(1, "Position01", 0),
+                        CreatePlayerSideBinding(2, "Position03", 2),
+                        CreatePlayerSideBinding(3, "Position05", 4),
+                    },
+                },
+                new MapCollisionLayoutDefinition
+                {
+                    PlayerCount = 4,
+                    BoundarySegments = new[]
+                    {
+                        CreateBoundarySegment("Position01", -1.184f, -2.736f, 1.164f, -2.736f, 0f, -2.736f, 0.8998f, 0.069f),
+                        CreateBoundarySegment("Position02", 1.164f, -2.736f, 2.763f, -1.137f),
+                        CreateBoundarySegment("Position03", 2.763f, -1.137f, 2.763f, 1.157f, 2.763f, 0.023f, 0.8998f, 0.069f),
+                        CreateBoundarySegment("Position04", 2.763f, 1.157f, 1.15f, 2.77f),
+                        CreateBoundarySegment("Position05", 1.15f, 2.77f, -1.15f, 2.77f, 0.02f, 2.77f, 0.8998f, 0.069f),
+                        CreateBoundarySegment("Position06", -1.15f, 2.77f, -2.75f, 1.17f),
+                        CreateBoundarySegment("Position07", -2.75f, 1.17f, -2.75f, -1.17f, -2.75f, 0.02f, 0.8998f, 0.069f),
+                        CreateBoundarySegment("Position08", -2.75f, -1.17f, -1.184f, -2.736f),
+                    },
+                    PlayerSideBindings = new[]
+                    {
+                        CreatePlayerSideBinding(1, "Position01", 0),
+                        CreatePlayerSideBinding(2, "Position03", 2),
+                        CreatePlayerSideBinding(3, "Position05", 4),
+                        CreatePlayerSideBinding(4, "Position07", 6),
+                    },
+                },
+            };
+        }
+
+        private static MapBoundarySegmentDefinition CreateBoundarySegment(
+            string scenePosition,
+            float startX,
+            float startY,
+            float endX,
+            float endY)
+        {
+            return new MapBoundarySegmentDefinition
+            {
+                ScenePosition = scenePosition,
+                Start = CreateMapPoint(startX, startY),
+                End = CreateMapPoint(endX, endY),
+            };
+        }
+
+        private static MapBoundarySegmentDefinition CreateBoundarySegment(
+            string scenePosition,
+            float startX,
+            float startY,
+            float endX,
+            float endY,
+            float goalX,
+            float goalY,
+            float goalHalfLength,
+            float goalTriggerInset)
+        {
+            MapBoundarySegmentDefinition segment = CreateBoundarySegment(scenePosition, startX, startY, endX, endY);
+            segment.GoalCenter = CreateMapPoint(goalX, goalY);
+            segment.GoalHalfLength = goalHalfLength;
+            segment.GoalTriggerInset = goalTriggerInset;
+            return segment;
         }
 
         private static MapVector2Definition CreateMapPoint(float x, float y)

@@ -42,7 +42,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/Baffle.prefab", map.PaddlePrefabLocation);
             Assert.AreEqual(8f, map.PaddleMoveSpeed);
             Assert.AreEqual(3, map.DefaultPlayerCount);
-            Assert.AreEqual(4, map.PlayerSideBindings.Count);
+            Assert.AreEqual(3, map.PlayerSideBindings.Count);
             Assert.AreEqual(1, map.PlayerSideBindings[0].PlayerId);
             Assert.AreEqual("Position01", map.PlayerSideBindings[0].ScenePosition);
             Assert.AreEqual(5, map.PlayerSideBindings[0].BoundarySegmentIndex);
@@ -52,9 +52,14 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(3, map.PlayerSideBindings[2].PlayerId);
             Assert.AreEqual("Position05", map.PlayerSideBindings[2].ScenePosition);
             Assert.AreEqual(3, map.PlayerSideBindings[2].BoundarySegmentIndex);
-            Assert.AreEqual(4, map.PlayerSideBindings[3].PlayerId);
-            Assert.AreEqual("Position07", map.PlayerSideBindings[3].ScenePosition);
-            Assert.AreEqual(5, map.PlayerSideBindings[3].BoundarySegmentIndex);
+            Assert.AreEqual(3, map.CollisionLayouts.Count);
+            Assert.AreEqual(2, map.CollisionLayouts[0].PlayerCount);
+            Assert.AreEqual(6, map.CollisionLayouts[0].BoundarySegments.Count);
+            Assert.AreEqual(4, map.CollisionLayouts[2].PlayerCount);
+            Assert.AreEqual(8, map.CollisionLayouts[2].BoundarySegments.Count);
+            Assert.AreEqual(4, map.CollisionLayouts[2].PlayerSideBindings.Count);
+            Assert.AreEqual("Position07", map.CollisionLayouts[2].PlayerSideBindings[3].ScenePosition);
+            Assert.AreEqual(6, map.CollisionLayouts[2].PlayerSideBindings[3].BoundarySegmentIndex);
             Assert.AreEqual(0, effective.InitialBallsInMatch);
             Assert.AreEqual(20, effective.MaxBallsInMatch);
             Assert.AreEqual(2, effective.InitialServeAmmo);

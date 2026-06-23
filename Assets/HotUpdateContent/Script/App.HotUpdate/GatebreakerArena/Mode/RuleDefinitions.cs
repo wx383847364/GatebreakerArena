@@ -98,6 +98,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public IReadOnlyList<MapVector2Definition> BoundaryPoints { get; set; }
         public IReadOnlyList<MapVector2Definition> GoalCenters { get; set; }
         public IReadOnlyList<MapPlayerSideBindingDefinition> PlayerSideBindings { get; set; }
+        public IReadOnlyList<MapCollisionLayoutDefinition> CollisionLayouts { get; set; }
     }
 
     public sealed class MapVector2Definition
@@ -111,6 +112,23 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int PlayerId { get; set; }
         public string ScenePosition { get; set; }
         public int BoundarySegmentIndex { get; set; }
+    }
+
+    public sealed class MapCollisionLayoutDefinition
+    {
+        public int PlayerCount { get; set; }
+        public IReadOnlyList<MapBoundarySegmentDefinition> BoundarySegments { get; set; }
+        public IReadOnlyList<MapPlayerSideBindingDefinition> PlayerSideBindings { get; set; }
+    }
+
+    public sealed class MapBoundarySegmentDefinition
+    {
+        public string ScenePosition { get; set; }
+        public MapVector2Definition Start { get; set; }
+        public MapVector2Definition End { get; set; }
+        public MapVector2Definition GoalCenter { get; set; }
+        public float GoalHalfLength { get; set; }
+        public float GoalTriggerInset { get; set; }
     }
 
     public sealed class PlayerColorRuleDefinition

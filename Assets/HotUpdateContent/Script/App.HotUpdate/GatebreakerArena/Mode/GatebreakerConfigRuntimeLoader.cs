@@ -193,6 +193,30 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 BoundaryPoints = ReadVector2Array(item, "BoundaryPoints", 3),
                 GoalCenters = ReadVector2Array(item, "GoalCenters", 1),
                 PlayerSideBindings = ReadOptionalArray(item, "PlayerSideBindings", ReadPlayerSideBinding),
+                CollisionLayouts = ReadOptionalArray(item, "CollisionLayouts", ReadCollisionLayout),
+            };
+        }
+
+        private static MapCollisionLayoutDefinition ReadCollisionLayout(Dictionary<string, object> item)
+        {
+            return new MapCollisionLayoutDefinition
+            {
+                PlayerCount = ReadInt(item, "PlayerCount"),
+                BoundarySegments = ReadOptionalArray(item, "BoundarySegments", ReadBoundarySegment),
+                PlayerSideBindings = ReadOptionalArray(item, "PlayerSideBindings", ReadPlayerSideBinding),
+            };
+        }
+
+        private static MapBoundarySegmentDefinition ReadBoundarySegment(Dictionary<string, object> item)
+        {
+            return new MapBoundarySegmentDefinition
+            {
+                ScenePosition = ReadOptionalString(item, "ScenePosition"),
+                Start = ReadVector2(item, "Start"),
+                End = ReadVector2(item, "End"),
+                GoalCenter = ReadOptionalVector2(item, "GoalCenter"),
+                GoalHalfLength = ReadOptionalFloat(item, "GoalHalfLength") ?? 0f,
+                GoalTriggerInset = ReadOptionalFloat(item, "GoalTriggerInset") ?? 0f,
             };
         }
 
@@ -349,6 +373,40 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             }
 
             return result;
+        }
+
+        private static MapVector2Definition ReadVector2(Dictionary<string, object> item, string key)
+        {
+            object value = ReadRequired(item, key);
+            if (!(value is Dictionary<string, object> point))
+            {
+                throw new FormatException($"JSON field '{key}' must be an object.");
+            }
+
+            return new MapVector2Definition
+            {
+                X = ReadFloat(point, "X"),
+                Y = ReadFloat(point, "Y"),
+            };
+        }
+
+        private static MapVector2Definition ReadOptionalVector2(Dictionary<string, object> item, string key)
+        {
+            if (!item.TryGetValue(key, out object value) || value == null)
+            {
+                return null;
+            }
+
+            if (!(value is Dictionary<string, object> point))
+            {
+                throw new FormatException($"JSON field '{key}' must be an object.");
+            }
+
+            return new MapVector2Definition
+            {
+                X = ReadFloat(point, "X"),
+                Y = ReadFloat(point, "Y"),
+            };
         }
 
         private static string ReadString(Dictionary<string, object> item, string key)

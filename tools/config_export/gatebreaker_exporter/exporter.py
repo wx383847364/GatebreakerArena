@@ -133,6 +133,7 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             _validate_vector_array(row, "BoundaryPoints", 3, table_name, index, errors)
             _validate_vector_array(row, "GoalCenters", 1, table_name, index, errors)
             _validate_map_player_side_bindings(row, index, errors)
+            _validate_collision_layouts(row, index, errors)
 
 
 def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -189,6 +190,139 @@ def _validate_map_player_side_bindings(row: dict[str, Any], index: int, errors: 
             errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: BoundarySegmentIndex must be non-negative.")
         elif segment_index in seen_segments:
             errors.append(f"DT_MapRule[{index}].PlayerSideBindings[{binding_index}]: duplicate BoundarySegmentIndex {segment_index}.")
+        else:
+            seen_segments.add(segment_index)
+
+
+def _validate_collision_layouts(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    layouts = row.get("CollisionLayouts")
+    if layouts is None:
+        return
+
+    if not isinstance(layouts, list):
+        errors.append(f"DT_MapRule[{index}]: CollisionLayouts must be an array.")
+        return
+
+    seen_counts: set[int] = set()
+    for layout_index, layout in enumerate(layouts):
+        if not isinstance(layout, dict):
+            errors.append(f"DT_MapRule[{index}].CollisionLayouts[{layout_index}]: every item must be an object.")
+            continue
+
+        player_count = _normalize_int(layout.get("PlayerCount"))
+        if player_count is None or player_count <= 0:
+            errors.append(f"DT_MapRule[{index}].CollisionLayouts[{layout_index}]: PlayerCount must be positive.")
+        elif player_count in seen_counts:
+            errors.append(f"DT_MapRule[{index}].CollisionLayouts[{layout_index}]: duplicate PlayerCount {player_count}.")
+        else:
+            seen_counts.add(player_count)
+
+        segments = layout.get("BoundarySegments")
+        if not isinstance(segments, list) or len(segments) < 3:
+            errors.append(f"DT_MapRule[{index}].CollisionLayouts[{layout_index}]: BoundarySegments must contain at least 3 items.")
+        elif player_count is not None and player_count > 0 and len(segments) < player_count:
+            errors.append(f"DT_MapRule[{index}].CollisionLayouts[{layout_index}]: BoundarySegments must cover the player count.")
+        else:
+            for segment_index, segment in enumerate(segments):
+                _validate_collision_segment(segment, index, layout_index, segment_index, errors)
+
+        bindings = layout.get("PlayerSideBindings")
+        if bindings is None:
+            errors.append(f"DT_MapRule[{index}].CollisionLayouts[{layout_index}]: PlayerSideBindings is required.")
+        else:
+            _validate_layout_player_side_bindings(
+                bindings,
+                index,
+                layout_index,
+                len(segments) if isinstance(segments, list) else 0,
+                player_count or 0,
+                errors)
+
+
+def _validate_collision_segment(
+    segment: Any,
+    map_index: int,
+    layout_index: int,
+    segment_index: int,
+    errors: list[str],
+) -> None:
+    prefix = f"DT_MapRule[{map_index}].CollisionLayouts[{layout_index}].BoundarySegments[{segment_index}]"
+    if not isinstance(segment, dict):
+        errors.append(f"{prefix}: every item must be an object.")
+        return
+
+    for field in ("ScenePosition", "Start", "End"):
+        if field not in segment:
+            errors.append(f"{prefix}: missing required field {field}.")
+
+    for field in ("Start", "End", "GoalCenter"):
+        value = segment.get(field)
+        if value is None:
+            if field == "GoalCenter":
+                continue
+            errors.append(f"{prefix}.{field}: must be an object.")
+            continue
+
+        if not isinstance(value, dict):
+            errors.append(f"{prefix}.{field}: must be an object.")
+            continue
+
+        for axis in ("X", "Y"):
+            if _normalize_float(value.get(axis)) is None:
+                errors.append(f"{prefix}.{field}.{axis}: must be a number.")
+
+    for field in ("GoalHalfLength", "GoalTriggerInset"):
+        value = segment.get(field)
+        if value is not None:
+            number = _normalize_float(value)
+            if number is None:
+                errors.append(f"{prefix}.{field}: must be a number.")
+            elif number < 0:
+                errors.append(f"{prefix}.{field}: must be non-negative.")
+
+
+def _validate_layout_player_side_bindings(
+    bindings: Any,
+    map_index: int,
+    layout_index: int,
+    segment_count: int,
+    player_count: int,
+    errors: list[str],
+) -> None:
+    if not isinstance(bindings, list):
+        errors.append(f"DT_MapRule[{map_index}].CollisionLayouts[{layout_index}]: PlayerSideBindings must be an array.")
+        return
+
+    if player_count > 0 and len(bindings) < player_count:
+        errors.append(f"DT_MapRule[{map_index}].CollisionLayouts[{layout_index}]: PlayerSideBindings must cover the player count.")
+
+    seen_players: set[int] = set()
+    seen_segments: set[int] = set()
+    for binding_index, binding in enumerate(bindings):
+        prefix = f"DT_MapRule[{map_index}].CollisionLayouts[{layout_index}].PlayerSideBindings[{binding_index}]"
+        if not isinstance(binding, dict):
+            errors.append(f"{prefix}: every item must be an object.")
+            continue
+
+        for field in ("PlayerId", "ScenePosition", "BoundarySegmentIndex"):
+            if field not in binding:
+                errors.append(f"{prefix}: missing required field {field}.")
+
+        player_id = _normalize_int(binding.get("PlayerId"))
+        segment_index = _normalize_int(binding.get("BoundarySegmentIndex"))
+        if player_id is None or player_id <= 0:
+            errors.append(f"{prefix}: PlayerId must be positive.")
+        elif player_id in seen_players:
+            errors.append(f"{prefix}: duplicate PlayerId {player_id}.")
+        else:
+            seen_players.add(player_id)
+
+        if segment_index is None or segment_index < 0:
+            errors.append(f"{prefix}: BoundarySegmentIndex must be non-negative.")
+        elif segment_count > 0 and segment_index >= segment_count:
+            errors.append(f"{prefix}: BoundarySegmentIndex must be within BoundarySegments.")
+        elif segment_index in seen_segments:
+            errors.append(f"{prefix}: duplicate BoundarySegmentIndex {segment_index}.")
         else:
             seen_segments.add(segment_index)
 
@@ -536,5 +670,6 @@ def _field_comments() -> dict[str, dict[str, str]]:
             "PaddleMoveSpeed": "板子移动速度，单位为场景距离/秒；数值越大，玩家板子沿可移动方向移动越快，最终以策划填写的数据为准。",
             "BoundaryPoints": "场地边界点，按顺时针或逆时针顺序填写；运行时用相邻点生成碰撞边。",
             "GoalCenters": "每条边对应的球门中心点；数量应与边界段数量匹配。",
+            "CollisionLayouts": "按玩家人数记录的地图阻挡线数据；运行时优先用它生成边界、进球判定和调试红线。",
         },
     }
