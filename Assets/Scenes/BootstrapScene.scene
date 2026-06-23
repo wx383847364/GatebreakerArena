@@ -436,10 +436,12 @@ MonoBehaviour:
   - {fileID: 1683914603}
   - {fileID: 1116665179}
   - {fileID: 1004824943}
+  - {fileID: 1825376901}
   _resultRankNameTexts:
   - {fileID: 2095701658}
   - {fileID: 1754801695}
   - {fileID: 1326328556}
+  - {fileID: 758263194}
   _resultRestartButton: {fileID: 784024756}
   _resultBackButton: {fileID: 1617513143}
   _gmRoot: {fileID: 2133728224}

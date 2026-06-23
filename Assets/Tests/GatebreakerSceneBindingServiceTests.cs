@@ -173,8 +173,39 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("\u7B2C\u4E00\u540D:", _binding.ResultRankLabelTexts[0].text);
             Assert.AreEqual("\u7B2C\u4E8C\u540D:", _binding.ResultRankLabelTexts[1].text);
             Assert.AreEqual("\u7B2C\u4E09\u540D:", _binding.ResultRankLabelTexts[2].text);
+            Assert.AreEqual(string.Empty, _binding.ResultRankLabelTexts[3].text);
+            Assert.AreEqual(string.Empty, _binding.ResultRankNameTexts[3].text);
             StringAssert.Contains("Player3", _binding.ResultRankNameTexts[0].text);
             StringAssert.Contains("WIN", _binding.ResultRankNameTexts[0].text);
+        }
+
+        [Test]
+        public void ResultPanelDisplaysFourthRankForFourPlayerMatch()
+        {
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks(),
+                null);
+
+            _service.UpdateResult(
+                new GatebreakerHudSnapshot
+                {
+                    Phase = MatchPhase.Result,
+                    HasWinner = true,
+                    WinnerPlayerId = 3,
+                    PlayerScores = new[]
+                    {
+                        new PlayerScoreSnapshot(3, 3, false, 11, 0, 3),
+                        new PlayerScoreSnapshot(2, 2, false, 11, -1, 2),
+                        new PlayerScoreSnapshot(4, 4, false, 11, -3, 4),
+                        new PlayerScoreSnapshot(1, 1, false, 10, -5, 1),
+                    },
+                });
+
+            Assert.AreEqual("\u7B2C\u56DB\u540D:", _binding.ResultRankLabelTexts[3].text);
+            StringAssert.Contains("Player1", _binding.ResultRankNameTexts[3].text);
+            StringAssert.Contains("SCORE 10", _binding.ResultRankNameTexts[3].text);
+            StringAssert.Contains("HIT -5", _binding.ResultRankNameTexts[3].text);
         }
 
         [Test]
@@ -798,12 +829,14 @@ namespace Gatebreaker.Tests
                         Add<TextMeshProUGUI>(parent, "ResultRankLabel1"),
                         Add<TextMeshProUGUI>(parent, "ResultRankLabel2"),
                         Add<TextMeshProUGUI>(parent, "ResultRankLabel3"),
+                        Add<TextMeshProUGUI>(parent, "ResultRankLabel4"),
                     },
                     ResultRankNameTexts = new[]
                     {
                         Add<TextMeshProUGUI>(parent, "ResultRankName1"),
                         Add<TextMeshProUGUI>(parent, "ResultRankName2"),
                         Add<TextMeshProUGUI>(parent, "ResultRankName3"),
+                        Add<TextMeshProUGUI>(parent, "ResultRankName4"),
                     },
                     ResultRestartButton = Add<Button>(parent, "ResultRestart"),
                     ResultBackButton = Add<Button>(parent, "ResultBack"),

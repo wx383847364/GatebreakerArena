@@ -93,8 +93,8 @@ namespace Gatebreaker.Editor
             RequireArray<TMP_Text>(serializedBinding, "_playerHitTexts", 3, errors);
             Require<GameObject>(serializedBinding, "_resultRoot", errors);
             Require<TMP_Text>(serializedBinding, "_resultTitleText", errors);
-            RequireArray<TMP_Text>(serializedBinding, "_resultRankLabelTexts", 3, errors);
-            RequireArray<TMP_Text>(serializedBinding, "_resultRankNameTexts", 3, errors);
+            RequireArray<TMP_Text>(serializedBinding, "_resultRankLabelTexts", 4, errors);
+            RequireArray<TMP_Text>(serializedBinding, "_resultRankNameTexts", 4, errors);
             Require<Button>(serializedBinding, "_resultRestartButton", errors);
             Require<Button>(serializedBinding, "_resultBackButton", errors);
             Require<GameObject>(serializedBinding, "_gmRoot", errors);
@@ -215,11 +215,13 @@ namespace Gatebreaker.Editor
             SetArray(serializedBinding, "_resultRankLabelTexts",
                 FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_1"),
                 FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_2"),
-                FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_3"));
+                FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_3"),
+                FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_4"));
             SetArray(serializedBinding, "_resultRankNameTexts",
                 FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_1/Name"),
                 FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_2/Name"),
-                FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_3/Name"));
+                FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_3/Name"),
+                FindRequired<TMP_Text>(resultPanel, "Result/Rankinfo_4/Name"));
             Set(serializedBinding, "_resultRestartButton", FindRequired<Button>(resultPanel, "RestartBtn"));
             Set(serializedBinding, "_resultBackButton", FindRequired<Button>(resultPanel, "BackBtn"));
 

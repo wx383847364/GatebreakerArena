@@ -1304,7 +1304,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 }
                 else
                 {
-                    SetTextAt(_resultRankLabelTexts, i, FormatResultRankLabel(i));
+                    SetTextAt(_resultRankLabelTexts, i, string.Empty);
                     SetTextAt(_resultRankNameTexts, i, string.Empty);
                 }
             }
@@ -1320,6 +1320,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
                     return "\u7B2C\u4E8C\u540D:";
                 case 2:
                     return "\u7B2C\u4E09\u540D:";
+                case 3:
+                    return "\u7B2C\u56DB\u540D:";
                 default:
                     return $"No.{rowIndex + 1}:";
             }
