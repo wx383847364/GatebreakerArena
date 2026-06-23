@@ -593,6 +593,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             freeSlot.IsAi = false;
             freeSlot.Endpoint = endpoint;
             freeSlot.ConnectionId = connectionId;
+            LogRoomMemberEntered(freeSlot, endpoint);
             return new RoomJoinResponse
             {
                 Accepted = true,
@@ -642,6 +643,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             State = LanRoomState.Lobby;
             RecordRoomEvent("JoinResponseReceive", "accepted", "slot=" + response.SlotIndex);
             ApplyRemoteSnapshot(response.Snapshot);
+            LogLocalRoomJoined(_hostEndpoint);
             PublishSnapshot();
         }
 
@@ -721,11 +723,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
                 if (_playersFrozen && !IsResultBackLeave(leave))
                 {
+                    LogRoomMemberLeft(slot, leave.Reason);
                     RecordRoomEvent("LeaveReceive", "clientLeftDuringPlay", "slot=" + slot.SlotIndex);
                     Abort(MatchAbortReason.ClientLeft, "A player left during play.");
                     return;
                 }
 
+                LogRoomMemberLeft(slot, leave.Reason);
                 if (IsResultBackLeave(leave))
                 {
                     if (State != LanRoomState.Lobby || _playersFrozen)
@@ -748,6 +752,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             ApplyAbort(MatchAbortReason.HostLeft, "Host left the room.");
+            LogHostLeftRoom(leave.Reason);
             RecordRoomEvent("LeaveReceive", "hostLeft", leave.Reason);
         }
 
@@ -970,7 +975,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 HostPlayerName = LocalPlayerName,
                 TcpPort = _hostTcpPort,
                 MaxPlayers = _maxPlayers,
-                ActivePlayers = _slots.Count(slot => slot.IsActive),
+                ActivePlayers = _slots.Count(slot => slot.IsActive && !slot.IsAi),
                 State = State,
             };
             byte[] bytes = CreatePacket(
@@ -1628,6 +1633,69 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             return builder.ToString();
+        }
+
+        private void LogRoomMemberEntered(RoomSlot slot, object endpoint)
+        {
+            if (slot == null)
+            {
+                return;
+            }
+
+            _logger?.LogInfo(
+                "Gatebreaker LAN Room: {0} ip={1} entered room {2}. slot={3};playerId={4}",
+                FormatRoomMemberName(slot.PlayerName),
+                FormatRoomMemberEndpoint(endpoint ?? slot.Endpoint ?? slot.ConnectionId),
+                string.IsNullOrWhiteSpace(_roomCode) ? "-" : _roomCode,
+                slot.SlotIndex,
+                slot.PlayerId);
+        }
+
+        private void LogLocalRoomJoined(object hostEndpoint)
+        {
+            _logger?.LogInfo(
+                "Gatebreaker LAN Room: {0} ip={1} entered room {2}. slot={3};role=localClient",
+                FormatRoomMemberName(LocalPlayerName),
+                FormatRoomMemberEndpoint(hostEndpoint ?? _hostEndpoint ?? _hostConnectionId),
+                string.IsNullOrWhiteSpace(_roomCode) ? "-" : _roomCode,
+                LocalSlotIndex);
+        }
+
+        private void LogRoomMemberLeft(RoomSlot slot, string reason)
+        {
+            if (slot == null)
+            {
+                return;
+            }
+
+            _logger?.LogInfo(
+                "Gatebreaker LAN Room: {0} ip={1} left room {2}. slot={3};playerId={4};reason={5}",
+                FormatRoomMemberName(slot.PlayerName),
+                FormatRoomMemberEndpoint(slot.Endpoint ?? slot.ConnectionId),
+                string.IsNullOrWhiteSpace(_roomCode) ? "-" : _roomCode,
+                slot.SlotIndex,
+                slot.PlayerId,
+                string.IsNullOrWhiteSpace(reason) ? "-" : reason);
+        }
+
+        private void LogHostLeftRoom(string reason)
+        {
+            _logger?.LogInfo(
+                "Gatebreaker LAN Room: host ip={0} left room {1}. reason={2}",
+                FormatRoomMemberEndpoint(_hostEndpoint ?? _hostConnectionId),
+                string.IsNullOrWhiteSpace(_roomCode) ? "-" : _roomCode,
+                string.IsNullOrWhiteSpace(reason) ? "-" : reason);
+        }
+
+        private static string FormatRoomMemberName(string playerName)
+        {
+            return string.IsNullOrWhiteSpace(playerName) ? "Player" : playerName.Trim();
+        }
+
+        private static string FormatRoomMemberEndpoint(object endpoint)
+        {
+            string text = EndpointToString(endpoint);
+            return string.IsNullOrWhiteSpace(text) ? "-" : text;
         }
 
         private void RecordPacketEvent(

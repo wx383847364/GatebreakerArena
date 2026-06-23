@@ -540,6 +540,38 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void LanRoomUpdateUsesSlotRowsWhenSnapshotPlayersArriveOutOfOrder()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+
+            var players = new[]
+            {
+                new RoomPlayerSnapshot { SlotIndex = 1, SideOrder = 1, PlayerId = 2, PlayerName = "Client", IsReady = false, IsActive = true },
+                new RoomPlayerSnapshot { SlotIndex = 0, SideOrder = 0, PlayerId = 1, PlayerName = "Host", IsReady = true, IsActive = true },
+                new RoomPlayerSnapshot { SlotIndex = 2, SideOrder = 2, PlayerId = 3, PlayerName = "Computer 3", IsReady = true, IsActive = true, IsAi = true },
+            };
+
+            _service.UpdateLanRoom(
+                new RoomSnapshot
+                {
+                    State = LanRoomState.Lobby,
+                    RoomCode = "ABC123",
+                    MaxPlayers = 3,
+                    Players = players,
+                },
+                "192.168.0.220",
+                "192.168.0.115");
+
+            Assert.AreEqual("Player1:", _binding.LanRoomPlayerInfoTexts[0].text);
+            Assert.AreEqual("Host", _binding.LanRoomPlayerNameTexts[0].text);
+            Assert.AreEqual("Player2:", _binding.LanRoomPlayerInfoTexts[1].text);
+            Assert.AreEqual("Client", _binding.LanRoomPlayerNameTexts[1].text);
+            Assert.AreEqual("not ready", _binding.LanRoomPlayerReadyTexts[1].text);
+            Assert.AreEqual(2, players[0].PlayerId);
+            Assert.AreEqual(1, players[1].PlayerId);
+        }
+
+        [Test]
         public void LanRoomUpdateFallsBackToNativePlayerInfoChildren()
         {
             _binding.UseNativeLanRoomInfoChildrenOnly();

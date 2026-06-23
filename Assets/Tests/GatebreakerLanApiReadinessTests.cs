@@ -616,6 +616,49 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void RoomAdvertiseCountsHumanPlayersInsteadOfAiBackfillSlots()
+        {
+            var host = new LanRoomService();
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            RoomAdvertise latestAdvertise = null;
+            host.UdpBroadcastRequested += payload =>
+            {
+                Assert.IsTrue(GatebreakerEnvelopeCodec.TryDecode(payload, out GatebreakerEnvelope envelope));
+                Assert.AreEqual(GatebreakerNetworkMessageType.RoomAdvertise, envelope.MessageType);
+                latestAdvertise = GatebreakerPayloadCodec.DecodeRoomAdvertise(envelope.PayloadBytes);
+            };
+
+            host.CreateHost("Host", hostId, 4, "ABC123", 47780);
+            host.Tick(0f);
+            Assert.IsNotNull(latestAdvertise);
+            Assert.AreEqual(1, latestAdvertise.ActivePlayers);
+            Assert.AreEqual(4, latestAdvertise.MaxPlayers);
+
+            byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomJoinRequest,
+                1,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeJoinRequest(new RoomJoinRequest
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    ClientInstanceId = clientId,
+                    PlayerName = "Client",
+                    RoomCode = "ABC123",
+                }));
+            Assert.IsTrue(host.HandleIncomingPacket(
+                joinPacket,
+                new LanEndpoint("127.0.0.1", 47780),
+                new LanConnectionId(1)));
+
+            latestAdvertise = null;
+            host.Tick(1f);
+            Assert.IsNotNull(latestAdvertise);
+            Assert.AreEqual(2, latestAdvertise.ActivePlayers);
+        }
+
+        [Test]
         public void HostReadyButtonDoesNotToggleHostToNotReady()
         {
             var host = new LanRoomService();
@@ -628,6 +671,57 @@ namespace Gatebreaker.Tests
             RoomSnapshot afterReadyClick = host.CurrentSnapshot;
             Assert.IsTrue(afterReadyClick.CanStart);
             Assert.IsTrue(afterReadyClick.Players.Single(player => player.IsHost).IsReady);
+        }
+
+        [Test]
+        public void HostLogsRemotePlayerEnterAndLeaveWithEndpoint()
+        {
+            var logger = new CapturingAppLogger();
+            var host = new LanRoomService(logger);
+            ulong hostId = 1001UL;
+            ulong clientId = 2002UL;
+            host.CreateHost("Host", hostId, 3, "ABC123");
+
+            byte[] joinPacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomJoinRequest,
+                1,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeJoinRequest(new RoomJoinRequest
+                {
+                    ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                    ClientInstanceId = clientId,
+                    PlayerName = "Client",
+                    RoomCode = "ABC123",
+                }));
+            Assert.IsTrue(host.HandleIncomingPacket(
+                joinPacket,
+                new LanEndpoint("192.168.0.42", 47780),
+                new LanConnectionId(1)));
+
+            Assert.IsTrue(logger.InfoMessages.Any(message =>
+                message.Contains("Client") &&
+                message.Contains("192.168.0.42:47780") &&
+                message.Contains("entered room ABC123")));
+
+            byte[] leavePacket = GatebreakerEnvelopeCodec.Encode(
+                GatebreakerNetworkMessageType.RoomLeave,
+                2,
+                host.SessionId,
+                host.ChannelId,
+                GatebreakerPayloadCodec.EncodeLeaveNotice(new RoomLeaveNotice
+                {
+                    ClientInstanceId = clientId,
+                    SlotIndex = 1,
+                    Reason = "ui",
+                }));
+            Assert.IsTrue(host.HandleIncomingPacket(leavePacket));
+
+            Assert.IsTrue(logger.InfoMessages.Any(message =>
+                message.Contains("Client") &&
+                message.Contains("192.168.0.42:47780") &&
+                message.Contains("left room ABC123") &&
+                message.Contains("reason=ui")));
         }
 
         [Test]
@@ -1451,6 +1545,43 @@ namespace Gatebreaker.Tests
                     clientIdProperty.SetValue(slot, 3000UL + (ulong)playerId);
                     isAiProperty.SetValue(slot, false);
                 }
+            }
+        }
+
+        private sealed class CapturingAppLogger : IAppLogger
+        {
+            public List<string> InfoMessages { get; } = new List<string>();
+
+            public void Log(LogLevel level, string message, params object[] args)
+            {
+                if (level == LogLevel.Info)
+                {
+                    InfoMessages.Add(Format(message, args));
+                }
+            }
+
+            public void LogDebug(string message, params object[] args)
+            {
+            }
+
+            public void LogInfo(string message, params object[] args)
+            {
+                InfoMessages.Add(Format(message, args));
+            }
+
+            public void LogWarning(string message, params object[] args)
+            {
+            }
+
+            public void LogError(string message, params object[] args)
+            {
+            }
+
+            private static string Format(string message, object[] args)
+            {
+                return args != null && args.Length > 0
+                    ? string.Format(message, args)
+                    : message;
             }
         }
 

@@ -62,6 +62,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private GatebreakerArenaHudPresenter _hudPresenter;
         private GatebreakerArenaSceneBindingService _sceneBindingService;
         private LanRoomService _lanRoomService;
+        private LanRoomService _subscribedLanRoomService;
         private LanDiagnosticsService _lanDiagnosticsService;
         private ILanTransport _lanTransport;
         private GatebreakerVisualAssetService _visualAssetService;
@@ -158,7 +159,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _visualAssetService = context.VisualAssetService;
-            _lanRoomService = context.LanRoomService;
+            SubscribeLanRoomService(context.LanRoomService);
             _lanDiagnosticsService = context.LanDiagnosticsService;
             _lanTransport = context.Services?.Get<ILanTransport>();
             _sceneBindingService = context.SceneBindingService;
@@ -437,6 +438,34 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             _lastStartCountdownText = text;
             _sceneBindingService?.ShowStartCountdown(text);
+        }
+
+        private void SubscribeLanRoomService(LanRoomService roomService)
+        {
+            if (_subscribedLanRoomService != null)
+            {
+                _subscribedLanRoomService.SnapshotChanged -= OnLanRoomSnapshotChanged;
+            }
+
+            _lanRoomService = roomService;
+            _subscribedLanRoomService = roomService;
+            if (_subscribedLanRoomService != null)
+            {
+                _subscribedLanRoomService.SnapshotChanged += OnLanRoomSnapshotChanged;
+            }
+        }
+
+        private void OnLanRoomSnapshotChanged(RoomSnapshot snapshot)
+        {
+            if (_sceneBindingService == null || snapshot == null)
+            {
+                return;
+            }
+
+            _sceneBindingService.UpdateLanRoom(
+                snapshot,
+                GetLocalLanAddress(),
+                GetRoomLanAddress(snapshot));
         }
 
         private void SyncLanLocalPlayer()
@@ -735,6 +764,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void OnDestroy()
         {
+            SubscribeLanRoomService(null);
+
             _visualAssets?.Dispose();
             DestroyBallViewCache();
             DestroyPaddleViewCache();
@@ -861,8 +892,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void ApplyScenePlayerSideColors()
         {
+            int playerCount = ResolveRuntimeScenePlayerCount();
             IReadOnlyList<MapPlayerSideBindingDefinition> bindings =
-                ArenaGeometry.CreateScenePlayerSideBindings(ResolveRuntimeScenePlayerCount(), _runtime?.EffectiveRule?.Map?.PlayerSideBindings);
+                ResolveScenePlayerSideBindings(_runtime?.EffectiveRule?.Map, playerCount);
             if (_sceneInstance == null || bindings == null)
             {
                 return;
@@ -885,6 +917,27 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
                 ApplySceneNetColor(position, GetPlayerColor(binding.PlayerId));
             }
+        }
+
+        private static IReadOnlyList<MapPlayerSideBindingDefinition> ResolveScenePlayerSideBindings(
+            MapRuleDefinition map,
+            int playerCount)
+        {
+            if (map?.CollisionLayouts != null)
+            {
+                for (int i = 0; i < map.CollisionLayouts.Count; i++)
+                {
+                    MapCollisionLayoutDefinition layout = map.CollisionLayouts[i];
+                    if (layout?.PlayerCount == playerCount &&
+                        layout.PlayerSideBindings != null &&
+                        layout.PlayerSideBindings.Count > 0)
+                    {
+                        return layout.PlayerSideBindings;
+                    }
+                }
+            }
+
+            return ArenaGeometry.CreateScenePlayerSideBindings(playerCount, map?.PlayerSideBindings);
         }
 
         private static Transform FindSceneTransform(Transform[] transforms, string name)
@@ -954,8 +1007,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void CalibrateGoalBandFromSceneControls()
         {
+            int playerCount = ResolveRuntimeScenePlayerCount();
+            if (HasConfiguredCollisionLayout(_runtime?.EffectiveRule?.Map, playerCount))
+            {
+                return;
+            }
+
             IReadOnlyList<MapPlayerSideBindingDefinition> bindings =
-                ArenaGeometry.CreateScenePlayerSideBindings(ResolveRuntimeScenePlayerCount(), _runtime?.EffectiveRule?.Map?.PlayerSideBindings);
+                ArenaGeometry.CreateScenePlayerSideBindings(playerCount, _runtime?.EffectiveRule?.Map?.PlayerSideBindings);
             if (_sceneInstance == null || _runtime?.Arena == null || bindings == null)
             {
                 return;
@@ -993,6 +1052,27 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     "GatebreakerPrototypeRunner: goal bands calibrated from scene controls. count={0}",
                     dimensionsBySegmentIndex.Count);
             }
+        }
+
+        private static bool HasConfiguredCollisionLayout(MapRuleDefinition map, int playerCount)
+        {
+            if (map?.CollisionLayouts == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < map.CollisionLayouts.Count; i++)
+            {
+                MapCollisionLayoutDefinition layout = map.CollisionLayouts[i];
+                if (layout?.PlayerCount == playerCount &&
+                    layout.BoundarySegments != null &&
+                    layout.BoundarySegments.Count >= 3)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool TryCalculateVisibleNetBody(

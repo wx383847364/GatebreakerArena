@@ -1001,13 +1001,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             int visibleRowCount = Mathf.Clamp(snapshot?.MaxPlayers ?? rowCount, 1, rowCount);
-            RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
-            Array.Sort(players, (left, right) =>
-            {
-                int leftOrder = left != null ? left.PlayerId : int.MaxValue;
-                int rightOrder = right != null ? right.PlayerId : int.MaxValue;
-                return leftOrder.CompareTo(rightOrder);
-            });
+            RoomPlayerSnapshot[] players = BuildLanRosterRows(snapshot, visibleRowCount);
 
             for (int i = 0; i < rowCount; i++)
             {
@@ -1034,6 +1028,81 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 SetText(_lanRoomPlayerNameTexts[i], playerName);
                 SetText(_lanRoomPlayerReadyTexts[i], ready);
             }
+        }
+
+        private static RoomPlayerSnapshot[] BuildLanRosterRows(RoomSnapshot snapshot, int rowCount)
+        {
+            var rows = new RoomPlayerSnapshot[Mathf.Max(0, rowCount)];
+            RoomPlayerSnapshot[] players = snapshot?.Players ?? Array.Empty<RoomPlayerSnapshot>();
+            var overflow = new List<RoomPlayerSnapshot>(players.Length);
+
+            for (int i = 0; i < players.Length; i++)
+            {
+                RoomPlayerSnapshot player = players[i];
+                if (player == null)
+                {
+                    continue;
+                }
+
+                int rowIndex = player.SlotIndex >= 0 ? player.SlotIndex : player.SideOrder;
+                if (rowIndex >= 0 && rowIndex < rows.Length && rows[rowIndex] == null)
+                {
+                    rows[rowIndex] = player;
+                }
+                else
+                {
+                    overflow.Add(player);
+                }
+            }
+
+            overflow.Sort(CompareLanRosterPlayers);
+            int overflowIndex = 0;
+            for (int i = 0; i < rows.Length && overflowIndex < overflow.Count; i++)
+            {
+                if (rows[i] != null)
+                {
+                    continue;
+                }
+
+                rows[i] = overflow[overflowIndex++];
+            }
+
+            return rows;
+        }
+
+        private static int CompareLanRosterPlayers(RoomPlayerSnapshot left, RoomPlayerSnapshot right)
+        {
+            int leftOrder = GetLanRosterOrder(left);
+            int rightOrder = GetLanRosterOrder(right);
+            int orderCompare = leftOrder.CompareTo(rightOrder);
+            if (orderCompare != 0)
+            {
+                return orderCompare;
+            }
+
+            int leftPlayerId = left != null && left.PlayerId > 0 ? left.PlayerId : int.MaxValue;
+            int rightPlayerId = right != null && right.PlayerId > 0 ? right.PlayerId : int.MaxValue;
+            return leftPlayerId.CompareTo(rightPlayerId);
+        }
+
+        private static int GetLanRosterOrder(RoomPlayerSnapshot player)
+        {
+            if (player == null)
+            {
+                return int.MaxValue;
+            }
+
+            if (player.SlotIndex >= 0)
+            {
+                return player.SlotIndex;
+            }
+
+            if (player.SideOrder >= 0)
+            {
+                return player.SideOrder;
+            }
+
+            return player.PlayerId > 0 ? player.PlayerId - 1 : int.MaxValue;
         }
 
         private static void SetActive(GameObject gameObject, bool isActive)

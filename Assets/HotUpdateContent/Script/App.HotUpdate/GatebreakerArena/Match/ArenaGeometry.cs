@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Mode;
 using UnityEngine;
@@ -51,18 +52,26 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return CreateDefault();
             }
 
-            ValidateConfiguredMap(map);
-            return CreateConfiguredMap(map, activePlayerIds);
+            int playerCount = ResolveActivePlayerCount(map, activePlayerIds);
+            ValidateConfiguredMap(map, playerCount);
+            return CreateConfiguredMap(map, activePlayerIds, playerCount);
         }
 
-        private static void ValidateConfiguredMap(MapRuleDefinition map)
+        private static void ValidateConfiguredMap(MapRuleDefinition map, int playerCount)
         {
-            if (map.BoundaryPoints == null || map.BoundaryPoints.Count < 3)
+            MapCollisionLayoutDefinition collisionLayout = FindCollisionLayout(map, playerCount);
+            bool hasTargetCollisionLayout = collisionLayout != null;
+            if (hasTargetCollisionLayout)
+            {
+                ValidateCollisionLayout(map, collisionLayout, playerCount);
+            }
+
+            if (!hasTargetCollisionLayout && (map.BoundaryPoints == null || map.BoundaryPoints.Count < 3))
             {
                 throw new InvalidOperationException($"Map '{map.MapId}' must configure at least 3 BoundaryPoints in JSON.");
             }
 
-            if (map.GoalCenters == null || map.GoalCenters.Count == 0)
+            if (!hasTargetCollisionLayout && (map.GoalCenters == null || map.GoalCenters.Count == 0))
             {
                 throw new InvalidOperationException($"Map '{map.MapId}' must configure GoalCenters in JSON.");
             }
@@ -83,25 +92,26 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private static ArenaGeometry CreateConfiguredMap(
             MapRuleDefinition map,
-            IReadOnlyList<int> activePlayerIds)
+            IReadOnlyList<int> activePlayerIds,
+            int playerCount)
         {
-            int playerCount = ResolveActivePlayerCount(map, activePlayerIds);
-            bool useScene4Geometry = playerCount >= 4;
-            IReadOnlyList<Vector2> points = useScene4Geometry
-                ? CreateScene4PBoundaryPoints()
-                : ToVector2List(map.BoundaryPoints);
-            IReadOnlyList<Vector2> goalCenters = useScene4Geometry
-                ? CreateScene4PGoalCenters()
-                : map.GoalCenters != null && map.GoalCenters.Count > 0
+            MapCollisionLayoutDefinition collisionLayout = FindCollisionLayout(map, playerCount);
+            if (collisionLayout != null)
+            {
+                return CreateConfiguredCollisionLayoutMap(map, collisionLayout, activePlayerIds);
+            }
+
+            IReadOnlyList<Vector2> points = ToVector2List(map.BoundaryPoints);
+            IReadOnlyList<Vector2> goalCenters = map.GoalCenters != null && map.GoalCenters.Count > 0
                 ? ToVector2List(map.GoalCenters)
                 : Array.Empty<Vector2>();
             IReadOnlyList<MapPlayerSideBindingDefinition> sideBindings =
                 CreateScenePlayerSideBindings(playerCount, map.PlayerSideBindings);
             int[] goalOwners = CreateGoalOwners(sideBindings, activePlayerIds, points.Count);
-            float halfWidth = useScene4Geometry || map.ArenaHalfWidth <= 0f
+            float halfWidth = map.ArenaHalfWidth <= 0f
                 ? CalculateHalfExtent(points, true)
                 : map.ArenaHalfWidth;
-            float halfHeight = useScene4Geometry || map.ArenaHalfHeight <= 0f
+            float halfHeight = map.ArenaHalfHeight <= 0f
                 ? CalculateHalfExtent(points, false)
                 : map.ArenaHalfHeight;
             return new ArenaGeometry(
@@ -112,6 +122,111 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 map.PaddleThickness,
                 map.PaddleMoveSpeed,
                 CreateBoundarySegments(points, goalOwners, goalCenters, map.GoalHalfLength, map.GoalTriggerInset, map.GoalContactLineInset));
+        }
+
+        private static MapCollisionLayoutDefinition FindCollisionLayout(MapRuleDefinition map, int playerCount)
+        {
+            if (map?.CollisionLayouts == null || map.CollisionLayouts.Count <= 0)
+            {
+                return null;
+            }
+
+            return map.CollisionLayouts.FirstOrDefault(layout =>
+                layout != null &&
+                layout.PlayerCount == playerCount &&
+                layout.BoundarySegments != null &&
+                layout.BoundarySegments.Count >= 3);
+        }
+
+        private static void ValidateCollisionLayout(
+            MapRuleDefinition map,
+            MapCollisionLayoutDefinition layout,
+            int playerCount)
+        {
+            if (layout.PlayerSideBindings == null || layout.PlayerSideBindings.Count < playerCount)
+            {
+                throw new InvalidOperationException(
+                    $"Map '{map.MapId}' CollisionLayout playerCount={playerCount} must configure PlayerSideBindings for every active player.");
+            }
+
+            var playerIds = new HashSet<int>();
+            var segmentIndexes = new HashSet<int>();
+            for (int i = 0; i < layout.PlayerSideBindings.Count; i++)
+            {
+                MapPlayerSideBindingDefinition binding = layout.PlayerSideBindings[i];
+                if (binding == null || binding.PlayerId <= 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Map '{map.MapId}' CollisionLayout playerCount={playerCount} has invalid PlayerSideBindings[{i}].");
+                }
+
+                if (binding.BoundarySegmentIndex < 0 || binding.BoundarySegmentIndex >= layout.BoundarySegments.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"Map '{map.MapId}' CollisionLayout playerCount={playerCount} binding for player {binding.PlayerId} references invalid boundary segment {binding.BoundarySegmentIndex}.");
+                }
+
+                if (!playerIds.Add(binding.PlayerId))
+                {
+                    throw new InvalidOperationException(
+                        $"Map '{map.MapId}' CollisionLayout playerCount={playerCount} contains duplicate PlayerId {binding.PlayerId}.");
+                }
+
+                if (!segmentIndexes.Add(binding.BoundarySegmentIndex))
+                {
+                    throw new InvalidOperationException(
+                        $"Map '{map.MapId}' CollisionLayout playerCount={playerCount} contains duplicate BoundarySegmentIndex {binding.BoundarySegmentIndex}.");
+                }
+            }
+        }
+
+        private static ArenaGeometry CreateConfiguredCollisionLayoutMap(
+            MapRuleDefinition map,
+            MapCollisionLayoutDefinition layout,
+            IReadOnlyList<int> activePlayerIds)
+        {
+            IReadOnlyList<MapPlayerSideBindingDefinition> sideBindings = layout.PlayerSideBindings;
+            int[] goalOwners = CreateGoalOwners(sideBindings, activePlayerIds, layout.BoundarySegments.Count);
+            var segments = new List<ArenaBoundarySegment>(layout.BoundarySegments.Count);
+            for (int i = 0; i < layout.BoundarySegments.Count; i++)
+            {
+                MapBoundarySegmentDefinition segment = layout.BoundarySegments[i];
+                Vector2 start = ToVector2(segment?.Start);
+                Vector2 end = ToVector2(segment?.End);
+                Vector2 edge = end - start;
+                Vector2 inwardNormal = new Vector2(-edge.y, edge.x).normalized;
+                int goalOwner = i < goalOwners.Length ? goalOwners[i] : -1;
+                Vector2 goalCenter = segment?.GoalCenter != null
+                    ? ToVector2(segment.GoalCenter)
+                    : (start + end) * 0.5f;
+                float goalHalfLength = goalOwner >= 0 && segment != null && segment.GoalHalfLength > 0f
+                    ? segment.GoalHalfLength
+                    : 0f;
+                float goalTriggerInset = goalOwner >= 0 && segment != null
+                    ? Math.Max(0f, segment.GoalTriggerInset)
+                    : 0f;
+                float goalContactLineInset = goalOwner >= 0 ? map.GoalContactLineInset : 0f;
+                segments.Add(new ArenaBoundarySegment(
+                    start,
+                    end,
+                    inwardNormal,
+                    goalOwner,
+                    goalCenter,
+                    goalHalfLength,
+                    goalTriggerInset,
+                    goalContactLineInset));
+            }
+
+            float halfWidth = CalculateHalfExtentFromSegments(segments, true);
+            float halfHeight = CalculateHalfExtentFromSegments(segments, false);
+            return new ArenaGeometry(
+                halfWidth,
+                halfHeight,
+                map.PaddleInset,
+                map.PaddleLength,
+                map.PaddleThickness,
+                map.PaddleMoveSpeed,
+                segments);
         }
 
         public static ArenaGeometry CreateScene3v3(
@@ -228,12 +343,40 @@ namespace App.HotUpdate.GatebreakerArena.Match
             return result;
         }
 
+        private static Vector2 ToVector2(MapVector2Definition point)
+        {
+            return point != null ? new Vector2(point.X, point.Y) : Vector2.zero;
+        }
+
         private static float CalculateHalfExtent(IReadOnlyList<Vector2> points, bool xAxis)
         {
             float extent = 0f;
             for (int i = 0; i < points.Count; i++)
             {
                 extent = Math.Max(extent, Math.Abs(xAxis ? points[i].x : points[i].y));
+            }
+
+            return extent;
+        }
+
+        private static float CalculateHalfExtentFromSegments(IReadOnlyList<ArenaBoundarySegment> segments, bool xAxis)
+        {
+            float extent = 0f;
+            if (segments == null)
+            {
+                return extent;
+            }
+
+            for (int i = 0; i < segments.Count; i++)
+            {
+                ArenaBoundarySegment segment = segments[i];
+                if (segment == null)
+                {
+                    continue;
+                }
+
+                extent = Math.Max(extent, Math.Abs(xAxis ? segment.Start.x : segment.Start.y));
+                extent = Math.Max(extent, Math.Abs(xAxis ? segment.End.x : segment.End.y));
             }
 
             return extent;
@@ -283,36 +426,6 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 PlayerId = playerId,
                 ScenePosition = scenePosition,
                 BoundarySegmentIndex = boundarySegmentIndex,
-            };
-        }
-
-        private static IReadOnlyList<Vector2> CreateScene4PBoundaryPoints()
-        {
-            return new[]
-            {
-                new Vector2(1.385f, -2.736f),
-                new Vector2(2.763f, -1.356f),
-                new Vector2(2.763f, 1.402f),
-                new Vector2(1.402f, 2.77f),
-                new Vector2(-1.362f, 2.77f),
-                new Vector2(-2.75f, 1.386f),
-                new Vector2(-2.75f, -1.346f),
-                new Vector2(-1.366f, -2.736f),
-            };
-        }
-
-        private static IReadOnlyList<Vector2> CreateScene4PGoalCenters()
-        {
-            return new[]
-            {
-                new Vector2(1.967f, -1.933f),
-                new Vector2(2.763f, 0.023f),
-                new Vector2(1.96f, 1.96f),
-                new Vector2(0.02f, 2.77f),
-                new Vector2(-1.94f, 1.98f),
-                new Vector2(-2.75f, 0.02f),
-                new Vector2(-1.98f, -1.94f),
-                new Vector2(0f, -2.736f),
             };
         }
 

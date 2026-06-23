@@ -113,8 +113,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             Vector2 goalOuterStart = segment.Start + tangent * goalStartDistance;
             Vector2 goalOuterEnd = segment.Start + tangent * goalEndDistance;
-            Vector2 goalTriggerStart = goalOuterStart + segment.InwardNormal * segment.GoalTriggerInset;
-            Vector2 goalTriggerEnd = goalOuterEnd + segment.InwardNormal * segment.GoalTriggerInset;
+            Vector2 goalTriggerStart = segment.GoalTriggerStart;
+            Vector2 goalTriggerEnd = segment.GoalTriggerEnd;
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalTriggerStart, goalTriggerEnd, segment.GoalPlayerIndex);
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterStart, goalTriggerStart, segment.GoalPlayerIndex);
             AddLine(lines, GatebreakerCollisionOverlayLineKind.GoalBand, goalOuterEnd, goalTriggerEnd, segment.GoalPlayerIndex);

@@ -47,6 +47,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         private bool _hasWinner;
         private int _winnerPlayerId;
         private float _localPrototypeFrameAccumulator;
+        private int _appliedBallSpeedTimePointIndex = -1;
 
         public GatebreakerMatchRuntime(
             GatebreakerModeCatalog modeCatalog,
@@ -301,11 +302,13 @@ namespace App.HotUpdate.GatebreakerArena.Match
             _balls.Clear();
             _inputFrames.Clear();
             _stepInputBuffer.Clear();
+            _aiService.Reset();
             LastGoalContactDiagnostic = string.Empty;
             LastGoalContactBallId = 0;
             LastGoalContactPosition = Vector2.zero;
             _nextBallId = 1;
             _nextScoreReachOrder = 1;
+            _appliedBallSpeedTimePointIndex = -1;
             if (BallRule == null || BallRule.BallContactRadius <= 0f)
             {
                 throw new InvalidOperationException("Gatebreaker ball contact radius must be configured by JSON before match start.");
@@ -430,6 +433,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
+            ApplyBallSpeedByElapsedTime();
             List<PaddleMotionState> paddleMotions = ApplyControlFrames(includeAi, safeDelta);
             SimulateBallsSwept(safeDelta, paddleMotions);
             CommitPaddleMotions(paddleMotions);
@@ -990,6 +994,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 position,
                 direction);
             ball.ContactRadius = _ballContactRadius;
+            ApplyCurrentBallSpeedToSpawnedBall(ball);
             _balls.Add(ball);
             if (countOwnedBall)
             {
@@ -1007,6 +1012,117 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             return Mathf.Clamp(_ballContactRadius, 0.01f, 0.5f);
+        }
+
+        private void ApplyCurrentBallSpeedToSpawnedBall(BallRuntimeState ball)
+        {
+            if (ball == null || !TryGetCurrentAppliedBallSpeed(out float targetSpeed))
+            {
+                return;
+            }
+
+            float currentSpeed = ball.Velocity.magnitude;
+            if (currentSpeed <= 0.0001f || targetSpeed <= currentSpeed + 0.0001f)
+            {
+                return;
+            }
+
+            ball.Velocity = ball.Velocity.normalized * targetSpeed;
+        }
+
+        private bool TryGetCurrentAppliedBallSpeed(out float speed)
+        {
+            speed = 0f;
+            IReadOnlyList<BallSpeedTimePointDefinition> speedByTime = EffectiveRule?.Mode?.BallSpeedByTime;
+            if (speedByTime == null || speedByTime.Count == 0)
+            {
+                return false;
+            }
+
+            int index = Math.Min(_appliedBallSpeedTimePointIndex, speedByTime.Count - 1);
+            for (int i = index; i >= 0; i--)
+            {
+                BallSpeedTimePointDefinition timePoint = speedByTime[i];
+                if (timePoint == null || timePoint.Speed <= 0.0001f)
+                {
+                    continue;
+                }
+
+                speed = timePoint.Speed;
+                return true;
+            }
+
+            return false;
+        }
+
+        private void ApplyBallSpeedByElapsedTime()
+        {
+            IReadOnlyList<BallSpeedTimePointDefinition> speedByTime = EffectiveRule?.Mode?.BallSpeedByTime;
+            if (speedByTime == null || speedByTime.Count == 0)
+            {
+                return;
+            }
+
+            float elapsedTime = Math.Max(0f, EffectiveRule.Mode.CountdownSeconds - RemainingTime);
+            int nextIndex = _appliedBallSpeedTimePointIndex + 1;
+            while (nextIndex < speedByTime.Count)
+            {
+                BallSpeedTimePointDefinition timePoint = speedByTime[nextIndex];
+                if (timePoint != null && timePoint.TimeSeconds > elapsedTime)
+                {
+                    break;
+                }
+
+                if (timePoint != null)
+                {
+                    ApplyBallSpeedTimePoint(timePoint, elapsedTime);
+                }
+
+                _appliedBallSpeedTimePointIndex = nextIndex;
+                nextIndex++;
+            }
+        }
+
+        private void ApplyBallSpeedTimePoint(BallSpeedTimePointDefinition timePoint, float elapsedTime)
+        {
+            float targetSpeed = Math.Max(0f, timePoint.Speed);
+            if (targetSpeed <= 0.0001f)
+            {
+                return;
+            }
+
+            int acceleratedBallCount = 0;
+            for (int i = 0; i < _balls.Count; i++)
+            {
+                BallRuntimeState ball = _balls[i];
+                if (ball == null || (ball.BallState != BallState.Flying && ball.BallState != BallState.GoalRebound))
+                {
+                    continue;
+                }
+
+                float currentSpeed = ball.Velocity.magnitude;
+                if (currentSpeed <= 0.0001f || targetSpeed <= currentSpeed + 0.0001f)
+                {
+                    continue;
+                }
+
+                ball.Velocity = ball.Velocity.normalized * targetSpeed;
+                acceleratedBallCount++;
+            }
+
+            if (acceleratedBallCount <= 0)
+            {
+                return;
+            }
+
+            _logger?.LogInfo(
+                "GatebreakerMatchRuntime: 球速随时间提升。match={0}, phase={1}, triggerTime={2:0.###}s, elapsed={3:0.###}s, targetSpeed={4:0.###}, affectedBalls={5}",
+                MatchId,
+                Phase,
+                timePoint.TimeSeconds,
+                elapsedTime,
+                targetSpeed,
+                acceleratedBallCount);
         }
 
         private void RemoveBall(BallRuntimeState ball)
