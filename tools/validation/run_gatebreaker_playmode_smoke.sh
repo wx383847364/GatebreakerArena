@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-UNITY_EDITOR="${UNITY_EDITOR:-/Applications/Tuanjie/Hub/Editor/2022.3.62t2/Tuanjie.app/Contents/MacOS/Tuanjie}"
+UNITY_EDITOR="${UNITY_EDITOR:-/Applications/Tuanjie/Hub/Editor/2022.3.62t9/Tuanjie.app/Contents/MacOS/Tuanjie}"
 
 if [[ ! -x "$UNITY_EDITOR" ]]; then
   echo "[error] Unity/Tuanjie editor not found or not executable: $UNITY_EDITOR" >&2

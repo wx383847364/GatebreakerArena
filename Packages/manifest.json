@@ -40,6 +40,7 @@
     "com.unity.timeline": "1.7.7",
     "com.unity.ugui": "1.0.0",
     "com.unity.visualscripting": "1.9.4",
+    "com.qq.weixin.minigame": "https://github.com/wechat-miniprogram/minigame-tuanjie-transform-sdk.git#ed4ad28f433c6b52b5fd3f22a6fa155a0c98c228",
     "com.wx.foundation.hybridclr": "git@github.com:wx383847364/ScrollworksFoundationKit.git?path=/Packages/com.wx.foundation.hybridclr#v0.1.4",
     "com.wx.foundation.runtime": "git@github.com:wx383847364/ScrollworksFoundationKit.git?path=/Packages/com.wx.foundation.runtime#v0.1.4",
     "com.wx.foundation.shared": "git@github.com:wx383847364/ScrollworksFoundationKit.git?path=/Packages/com.wx.foundation.shared#v0.1.4",
