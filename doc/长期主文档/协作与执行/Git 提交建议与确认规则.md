@@ -78,6 +78,29 @@ python3 tools/doc_maintenance/update_project_docs.py --doc-root doc sync
 - 用户要求“提交并推送”时，允许执行 `git commit` 和 `git push`。
 - 如果远端认证失败，只报告失败原因和本地提交状态，不改写历史。
 
+## 远端认证与推送凭据
+
+- 本项目 GitHub 远端统一使用 SSH 凭据，不使用 HTTPS 用户名、密码、Token 或系统 keychain 中的 HTTPS 凭据。
+- `origin` 应配置为 SSH 地址：
+
+```bash
+git remote set-url origin git@github.com:wx383847364/GatebreakerArena.git
+```
+
+- 推送、强制推送和受保护强制推送都应走 SSH remote，例如：
+
+```bash
+git push origin main
+git push --force-with-lease origin main
+```
+
+- 如发现 remote 仍为 `https://github.com/...`，先切回 SSH 地址再执行 `fetch`、`pull` 或 `push`。
+- 如需验证 SSH 凭据，执行：
+
+```bash
+ssh -T git@github.com
+```
+
 ## Hook 约束
 
 - `core.hooksPath` 必须指向 `.githooks`；可执行 `python3 tools/repo_maintenance/check_git_hooks_installed.py` 检查。
