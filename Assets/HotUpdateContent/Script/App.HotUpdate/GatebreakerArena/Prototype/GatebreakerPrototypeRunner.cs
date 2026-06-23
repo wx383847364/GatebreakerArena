@@ -2766,7 +2766,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _lanRoomService.RecordUiAction("JoinClicked", "roomCode=" + _lanRoomCodeInput);
-            if (_lanRoomService.JoinDiscoveredRoom(_lanRoomCodeInput))
+            EnsureLanIdentity();
+            ResetLocalLanSessionTransport();
+            _lanTransport?.StartDiscovery();
+            if (_lanRoomService.JoinRoomByCode(_lanRoomCodeInput, _lanClientInstanceId, _lanPlayerName))
             {
                 _startupUiState = StartupUiState.OnlineRoom;
                 _lanEntryUiHiddenForPlaying = false;

@@ -213,6 +213,50 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void JoinRoomByCodeWaitsForAdvertiseThenSendsJoinRequest()
+        {
+            var client = new LanRoomService();
+            var transport = new GatebreakerLanTestTransport();
+            ulong clientId = 2002UL;
+
+            using (new LanRoomTransportBridge(client, transport))
+            {
+                Assert.IsTrue(client.JoinRoomByCode("abc123", clientId, "Client"));
+                Assert.AreEqual(LanRoomState.Discovering, client.CurrentSnapshot.State);
+
+                byte[] advertisePacket = GatebreakerEnvelopeCodec.Encode(
+                    GatebreakerNetworkMessageType.RoomAdvertise,
+                    1,
+                    0,
+                    7,
+                    GatebreakerPayloadCodec.EncodeRoomAdvertise(new RoomAdvertise
+                    {
+                        ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
+                        SessionId = 12345UL,
+                        ChannelId = 7,
+                        RoomCode = "ABC123",
+                        HostClientInstanceId = 1111UL,
+                        HostPlayerName = "Host",
+                        TcpPort = 47780,
+                        MaxPlayers = 4,
+                        ActivePlayers = 1,
+                        State = LanRoomState.Lobby,
+                    }));
+
+                Assert.IsTrue(client.HandleIncomingPacket(advertisePacket, new LanEndpoint("192.168.0.115", 47680)));
+            }
+
+            Assert.AreEqual(LanRoomState.Joining, client.CurrentSnapshot.State);
+            Assert.AreEqual(1, transport.OutboundMessages.Count);
+            byte[] joinPacket = transport.OutboundMessages.Single();
+            Assert.IsTrue(GatebreakerEnvelopeCodec.TryDecode(joinPacket, out GatebreakerEnvelope envelope));
+            Assert.AreEqual(GatebreakerNetworkMessageType.RoomJoinRequest, envelope.MessageType);
+            RoomJoinRequest request = GatebreakerPayloadCodec.DecodeJoinRequest(envelope.PayloadBytes);
+            Assert.AreEqual("ABC123", request.RoomCode);
+            Assert.AreEqual(clientId, request.ClientInstanceId);
+        }
+
+        [Test]
         public void DiscoveryIgnoresAdvertiseWithoutTcpPort()
         {
             var client = new LanRoomService();

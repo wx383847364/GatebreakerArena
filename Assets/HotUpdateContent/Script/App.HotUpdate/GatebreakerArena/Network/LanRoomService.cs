@@ -32,6 +32,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private string _lastError = string.Empty;
         private MatchAbortReason _abortReason = MatchAbortReason.None;
         private string _abortMessage = string.Empty;
+        private string _pendingJoinRoomCode = string.Empty;
         private object _hostEndpoint;
         private object _hostConnectionId;
         private int _hostTcpPort;
@@ -140,20 +141,68 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             if (State != LanRoomState.Discovering ||
                 string.IsNullOrWhiteSpace(roomCode) ||
-                !_discoveredRooms.TryGetValue(roomCode.Trim().ToUpperInvariant(), out DiscoveredRoom room))
+                !_discoveredRooms.ContainsKey(NormalizeRoomCode(roomCode)))
             {
                 SetError("Room was not discovered.");
                 RecordRoomEvent("JoinDiscoveredRoom", "notFound", roomCode);
                 return false;
             }
 
+            _pendingJoinRoomCode = string.Empty;
+            return TryJoinDiscoveredRoom(NormalizeRoomCode(roomCode), "JoinDiscoveredRoom");
+        }
+
+        public bool JoinRoomByCode(string roomCode, ulong localClientInstanceId, string playerName)
+        {
+            if (string.IsNullOrWhiteSpace(roomCode))
+            {
+                SetError("Room code is required.");
+                RecordRoomEvent("JoinRoomByCode", "rejected", "empty");
+                return false;
+            }
+
+            string normalizedRoomCode = NormalizeRoomCode(roomCode);
+            if (State != LanRoomState.Discovering)
+            {
+                StartDiscovery(localClientInstanceId, playerName);
+            }
+            else
+            {
+                LocalClientInstanceId = localClientInstanceId;
+                LocalPlayerName = NormalizeName(playerName);
+            }
+
+            _pendingJoinRoomCode = normalizedRoomCode;
+            _roomCode = normalizedRoomCode;
+            _lastError = string.Empty;
+            RecordRoomEvent("JoinRoomByCode", "waiting", normalizedRoomCode);
+            if (TryJoinDiscoveredRoom(normalizedRoomCode, "JoinRoomByCode"))
+            {
+                return true;
+            }
+
+            PublishSnapshot();
+            return true;
+        }
+
+        private bool TryJoinDiscoveredRoom(string normalizedRoomCode, string source)
+        {
+            if (State != LanRoomState.Discovering ||
+                string.IsNullOrWhiteSpace(normalizedRoomCode) ||
+                !_discoveredRooms.TryGetValue(normalizedRoomCode, out DiscoveredRoom room))
+            {
+                return false;
+            }
+
+            _pendingJoinRoomCode = string.Empty;
+            _lastError = string.Empty;
             _hostEndpoint = room.ReliableEndpoint;
             SessionId = room.Advertise.SessionId;
             ChannelId = room.Advertise.ChannelId;
             _roomCode = room.Advertise.RoomCode;
             _maxPlayers = room.Advertise.MaxPlayers;
             State = LanRoomState.Joining;
-            RecordRoomEvent("JoinRequestSend", "ok", EndpointToString(_hostEndpoint));
+            RecordRoomEvent("JoinRequestSend", source, EndpointToString(_hostEndpoint));
             SendReliable(
                 GatebreakerNetworkMessageType.RoomJoinRequest,
                 GatebreakerPayloadCodec.EncodeJoinRequest(new RoomJoinRequest
@@ -528,6 +577,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 RecordRoomEvent("AdvertiseAccepted", "ok", "udp=" + EndpointToString(endpoint) + ";tcpPort=" + advertise.TcpPort + ";reliable=" + EndpointToString(reliableEndpoint));
                 RoomDiscovered?.Invoke(room);
+            }
+
+            if (string.Equals(_pendingJoinRoomCode, key, StringComparison.OrdinalIgnoreCase))
+            {
+                TryJoinDiscoveredRoom(key, "PendingJoinRoomCode");
             }
         }
 
@@ -1348,6 +1402,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _lastError = string.Empty;
             _abortReason = MatchAbortReason.None;
             _abortMessage = string.Empty;
+            _pendingJoinRoomCode = string.Empty;
             _hostEndpoint = null;
             _hostConnectionId = null;
             _hostTcpPort = 0;
@@ -1362,6 +1417,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private static string NormalizeName(string playerName)
         {
             return string.IsNullOrWhiteSpace(playerName) ? "Player" : playerName.Trim();
+        }
+
+        private static string NormalizeRoomCode(string roomCode)
+        {
+            return string.IsNullOrWhiteSpace(roomCode) ? string.Empty : roomCode.Trim().ToUpperInvariant();
         }
 
         private static ulong CreateSessionId(ulong clientInstanceId)
