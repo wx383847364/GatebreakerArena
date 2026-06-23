@@ -148,6 +148,10 @@
         [
           45,
           12
+        ],
+        [
+          60,
+          14
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -160,8 +164,8 @@
       "InitialServeAmmo": 2,
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
-      "MaxOwnedBallsInField": 1,
-      "MaxServeAmmo": 2,
+      "MaxOwnedBallsInField": 4,
+      "MaxServeAmmo": 1,
       "ModeId": "PVE_STANDARD",
       "ModeName": "PVE标准",
       "OvertimeDuration": 60,
@@ -189,6 +193,10 @@
         [
           45,
           12
+        ],
+        [
+          60,
+          14
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -202,7 +210,7 @@
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
-      "MaxServeAmmo": 2,
+      "MaxServeAmmo": 1,
       "ModeId": "PVP_FFA",
       "ModeName": "PVP乱斗",
       "OvertimeDuration": 60,
@@ -230,6 +238,10 @@
         [
           45,
           12
+        ],
+        [
+          60,
+          14
         ]
       ],
       "BaseServeCooldown": 6.5,
@@ -243,7 +255,7 @@
       "MatchDuration": 60,
       "MaxBallsInMatch": 4,
       "MaxOwnedBallsInField": 1,
-      "MaxServeAmmo": 2,
+      "MaxServeAmmo": 1,
       "ModeId": "PVP_TEAM",
       "ModeName": "PVP组队乱斗",
       "OvertimeDuration": 60,

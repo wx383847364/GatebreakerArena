@@ -7,8 +7,8 @@
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.0,
     "InitialServeAmmo": 2,
-    "MaxServeAmmo": 2,
-    "MaxOwnedBallsInField": 1,
+    "MaxServeAmmo": 1,
+    "MaxOwnedBallsInField": 4,
     "GoalPauseTime": 0.4,
     "ScoreRuleType": "AddScore",
     "EnableOvertime": true,
@@ -37,6 +37,10 @@
       [
         45,
         12
+      ],
+      [
+        60,
+        14
       ]
     ]
   },
@@ -48,7 +52,7 @@
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.0,
     "InitialServeAmmo": 2,
-    "MaxServeAmmo": 2,
+    "MaxServeAmmo": 1,
     "MaxOwnedBallsInField": 1,
     "GoalPauseTime": 0.4,
     "ScoreRuleType": "AddScore",
@@ -78,6 +82,10 @@
       [
         45,
         12
+      ],
+      [
+        60,
+        14
       ]
     ]
   },
@@ -89,7 +97,7 @@
     "MaxBallsInMatch": 4,
     "BaseServeCooldown": 6.5,
     "InitialServeAmmo": 2,
-    "MaxServeAmmo": 2,
+    "MaxServeAmmo": 1,
     "MaxOwnedBallsInField": 1,
     "GoalPauseTime": 0.4,
     "ScoreRuleType": "TeamScore",
@@ -119,6 +127,10 @@
       [
         45,
         12
+      ],
+      [
+        60,
+        14
       ]
     ]
   }
