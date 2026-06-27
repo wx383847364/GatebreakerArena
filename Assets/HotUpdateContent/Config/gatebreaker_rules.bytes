@@ -444,7 +444,7 @@
       "MaxServeAmmo": 5,
       "PaddleInset": 0.18,
       "PaddleLength": 0.78,
-      "PaddleMoveSpeed": 8,
+      "PaddleMoveSpeed": 6,
       "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
       "PaddleThickness": 0.05,
       "PlayerSideBindings": [
@@ -485,15 +485,15 @@
         ],
         [
           30,
-          9
+          7
         ],
         [
           45,
-          12
+          9
         ],
         [
           60,
-          14
+          12
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -526,19 +526,19 @@
       "BallSpeedByTime": [
         [
           15,
-          7
+          6
         ],
         [
           30,
-          9
+          7
         ],
         [
           45,
-          12
+          9
         ],
         [
           60,
-          14
+          12
         ]
       ],
       "BaseServeCooldown": 6.0,
@@ -571,19 +571,19 @@
       "BallSpeedByTime": [
         [
           15,
-          7
+          6
         ],
         [
           30,
-          9
+          7
         ],
         [
           45,
-          12
+          9
         ],
         [
           60,
-          14
+          12
         ]
       ],
       "BaseServeCooldown": 6.5,
