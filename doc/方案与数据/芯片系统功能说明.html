@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gatebreaker Arena - 芯片系统指南</title>
+<style>
+/* ========== Reset & Base ========== */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-deep:#070a12;
+  --bg-base:#0d1220;
+  --bg-card:#141b2e;
+  --bg-card-hover:#1a2238;
+  --bg-elevated:#1e2840;
+  --border:#2a3550;
+  --border-bright:#3a4870;
+  --text:#e8ecf4;
+  --text-dim:#8893ad;
+  --text-faint:#5a6580;
+
+  --gold:#f0b90b;
+  --gold-bright:#ffd966;
+  --gold-glow:rgba(240,185,11,.25);
+  --cyan:#00d4ff;
+  --cyan-glow:rgba(0,212,255,.2);
+  --purple:#a855f7;
+  --red:#ef4444;
+  --green:#22c55e;
+  --orange:#f97316;
+
+  --grade-refined:#c0c8d8;
+  --grade-refined-bg:rgba(192,200,216,.08);
+  --grade-resonant:#f0b90b;
+  --grade-resonant-bg:rgba(240,185,11,.08);
+  --grade-supreme:linear-gradient(135deg,#a855f7,#ec4899,#f0b90b);
+  --grade-supreme-bg:rgba(168,85,247,.08);
+
+  --cat-attack:#ef4444;
+  --cat-defense:#3b82f6;
+  --cat-speed:#22c55e;
+  --cat-chaos:#a855f7;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg-deep);
+  color:var(--text);
+  font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  line-height:1.6;
+  overflow-x:hidden;
+}
+a{color:var(--cyan);text-decoration:none}
+
+/* ========== Layout ========== */
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+section{padding:64px 0;border-bottom:1px solid var(--border)}
+.section-tag{
+  display:inline-block;font-size:12px;letter-spacing:3px;
+  color:var(--text-faint);text-transform:uppercase;margin-bottom:8px;
+}
+.section-title{
+  font-size:28px;font-weight:700;margin-bottom:8px;
+  background:linear-gradient(135deg,var(--text),var(--text-dim));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.section-desc{color:var(--text-dim);font-size:14px;margin-bottom:40px}
+
+/* ========== Hero Header ========== */
+.hero{
+  position:relative;
+  padding:80px 0 60px;
+  background:
+    radial-gradient(ellipse at 30% 0%,rgba(240,185,11,.08),transparent 60%),
+    radial-gradient(ellipse at 70% 100%,rgba(0,212,255,.06),transparent 60%),
+    var(--bg-deep);
+  border-bottom:1px solid var(--border);
+  overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(42,53,80,.15) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(42,53,80,.15) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask:radial-gradient(ellipse at center,black 30%,transparent 80%);
+}
+.hero-inner{position:relative;z-index:1}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 16px;border:1px solid var(--border-bright);
+  border-radius:20px;font-size:12px;color:var(--text-dim);
+  margin-bottom:24px;
+}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
+.hero h1{
+  font-size:48px;font-weight:800;line-height:1.15;
+  margin-bottom:16px;
+}
+.hero h1 .accent{
+  background:linear-gradient(135deg,var(--gold),var(--gold-bright));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero p{font-size:16px;color:var(--text-dim);max-width:620px;margin-bottom:32px}
+
+.hero-stats{display:flex;gap:32px;flex-wrap:wrap}
+.hero-stat{text-align:left}
+.hero-stat .num{font-size:32px;font-weight:800;color:var(--gold)}
+.hero-stat .label{font-size:12px;color:var(--text-faint);letter-spacing:1px}
+
+/* ========== Tabs ========== */
+.tab-bar{
+  display:flex;gap:4px;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:12px;padding:4px;margin-bottom:32px;
+}
+.tab-btn{
+  flex:1;padding:10px 16px;border:none;background:none;
+  color:var(--text-dim);font-size:14px;font-weight:600;
+  border-radius:8px;cursor:pointer;transition:all .2s;
+  font-family:inherit;
+}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{
+  background:var(--bg-elevated);color:var(--text);
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ========== Chip Type Cards ========== */
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.type-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:16px;padding:28px;transition:all .25s;
+}
+.type-card:hover{border-color:var(--border-bright);transform:translateY(-2px)}
+.type-card .icon{
+  width:48px;height:48px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;margin-bottom:16px;
+}
+.type-card.signature .icon{background:var(--gold-glow);color:var(--gold)}
+.type-card.universal .icon{background:var(--cyan-glow);color:var(--cyan)}
+.type-card h3{font-size:18px;font-weight:700;margin-bottom:6px}
+.type-card .subtitle{font-size:13px;color:var(--text-faint);margin-bottom:16px}
+.type-card ul{list-style:none}
+.type-card li{
+  padding:8px 0;font-size:13px;color:var(--text-dim);
+  display:flex;gap:8px;border-bottom:1px solid rgba(42,53,80,.5);
+}
+.type-card li:last-child{border-bottom:none}
+.type-card li .key{color:var(--text);font-weight:600;min-width:80px;flex-shrink:0}
+
+/* ========== Grade Cards ========== */
+.grade-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grade-card{
+  border-radius:16px;padding:24px;
+  border:1px solid var(--border);background:var(--bg-card);
+  position:relative;overflow:hidden;transition:all .25s;
+}
+.grade-card:hover{transform:translateY(-3px)}
+.grade-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+}
+.grade-card.refined::before{background:var(--grade-refined)}
+.grade-card.refined:hover{border-color:var(--grade-refined)}
+.grade-card.resonant::before{background:var(--grade-resonant)}
+.grade-card.resonant:hover{border-color:var(--grade-resonant)}
+.grade-card.supreme::before{background:var(--grade-supreme)}
+.grade-card.supreme:hover{border-color:var(--purple)}
+.grade-card .grade-name{
+  font-size:20px;font-weight:800;margin-bottom:4px;
+}
+.grade-card.refined .grade-name{color:var(--grade-refined)}
+.grade-card.resonant .grade-name{color:var(--grade-resonant)}
+.grade-card.supreme .grade-name{
+  background:var(--grade-supreme);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.grade-card .grade-en{font-size:11px;color:var(--text-faint);letter-spacing:2px;margin-bottom:16px}
+.grade-card .rv-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:6px;font-size:13px;font-weight:700;
+  margin-bottom:16px;
+}
+.grade-card.refined .rv-badge{background:var(--grade-refined-bg);color:var(--grade-refined)}
+.grade-card.resonant .rv-badge{background:var(--grade-resonant-bg);color:var(--grade-resonant)}
+.grade-card.supreme .rv-badge{background:var(--grade-supreme-bg);color:var(--purple)}
+.grade-card .effect-label{font-size:11px;color:var(--text-faint);letter-spacing:1px;margin-bottom:4px}
+.grade-card .effect-text{font-size:13px;color:var(--text-dim);margin-bottom:12px;line-height:1.5}
+.grade-card .perception{
+  font-size:12px;font-style:italic;color:var(--text-faint);
+  padding-top:12px;border-top:1px solid rgba(42,53,80,.5);
+}
+
+/* ========== Resonance Calculator ========== */
+.calc-wrap{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:16px;padding:32px;
+}
+.calc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+.calc-top h3{font-size:18px;margin-bottom:4px}
+.calc-top .sub{font-size:13px;color:var(--text-faint)}
+.calc-hero-select{
+  display:flex;gap:8px;align-items:center;
+  background:var(--bg-elevated);border:1px solid var(--border);
+  border-radius:8px;padding:6px 12px;
+}
+.calc-hero-select label{font-size:12px;color:var(--text-faint)}
+.calc-hero-select select{
+  background:none;border:none;color:var(--text);font-size:13px;
+  cursor:pointer;font-family:inherit;outline:none;
+}
+.calc-body{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.calc-col h4{font-size:13px;color:var(--text-dim);margin-bottom:12px;letter-spacing:1px}
+.calc-chip-list{display:flex;flex-direction:column;gap:8px;min-height:200px}
+.calc-chip{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;border-radius:10px;
+  background:var(--bg-elevated);border:1px solid var(--border);
+  cursor:pointer;transition:all .15s;
+}
+.calc-chip:hover{border-color:var(--border-bright)}
+.calc-chip.selected{border-color:var(--gold);background:rgba(240,185,11,.05)}
+.calc-chip .chip-grade-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.calc-chip .chip-grade-dot.refined{background:var(--grade-refined)}
+.calc-chip .chip-grade-dot.resonant{background:var(--grade-resonant)}
+.calc-chip .chip-grade-dot.supreme{background:var(--purple)}
+.calc-chip .chip-name{font-size:13px;flex:1}
+.calc-chip .chip-rv{font-size:12px;color:var(--gold);font-weight:600}
+.calc-chip .chip-cat{
+  font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;
+}
+.calc-chip .chip-cat.attack{background:rgba(239,68,68,.15);color:var(--cat-attack)}
+.calc-chip .chip-cat.defense{background:rgba(59,130,246,.15);color:var(--cat-defense)}
+.calc-chip .chip-cat.speed{background:rgba(34,197,94,.15);color:var(--cat-speed)}
+.calc-chip .chip-cat.chaos{background:rgba(168,85,247,.15);color:var(--cat-chaos)}
+
+.calc-empty{
+  display:flex;align-items:center;justify-content:center;
+  height:100%;color:var(--text-faint);font-size:13px;
+  border:1px dashed var(--border);border-radius:10px;
+}
+
+/* Resonance meter */
+.rv-meter-wrap{
+  background:var(--bg-elevated);border:1px solid var(--border);
+  border-radius:12px;padding:20px;margin-top:20px;
+}
+.rv-path-label{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px;
+}
+.rv-path-label .name{font-size:14px;font-weight:600}
+.rv-path-label .val{font-size:20px;font-weight:800;color:var(--gold)}
+.rv-bar{
+  height:10px;background:var(--bg-deep);border-radius:5px;
+  overflow:hidden;position:relative;margin-bottom:8px;
+}
+.rv-bar-fill{
+  height:100%;border-radius:5px;transition:width .4s ease;
+  background:linear-gradient(90deg,var(--grade-refined),var(--grade-resonant),var(--purple));
+}
+.rv-bar-markers{
+  display:flex;justify-content:space-between;
+  font-size:10px;color:var(--text-faint);margin-bottom:12px;
+}
+.rv-milestones{display:flex;gap:8px;flex-wrap:wrap}
+.rv-ms{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:8px;font-size:12px;
+  border:1px solid var(--border);background:var(--bg-deep);
+  transition:all .25s;
+}
+.rv-ms.active{border-color:transparent}
+.rv-ms.active.m1{background:rgba(192,200,216,.12);color:var(--grade-refined)}
+.rv-ms.active.m2{background:rgba(240,185,11,.12);color:var(--grade-resonant)}
+.rv-ms.active.m3{background:rgba(168,85,247,.12);color:var(--purple)}
+.rv-ms .ms-icon{width:8px;height:8px;border-radius:50%;background:var(--text-faint)}
+.rv-ms.active.m1 .ms-icon{background:var(--grade-refined)}
+.rv-ms.active.m2 .ms-icon{background:var(--grade-resonant)}
+.rv-ms.active.m3 .ms-icon{background:var(--purple)}
+
+/* ========== Path Resonance ========== */
+.path-hero-selector{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;
+}
+.hero-pill{
+  padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;
+  background:var(--bg-card);border:1px solid var(--border);
+  cursor:pointer;transition:all .2s;color:var(--text-dim);
+}
+.hero-pill:hover{border-color:var(--border-bright);color:var(--text)}
+.hero-pill.active{
+  background:var(--bg-elevated);border-color:var(--gold);color:var(--gold);
+}
+
+.path-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.path-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:16px;padding:24px;transition:all .25s;
+  position:relative;overflow:hidden;
+}
+.path-card:hover{border-color:var(--border-bright);transform:translateY(-2px)}
+.path-card .path-name{font-size:16px;font-weight:700;margin-bottom:4px}
+.path-card .path-cats{display:flex;gap:6px;margin-bottom:16px}
+.path-cat-tag{
+  font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600;
+}
+.path-cat-tag.attack{background:rgba(239,68,68,.15);color:var(--cat-attack)}
+.path-cat-tag.defense{background:rgba(59,130,246,.15);color:var(--cat-defense)}
+.path-cat-tag.speed{background:rgba(34,197,94,.15);color:var(--cat-speed)}
+.path-cat-tag.chaos{background:rgba(168,85,247,.15);color:var(--cat-chaos)}
+
+.path-ms-list{display:flex;flex-direction:column;gap:12px}
+.path-ms-item{
+  padding:12px;border-radius:10px;
+  background:var(--bg-elevated);border:1px solid var(--border);
+}
+.path-ms-item .ms-header{
+  display:flex;align-items:center;gap:8px;margin-bottom:6px;
+}
+.path-ms-item .ms-level{
+  font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;
+}
+.path-ms-item .ms-level.m1{background:var(--grade-refined-bg);color:var(--grade-refined)}
+.path-ms-item .ms-level.m2{background:var(--grade-resonant-bg);color:var(--grade-resonant)}
+.path-ms-item .ms-level.m3{background:var(--grade-supreme-bg);color:var(--purple)}
+.path-ms-item .ms-title{font-size:13px;font-weight:600}
+.path-ms-item .ms-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
+.path-ms-item .ms-rv{font-size:11px;color:var(--text-faint);margin-top:4px}
+
+/* ========== Deck Rules ========== */
+.deck-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.deck-rules-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:16px;padding:28px;
+}
+.deck-rules-card h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.rule-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid rgba(42,53,80,.5);
+  font-size:13px;
+}
+.rule-row:last-child{border-bottom:none}
+.rule-row .rule-name{color:var(--text-dim)}
+.rule-row .rule-val{font-weight:700;color:var(--text)}
+
+.deck-strategy{margin-top:20px}
+.deck-strategy h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.strategy-table{width:100%;border-collapse:collapse;font-size:13px}
+.strategy-table th{
+  text-align:left;padding:10px 12px;
+  background:var(--bg-elevated);color:var(--text-dim);
+  font-weight:600;font-size:12px;border-bottom:1px solid var(--border);
+}
+.strategy-table td{
+  padding:10px 12px;border-bottom:1px solid rgba(42,53,80,.5);
+  color:var(--text-dim);
+}
+.strategy-table td:first-child{color:var(--text);font-weight:600}
+
+/* ========== Chip Card Visual ========== */
+.chip-gallery{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.chip-card{
+  width:180px;border-radius:16px;overflow:hidden;
+  background:var(--bg-card);border:1px solid var(--border);
+  transition:all .3s;cursor:pointer;
+}
+.chip-card:hover{transform:translateY(-4px) scale(1.02)}
+.chip-card.refined{border-color:rgba(192,200,216,.3)}
+.chip-card.refined:hover{border-color:var(--grade-refined);box-shadow:0 8px 24px rgba(192,200,216,.1)}
+.chip-card.resonant{border-color:rgba(240,185,11,.3)}
+.chip-card.resonant:hover{border-color:var(--grade-resonant);box-shadow:0 8px 24px var(--gold-glow)}
+.chip-card.supreme{
+  border-color:rgba(168,85,247,.3);
+  position:relative;
+}
+.chip-card.supreme::before{
+  content:'';position:absolute;inset:-1px;border-radius:16px;padding:1px;
+  background:linear-gradient(135deg,var(--purple),var(--orange),var(--gold));
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  opacity:.6;transition:opacity .3s;
+}
+.chip-card.supreme:hover::before{opacity:1}
+.chip-card.supreme:hover{box-shadow:0 8px 32px rgba(168,85,247,.15)}
+
+.chip-card .chip-art{
+  height:120px;display:flex;align-items:center;justify-content:center;
+  font-size:40px;position:relative;overflow:hidden;
+}
+.chip-card.refined .chip-art{background:linear-gradient(135deg,rgba(192,200,216,.05),rgba(192,200,216,.12))}
+.chip-card.resonant .chip-art{background:linear-gradient(135deg,rgba(240,185,11,.05),rgba(240,185,11,.15))}
+.chip-card.supreme .chip-art{background:linear-gradient(135deg,rgba(168,85,247,.05),rgba(240,185,11,.12))}
+
+.chip-card .chip-body{padding:14px}
+.chip-card .chip-grade-label{
+  font-size:10px;letter-spacing:2px;font-weight:700;
+  margin-bottom:4px;
+}
+.chip-card.refined .chip-grade-label{color:var(--grade-refined)}
+.chip-card.resonant .chip-grade-label{color:var(--grade-resonant)}
+.chip-card.supreme .chip-grade-label{
+  background:var(--grade-supreme);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.chip-card .chip-display-name{font-size:15px;font-weight:700;margin-bottom:4px}
+.chip-card .chip-hero{font-size:11px;color:var(--text-faint);margin-bottom:10px}
+.chip-card .chip-effect-box{
+  padding:8px 10px;border-radius:8px;
+  background:var(--bg-elevated);font-size:11px;
+  color:var(--text-dim);line-height:1.5;
+}
+
+/* ========== Awakening Flow ========== */
+.flow-steps{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow-step{
+  flex:1;min-width:150px;
+  background:var(--bg-card);border:1px solid var(--border);
+  padding:20px;border-radius:12px;position:relative;
+}
+.flow-step:not(:last-child){margin-right:24px}
+.flow-step:not(:last-child)::after{
+  content:'→';position:absolute;right:-18px;top:50%;
+  transform:translateY(-50%);color:var(--text-faint);font-size:20px;
+}
+.flow-step .flow-time{
+  font-size:11px;color:var(--gold);font-weight:700;
+  letter-spacing:1px;margin-bottom:8px;
+}
+.flow-step .flow-title{font-size:14px;font-weight:600;margin-bottom:6px}
+.flow-step .flow-desc{font-size:12px;color:var(--text-dim);line-height:1.5}
+
+/* ========== Footer ========== */
+.footer{
+  padding:40px 0;text-align:center;
+  color:var(--text-faint);font-size:12px;
+}
+
+/* ========== Responsive ========== */
+@media(max-width:768px){
+  .type-grid,.grade-grid,.path-grid,.deck-grid,.calc-body{grid-template-columns:1fr}
+  .hero h1{font-size:32px}
+  .flow-steps{flex-direction:column}
+  .flow-step:not(:last-child){margin-right:0;margin-bottom:24px}
+  .flow-step:not(:last-child)::after{content:'↓';right:50%;top:auto;bottom:-18px;transform:translateX(50%)}
+}
+</style>
+</head>
+<body>
+
+<!-- ========== Hero ========== -->
+<header class="hero">
+  <div class="container hero-inner">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      GATEBREAKER ARENA · SYSTEM GUIDE v0.3
+    </div>
+    <h1>芯片系统<span class="accent">完整指南</span></h1>
+    <p>英雄是画布，芯片是颜料。基础英雄有意弱化——真正的力量来自签名芯片的共鸣路径。每张签名芯片绑定英雄与路径，品级决定共鸣深度，共鸣值驱动里程碑质变。</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">90</div><div class="label">SIGNATURE CHIPS</div></div>
+      <div class="hero-stat"><div class="num">3</div><div class="label">GRADES</div></div>
+      <div class="hero-stat"><div class="num">30</div><div class="label">RESONANCE PATHS</div></div>
+      <div class="hero-stat"><div class="num">8</div><div class="label">DECK SIZE</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ========== Section 1: Chip Types ========== -->
+<section id="types">
+  <div class="container">
+    <div class="section-tag">01 / OVERVIEW</div>
+    <h2 class="section-title">两大芯片类型</h2>
+    <p class="section-desc">芯片分签名芯片（英雄专属）和通用芯片（无归属），混合组牌。</p>
+
+    <div class="type-grid">
+      <div class="type-card signature">
+        <div class="icon">★</div>
+        <h3>签名芯片</h3>
+        <div class="subtitle">Signature Chip — 英雄专属</div>
+        <ul>
+          <li><span class="key">绑定</span><span>1个英雄 + 1条路径，不可跨英雄使用</span></li>
+          <li><span class="key">品级</span><span>精铸 / 共鸣 / 至高（三阶）</span></li>
+          <li><span class="key">共鸣值</span><span>精铸+2 · 共鸣+4 · 至高+6</span></li>
+          <li><span class="key">专属效果</span><span>品级越高，附带越强的行为质变</span></li>
+          <li><span class="key">数量</span><span>10英雄 × 3路径 × 3品级 = 90张</span></li>
+          <li><span class="key">可升级</span><span>精铸→共鸣→至高，消耗碎片+低品级芯片</span></li>
+        </ul>
+      </div>
+      <div class="type-card universal">
+        <div class="icon">◆</div>
+        <h3>通用芯片</h3>
+        <div class="subtitle">Universal Chip — 无英雄归属</div>
+        <ul>
+          <li><span class="key">类别</span><span>攻 / 守 / 速 / 乱（四类）</span></li>
+          <li><span class="key">稀有度</span><span>Common / Rare / Epic / Legendary</span></li>
+          <li><span class="key">共鸣值</span><span>类别匹配路径时每张+1</span></li>
+          <li><span class="key">作用</span><span>提供数值增强 + 辅助匹配路径共鸣</span></li>
+          <li><span class="key">数量</span><span>24张（v0.1已有设计）</span></li>
+          <li><span class="key">限制</span><span>每类最多3张，Legendary最多2张</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Section 2: Grade System ========== -->
+<section id="grades">
+  <div class="container">
+    <div class="section-tag">02 / GRADES</div>
+    <h2 class="section-title">签名芯片品级系统</h2>
+    <p class="section-desc">同一张签名芯片有三个品级。品级越高，共鸣值贡献越大，附带的行为质变越强。同路径只取最高品级生效。</p>
+
+    <div class="grade-grid">
+      <div class="grade-card refined">
+        <div class="grade-name">精铸</div>
+        <div class="grade-en">REFINED</div>
+        <div class="rv-badge">共鸣值 +2</div>
+        <div class="effect-label">专属效果</div>
+        <div class="effect-text">仅数值增强（如寒气累积+30%，冰冻时长+0.2s），不改变技能行为。</div>
+        <div class="effect-label">获取成本</div>
+        <div class="effect-text">200 碎片 [PLACEHOLDER]</div>
+        <div class="perception">"走这条路的起点"</div>
+      </div>
+      <div class="grade-card resonant">
+        <div class="grade-name">共鸣</div>
+        <div class="grade-en">RESONANT</div>
+        <div class="rv-badge">共鸣值 +4</div>
+        <div class="effect-label">专属效果</div>
+        <div class="effect-text">数值增强 + 1个小型行为质变（如冰冻触发时对手挡板移速-10%持续1s）。</div>
+        <div class="effect-label">获取成本</div>
+        <div class="effect-text">500 碎片 [PLACEHOLDER]</div>
+        <div class="perception">"已经在这条路上了"</div>
+      </div>
+      <div class="grade-card supreme">
+        <div class="grade-name">至高</div>
+        <div class="grade-en">SUPREME</div>
+        <div class="rv-badge">共鸣值 +6</div>
+        <div class="effect-label">专属效果</div>
+        <div class="effect-text">高阶数值增强 + 1个中型行为质变（如冰冻触发时对手挡板移速-20%持续2s + 暴风雪延长）。</div>
+        <div class="effect-label">获取成本</div>
+        <div class="effect-text">1000 碎片 [PLACEHOLDER]</div>
+        <div class="perception">"这条路的化身"</div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;padding:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+      <p style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+        <strong style="color:var(--gold);">品级专属效果 vs 里程碑效果：</strong>
+        品级专属效果是<strong style="color:var(--text);">芯片自带</strong>的，觉醒即生效；里程碑效果是<strong style="color:var(--text);">共鸣值累积触发</strong>的。两者<strong style="color:var(--gold);">叠加生效</strong>——至高签名觉醒且共鸣值达到M3时，至高专属效果 + M3里程碑质变同时生效。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Section 3: Resonance Calculator ========== -->
+<section id="calculator">
+  <div class="container">
+    <div class="section-tag">03 / RESONANCE</div>
+    <h2 class="section-title">共鸣值与里程碑</h2>
+    <p class="section-desc">每条路径有独立共鸣值计数器。觉醒芯片按规则贡献共鸣值，达到阈值触发里程碑质变。点击下方芯片模拟觉醒。</p>
+
+    <div class="calc-wrap">
+      <div class="calc-top">
+        <div>
+          <h3>共鸣值计算器</h3>
+          <div class="sub">冰雪女王 · 极寒之路（攻+守）— 演示</div>
+        </div>
+        <div class="calc-hero-select">
+          <label>英雄：</label>
+          <select id="heroSelect" onchange="switchHero()">
+            <option value="frost">冰雪女王</option>
+            <option value="pyro">烈焰领主</option>
+            <option value="thunder">雷霆审判者</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="calc-body">
+        <!-- Available Chips -->
+        <div class="calc-col">
+          <h4>牌组中的芯片（点击觉醒/取消）</h4>
+          <div class="calc-chip-list" id="chipPool">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+
+        <!-- Active Chips -->
+        <div class="calc-col">
+          <h4>已觉醒芯片</h4>
+          <div class="calc-chip-list" id="activeChips">
+            <div class="calc-empty">点击左侧芯片模拟觉醒</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resonance Meter -->
+      <div class="rv-meter-wrap" id="rvMeter">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+    <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      <div style="padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--grade-refined);"></span>
+          <strong style="font-size:14px;">M1 觉醒</strong>
+          <span style="font-size:11px;color:var(--text-faint);margin-left:auto;">共鸣值 ≥ 2</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-dim);">数值强化：累积速度×2，时长+50%等。玩家感知："稍微强了一点"</p>
+      </div>
+      <div style="padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--grade-resonant);"></span>
+          <strong style="font-size:14px;">M2 质变</strong>
+          <span style="font-size:11px;color:var(--text-faint);margin-left:auto;">共鸣值 ≥ 5</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-dim);">质性改变：技能行为模式改变。玩家感知："玩法完全不同了！"</p>
+      </div>
+      <div style="padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);"></span>
+          <strong style="font-size:14px;">M3 极化</strong>
+          <span style="font-size:11px;color:var(--text-faint);margin-left:auto;">共鸣值 ≥ 9</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-dim);">终极质变：新增子机制或完全重构。玩家感知："这已经不是原来的英雄了！"</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Section 4: Path Resonance ========== -->
+<section id="paths">
+  <div class="container">
+    <div class="section-tag">04 / PATHS</div>
+    <h2 class="section-title">路径共鸣方向</h2>
+    <p class="section-desc">每个英雄定义3条共鸣路径，路径由芯片类别组合触发。不同路径 = 完全不同的玩法身份。</p>
+
+    <div class="path-hero-selector" id="pathHeroSelector">
+      <div class="hero-pill active" data-hero="frost">冰雪女王</div>
+      <div class="hero-pill" data-hero="pyro">烈焰领主</div>
+      <div class="hero-pill" data-hero="thunder">雷霆审判者</div>
+      <div class="hero-pill" data-hero="gravity">重力使者</div>
+      <div class="hero-pill" data-hero="time">时之织者</div>
+    </div>
+
+    <div id="pathGrid" class="path-grid">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- ========== Section 5: Deck Building ========== -->
+<section id="deck">
+  <div class="container">
+    <div class="section-tag">05 / DECK</div>
+    <h2 class="section-title">牌组构建规则</h2>
+    <p class="section-desc">牌组 = 签名芯片 + 通用芯片，合计最多8张。玩家需要在编辑阶段决定"深入一条路径"还是"广撒三条路径"。</p>
+
+    <div class="deck-grid">
+      <div class="deck-rules-card">
+        <h3>牌组限制</h3>
+        <div class="rule-row"><span class="rule-name">牌组总上限</span><span class="rule-val">8 张</span></div>
+        <div class="rule-row"><span class="rule-name">签名芯片上限</span><span class="rule-val">最多 5 张</span></div>
+        <div class="rule-row"><span class="rule-name">通用芯片上限</span><span class="rule-val">最多 5 张</span></div>
+        <div class="rule-row"><span class="rule-name">同路径签名芯片</span><span class="rule-val">最多 1 张（取最高品级）</span></div>
+        <div class="rule-row"><span class="rule-name">至高签名芯片</span><span class="rule-val">最多 2 张</span></div>
+        <div class="rule-row"><span class="rule-name">Legendary 通用芯片</span><span class="rule-val">最多 2 张</span></div>
+        <div class="rule-row"><span class="rule-name">同名芯片</span><span class="rule-val">不可重复</span></div>
+        <div class="rule-row"><span class="rule-name">通用芯片每类上限</span><span class="rule-val">最多 3 张</span></div>
+      </div>
+
+      <div class="deck-rules-card">
+        <h3>叠加规则</h3>
+        <div class="rule-row"><span class="rule-name">签名品级 × 里程碑</span><span class="rule-val">加法叠加（独立计算）</span></div>
+        <div class="rule-row"><span class="rule-name">签名品级 × 通用芯片</span><span class="rule-val">乘法叠加</span></div>
+        <div class="rule-row"><span class="rule-name">通用芯片 × 里程碑</span><span class="rule-val">加法叠加</span></div>
+        <div class="rule-row"><span class="rule-name">同路径多签名</span><span class="rule-val">不可（只取最高品级）</span></div>
+        <div class="rule-row"><span class="rule-name">不同路径签名</span><span class="rule-val">可同时装备</span></div>
+        <div class="rule-row"><span class="rule-name">签名 × 英雄代价</span><span class="rule-val">品级效果可部分抵消</span></div>
+        <div class="rule-row"><span class="rule-name">签名 × 量子事件</span><span class="rule-val">不关联</span></div>
+        <div class="rule-row"><span class="rule-name">签名 × 地图变量</span><span class="rule-val">独立叠加</span></div>
+      </div>
+    </div>
+
+    <div class="deck-strategy">
+      <h3>牌组策略类型</h3>
+      <table class="strategy-table">
+        <thead>
+          <tr>
+            <th>策略</th>
+            <th>签名配置</th>
+            <th>通用配置</th>
+            <th>路径效果</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>单路径至高</td>
+            <td>1张至高(+6) + 1张其他路径精铸(+2)</td>
+            <td>6张匹配通用(+6)</td>
+            <td>主路径 RV=12 → M3极化</td>
+          </tr>
+          <tr>
+            <td>单路径共鸣</td>
+            <td>1张共鸣(+4)</td>
+            <td>7张匹配通用(+7)</td>
+            <td>主路径 RV=11 → M3极化</td>
+          </tr>
+          <tr>
+            <td>双路径均衡</td>
+            <td>2张共鸣(各+4)</td>
+            <td>6张分两类匹配(+6)</td>
+            <td>两条路径各 RV=10 → 双M3</td>
+          </tr>
+          <tr>
+            <td>三路径广撒</td>
+            <td>3张精铸(各+2)</td>
+            <td>5张分散匹配(+3~5)</td>
+            <td>三条路径各 RV=4~5 → 三M1或M2</td>
+          </tr>
+          <tr>
+            <td>纯通用</td>
+            <td>0张签名</td>
+            <td>8张匹配通用(+8)</td>
+            <td>单路径 RV=8 → M2质变（无品级专属效果）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Section 6: Chip Card Gallery ========== -->
+<section id="gallery">
+  <div class="container">
+    <div class="section-tag">06 / SHOWCASE</div>
+    <h2 class="section-title">签名芯片展示</h2>
+    <p class="section-desc">以冰雪女王·极寒之路为例，展示三品级签名芯片的视觉与效果差异。</p>
+
+    <div class="chip-gallery">
+      <div class="chip-card refined">
+        <div class="chip-art">❄️</div>
+        <div class="chip-body">
+          <div class="chip-grade-label">REFINED · 精铸</div>
+          <div class="chip-display-name">寒霜之触</div>
+          <div class="chip-hero">冰雪女王 · 极寒之路</div>
+          <div class="chip-effect-box">
+            寒气累积+30%<br>
+            冰冻时长+0.2s
+          </div>
+        </div>
+      </div>
+      <div class="chip-card resonant">
+        <div class="chip-art">🌨️</div>
+        <div class="chip-body">
+          <div class="chip-grade-label">RESONANT · 共鸣</div>
+          <div class="chip-display-name">冰封领域</div>
+          <div class="chip-hero">冰雪女王 · 极寒之路</div>
+          <div class="chip-effect-box">
+            寒气累积+60%，冰冻时长+0.4s<br>
+            <span style="color:var(--gold);">冰冻触发时对手挡板移速-10% / 1s</span>
+          </div>
+        </div>
+      </div>
+      <div class="chip-card supreme">
+        <div class="chip-art">🧊</div>
+        <div class="chip-body">
+          <div class="chip-grade-label">SUPREME · 至高</div>
+          <div class="chip-display-name">绝对零度</div>
+          <div class="chip-hero">冰雪女王 · 极寒之路</div>
+          <div class="chip-effect-box">
+            寒气累积+100%，冰冻时长+0.6s<br>
+            <span style="color:var(--purple);">冰冻时对手移速-20% / 2s</span><br>
+            <span style="color:var(--purple);">暴风雪持续+2s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+      <div class="chip-card refined">
+        <div class="chip-art">🔥</div>
+        <div class="chip-body">
+          <div class="chip-grade-label">REFINED · 精铸</div>
+          <div class="chip-display-name">余烬</div>
+          <div class="chip-hero">烈焰领主 · 炼狱之路</div>
+          <div class="chip-effect-box">
+            热量累积+30%<br>
+            灼烧时长+0.5s
+          </div>
+        </div>
+      </div>
+      <div class="chip-card resonant">
+        <div class="chip-art">🌋</div>
+        <div class="chip-body">
+          <div class="chip-grade-label">RESONANT · 共鸣</div>
+          <div class="chip-display-name">炽焰</div>
+          <div class="chip-hero">烈焰领主 · 炼狱之路</div>
+          <div class="chip-effect-box">
+            热量累积+60%，灼烧时长+1s<br>
+            <span style="color:var(--gold);">灼烧后对手挡板减速-10% / 2s</span>
+          </div>
+        </div>
+      </div>
+      <div class="chip-card supreme">
+        <div class="chip-art">😈</div>
+        <div class="chip-body">
+          <div class="chip-grade-label">SUPREME · 至高</div>
+          <div class="chip-display-name">炼狱之火</div>
+          <div class="chip-hero">烈焰领主 · 炼狱之路</div>
+          <div class="chip-effect-box">
+            热量累积+100%，灼烧时长+1.5s<br>
+            <span style="color:var(--purple);">灼烧后减速-15% / 3s</span><br>
+            <span style="color:var(--purple);">地狱火球体积+30%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Section 7: Awakening Flow ========== -->
+<section id="awakening">
+  <div class="container">
+    <div class="section-tag">07 / AWAKENING</div>
+    <h2 class="section-title">局内觉醒流程</h2>
+    <p class="section-desc">对局开始时觉醒3张芯片，随着时间推移共鸣波动带来更多觉醒。签名芯片有保底机制——保证每局至少体验1条路径质变。</p>
+
+    <div class="flow-steps" style="margin-top:32px;">
+      <div class="flow-step">
+        <div class="flow-time">t = 0s · 初始觉醒</div>
+        <div class="flow-title">3张芯片觉醒</div>
+        <div class="flow-desc">从牌组伪随机抽取。如果牌组有签名芯片，至少1张为签名芯片（保底）。可能触发 M1 或 M2。</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-time">t = 20s · 波动觉醒</div>
+        <div class="flow-title">+1张芯片</div>
+        <div class="flow-desc">共鸣波动带来第4张觉醒。可能升级 M1→M2。纯随机抽取，无保底。</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-time">t = 40s · 波动觉醒</div>
+        <div class="flow-title">+1张芯片</div>
+        <div class="flow-desc">第5张觉醒。可能升级 M2→M3。共鸣值持续累积——中盘是"生长"阶段。</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-time">t = 55s · 超载觉醒</div>
+        <div class="flow-title">+1张芯片</div>
+        <div class="flow-desc">超载觉醒。如果有未觉醒的签名芯片，优先抽取。最可能触发 M3 极化——终盘"绽放"。</div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;padding:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;display:flex;gap:24px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:250px;">
+        <h3 style="font-size:14px;margin-bottom:12px;color:var(--gold);">镜像模式规则</h3>
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+          通用芯片<strong style="color:var(--text);">镜像觉醒</strong>——双方获得相同通用芯片，保证数值公平。<br>
+          签名芯片<strong style="color:var(--gold);">各自觉醒</strong>——各自从自己的签名芯片中抽取，产生差异化体验。<br>
+          每方最多2张签名觉醒，差异可控。竞技差距来自操作和策略，不是纯数值。
+        </p>
+      </div>
+      <div style="flex:1;min-width:250px;">
+        <h3 style="font-size:14px;margin-bottom:12px;color:var(--cyan);">觉醒展示</h3>
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+          签名芯片展示时：英雄肖像 + 路径图标 + 品级边框（精铸银 / 共鸣金 / 至高彩虹）。<br>
+          签名芯片展示时间 1.2s（比通用 0.8s 长），强调仪式感。<br>
+          通用芯片展示时：类别图标 + 稀有度边框（白 / 蓝 / 紫 / 金）。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Footer ========== -->
+<div class="footer">
+  <div class="container">
+    Gatebreaker Arena · 芯片系统指南 v0.3 · 基于英雄系统设计 v0.3 文档生成
+  </div>
+</div>
+
+<script>
+// ========== Hero Path Data ==========
+const heroPaths = {
+  frost: {
+    name: '冰雪女王',
+    paths: [
+      {
+        name: '极寒之路', cats: ['attack','defense'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'冰冻强化',desc:'寒气累积速度×2，冰冻时长+50%。全场冰冻触发频率大幅提升。'},
+          {level:'M2',rv:'≥5',title:'冰墙封锁',desc:'冰冻触发时在对手半场生成冰墙（持续2s），阻挡球路。暴风雪变为全场冰冻。'},
+          {level:'M3',rv:'≥9',title:'绝对冰封领域',desc:'冰墙变为冰封区（持续4s，区内球减速50%），冰冻可链式传播，暴风雪结束后残留冰晶区。'}
+        ]
+      },
+      {
+        name: '冰暴之路', cats: ['attack','chaos'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'寒气阈值降低',desc:'暴风雪触发阈值降至80，冰弹数量+1。更频繁触发冰暴。'},
+          {level:'M2',rv:'≥5',title:'全场球减速',desc:'暴风雪触发时对手所有球减速20%持续2s，冰弹分裂为3颗。'},
+          {level:'M3',rv:'≥9',title:'冰暴永续',desc:'暴风雪变为持续效果（整局减速10%），冰弹碰墙反弹并再次分裂，暴风雪冷却-5s。'}
+        ]
+      },
+      {
+        name: '冰晶之路', cats: ['defense','speed'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'寒气反转',desc:'寒气不再衰减。冰冻变为冰镜（反弹对手球+10%速）。'},
+          {level:'M2',rv:'≥5',title:'己方加速',desc:'己方球碰对手挡板加速+10%/次。冰镜反弹+30%且可反弹至对手球。'},
+          {level:'M3',rv:'≥9',title:'冰晶共振',desc:'己方球加速+20%/次（上限+60%），冰镜变为冰晶区（区内己方球加速，对手球减速），暴风雪冷却-5s。'}
+        ]
+      }
+    ]
+  },
+  pyro: {
+    name: '烈焰领主',
+    paths: [
+      {
+        name: '炼狱之路', cats: ['attack','defense'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'灼烧强化',desc:'热量累积速度×2，灼烧时长+50%。地狱火球体积+10%。'},
+          {level:'M2',rv:'≥5',title:'减速永续',desc:'灼烧结束后对手挡板继续减速-10%持续2s。地狱火球可穿透1次墙壁。'},
+          {level:'M3',rv:'≥9',title:'炼狱领域',desc:'灼烧变为持续效果（整局-5%移速），地狱火球碰墙生成火墙（持续3s），火球体积+30%。'}
+        ]
+      },
+      {
+        name: '涅槃之路', cats: ['attack','speed'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'热量加速',desc:'热量累积改为加速己方球+10%。发球冷却-5%。'},
+          {level:'M2',rv:'≥5',title:'火焰冲刺',desc:'己方球碰对手挡板加速+15%/次。发球冷却-10%。热量满时己方挡板移速+10%。'},
+          {level:'M3',rv:'≥9',title:'凤凰涅槃',desc:'加速+25%/次（上限+75%），发球冷却-15%。地狱火球必分裂。被进球后热量不减反增。'}
+        ]
+      },
+      {
+        name: '焦土之路', cats: ['defense','chaos'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'焦痕',desc:'热量衰减-50%。灼烧触发时在碰板点留焦痕（持续3s，减速10%）。'},
+          {level:'M2',rv:'≥5',title:'焦土蔓延',desc:'灼烧触发时对手半场生成1单位焦土区（持续3s，球减速15%）。热量衰减-50%。'},
+          {level:'M3',rv:'≥9',title:'烈焰焦土',desc:'焦土区扩大至2单位（持续5s，减速25%），地狱火球碰墙生成火墙，热量衰减-75%。'}
+        ]
+      }
+    ]
+  },
+  thunder: {
+    name: '雷霆审判者',
+    paths: [
+      {
+        name: '雷霆之路', cats: ['attack','defense'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'偏转强化',desc:'偏转角度×1.5，链式范围+0.5单位。'},
+          {level:'M2',rv:'≥5',title:'雷链跳跃',desc:'偏转目标从1颗变为2颗，偏转角度×2，链式范围+1单位。'},
+          {level:'M3',rv:'≥9',title:'雷霆审判链',desc:'偏转目标变为3颗且二次传导，雷霆审判持续+1s，偏转角度×2.5。'}
+        ]
+      },
+      {
+        name: '雷电之路', cats: ['attack','speed'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'球速增益',desc:'雷霆审判球速增益×1.3，冷却-10%。'},
+          {level:'M2',rv:'≥5',title:'闪电齐发',desc:'雷霆审判期间己方所有球加速+10%，球速增益×1.5，冷却-15%。'},
+          {level:'M3',rv:'≥9',title:'雷霆万钧',desc:'己方所有球加速+20%，球碰墙不反弹穿透1次，球速增益×2，冷却-20%。'}
+        ]
+      },
+      {
+        name: '电磁之路', cats: ['defense','chaos'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'磁痕',desc:'偏转角度×1.5，链式范围+0.5单位。'},
+          {level:'M2',rv:'≥5',title:'磁暴前兆',desc:'碰挡板时生成电磁脉冲区（2s，球偏转±5°/s），链式范围+1单位。'},
+          {level:'M3',rv:'≥9',title:'全场磁暴',desc:'电磁脉冲区扩大至3单位（3s，偏转±10°/s），雷霆审判变异为磁暴区。'}
+        ]
+      }
+    ]
+  },
+  gravity: {
+    name: '重力使者',
+    paths: [
+      {
+        name: '深渊之路', cats: ['attack','defense'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'引力增强',desc:'引力加速度×1.5，奇点引力×1.5。'},
+          {level:'M2',rv:'≥5',title:'深渊吞噬',desc:'引力区内球减速20%持续1s，引力×2，奇点引力×2。'},
+          {level:'M3',rv:'≥9',title:'黑洞之心',desc:'引力区内减速40%，奇点持续+1s，引力×3。'}
+        ]
+      },
+      {
+        name: '引力炮之路', cats: ['attack','speed'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'弹射雏形',desc:'发球速代价消除，引力区己方球加速+10%。'},
+          {level:'M2',rv:'≥5',title:'引力弹射',desc:'己方球碰弹射点+50%速，引力区加速+20%。'},
+          {level:'M3',rv:'≥9',title:'引力弹弓',desc:'弹射点永久存在，碰弹射点+100%速，加速+30%。'}
+        ]
+      },
+      {
+        name: '扭曲之路', cats: ['defense','chaos'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'空间褶皱',desc:'引力加速度×1.5，引力范围+1单位。'},
+          {level:'M2',rv:'≥5',title:'空间扭曲',desc:'扭曲区内球路弯曲10°/s，引力范围+2单位。'},
+          {level:'M3',rv:'≥9',title:'空间折叠',desc:'球瞬移到对称位置，弯曲20°/s，引力范围+3单位。'}
+        ]
+      }
+    ]
+  },
+  time: {
+    name: '时之织者',
+    paths: [
+      {
+        name: '永恒之路', cats: ['attack','defense'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'时缓',desc:'减速幅度×1.5(-12%)，时间静止+0.2s。'},
+          {level:'M2',rv:'≥5',title:'时间停滞',desc:'减速区内每3s冻结0.2s，减速×2(-16%)，静止+0.4s。'},
+          {level:'M3',rv:'≥9',title:'时间监狱',desc:'每2s冻结0.3s，冻结后减速持续2s，减速×2.5(-20%)。'}
+        ]
+      },
+      {
+        name: '时间流之路', cats: ['attack','speed'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'加速萌芽',desc:'减速场改为加速己方球+10%，冷却-10%。'},
+          {level:'M2',rv:'≥5',title:'时间加速',desc:'己方挡板在场内移速+15%，加速+20%，冷却-15%。'},
+          {level:'M3',rv:'≥9',title:'时间爆发',desc:'时间静止变异为己方全加速，挡板移速+25%，加速+30%。'}
+        ]
+      },
+      {
+        name: '时序之路', cats: ['defense','chaos'],
+        ms: [
+          {level:'M1',rv:'≥2',title:'时序错位',desc:'减速场范围×1.3，球速上限代价消除。'},
+          {level:'M2',rv:'≥5',title:'时间跳跃',desc:'对手球进入区时瞬间前进0.2s距离，范围×1.5。'},
+          {level:'M3',rv:'≥9',title:'时间裂缝',desc:'对手球随机前进或后退0.5s，时间静止变异为回溯，范围×1.8。'}
+        ]
+      }
+    ]
+  }
+};
+
+// ========== Calculator Data ==========
+const calcChips = {
+  frost: [
+    {id:'sig_supreme',name:'至高·绝对零度',grade:'supreme',rv:6,type:'sig',path:'极寒之路',cat:'attack'},
+    {id:'sig_resonant',name:'共鸣·冰封领域',grade:'resonant',rv:4,type:'sig',path:'极寒之路',cat:'attack'},
+    {id:'sig_refined',name:'精铸·寒霜之触',grade:'refined',rv:2,type:'sig',path:'极寒之路',cat:'attack'},
+    {id:'sig_resonant2',name:'共鸣·冰凌风暴',grade:'resonant',rv:4,type:'sig',path:'冰暴之路',cat:'attack'},
+    {id:'uni_strike1',name:'STRIKE_POWER',grade:null,rv:1,type:'uni',cat:'attack'},
+    {id:'uni_guard1',name:'GUARD_LENGTH',grade:null,rv:1,type:'uni',cat:'defense'},
+    {id:'uni_strike2',name:'STRIKE_SERVE',grade:null,rv:1,type:'uni',cat:'attack'},
+    {id:'uni_guard2',name:'GUARD_BOUNCE',grade:null,rv:1,type:'uni',cat:'defense'},
+  ],
+  pyro: [
+    {id:'sig_supreme',name:'至高·炼狱之火',grade:'supreme',rv:6,type:'sig',path:'炼狱之路',cat:'attack'},
+    {id:'sig_resonant',name:'共鸣·炽焰',grade:'resonant',rv:4,type:'sig',path:'炼狱之路',cat:'attack'},
+    {id:'sig_refined',name:'精铸·余烬',grade:'refined',rv:2,type:'sig',path:'炼狱之路',cat:'attack'},
+    {id:'sig_resonant2',name:'共鸣·烈焰冲刺',grade:'resonant',rv:4,type:'sig',path:'涅槃之路',cat:'attack'},
+    {id:'uni_strike1',name:'STRIKE_POWER',grade:null,rv:1,type:'uni',cat:'attack'},
+    {id:'uni_guard1',name:'GUARD_LENGTH',grade:null,rv:1,type:'uni',cat:'defense'},
+    {id:'uni_strike2',name:'STRIKE_SERVE',grade:null,rv:1,type:'uni',cat:'attack'},
+    {id:'uni_speed1',name:'FLOW_SPEED',grade:null,rv:1,type:'uni',cat:'speed'},
+  ],
+  thunder: [
+    {id:'sig_supreme',name:'至高·雷霆审判链',grade:'supreme',rv:6,type:'sig',path:'雷霆之路',cat:'attack'},
+    {id:'sig_resonant',name:'共鸣·雷链',grade:'resonant',rv:4,type:'sig',path:'雷霆之路',cat:'attack'},
+    {id:'sig_refined',name:'精铸·电弧',grade:'refined',rv:2,type:'sig',path:'雷霆之路',cat:'attack'},
+    {id:'sig_resonant2',name:'共鸣·闪电齐发',grade:'resonant',rv:4,type:'sig',path:'雷电之路',cat:'attack'},
+    {id:'uni_strike1',name:'STRIKE_POWER',grade:null,rv:1,type:'uni',cat:'attack'},
+    {id:'uni_guard1',name:'GUARD_LENGTH',grade:null,rv:1,type:'uni',cat:'defense'},
+    {id:'uni_strike2',name:'STRIKE_SERVE',grade:null,rv:1,type:'uni',cat:'attack'},
+    {id:'uni_chaos1',name:'CHAOS_SPIN',grade:null,rv:1,type:'uni',cat:'chaos'},
+  ]
+};
+
+// Path categories for resonance matching
+const pathCats = {
+  frost: { '极寒之路':['attack','defense'], '冰暴之路':['attack','chaos'], '冰晶之路':['defense','speed'] },
+  pyro: { '炼狱之路':['attack','defense'], '涅槃之路':['attack','speed'], '焦土之路':['defense','chaos'] },
+  thunder: { '雷霆之路':['attack','defense'], '雷电之路':['attack','speed'], '电磁之路':['defense','chaos'] },
+};
+
+// ========== Calculator Logic ==========
+let selectedChips = new Set();
+
+function renderChipPool() {
+  const hero = document.getElementById('heroSelect').value;
+  const chips = calcChips[hero] || [];
+  const pool = document.getElementById('chipPool');
+  pool.innerHTML = '';
+  chips.forEach(chip => {
+    const div = document.createElement('div');
+    div.className = 'calc-chip' + (selectedChips.has(chip.id) ? ' selected' : '');
+    const gradeDot = chip.grade ? `<div class="chip-grade-dot ${chip.grade}"></div>` : `<div class="chip-grade-dot" style="background:var(--text-faint)"></div>`;
+    const catLabel = chip.cat === 'attack' ? '攻' : chip.cat === 'defense' ? '守' : chip.cat === 'speed' ? '速' : '乱';
+    div.innerHTML = `
+      ${gradeDot}
+      <span class="chip-name">${chip.name}</span>
+      <span class="chip-cat ${chip.cat}">${catLabel}</span>
+      <span class="chip-rv">+${chip.rv}</span>
+    `;
+    div.onclick = () => toggleChip(chip.id);
+    pool.appendChild(div);
+  });
+}
+
+function toggleChip(id) {
+  if (selectedChips.has(id)) selectedChips.delete(id);
+  else {
+    if (selectedChips.size >= 6) return; // max 6 awakening
+    selectedChips.add(id);
+  }
+  renderChipPool();
+  renderActiveChips();
+  renderResonanceMeter();
+}
+
+function renderActiveChips() {
+  const hero = document.getElementById('heroSelect').value;
+  const chips = calcChips[hero] || [];
+  const active = document.getElementById('activeChips');
+  const activeChips = chips.filter(c => selectedChips.has(c.id));
+  if (activeChips.length === 0) {
+    active.innerHTML = '<div class="calc-empty">点击左侧芯片模拟觉醒</div>';
+    return;
+  }
+  active.innerHTML = '';
+  activeChips.forEach(chip => {
+    const div = document.createElement('div');
+    div.className = 'calc-chip selected';
+    const gradeDot = chip.grade ? `<div class="chip-grade-dot ${chip.grade}"></div>` : `<div class="chip-grade-dot" style="background:var(--text-faint)"></div>`;
+    const catLabel = chip.cat === 'attack' ? '攻' : chip.cat === 'defense' ? '守' : chip.cat === 'speed' ? '速' : '乱';
+    div.innerHTML = `
+      ${gradeDot}
+      <span class="chip-name">${chip.name}</span>
+      <span class="chip-cat ${chip.cat}">${catLabel}</span>
+      <span class="chip-rv">+${chip.rv}</span>
+    `;
+    active.appendChild(div);
+  });
+}
+
+function renderResonanceMeter() {
+  const hero = document.getElementById('heroSelect').value;
+  const chips = calcChips[hero] || [];
+  const cats = pathCats[hero] || {};
+  const heroData = heroPaths[hero];
+  const activeChips = chips.filter(c => selectedChips.has(c.id));
+
+  const meter = document.getElementById('rvMeter');
+  meter.innerHTML = '';
+
+  heroData.paths.forEach(path => {
+    const pathCatsList = cats[path.name] || [];
+    let rv = 0;
+
+    activeChips.forEach(chip => {
+      if (chip.type === 'sig' && chip.path === path.name) {
+        rv += chip.rv;
+      } else if (chip.type === 'uni' && pathCatsList.includes(chip.cat)) {
+        rv += 1;
+      }
+    });
+
+    const pct = Math.min(rv / 12 * 100, 100);
+    const m1Active = rv >= 2;
+    const m2Active = rv >= 5;
+    const m3Active = rv >= 9;
+
+    const div = document.createElement('div');
+    div.style.marginBottom = '16px';
+    div.innerHTML = `
+      <div class="rv-path-label">
+        <span class="name">${path.name}</span>
+        <span class="val">${rv}</span>
+      </div>
+      <div class="rv-bar">
+        <div class="rv-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="rv-bar-markers">
+        <span>M1 ≥ 2</span>
+        <span>M2 ≥ 5</span>
+        <span>M3 ≥ 9</span>
+      </div>
+      <div class="rv-milestones">
+        <div class="rv-ms ${m1Active ? 'active m1' : ''}">
+          <span class="ms-icon"></span>M1 觉醒
+        </div>
+        <div class="rv-ms ${m2Active ? 'active m2' : ''}">
+          <span class="ms-icon"></span>M2 质变
+        </div>
+        <div class="rv-ms ${m3Active ? 'active m3' : ''}">
+          <span class="ms-icon"></span>M3 极化
+        </div>
+      </div>
+    `;
+    meter.appendChild(div);
+  });
+}
+
+function switchHero() {
+  selectedChips.clear();
+  renderChipPool();
+  renderActiveChips();
+  renderResonanceMeter();
+}
+
+// ========== Path Grid Rendering ==========
+function renderPathGrid(heroKey) {
+  const heroData = heroPaths[heroKey];
+  const grid = document.getElementById('pathGrid');
+  grid.innerHTML = '';
+  const cats = pathCats[heroKey] || {};
+
+  heroData.paths.forEach(path => {
+    const pathCatsList = cats[path.name] || [];
+    const catTags = pathCatsList.map(c => {
+      const label = c === 'attack' ? '攻' : c === 'defense' ? '守' : c === 'speed' ? '速' : '乱';
+      return `<span class="path-cat-tag ${c}">${label}</span>`;
+    }).join('');
+
+    const msItems = path.ms.map(m => `
+      <div class="path-ms-item">
+        <div class="ms-header">
+          <span class="ms-level ${m.level.toLowerCase()}">${m.level}</span>
+          <span class="ms-title">${m.title}</span>
+        </div>
+        <div class="ms-desc">${m.desc}</div>
+        <div class="ms-rv">共鸣值 ${m.rv}</div>
+      </div>
+    `).join('');
+
+    const card = document.createElement('div');
+    card.className = 'path-card';
+    card.innerHTML = `
+      <div class="path-name">${path.name}</div>
+      <div class="path-cats">${catTags}</div>
+      <div class="path-ms-list">${msItems}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Path hero selector
+document.querySelectorAll('.hero-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.hero-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    renderPathGrid(pill.dataset.hero);
+  });
+});
+
+// ========== Init ==========
+renderChipPool();
+renderActiveChips();
+renderResonanceMeter();
+renderPathGrid('frost');
+</script>
+</body>
+</html>
