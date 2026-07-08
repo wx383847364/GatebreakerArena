@@ -80,7 +80,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     ReadArray(root, "DT_BallRule", ReadBall),
                     ReadArray(root, "DT_AIRule", ReadAi),
                     ReadArray(root, "DT_MapRule", ReadMap),
-                    ReadArray(root, "DT_PlayerColorRule", ReadPlayerColor));
+                    ReadArray(root, "DT_PlayerColorRule", ReadPlayerColor),
+                    ReadArray(root, "DT_UniversalChip", ReadUniversalChip),
+                    ReadArray(root, "DT_SignatureChip", ReadSignatureChip));
 
                 return GatebreakerConfigLoadResult.Success(catalog, source, ReadOptionalInt(root, "Version"));
             }
@@ -240,6 +242,63 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Green = ReadFloat(item, "Green"),
                 Blue = ReadFloat(item, "Blue"),
                 Alpha = ReadFloat(item, "Alpha"),
+            };
+        }
+
+        private static UniversalChipDefinition ReadUniversalChip(Dictionary<string, object> item)
+        {
+            return new UniversalChipDefinition
+            {
+                ChipId = ReadString(item, "ChipId"),
+                DisplayName = ReadString(item, "DisplayName"),
+                Category = ReadEnum<ChipCategory>(item, "Category"),
+                Rarity = ReadEnum<ChipRarity>(item, "Rarity"),
+                Description = ReadOptionalString(item, "Description"),
+                Modifiers = ReadOptionalArray(item, "Modifiers", ReadUniversalChipModifier),
+                LinkedQuantumEvent = ReadOptionalString(item, "LinkedQuantumEvent"),
+                IconPath = ReadOptionalString(item, "IconPath"),
+            };
+        }
+
+        private static UniversalChipModifierDefinition ReadUniversalChipModifier(Dictionary<string, object> item)
+        {
+            return new UniversalChipModifierDefinition
+            {
+                ModifierType = ReadString(item, "ModifierType"),
+                Op = ReadEnum<ModifierOp>(item, "Op"),
+                ValueLv1 = ReadFloat(item, "ValueLv1"),
+                ValueLv2 = ReadFloat(item, "ValueLv2"),
+                ValueLv3 = ReadFloat(item, "ValueLv3"),
+            };
+        }
+
+        private static SignatureChipDefinition ReadSignatureChip(Dictionary<string, object> item)
+        {
+            return new SignatureChipDefinition
+            {
+                ChipId = ReadString(item, "ChipId"),
+                DisplayName = ReadString(item, "DisplayName"),
+                HeroId = ReadString(item, "HeroId"),
+                PathId = ReadString(item, "PathId"),
+                Grade = ReadEnum<SignatureGrade>(item, "Grade"),
+                ResonanceValue = ReadInt(item, "ResonanceValue"),
+                Description = ReadOptionalString(item, "Description"),
+                EffectDesc = ReadOptionalString(item, "EffectDesc"),
+                GradeModifiers = ReadOptionalArray(item, "GradeModifiers", ReadSignatureChipModifier),
+                QualitativeEffectId = ReadOptionalString(item, "QualitativeEffectId"),
+                UpgradesTo = ReadOptionalString(item, "UpgradesTo"),
+                UpgradeCost = ReadOptionalInt(item, "UpgradeCost") ?? 0,
+                IconPath = ReadOptionalString(item, "IconPath"),
+            };
+        }
+
+        private static SignatureChipModifierDefinition ReadSignatureChipModifier(Dictionary<string, object> item)
+        {
+            return new SignatureChipModifierDefinition
+            {
+                ModifierType = ReadString(item, "ModifierType"),
+                Op = ReadEnum<ModifierOp>(item, "Op"),
+                Value = ReadFloat(item, "Value"),
             };
         }
 

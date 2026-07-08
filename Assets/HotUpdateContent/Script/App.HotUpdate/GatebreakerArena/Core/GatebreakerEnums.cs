@@ -50,4 +50,35 @@ namespace App.HotUpdate.GatebreakerArena.Core
         Ring,
         DualFront,
     }
+
+    public enum ChipCategory
+    {
+        Strike,
+        Guard,
+        Flow,
+        Chaos,
+    }
+
+    public enum ChipRarity
+    {
+        Common,
+        Rare,
+        Epic,
+        Legendary,
+    }
+
+    public enum SignatureGrade
+    {
+        Refined,
+        Resonant,
+        Supreme,
+    }
+
+    public enum ModifierOp
+    {
+        Add,
+        Multiply,
+        Override,
+        Flag,
+    }
 }

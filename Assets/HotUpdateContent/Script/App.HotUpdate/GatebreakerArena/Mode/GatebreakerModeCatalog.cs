@@ -11,19 +11,25 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         private readonly Dictionary<string, AiRuleDefinition> _aiRules;
         private readonly Dictionary<string, MapRuleDefinition> _maps;
         private readonly Dictionary<int, PlayerColorRuleDefinition> _playerColors;
+        private readonly Dictionary<string, UniversalChipDefinition> _universalChips;
+        private readonly Dictionary<string, SignatureChipDefinition> _signatureChips;
 
         public GatebreakerModeCatalog(
             IEnumerable<ModeRuleDefinition> modes,
             IEnumerable<BallRuleDefinition> balls,
             IEnumerable<AiRuleDefinition> aiRules,
             IEnumerable<MapRuleDefinition> maps,
-            IEnumerable<PlayerColorRuleDefinition> playerColors)
+            IEnumerable<PlayerColorRuleDefinition> playerColors,
+            IEnumerable<UniversalChipDefinition> universalChips,
+            IEnumerable<SignatureChipDefinition> signatureChips)
         {
             _modes = IndexBy(modes, item => item.ModeId);
             _balls = IndexBy(balls, item => item.BallTypeId);
             _aiRules = IndexBy(aiRules, item => item.AILevelId);
             _maps = IndexBy(maps, item => item.MapId);
             _playerColors = IndexBy(playerColors, item => item.PlayerId);
+            _universalChips = IndexBy(universalChips, item => item.ChipId);
+            _signatureChips = IndexBy(signatureChips, item => item.ChipId);
         }
 
         public static GatebreakerModeCatalog CreateDefault()
@@ -117,6 +123,16 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     CreatePlayerColor(2, "Blue", 0.20f, 0.48f, 1.0f),
                     CreatePlayerColor(3, "Green", 0.24f, 0.86f, 0.34f),
                     CreatePlayerColor(4, "Yellow", 1.0f, 0.86f, 0.18f),
+                },
+                new[]
+                {
+                    CreateUniversalChip("STRIKE_POWER", "蓄能击", ChipCategory.Strike, ChipRarity.Common, "每一击蓄力, 下一次反弹将倾泻全部积蓄"),
+                    CreateUniversalChip("GUARD_LENGTH", "长板", ChipCategory.Guard, ChipRarity.Common, "铁板横展, 防线再无死角"),
+                    CreateUniversalChip("FLOW_SPEED", "疾驰", ChipCategory.Flow, ChipRarity.Common, "步若疾风, 挡板追上每一个球的轨迹"),
+                },
+                new[]
+                {
+                    CreateSignatureChip("SIG_FROST_DEEP_FREEZE_REFINED", "寒霜之触", "HERO_FROST_QUEEN", "PATH_FROST_DEEP_FREEZE", SignatureGrade.Refined, 2, "寒霜浸润每一次击球"),
                 });
         }
 
@@ -154,6 +170,23 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 ? rule
                 : throw new KeyNotFoundException($"Unknown player color rule: {playerId}");
         }
+
+        public UniversalChipDefinition GetUniversalChip(string chipId)
+        {
+            return _universalChips.TryGetValue(chipId, out UniversalChipDefinition chip)
+                ? chip
+                : throw new KeyNotFoundException($"Unknown universal chip: {chipId}");
+        }
+
+        public SignatureChipDefinition GetSignatureChip(string chipId)
+        {
+            return _signatureChips.TryGetValue(chipId, out SignatureChipDefinition chip)
+                ? chip
+                : throw new KeyNotFoundException($"Unknown signature chip: {chipId}");
+        }
+
+        public IReadOnlyDictionary<string, UniversalChipDefinition> AllUniversalChips => _universalChips;
+        public IReadOnlyDictionary<string, SignatureChipDefinition> AllSignatureChips => _signatureChips;
 
         public EffectiveMatchRule BuildEffectiveRule(string modeId, string mapId)
         {
@@ -391,6 +424,53 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Green = green,
                 Blue = blue,
                 Alpha = 1f,
+            };
+        }
+
+        private static UniversalChipDefinition CreateUniversalChip(
+            string chipId,
+            string displayName,
+            ChipCategory category,
+            ChipRarity rarity,
+            string description)
+        {
+            return new UniversalChipDefinition
+            {
+                ChipId = chipId,
+                DisplayName = displayName,
+                Category = category,
+                Rarity = rarity,
+                Description = description,
+                Modifiers = Array.Empty<UniversalChipModifierDefinition>(),
+                LinkedQuantumEvent = string.Empty,
+                IconPath = string.Empty,
+            };
+        }
+
+        private static SignatureChipDefinition CreateSignatureChip(
+            string chipId,
+            string displayName,
+            string heroId,
+            string pathId,
+            SignatureGrade grade,
+            int resonanceValue,
+            string description)
+        {
+            return new SignatureChipDefinition
+            {
+                ChipId = chipId,
+                DisplayName = displayName,
+                HeroId = heroId,
+                PathId = pathId,
+                Grade = grade,
+                ResonanceValue = resonanceValue,
+                Description = description,
+                EffectDesc = string.Empty,
+                GradeModifiers = Array.Empty<SignatureChipModifierDefinition>(),
+                QualitativeEffectId = string.Empty,
+                UpgradesTo = string.Empty,
+                UpgradeCost = 0,
+                IconPath = string.Empty,
             };
         }
 

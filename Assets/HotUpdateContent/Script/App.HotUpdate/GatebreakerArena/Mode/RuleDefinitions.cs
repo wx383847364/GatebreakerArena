@@ -3,6 +3,7 @@ using App.HotUpdate.GatebreakerArena.Core;
 
 namespace App.HotUpdate.GatebreakerArena.Mode
 {
+    // --- Modifier structs shared by chip types ---
     public sealed class ModeRuleDefinition
     {
         public string ModeId { get; set; }
@@ -139,5 +140,54 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float Green { get; set; }
         public float Blue { get; set; }
         public float Alpha { get; set; }
+    }
+
+    // --- Chip modifier structs ---
+
+    public sealed class UniversalChipModifierDefinition
+    {
+        public string ModifierType { get; set; }
+        public ModifierOp Op { get; set; }
+        public float ValueLv1 { get; set; }
+        public float ValueLv2 { get; set; }
+        public float ValueLv3 { get; set; }
+    }
+
+    public sealed class SignatureChipModifierDefinition
+    {
+        public string ModifierType { get; set; }
+        public ModifierOp Op { get; set; }
+        public float Value { get; set; }
+    }
+
+    // --- Chip Definition classes ---
+
+    public sealed class UniversalChipDefinition
+    {
+        public string ChipId { get; set; }
+        public string DisplayName { get; set; }
+        public ChipCategory Category { get; set; }
+        public ChipRarity Rarity { get; set; }
+        public string Description { get; set; }
+        public IReadOnlyList<UniversalChipModifierDefinition> Modifiers { get; set; }
+        public string LinkedQuantumEvent { get; set; }
+        public string IconPath { get; set; }
+    }
+
+    public sealed class SignatureChipDefinition
+    {
+        public string ChipId { get; set; }
+        public string DisplayName { get; set; }
+        public string HeroId { get; set; }
+        public string PathId { get; set; }
+        public SignatureGrade Grade { get; set; }
+        public int ResonanceValue { get; set; }
+        public string Description { get; set; }
+        public string EffectDesc { get; set; }
+        public IReadOnlyList<SignatureChipModifierDefinition> GradeModifiers { get; set; }
+        public string QualitativeEffectId { get; set; }
+        public string UpgradesTo { get; set; }
+        public int UpgradeCost { get; set; }
+        public string IconPath { get; set; }
     }
 }
