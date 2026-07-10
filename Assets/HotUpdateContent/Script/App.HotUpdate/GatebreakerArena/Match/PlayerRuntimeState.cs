@@ -1,6 +1,8 @@
 using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.Serve;
 using App.HotUpdate.GatebreakerArena.Zone;
+using App.HotUpdate.GatebreakerArena.Mode;
+using App.HotUpdate.GatebreakerArena.Hero;
 
 namespace App.HotUpdate.GatebreakerArena.Match
 {
@@ -18,5 +20,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public ServeResourceState ServeResource { get; set; }
         public PaddleRuntimeState Paddle { get; set; }
         public ZoneRuntimeState Zone { get; set; }
+        public HeroRuntimeState Hero { get; set; } = new HeroRuntimeState();
+        public HeroCombatState HeroCombat { get; set; } = new HeroCombatState();
     }
 }

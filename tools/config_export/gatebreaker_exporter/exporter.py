@@ -12,6 +12,9 @@ SOURCE_FILES = {
     "DT_AIRule": "DT_AIRule.json",
     "DT_MapRule": "DT_MapRule.json",
     "DT_PlayerColorRule": "DT_PlayerColorRule.json",
+    "DT_Hero": "DT_Hero.json",
+    "DT_HeroPath": "DT_HeroPath.json",
+    "DT_UniversalChip": "DT_UniversalChip.json",
 }
 
 
@@ -116,6 +119,9 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             "GoalCenters",
         ),
         "DT_PlayerColorRule": ("PlayerId", "Red", "Green", "Blue", "Alpha"),
+        "DT_Hero": ("HeroId", "DisplayName", "ActiveAbilityId", "ActiveAbilityCooldownSeconds", "PathIds"),
+        "DT_HeroPath": ("PathId", "HeroId", "DisplayName", "ResonanceCategories", "MilestoneEffects"),
+        "DT_UniversalChip": ("ChipId", "DisplayName", "Category", "Rarity", "Modifiers", "ConditionalModifiers"),
     }
     for index, row in enumerate(rows):
         for field in required_fields[table_name]:
@@ -134,6 +140,19 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             _validate_vector_array(row, "GoalCenters", 1, table_name, index, errors)
             _validate_map_player_side_bindings(row, index, errors)
             _validate_collision_layouts(row, index, errors)
+        if table_name == "DT_Hero":
+            _validate_hero(row, index, errors)
+        if table_name == "DT_HeroPath":
+            _validate_hero_path(row, index, errors)
+        if table_name == "DT_UniversalChip":
+            _validate_universal_chip(row, index, errors)
+
+    if table_name == "DT_Hero":
+        _validate_unique_ids(rows, "HeroId", table_name, errors)
+    elif table_name == "DT_HeroPath":
+        _validate_unique_ids(rows, "PathId", table_name, errors)
+    elif table_name == "DT_UniversalChip":
+        _validate_v1_universal_chip_set(rows, errors)
 
 
 def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -369,6 +388,70 @@ def _validate_tuning_values(row: dict[str, Any], index: int, errors: list[str]) 
         number = _normalize_int(value.get(field))
         if number is None:
             errors.append(f"DT_ModeRule[{index}].TuningValues: missing numeric field {field}.")
+
+
+def _validate_hero(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    if not isinstance(row.get("PathIds"), list) or len(row["PathIds"]) != 2:
+        errors.append(f"DT_Hero[{index}]: PathIds must contain exactly two V1 paths.")
+    if _normalize_float(row.get("ActiveAbilityCooldownSeconds")) is None or float(row["ActiveAbilityCooldownSeconds"]) <= 0:
+        errors.append(f"DT_Hero[{index}]: ActiveAbilityCooldownSeconds must be positive.")
+
+
+def _validate_hero_path(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    categories = row.get("ResonanceCategories")
+    if not isinstance(categories, list) or len(categories) != 2:
+        errors.append(f"DT_HeroPath[{index}]: ResonanceCategories must contain exactly two categories.")
+    elif any(category not in {"Strike", "Guard", "Flow", "Chaos"} for category in categories):
+        errors.append(f"DT_HeroPath[{index}]: ResonanceCategories contains an invalid category.")
+
+    milestones = row.get("MilestoneEffects")
+    if not isinstance(milestones, list) or {item.get("PathLevel") for item in milestones if isinstance(item, dict)} != {1, 2}:
+        errors.append(f"DT_HeroPath[{index}]: MilestoneEffects must define exactly M1 and M2.")
+
+
+def _validate_universal_chip(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    if row.get("Category") not in {"Strike", "Guard", "Flow", "Chaos"}:
+        errors.append(f"DT_UniversalChip[{index}]: Category must be a V1 chip category.")
+    if row.get("Rarity") != "Common":
+        errors.append(f"DT_UniversalChip[{index}]: every V1 universal chip must be Common Lv1.")
+    modifiers = row.get("Modifiers")
+    if not isinstance(modifiers, list) or not modifiers:
+        errors.append(f"DT_UniversalChip[{index}]: Modifiers must be a non-empty array.")
+        return
+    valid_ops = {"Add", "Multiply", "Override", "Flag"}
+    for modifier_index, modifier in enumerate(modifiers):
+        if not isinstance(modifier, dict):
+            errors.append(f"DT_UniversalChip[{index}].Modifiers[{modifier_index}]: every item must be an object.")
+            continue
+        for field in ("ModifierType", "Op", "ValueLv1", "ValueLv2", "ValueLv3"):
+            if field not in modifier:
+                errors.append(f"DT_UniversalChip[{index}].Modifiers[{modifier_index}]: missing required field {field}.")
+        if modifier.get("Op") not in valid_ops:
+            errors.append(f"DT_UniversalChip[{index}].Modifiers[{modifier_index}]: invalid Op.")
+        for field in ("ValueLv1", "ValueLv2", "ValueLv3"):
+            if _normalize_float(modifier.get(field)) is None:
+                errors.append(f"DT_UniversalChip[{index}].Modifiers[{modifier_index}].{field}: must be numeric.")
+    conditionals = row.get("ConditionalModifiers")
+    if not isinstance(conditionals, list):
+        errors.append(f"DT_UniversalChip[{index}]: ConditionalModifiers must be an array.")
+
+
+def _validate_unique_ids(rows: list[Any], field: str, table_name: str, errors: list[str]) -> None:
+    values = [row.get(field) for row in rows if isinstance(row, dict)]
+    if len(values) != len(set(values)):
+        errors.append(f"{table_name}: {field} values must be unique.")
+
+
+def _validate_v1_universal_chip_set(rows: list[Any], errors: list[str]) -> None:
+    expected = {
+        "STRIKE_POWER", "STRIKE_SERVE", "STRIKE_OVERCHARGE",
+        "GUARD_LENGTH", "GUARD_GOAL", "GUARD_BOUNCE",
+        "FLOW_SPEED", "FLOW_AMMO", "FLOW_CAPACITY",
+        "CHAOS_SPIN", "CHAOS_RICOCHET", "CHAOS_DISRUPT",
+    }
+    actual = {row.get("ChipId") for row in rows if isinstance(row, dict)}
+    if actual != expected:
+        errors.append("DT_UniversalChip: must contain exactly the 12 frozen V1 universal chip ids.")
 
 
 def _validate_positive_number(
@@ -652,8 +735,61 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
                 "Alpha": 1.0,
             },
         ],
+        "DT_Hero": _v1_default_heroes(),
+        "DT_HeroPath": _v1_default_paths(),
+        "DT_UniversalChip": _v1_default_universal_chips(),
     }
     return defaults[table_name]
+
+
+def _v1_default_heroes() -> list[dict[str, Any]]:
+    return [
+        {"HeroId": "HERO_FROST_QUEEN", "DisplayName": "冰雪女王", "Description": "", "ActiveAbilityId": "ABILITY_FROST_BLIZZARD", "ActiveAbilityCooldownSeconds": 12.0, "PathIds": ["PATH_FROST_EXTREME", "PATH_FROST_CRYSTAL"]},
+        {"HeroId": "HERO_THORN_GUARDIAN", "DisplayName": "荆棘守护者", "Description": "", "ActiveAbilityId": "ABILITY_THORN_ARMOR", "ActiveAbilityCooldownSeconds": 12.0, "PathIds": ["PATH_THORN_BRISTLE", "PATH_THORN_GROWTH"]},
+        {"HeroId": "HERO_RADIANT_PALADIN", "DisplayName": "辉光圣骑", "Description": "", "ActiveAbilityId": "ABILITY_RADIANT_SHIELD", "ActiveAbilityCooldownSeconds": 12.0, "PathIds": ["PATH_RADIANT_HOLY_LIGHT", "PATH_RADIANT_RAY"]},
+    ]
+
+
+def _v1_default_paths() -> list[dict[str, Any]]:
+    definitions = [
+        ("PATH_FROST_EXTREME", "HERO_FROST_QUEEN", "极寒", ["Strike", "Guard"]),
+        ("PATH_FROST_CRYSTAL", "HERO_FROST_QUEEN", "冰晶", ["Guard", "Flow"]),
+        ("PATH_THORN_BRISTLE", "HERO_THORN_GUARDIAN", "荆棘", ["Strike", "Guard"]),
+        ("PATH_THORN_GROWTH", "HERO_THORN_GUARDIAN", "生长", ["Guard", "Flow"]),
+        ("PATH_RADIANT_HOLY_LIGHT", "HERO_RADIANT_PALADIN", "圣光", ["Strike", "Guard"]),
+        ("PATH_RADIANT_RAY", "HERO_RADIANT_PALADIN", "光芒", ["Strike", "Flow"]),
+    ]
+    return [
+        {"PathId": path_id, "HeroId": hero_id, "DisplayName": name, "ResonanceCategories": categories,
+         "MilestoneEffects": [
+             {"PathLevel": 1, "EffectId": f"{path_id}_M1", "Description": "", "Modifiers": []},
+             {"PathLevel": 2, "EffectId": f"{path_id}_M2", "Description": "", "Modifiers": []},
+         ]}
+        for path_id, hero_id, name, categories in definitions
+    ]
+
+
+def _v1_default_universal_chips() -> list[dict[str, Any]]:
+    definitions = [
+        ("STRIKE_POWER", "蓄能击", "Strike", [("PaddleBounceSpeedMultiplier", "Multiply", 1.2)]),
+        ("STRIKE_SERVE", "重发球", "Strike", [("ServeInitialSpeedMultiplier", "Multiply", 1.15)]),
+        ("STRIKE_OVERCHARGE", "过载", "Strike", [("BallMaxSpeedMultiplier", "Multiply", 1.1), ("PaddleLengthMultiplier", "Multiply", 0.9)]),
+        ("GUARD_LENGTH", "长板", "Guard", [("PaddleLengthMultiplier", "Multiply", 1.15)]),
+        ("GUARD_GOAL", "收缩门", "Guard", [("GoalHalfLengthMultiplier", "Multiply", 0.9)]),
+        ("GUARD_BOUNCE", "弹性墙", "Guard", [("EnemyWallBounceSpeedMultiplier", "Multiply", 0.9)]),
+        ("FLOW_SPEED", "疾驰", "Flow", [("PaddleMoveSpeedMultiplier", "Multiply", 1.15)]),
+        ("FLOW_AMMO", "快装填", "Flow", [("ServeCooldownMultiplier", "Multiply", 0.8333333)]),
+        ("FLOW_CAPACITY", "弹药库", "Flow", [("ServeAmmoCapacity", "Add", 1.0)]),
+        ("CHAOS_SPIN", "旋球", "Chaos", [("WallBounceDeflectionDegrees", "Add", 3.0)]),
+        ("CHAOS_RICOCHET", "连锁弹射", "Chaos", [("RicochetRequiredCollisionCount", "Override", 3.0), ("RicochetSpeedMultiplier", "Multiply", 1.1)]),
+        ("CHAOS_DISRUPT", "扰乱", "Chaos", [("EnemyPaddleMoveSpeedMultiplier", "Multiply", 0.85), ("EnemyPaddleSlowDurationSeconds", "Override", 1.5)]),
+    ]
+    return [
+        {"ChipId": chip_id, "DisplayName": name, "Category": category, "Rarity": "Common", "Description": "",
+         "Modifiers": [{"ModifierType": kind, "Op": op, "ValueLv1": value, "ValueLv2": value, "ValueLv3": value} for kind, op, value in modifiers],
+         "ConditionalModifiers": [], "LinkedQuantumEvent": "", "IconPath": ""}
+        for chip_id, name, category, modifiers in definitions
+    ]
 
 
 def _field_comments() -> dict[str, dict[str, str]]:
@@ -671,5 +807,17 @@ def _field_comments() -> dict[str, dict[str, str]]:
             "BoundaryPoints": "场地边界点，按顺时针或逆时针顺序填写；运行时用相邻点生成碰撞边。",
             "GoalCenters": "每条边对应的球门中心点；数量应与边界段数量匹配。",
             "CollisionLayouts": "按玩家人数记录的地图阻挡线数据；运行时优先用它生成边界、进球判定和调试红线。",
+        },
+        "DT_Hero": {
+            "PathIds": "V1 每名英雄固定关联两条共鸣路径；对局开始时仅使用这里定义的路径。",
+            "ActiveAbilityCooldownSeconds": "主动技能冷却，单位秒；倒计时结束进入 Playing 后才开始计时。",
+        },
+        "DT_HeroPath": {
+            "ResonanceCategories": "路径匹配的两个芯片类别；觉醒 1/2 张匹配芯片分别触发 M1/M2。",
+            "MilestoneEffects": "仅定义 M1 与 M2 的数据标识和说明；实际玩法由 HotUpdate 的英雄系统处理。",
+        },
+        "DT_UniversalChip": {
+            "Modifiers": "Lv1 通用芯片的直接静态规则修饰；注入器按 ChipId 稳定排序应用。",
+            "ConditionalModifiers": "可选的英雄/路径门槛修饰；满足 HeroId、PathId 和 MinimumPathLevel 时应用。",
         },
     }

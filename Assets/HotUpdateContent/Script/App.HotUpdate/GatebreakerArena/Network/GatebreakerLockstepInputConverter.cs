@@ -7,6 +7,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
     public static class GatebreakerLockstepInputConverter
     {
         public const ushort ServeButton = 1 << 0;
+        public const ushort AbilityButton = 1 << 1;
 
         public static LockstepInputFrame FromPlayerInputFrame(
             PlayerInputFrame frame,
@@ -14,7 +15,16 @@ namespace App.HotUpdate.GatebreakerArena.Network
             int frameIndex,
             uint inputSeq)
         {
-            ushort buttons = frame.ServePressed ? ServeButton : (ushort)0;
+            ushort buttons = 0;
+            if (frame.ServePressed)
+            {
+                buttons |= ServeButton;
+            }
+
+            if (frame.AbilityPressed)
+            {
+                buttons |= AbilityButton;
+            }
             return new LockstepInputFrame(
                 slotIndex,
                 frame.PlayerId,
@@ -32,7 +42,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 frame.PlayerId,
                 DequantizeSignedUnit(frame.MoveAxisQ),
                 (frame.Buttons & ServeButton) != 0,
-                new Vector2(DequantizeSignedUnit(frame.AimXQ), DequantizeSignedUnit(frame.AimYQ)));
+                new Vector2(DequantizeSignedUnit(frame.AimXQ), DequantizeSignedUnit(frame.AimYQ)),
+                (frame.Buttons & AbilityButton) != 0);
         }
 
         public static GatebreakerFrameInput ToGatebreakerFrameInput(LockstepInputFrame frame)
@@ -41,7 +52,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 frame.PlayerId,
                 DequantizeSignedUnit(frame.MoveAxisQ),
                 (frame.Buttons & ServeButton) != 0,
-                new Vector2(DequantizeSignedUnit(frame.AimXQ), DequantizeSignedUnit(frame.AimYQ)));
+                new Vector2(DequantizeSignedUnit(frame.AimXQ), DequantizeSignedUnit(frame.AimYQ)),
+                (frame.Buttons & AbilityButton) != 0);
         }
 
         public static GatebreakerFrameInput[] ToGatebreakerFrameInputs(LockstepFrameBundle bundle)

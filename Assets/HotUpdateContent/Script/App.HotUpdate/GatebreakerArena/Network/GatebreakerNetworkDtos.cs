@@ -133,6 +133,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public bool IsLoadingAcked { get; set; }
         public bool IsActive { get; set; }
         public bool IsAi { get; set; }
+        public string HeroId { get; set; } = string.Empty;
+        public string[] DeckChipIds { get; set; } = Array.Empty<string>();
     }
 
     public sealed class RoomReadyCommand

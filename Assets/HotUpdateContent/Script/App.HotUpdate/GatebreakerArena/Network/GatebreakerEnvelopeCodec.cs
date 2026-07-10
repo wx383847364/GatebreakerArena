@@ -35,7 +35,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
     public static class GatebreakerEnvelopeCodec
     {
-        public const ushort ProtocolVersion = 2;
+        public const ushort ProtocolVersion = 3;
         public const int MaxPayloadBytes = 4096;
         private const int HeaderSize = 28;
 
@@ -466,6 +466,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 writer.WriteBool(player.IsLoadingAcked);
                 writer.WriteBool(player.IsActive);
                 writer.WriteBool(player.IsAi);
+                writer.WriteString(player.HeroId);
+                WriteStringArray(writer, player.DeckChipIds);
             }
         }
 
@@ -488,6 +490,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     IsLoadingAcked = reader.ReadBool(),
                     IsActive = reader.ReadBool(),
                     IsAi = reader.ReadBool(),
+                    HeroId = reader.ReadString(),
+                    DeckChipIds = ReadStringArray(reader),
                 };
             }
 
@@ -599,6 +603,28 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 writer.WriteInt32(values[i]);
             }
+        }
+
+        private static void WriteStringArray(LittleEndianWriter writer, string[] values)
+        {
+            values = values ?? Array.Empty<string>();
+            writer.WriteInt32(values.Length);
+            for (int i = 0; i < values.Length; i++)
+            {
+                writer.WriteString(values[i]);
+            }
+        }
+
+        private static string[] ReadStringArray(LittleEndianReader reader)
+        {
+            int count = reader.ReadBoundedCount(8);
+            var values = new string[count];
+            for (int i = 0; i < values.Length; i++)
+            {
+                values[i] = reader.ReadString();
+            }
+
+            return values;
         }
 
         private static int[] ReadIntArray(LittleEndianReader reader)

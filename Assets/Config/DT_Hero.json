@@ -1,0 +1,26 @@
+[
+  {
+    "HeroId": "HERO_FROST_QUEEN",
+    "DisplayName": "冰雪女王",
+    "Description": "以寒气冻结对手，并通过共鸣强化冰封与反弹。",
+    "ActiveAbilityId": "ABILITY_FROST_BLIZZARD",
+    "ActiveAbilityCooldownSeconds": 12.0,
+    "PathIds": ["PATH_FROST_EXTREME", "PATH_FROST_CRYSTAL"]
+  },
+  {
+    "HeroId": "HERO_THORN_GUARDIAN",
+    "DisplayName": "荆棘守护者",
+    "Description": "被进球后积累防守优势，并可开启荆棘装甲反击。",
+    "ActiveAbilityId": "ABILITY_THORN_ARMOR",
+    "ActiveAbilityCooldownSeconds": 12.0,
+    "PathIds": ["PATH_THORN_BRISTLE", "PATH_THORN_GROWTH"]
+  },
+  {
+    "HeroId": "HERO_RADIANT_PALADIN",
+    "DisplayName": "辉光圣骑",
+    "Description": "通过光辉强化反弹，并用圣盾守住关键球门。",
+    "ActiveAbilityId": "ABILITY_RADIANT_SHIELD",
+    "ActiveAbilityCooldownSeconds": 12.0,
+    "PathIds": ["PATH_RADIANT_HOLY_LIGHT", "PATH_RADIANT_RAY"]
+  }
+]

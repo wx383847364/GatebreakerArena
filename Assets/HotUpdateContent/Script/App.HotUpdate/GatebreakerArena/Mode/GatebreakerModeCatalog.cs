@@ -13,6 +13,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         private readonly Dictionary<int, PlayerColorRuleDefinition> _playerColors;
         private readonly Dictionary<string, UniversalChipDefinition> _universalChips;
         private readonly Dictionary<string, SignatureChipDefinition> _signatureChips;
+        private readonly Dictionary<string, HeroDefinition> _heroes;
+        private readonly Dictionary<string, HeroPathDefinition> _heroPaths;
 
         public GatebreakerModeCatalog(
             IEnumerable<ModeRuleDefinition> modes,
@@ -22,6 +24,21 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             IEnumerable<PlayerColorRuleDefinition> playerColors,
             IEnumerable<UniversalChipDefinition> universalChips,
             IEnumerable<SignatureChipDefinition> signatureChips)
+            : this(modes, balls, aiRules, maps, playerColors, universalChips, signatureChips,
+                Array.Empty<HeroDefinition>(), Array.Empty<HeroPathDefinition>())
+        {
+        }
+
+        public GatebreakerModeCatalog(
+            IEnumerable<ModeRuleDefinition> modes,
+            IEnumerable<BallRuleDefinition> balls,
+            IEnumerable<AiRuleDefinition> aiRules,
+            IEnumerable<MapRuleDefinition> maps,
+            IEnumerable<PlayerColorRuleDefinition> playerColors,
+            IEnumerable<UniversalChipDefinition> universalChips,
+            IEnumerable<SignatureChipDefinition> signatureChips,
+            IEnumerable<HeroDefinition> heroes,
+            IEnumerable<HeroPathDefinition> heroPaths)
         {
             _modes = IndexBy(modes, item => item.ModeId);
             _balls = IndexBy(balls, item => item.BallTypeId);
@@ -30,6 +47,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             _playerColors = IndexBy(playerColors, item => item.PlayerId);
             _universalChips = IndexBy(universalChips, item => item.ChipId);
             _signatureChips = IndexBy(signatureChips, item => item.ChipId);
+            _heroes = IndexBy(heroes ?? Array.Empty<HeroDefinition>(), item => item.HeroId);
+            _heroPaths = IndexBy(heroPaths ?? Array.Empty<HeroPathDefinition>(), item => item.PathId);
         }
 
         public static GatebreakerModeCatalog CreateDefault()
@@ -124,16 +143,10 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     CreatePlayerColor(3, "Green", 0.24f, 0.86f, 0.34f),
                     CreatePlayerColor(4, "Yellow", 1.0f, 0.86f, 0.18f),
                 },
-                new[]
-                {
-                    CreateUniversalChip("STRIKE_POWER", "蓄能击", ChipCategory.Strike, ChipRarity.Common, "每一击蓄力, 下一次反弹将倾泻全部积蓄"),
-                    CreateUniversalChip("GUARD_LENGTH", "长板", ChipCategory.Guard, ChipRarity.Common, "铁板横展, 防线再无死角"),
-                    CreateUniversalChip("FLOW_SPEED", "疾驰", ChipCategory.Flow, ChipRarity.Common, "步若疾风, 挡板追上每一个球的轨迹"),
-                },
-                new[]
-                {
-                    CreateSignatureChip("SIG_FROST_DEEP_FREEZE_REFINED", "寒霜之触", "HERO_FROST_QUEEN", "PATH_FROST_DEEP_FREEZE", SignatureGrade.Refined, 2, "寒霜浸润每一次击球"),
-                });
+                CreateDefaultUniversalChips(),
+                Array.Empty<SignatureChipDefinition>(),
+                CreateDefaultHeroes(),
+                CreateDefaultHeroPaths());
         }
 
         public ModeRuleDefinition GetMode(string modeId)
@@ -185,8 +198,24 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 : throw new KeyNotFoundException($"Unknown signature chip: {chipId}");
         }
 
+        public HeroDefinition GetHero(string heroId)
+        {
+            return _heroes.TryGetValue(heroId, out HeroDefinition hero)
+                ? hero
+                : throw new KeyNotFoundException($"Unknown hero rule: {heroId}");
+        }
+
+        public HeroPathDefinition GetHeroPath(string pathId)
+        {
+            return _heroPaths.TryGetValue(pathId, out HeroPathDefinition path)
+                ? path
+                : throw new KeyNotFoundException($"Unknown hero path rule: {pathId}");
+        }
+
         public IReadOnlyDictionary<string, UniversalChipDefinition> AllUniversalChips => _universalChips;
         public IReadOnlyDictionary<string, SignatureChipDefinition> AllSignatureChips => _signatureChips;
+        public IReadOnlyDictionary<string, HeroDefinition> AllHeroes => _heroes;
+        public IReadOnlyDictionary<string, HeroPathDefinition> AllHeroPaths => _heroPaths;
 
         public EffectiveMatchRule BuildEffectiveRule(string modeId, string mapId)
         {
@@ -444,6 +473,60 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Modifiers = Array.Empty<UniversalChipModifierDefinition>(),
                 LinkedQuantumEvent = string.Empty,
                 IconPath = string.Empty,
+            };
+        }
+
+        private static IReadOnlyList<UniversalChipDefinition> CreateDefaultUniversalChips()
+        {
+            return new[]
+            {
+                CreateUniversalChip("STRIKE_POWER", "蓄能击", ChipCategory.Strike, ChipRarity.Common, "挡板反弹球速提高。"),
+                CreateUniversalChip("STRIKE_SERVE", "重发球", ChipCategory.Strike, ChipRarity.Common, "发球初速提高。"),
+                CreateUniversalChip("STRIKE_OVERCHARGE", "过载", ChipCategory.Strike, ChipRarity.Common, "提高球速上限。"),
+                CreateUniversalChip("GUARD_LENGTH", "长板", ChipCategory.Guard, ChipRarity.Common, "挡板长度提高。"),
+                CreateUniversalChip("GUARD_GOAL", "收缩门", ChipCategory.Guard, ChipRarity.Common, "球门缩小。"),
+                CreateUniversalChip("GUARD_BOUNCE", "弹性墙", ChipCategory.Guard, ChipRarity.Common, "敌球反弹减速。"),
+                CreateUniversalChip("FLOW_SPEED", "疾驰", ChipCategory.Flow, ChipRarity.Common, "挡板移速提高。"),
+                CreateUniversalChip("FLOW_AMMO", "快装填", ChipCategory.Flow, ChipRarity.Common, "发球冷却缩短。"),
+                CreateUniversalChip("FLOW_CAPACITY", "弹药库", ChipCategory.Flow, ChipRarity.Common, "最大弹药提高。"),
+                CreateUniversalChip("CHAOS_SPIN", "旋球", ChipCategory.Chaos, ChipRarity.Common, "墙弹确定性偏转。"),
+                CreateUniversalChip("CHAOS_RICOCHET", "连锁弹射", ChipCategory.Chaos, ChipRarity.Common, "固定碰撞计数强化。"),
+                CreateUniversalChip("CHAOS_DISRUPT", "扰乱", ChipCategory.Chaos, ChipRarity.Common, "命中敌方挡板后减速。"),
+            };
+        }
+
+        private static IReadOnlyList<HeroDefinition> CreateDefaultHeroes()
+        {
+            return new[]
+            {
+                new HeroDefinition { HeroId = "HERO_FROST_QUEEN", DisplayName = "冰雪女王", ActiveAbilityId = "ABILITY_FROST_BLIZZARD", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_FROST_EXTREME", "PATH_FROST_CRYSTAL" } },
+                new HeroDefinition { HeroId = "HERO_THORN_GUARDIAN", DisplayName = "荆棘守护者", ActiveAbilityId = "ABILITY_THORN_ARMOR", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_THORN_BRISTLE", "PATH_THORN_GROWTH" } },
+                new HeroDefinition { HeroId = "HERO_RADIANT_PALADIN", DisplayName = "辉光圣骑", ActiveAbilityId = "ABILITY_RADIANT_SHIELD", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_RADIANT_HOLY_LIGHT", "PATH_RADIANT_RAY" } },
+            };
+        }
+
+        private static IReadOnlyList<HeroPathDefinition> CreateDefaultHeroPaths()
+        {
+            return new[]
+            {
+                CreateHeroPath("PATH_FROST_EXTREME", "HERO_FROST_QUEEN", "极寒", ChipCategory.Strike, ChipCategory.Guard),
+                CreateHeroPath("PATH_FROST_CRYSTAL", "HERO_FROST_QUEEN", "冰晶", ChipCategory.Guard, ChipCategory.Flow),
+                CreateHeroPath("PATH_THORN_BRISTLE", "HERO_THORN_GUARDIAN", "荆棘", ChipCategory.Strike, ChipCategory.Guard),
+                CreateHeroPath("PATH_THORN_GROWTH", "HERO_THORN_GUARDIAN", "生长", ChipCategory.Guard, ChipCategory.Flow),
+                CreateHeroPath("PATH_RADIANT_HOLY_LIGHT", "HERO_RADIANT_PALADIN", "圣光", ChipCategory.Strike, ChipCategory.Guard),
+                CreateHeroPath("PATH_RADIANT_RAY", "HERO_RADIANT_PALADIN", "光芒", ChipCategory.Strike, ChipCategory.Flow),
+            };
+        }
+
+        private static HeroPathDefinition CreateHeroPath(string pathId, string heroId, string displayName, ChipCategory first, ChipCategory second)
+        {
+            return new HeroPathDefinition
+            {
+                PathId = pathId,
+                HeroId = heroId,
+                DisplayName = displayName,
+                ResonanceCategories = new[] { first, second },
+                MilestoneEffects = Array.Empty<HeroPathEffectDefinition>(),
             };
         }
 

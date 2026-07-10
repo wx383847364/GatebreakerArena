@@ -249,8 +249,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _sceneBindingService?.PreviewMoveAxis(screenMoveAxis);
             float moveAxis = screenMoveAxis * GetLocalMoveAxisSign();
             bool servePressed = Input.GetKeyDown(KeyCode.Space) || _guiServePressed;
+            bool abilityPressed = Input.GetKeyDown(KeyCode.E);
             _guiServePressed = false;
-            var frame = new PlayerInputFrame(_localPlayerId, moveAxis, servePressed, BuildServeAimDirection(moveAxis));
+            var frame = new PlayerInputFrame(_localPlayerId, moveAxis, servePressed, BuildServeAimDirection(moveAxis), abilityPressed);
             if (IsLanPlaying())
             {
                 SubmitLanInputAtFixedRate(frame);

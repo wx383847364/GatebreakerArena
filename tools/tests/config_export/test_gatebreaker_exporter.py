@@ -46,6 +46,42 @@ def _mode_row(**overrides: object) -> dict[str, object]:
 
 
 class GatebreakerConfigExporterTests(unittest.TestCase):
+    def test_v1_hero_and_chip_sources_export_as_the_only_v1_tables(self) -> None:
+        repo_root = Path(__file__).resolve().parents[3]
+        config_root = repo_root / "Assets" / "Config"
+        result = validate_all(
+            repo_root,
+            config_root,
+            config_root / "json",
+            repo_root / "Assets" / "HotUpdateContent" / "Config",
+        )
+
+        self.assertTrue(result.success, "\n".join(result.errors))
+        self.assertEqual(3, len(result.payload["DT_Hero"]))
+        self.assertEqual(6, len(result.payload["DT_HeroPath"]))
+        self.assertEqual(12, len(result.payload["DT_UniversalChip"]))
+        self.assertNotIn("DT_SignatureChip", result.payload)
+
+    def test_v1_chip_source_rejects_missing_or_non_v1_chip_ids(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gatebreaker_export_chip_invalid_") as temp_dir:
+            repo_root = Path(temp_dir) / "GatebreakerArena"
+            config_root = repo_root / "Assets" / "Config"
+            json_root = config_root / "json"
+            binary_root = repo_root / "Assets" / "HotUpdateContent" / "Config"
+            config_root.mkdir(parents=True)
+
+            source_root = Path(__file__).resolve().parents[3] / "Assets" / "Config"
+            for filename in ("DT_Hero.json", "DT_HeroPath.json", "DT_UniversalChip.json"):
+                rows = json.loads((source_root / filename).read_text(encoding="utf-8"))
+                if filename == "DT_UniversalChip.json":
+                    rows.pop()
+                (config_root / filename).write_text(json.dumps(rows), encoding="utf-8")
+
+            result = validate_all(repo_root, config_root, json_root, binary_root)
+
+            self.assertFalse(result.success)
+            self.assertTrue(any("exactly the 12 frozen V1" in error for error in result.errors))
+
     def test_defaults_match_gdd_v03_samples(self) -> None:
         with tempfile.TemporaryDirectory(prefix="gatebreaker_export_defaults_") as temp_dir:
             repo_root = Path(temp_dir) / "GatebreakerArena"

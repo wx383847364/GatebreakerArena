@@ -31,6 +31,181 @@
       "WallBounceFactor": 1.0
     }
   ],
+  "DT_Hero": [
+    {
+      "ActiveAbilityCooldownSeconds": 12.0,
+      "ActiveAbilityId": "ABILITY_FROST_BLIZZARD",
+      "Description": "以寒气冻结对手，并通过共鸣强化冰封与反弹。",
+      "DisplayName": "冰雪女王",
+      "HeroId": "HERO_FROST_QUEEN",
+      "PathIds": [
+        "PATH_FROST_EXTREME",
+        "PATH_FROST_CRYSTAL"
+      ]
+    },
+    {
+      "ActiveAbilityCooldownSeconds": 12.0,
+      "ActiveAbilityId": "ABILITY_THORN_ARMOR",
+      "Description": "被进球后积累防守优势，并可开启荆棘装甲反击。",
+      "DisplayName": "荆棘守护者",
+      "HeroId": "HERO_THORN_GUARDIAN",
+      "PathIds": [
+        "PATH_THORN_BRISTLE",
+        "PATH_THORN_GROWTH"
+      ]
+    },
+    {
+      "ActiveAbilityCooldownSeconds": 12.0,
+      "ActiveAbilityId": "ABILITY_RADIANT_SHIELD",
+      "Description": "通过光辉强化反弹，并用圣盾守住关键球门。",
+      "DisplayName": "辉光圣骑",
+      "HeroId": "HERO_RADIANT_PALADIN",
+      "PathIds": [
+        "PATH_RADIANT_HOLY_LIGHT",
+        "PATH_RADIANT_RAY"
+      ]
+    }
+  ],
+  "DT_HeroPath": [
+    {
+      "DisplayName": "极寒",
+      "HeroId": "HERO_FROST_QUEEN",
+      "MilestoneEffects": [
+        {
+          "Description": "寒气累积与冰冻效果强化。",
+          "EffectId": "FROST_EXTREME_M1",
+          "Modifiers": [],
+          "PathLevel": 1
+        },
+        {
+          "Description": "冰冻时额外冻结敌方球与挡板。",
+          "EffectId": "FROST_EXTREME_M2",
+          "Modifiers": [],
+          "PathLevel": 2
+        }
+      ],
+      "PathId": "PATH_FROST_EXTREME",
+      "ResonanceCategories": [
+        "Strike",
+        "Guard"
+      ]
+    },
+    {
+      "DisplayName": "冰晶",
+      "HeroId": "HERO_FROST_QUEEN",
+      "MilestoneEffects": [
+        {
+          "Description": "冰晶反弹效果强化。",
+          "EffectId": "FROST_CRYSTAL_M1",
+          "Modifiers": [],
+          "PathLevel": 1
+        },
+        {
+          "Description": "命中敌方挡板时为己方球叠加速度并偏向敌门。",
+          "EffectId": "FROST_CRYSTAL_M2",
+          "Modifiers": [],
+          "PathLevel": 2
+        }
+      ],
+      "PathId": "PATH_FROST_CRYSTAL",
+      "ResonanceCategories": [
+        "Guard",
+        "Flow"
+      ]
+    },
+    {
+      "DisplayName": "荆棘",
+      "HeroId": "HERO_THORN_GUARDIAN",
+      "MilestoneEffects": [
+        {
+          "Description": "荆棘反击与装甲效果强化。",
+          "EffectId": "THORN_BRISTLE_M1",
+          "Modifiers": [],
+          "PathLevel": 1
+        },
+        {
+          "Description": "被进球时削减进攻方弹药并减速，装甲反弹增强。",
+          "EffectId": "THORN_BRISTLE_M2",
+          "Modifiers": [],
+          "PathLevel": 2
+        }
+      ],
+      "PathId": "PATH_THORN_BRISTLE",
+      "ResonanceCategories": [
+        "Strike",
+        "Guard"
+      ]
+    },
+    {
+      "DisplayName": "生长",
+      "HeroId": "HERO_THORN_GUARDIAN",
+      "MilestoneEffects": [
+        {
+          "Description": "挡板生长效果强化。",
+          "EffectId": "THORN_GROWTH_M1",
+          "Modifiers": [],
+          "PathLevel": 1
+        },
+        {
+          "Description": "被进球和装甲期间提升己方挡板长度。",
+          "EffectId": "THORN_GROWTH_M2",
+          "Modifiers": [],
+          "PathLevel": 2
+        }
+      ],
+      "PathId": "PATH_THORN_GROWTH",
+      "ResonanceCategories": [
+        "Guard",
+        "Flow"
+      ]
+    },
+    {
+      "DisplayName": "圣光",
+      "HeroId": "HERO_RADIANT_PALADIN",
+      "MilestoneEffects": [
+        {
+          "Description": "光辉反弹与圣盾效果强化。",
+          "EffectId": "RADIANT_HOLY_LIGHT_M1",
+          "Modifiers": [],
+          "PathLevel": 1
+        },
+        {
+          "Description": "满层反弹与圣盾期间反弹速度大幅提升。",
+          "EffectId": "RADIANT_HOLY_LIGHT_M2",
+          "Modifiers": [],
+          "PathLevel": 2
+        }
+      ],
+      "PathId": "PATH_RADIANT_HOLY_LIGHT",
+      "ResonanceCategories": [
+        "Strike",
+        "Guard"
+      ]
+    },
+    {
+      "DisplayName": "光芒",
+      "HeroId": "HERO_RADIANT_PALADIN",
+      "MilestoneEffects": [
+        {
+          "Description": "光辉速度与爆发效果强化。",
+          "EffectId": "RADIANT_RAY_M1",
+          "Modifiers": [],
+          "PathLevel": 1
+        },
+        {
+          "Description": "光辉提升球速，爆发后强化己方球并提升挡板移速。",
+          "EffectId": "RADIANT_RAY_M2",
+          "Modifiers": [],
+          "PathLevel": 2
+        }
+      ],
+      "PathId": "PATH_RADIANT_RAY",
+      "ResonanceCategories": [
+        "Strike",
+        "Flow"
+      ]
+    }
+  ],
   "DT_MapRule": [
     {
       "ArenaHalfHeight": 2.456,
@@ -646,10 +821,269 @@
       "Red": 1.0
     }
   ],
+  "DT_UniversalChip": [
+    {
+      "Category": "Strike",
+      "ChipId": "STRIKE_POWER",
+      "ConditionalModifiers": [],
+      "Description": "挡板反弹球速提高 20%。",
+      "DisplayName": "蓄能击",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "PaddleBounceSpeedMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 1.2,
+          "ValueLv2": 1.2,
+          "ValueLv3": 1.2
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Strike",
+      "ChipId": "STRIKE_SERVE",
+      "ConditionalModifiers": [],
+      "Description": "发球初速提高 15%。",
+      "DisplayName": "重发球",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "ServeInitialSpeedMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 1.15,
+          "ValueLv2": 1.15,
+          "ValueLv3": 1.15
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Strike",
+      "ChipId": "STRIKE_OVERCHARGE",
+      "ConditionalModifiers": [],
+      "Description": "己方球速上限提高 10%，挡板长度降低 10%。",
+      "DisplayName": "过载",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "BallMaxSpeedMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 1.1,
+          "ValueLv2": 1.1,
+          "ValueLv3": 1.1
+        },
+        {
+          "ModifierType": "PaddleLengthMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 0.9,
+          "ValueLv2": 0.9,
+          "ValueLv3": 0.9
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Guard",
+      "ChipId": "GUARD_LENGTH",
+      "ConditionalModifiers": [],
+      "Description": "挡板长度提高 15%。",
+      "DisplayName": "长板",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "PaddleLengthMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 1.15,
+          "ValueLv2": 1.15,
+          "ValueLv3": 1.15
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Guard",
+      "ChipId": "GUARD_GOAL",
+      "ConditionalModifiers": [],
+      "Description": "己方球门半长降低 10%。",
+      "DisplayName": "收缩门",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "GoalHalfLengthMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 0.9,
+          "ValueLv2": 0.9,
+          "ValueLv3": 0.9
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Guard",
+      "ChipId": "GUARD_BOUNCE",
+      "ConditionalModifiers": [],
+      "Description": "敌方球碰己方墙时速度降低 10%。",
+      "DisplayName": "弹性墙",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "EnemyWallBounceSpeedMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 0.9,
+          "ValueLv2": 0.9,
+          "ValueLv3": 0.9
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Flow",
+      "ChipId": "FLOW_SPEED",
+      "ConditionalModifiers": [],
+      "Description": "挡板移动速度提高 15%。",
+      "DisplayName": "疾驰",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "PaddleMoveSpeedMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 1.15,
+          "ValueLv2": 1.15,
+          "ValueLv3": 1.15
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Flow",
+      "ChipId": "FLOW_AMMO",
+      "ConditionalModifiers": [],
+      "Description": "发球冷却缩短约 16.7%。",
+      "DisplayName": "快装填",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "ServeCooldownMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 0.8333333,
+          "ValueLv2": 0.8333333,
+          "ValueLv3": 0.8333333
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Flow",
+      "ChipId": "FLOW_CAPACITY",
+      "ConditionalModifiers": [],
+      "Description": "最大发球弹药 +1。",
+      "DisplayName": "弹药库",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "ServeAmmoCapacity",
+          "Op": "Add",
+          "ValueLv1": 1,
+          "ValueLv2": 1,
+          "ValueLv3": 1
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Chaos",
+      "ChipId": "CHAOS_SPIN",
+      "ConditionalModifiers": [],
+      "Description": "己方球碰墙后获得固定的 3° 确定性偏转。",
+      "DisplayName": "旋球",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "WallBounceDeflectionDegrees",
+          "Op": "Add",
+          "ValueLv1": 3,
+          "ValueLv2": 3,
+          "ValueLv3": 3
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Chaos",
+      "ChipId": "CHAOS_RICOCHET",
+      "ConditionalModifiers": [],
+      "Description": "每 3 次己方挡板反弹后，下一次反弹速度提高 10%。",
+      "DisplayName": "连锁弹射",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "RicochetRequiredCollisionCount",
+          "Op": "Override",
+          "ValueLv1": 3,
+          "ValueLv2": 3,
+          "ValueLv3": 3
+        },
+        {
+          "ModifierType": "RicochetSpeedMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 1.1,
+          "ValueLv2": 1.1,
+          "ValueLv3": 1.1
+        }
+      ],
+      "Rarity": "Common"
+    },
+    {
+      "Category": "Chaos",
+      "ChipId": "CHAOS_DISRUPT",
+      "ConditionalModifiers": [],
+      "Description": "己方球命中敌方挡板后使其移速降低 15%，持续 1.5 秒。",
+      "DisplayName": "扰乱",
+      "IconPath": "",
+      "LinkedQuantumEvent": "",
+      "Modifiers": [
+        {
+          "ModifierType": "EnemyPaddleMoveSpeedMultiplier",
+          "Op": "Multiply",
+          "ValueLv1": 0.85,
+          "ValueLv2": 0.85,
+          "ValueLv3": 0.85
+        },
+        {
+          "ModifierType": "EnemyPaddleSlowDurationSeconds",
+          "Op": "Override",
+          "ValueLv1": 1.5,
+          "ValueLv2": 1.5,
+          "ValueLv3": 1.5
+        }
+      ],
+      "Rarity": "Common"
+    }
+  ],
   "Version": 1,
   "_FieldComments": {
     "DT_BallRule": {
       "BallContactRadius": "球体碰撞半径，单位为场景距离；用于球与边界、球门和挡板碰撞判定。"
+    },
+    "DT_Hero": {
+      "ActiveAbilityCooldownSeconds": "主动技能冷却，单位秒；倒计时结束进入 Playing 后才开始计时。",
+      "PathIds": "V1 每名英雄固定关联两条共鸣路径；对局开始时仅使用这里定义的路径。"
+    },
+    "DT_HeroPath": {
+      "MilestoneEffects": "仅定义 M1 与 M2 的数据标识和说明；实际玩法由 HotUpdate 的英雄系统处理。",
+      "ResonanceCategories": "路径匹配的两个芯片类别；觉醒 1/2 张匹配芯片分别触发 M1/M2。"
     },
     "DT_MapRule": {
       "BoundaryPoints": "场地边界点，按顺时针或逆时针顺序填写；运行时用相邻点生成碰撞边。",
@@ -661,6 +1095,10 @@
       "BallSpeedByTime": "球移动速度时间表，二维数组格式为 [[时间秒, 速度], ...]；例如 [[15,10],[30,15],[45,20]] 表示比赛进行到 15 秒、30 秒、45 秒时球速分别调整为 10、15、20。",
       "MatchDuration": "比赛时间，单位秒；表示常规比赛从开局到时间结束的总时长，最终以策划填写的数据为准。",
       "TuningValues": "弹板反弹调参，包含 HitOffsetInfluenceValue、PaddleVelocityInfluenceValue、MinimumOutwardShareValue，运行时按整数档位换算为实际系数。"
+    },
+    "DT_UniversalChip": {
+      "ConditionalModifiers": "可选的英雄/路径门槛修饰；满足 HeroId、PathId 和 MinimumPathLevel 时应用。",
+      "Modifiers": "Lv1 通用芯片的直接静态规则修饰；注入器按 ChipId 稳定排序应用。"
     }
   }
 }

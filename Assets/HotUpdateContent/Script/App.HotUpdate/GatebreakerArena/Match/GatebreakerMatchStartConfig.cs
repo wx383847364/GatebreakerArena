@@ -28,5 +28,9 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public int SideOrder { get; set; } = -1;
         public int PlayerId { get; set; }
         public bool IsAi { get; set; }
+        // These selections are part of the deterministic match contract. Runtime systems
+        // copy them into HeroRuntimeState before any hero or chip rules are applied.
+        public string HeroId { get; set; } = string.Empty;
+        public IReadOnlyList<string> DeckChipIds { get; set; } = new string[0];
     }
 }

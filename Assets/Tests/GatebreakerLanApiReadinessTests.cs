@@ -365,7 +365,7 @@ namespace Gatebreaker.Tests
             RoomSnapshot decoded = GatebreakerPayloadCodec.DecodeRoomSnapshot(
                 GatebreakerPayloadCodec.EncodeRoomSnapshot(snapshot));
 
-            Assert.AreEqual(2, GatebreakerEnvelopeCodec.ProtocolVersion);
+            Assert.AreEqual(3, GatebreakerEnvelopeCodec.ProtocolVersion);
             Assert.AreEqual(2, decoded.Players.Length);
             RoomPlayerSnapshot ai = decoded.Players.Single(player => player.PlayerId == 3);
             Assert.IsTrue(ai.IsAi);

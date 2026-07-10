@@ -82,7 +82,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     ReadArray(root, "DT_MapRule", ReadMap),
                     ReadArray(root, "DT_PlayerColorRule", ReadPlayerColor),
                     ReadArray(root, "DT_UniversalChip", ReadUniversalChip),
-                    ReadArray(root, "DT_SignatureChip", ReadSignatureChip));
+                    ReadOptionalArray(root, "DT_SignatureChip", ReadSignatureChip),
+                    ReadOptionalArray(root, "DT_Hero", ReadHero),
+                    ReadOptionalArray(root, "DT_HeroPath", ReadHeroPath));
 
                 return GatebreakerConfigLoadResult.Success(catalog, source, ReadOptionalInt(root, "Version"));
             }
@@ -255,6 +257,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Rarity = ReadEnum<ChipRarity>(item, "Rarity"),
                 Description = ReadOptionalString(item, "Description"),
                 Modifiers = ReadOptionalArray(item, "Modifiers", ReadUniversalChipModifier),
+                ConditionalModifiers = ReadOptionalArray(item, "ConditionalModifiers", ReadUniversalChipConditionalModifier),
                 LinkedQuantumEvent = ReadOptionalString(item, "LinkedQuantumEvent"),
                 IconPath = ReadOptionalString(item, "IconPath"),
             };
@@ -269,6 +272,55 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 ValueLv1 = ReadFloat(item, "ValueLv1"),
                 ValueLv2 = ReadFloat(item, "ValueLv2"),
                 ValueLv3 = ReadFloat(item, "ValueLv3"),
+            };
+        }
+
+        private static UniversalChipConditionalModifierDefinition ReadUniversalChipConditionalModifier(Dictionary<string, object> item)
+        {
+            return new UniversalChipConditionalModifierDefinition
+            {
+                HeroId = ReadOptionalString(item, "HeroId"),
+                PathId = ReadOptionalString(item, "PathId"),
+                MinimumPathLevel = ReadOptionalInt(item, "MinimumPathLevel") ?? 0,
+                ModifierType = ReadString(item, "ModifierType"),
+                Op = ReadEnum<ModifierOp>(item, "Op"),
+                Value = ReadFloat(item, "Value"),
+            };
+        }
+
+        private static HeroDefinition ReadHero(Dictionary<string, object> item)
+        {
+            return new HeroDefinition
+            {
+                HeroId = ReadString(item, "HeroId"),
+                DisplayName = ReadOptionalString(item, "DisplayName"),
+                Description = ReadOptionalString(item, "Description"),
+                ActiveAbilityId = ReadOptionalString(item, "ActiveAbilityId"),
+                ActiveAbilityCooldownSeconds = ReadOptionalFloat(item, "ActiveAbilityCooldownSeconds") ?? 0f,
+                PathIds = ReadOptionalStringList(item, "PathIds"),
+            };
+        }
+
+        private static HeroPathDefinition ReadHeroPath(Dictionary<string, object> item)
+        {
+            return new HeroPathDefinition
+            {
+                PathId = ReadString(item, "PathId"),
+                HeroId = ReadString(item, "HeroId"),
+                DisplayName = ReadOptionalString(item, "DisplayName"),
+                ResonanceCategories = ReadOptionalEnumList<ChipCategory>(item, "ResonanceCategories"),
+                MilestoneEffects = ReadOptionalArray(item, "MilestoneEffects", ReadHeroPathEffect),
+            };
+        }
+
+        private static HeroPathEffectDefinition ReadHeroPathEffect(Dictionary<string, object> item)
+        {
+            return new HeroPathEffectDefinition
+            {
+                PathLevel = ReadInt(item, "PathLevel"),
+                EffectId = ReadOptionalString(item, "EffectId"),
+                Description = ReadOptionalString(item, "Description"),
+                Modifiers = ReadOptionalArray(item, "Modifiers", ReadUniversalChipModifier),
             };
         }
 
@@ -599,6 +651,72 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 }
 
                 throw new FormatException($"'{key}' item {i} must be an integer.");
+            }
+
+            return result;
+        }
+
+        private static IReadOnlyList<string> ReadOptionalStringList(Dictionary<string, object> item, string key)
+        {
+            if (!item.TryGetValue(key, out object value) || value == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            if (!(value is List<object> array))
+            {
+                throw new FormatException($"'{key}' must be an array.");
+            }
+
+            var result = new List<string>(array.Count);
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (!(array[i] is string text))
+                {
+                    throw new FormatException($"'{key}' item {i} must be a string.");
+                }
+
+                result.Add(text);
+            }
+
+            return result;
+        }
+
+        private static IReadOnlyList<T> ReadOptionalEnumList<T>(Dictionary<string, object> item, string key) where T : struct
+        {
+            if (!item.TryGetValue(key, out object value) || value == null)
+            {
+                return Array.Empty<T>();
+            }
+
+            if (!(value is List<object> array))
+            {
+                throw new FormatException($"'{key}' must be an array.");
+            }
+
+            var result = new List<T>(array.Count);
+            for (int i = 0; i < array.Count; i++)
+            {
+                object element = array[i];
+                if (element is string text && Enum.TryParse(text, true, out T parsed))
+                {
+                    result.Add(parsed);
+                    continue;
+                }
+
+                if (element is string numberText && int.TryParse(numberText, NumberStyles.Integer, CultureInfo.InvariantCulture, out int numericText))
+                {
+                    result.Add((T)Enum.ToObject(typeof(T), numericText));
+                    continue;
+                }
+
+                if (element is double number)
+                {
+                    result.Add((T)Enum.ToObject(typeof(T), Convert.ToInt32(number)));
+                    continue;
+                }
+
+                throw new FormatException($"'{key}' item {i} must be a valid {typeof(T).Name} name or value.");
             }
 
             return result;

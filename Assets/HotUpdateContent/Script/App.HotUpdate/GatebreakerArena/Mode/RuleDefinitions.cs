@@ -170,6 +170,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public ChipRarity Rarity { get; set; }
         public string Description { get; set; }
         public IReadOnlyList<UniversalChipModifierDefinition> Modifiers { get; set; }
+        public IReadOnlyList<UniversalChipConditionalModifierDefinition> ConditionalModifiers { get; set; }
         public string LinkedQuantumEvent { get; set; }
         public string IconPath { get; set; }
     }
@@ -189,5 +190,77 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public string UpgradesTo { get; set; }
         public int UpgradeCost { get; set; }
         public string IconPath { get; set; }
+    }
+
+    // V1 hero contracts. These are data-only definitions; gameplay application belongs
+    // to the Hero/Chip systems and must not be added to the catalog or UI layer.
+    public sealed class HeroDefinition
+    {
+        public string HeroId { get; set; }
+        public string DisplayName { get; set; }
+        public string Description { get; set; }
+        public string ActiveAbilityId { get; set; }
+        public float ActiveAbilityCooldownSeconds { get; set; }
+        public IReadOnlyList<string> PathIds { get; set; }
+    }
+
+    public sealed class HeroPathDefinition
+    {
+        public string PathId { get; set; }
+        public string HeroId { get; set; }
+        public string DisplayName { get; set; }
+        public IReadOnlyList<ChipCategory> ResonanceCategories { get; set; }
+        public IReadOnlyList<HeroPathEffectDefinition> MilestoneEffects { get; set; }
+    }
+
+    public sealed class HeroPathEffectDefinition
+    {
+        public int PathLevel { get; set; }
+        public string EffectId { get; set; }
+        public string Description { get; set; }
+        public IReadOnlyList<UniversalChipModifierDefinition> Modifiers { get; set; }
+    }
+
+    public sealed class UniversalChipConditionalModifierDefinition
+    {
+        public string HeroId { get; set; }
+        public string PathId { get; set; }
+        public int MinimumPathLevel { get; set; }
+        public string ModifierType { get; set; }
+        public ModifierOp Op { get; set; }
+        public float Value { get; set; }
+    }
+
+    public enum HeroTemporaryStatusType
+    {
+        None = 0,
+        Frozen = 1,
+        Slowed = 2,
+        Shielded = 3,
+        Armored = 4,
+        SpeedBoosted = 5,
+    }
+
+    public sealed class HeroPathRuntimeState
+    {
+        public string PathId { get; set; } = string.Empty;
+        public int Level { get; set; }
+    }
+
+    public sealed class HeroTemporaryStatusState
+    {
+        public HeroTemporaryStatusType StatusType { get; set; }
+        public int RemainingFrames { get; set; }
+        public float Magnitude { get; set; }
+    }
+
+    public sealed class HeroRuntimeState
+    {
+        public string HeroId { get; set; } = string.Empty;
+        public IReadOnlyList<string> DeckChipIds { get; set; } = new string[0];
+        public IReadOnlyList<string> ActiveChipIds { get; set; } = new string[0];
+        public IReadOnlyList<HeroPathRuntimeState> PathStates { get; set; } = new HeroPathRuntimeState[0];
+        public int AbilityCooldownRemainingFrames { get; set; }
+        public IReadOnlyList<HeroTemporaryStatusState> TemporaryStatuses { get; set; } = new HeroTemporaryStatusState[0];
     }
 }

@@ -1,0 +1,62 @@
+[
+  {
+    "PathId": "PATH_FROST_EXTREME",
+    "HeroId": "HERO_FROST_QUEEN",
+    "DisplayName": "极寒",
+    "ResonanceCategories": ["Strike", "Guard"],
+    "MilestoneEffects": [
+      {"PathLevel": 1, "EffectId": "FROST_EXTREME_M1", "Description": "寒气累积与冰冻效果强化。", "Modifiers": []},
+      {"PathLevel": 2, "EffectId": "FROST_EXTREME_M2", "Description": "冰冻时额外冻结敌方球与挡板。", "Modifiers": []}
+    ]
+  },
+  {
+    "PathId": "PATH_FROST_CRYSTAL",
+    "HeroId": "HERO_FROST_QUEEN",
+    "DisplayName": "冰晶",
+    "ResonanceCategories": ["Guard", "Flow"],
+    "MilestoneEffects": [
+      {"PathLevel": 1, "EffectId": "FROST_CRYSTAL_M1", "Description": "冰晶反弹效果强化。", "Modifiers": []},
+      {"PathLevel": 2, "EffectId": "FROST_CRYSTAL_M2", "Description": "命中敌方挡板时为己方球叠加速度并偏向敌门。", "Modifiers": []}
+    ]
+  },
+  {
+    "PathId": "PATH_THORN_BRISTLE",
+    "HeroId": "HERO_THORN_GUARDIAN",
+    "DisplayName": "荆棘",
+    "ResonanceCategories": ["Strike", "Guard"],
+    "MilestoneEffects": [
+      {"PathLevel": 1, "EffectId": "THORN_BRISTLE_M1", "Description": "荆棘反击与装甲效果强化。", "Modifiers": []},
+      {"PathLevel": 2, "EffectId": "THORN_BRISTLE_M2", "Description": "被进球时削减进攻方弹药并减速，装甲反弹增强。", "Modifiers": []}
+    ]
+  },
+  {
+    "PathId": "PATH_THORN_GROWTH",
+    "HeroId": "HERO_THORN_GUARDIAN",
+    "DisplayName": "生长",
+    "ResonanceCategories": ["Guard", "Flow"],
+    "MilestoneEffects": [
+      {"PathLevel": 1, "EffectId": "THORN_GROWTH_M1", "Description": "挡板生长效果强化。", "Modifiers": []},
+      {"PathLevel": 2, "EffectId": "THORN_GROWTH_M2", "Description": "被进球和装甲期间提升己方挡板长度。", "Modifiers": []}
+    ]
+  },
+  {
+    "PathId": "PATH_RADIANT_HOLY_LIGHT",
+    "HeroId": "HERO_RADIANT_PALADIN",
+    "DisplayName": "圣光",
+    "ResonanceCategories": ["Strike", "Guard"],
+    "MilestoneEffects": [
+      {"PathLevel": 1, "EffectId": "RADIANT_HOLY_LIGHT_M1", "Description": "光辉反弹与圣盾效果强化。", "Modifiers": []},
+      {"PathLevel": 2, "EffectId": "RADIANT_HOLY_LIGHT_M2", "Description": "满层反弹与圣盾期间反弹速度大幅提升。", "Modifiers": []}
+    ]
+  },
+  {
+    "PathId": "PATH_RADIANT_RAY",
+    "HeroId": "HERO_RADIANT_PALADIN",
+    "DisplayName": "光芒",
+    "ResonanceCategories": ["Strike", "Flow"],
+    "MilestoneEffects": [
+      {"PathLevel": 1, "EffectId": "RADIANT_RAY_M1", "Description": "光辉速度与爆发效果强化。", "Modifiers": []},
+      {"PathLevel": 2, "EffectId": "RADIANT_RAY_M2", "Description": "光辉提升球速，爆发后强化己方球并提升挡板移速。", "Modifiers": []}
+    ]
+  }
+]

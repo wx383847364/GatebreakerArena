@@ -1003,6 +1003,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     IsLoadingAcked = player.IsLoadingAcked,
                     IsActive = player.IsActive,
                     IsAi = player.IsAi,
+                    HeroId = player.HeroId,
+                    DeckChipIds = player.DeckChipIds ?? Array.Empty<string>(),
                 });
             }
 
@@ -1832,6 +1834,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             public bool IsLoadingAcked { get; set; }
             public bool IsActive { get; set; }
             public bool IsAi { get; set; }
+            public string HeroId { get; set; } = string.Empty;
+            public string[] DeckChipIds { get; set; } = Array.Empty<string>();
             public object Endpoint { get; set; }
             public object ConnectionId { get; set; }
 
@@ -1850,6 +1854,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     IsLoadingAcked = IsLoadingAcked,
                     IsActive = IsActive,
                     IsAi = IsAi,
+                    HeroId = HeroId,
+                    DeckChipIds = DeckChipIds ?? Array.Empty<string>(),
                 };
             }
         }
@@ -2199,6 +2205,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     SideOrder = player.SideOrder,
                     PlayerId = player.PlayerId,
                     IsAi = player.IsAi,
+                    HeroId = player.HeroId,
+                    DeckChipIds = player.DeckChipIds,
                 }).ToArray(),
                 LocalPlayerId = localPlayerId,
                 ConfigHash = "LAN_DEFAULT",
