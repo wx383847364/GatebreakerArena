@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gatebreaker Arena - 界面交互原型 v0.1</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#080b10;
+  --panel:#111821;
+  --panel-2:#17212c;
+  --panel-3:#1d2a37;
+  --line:#2b3a49;
+  --line-2:#3c5061;
+  --text:#edf4f8;
+  --muted:#90a0ad;
+  --faint:#62717d;
+  --accent:#63d2ff;
+  --danger:#ff5f73;
+  --ok:#7ee787;
+  --warn:#ffd166;
+  --attack:#ff735f;
+  --guard:#5cb7ff;
+  --flow:#77dc8a;
+  --frost:#8ddcff;
+  --mech:#f3c55b;
+  --radiant:#f6e27a;
+  --shadow:0 16px 40px rgba(0,0,0,.34);
+}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(99,210,255,.12),transparent 34rem),
+    radial-gradient(circle at 88% 12%,rgba(246,226,122,.08),transparent 28rem),
+    linear-gradient(180deg,#080b10,#0b1017 38%,#080b10);
+  color:var(--text);
+  font-family:"Segoe UI","Microsoft YaHei",Arial,sans-serif;
+  letter-spacing:0;
+}
+button,input,select{font:inherit}
+button{
+  border:1px solid var(--line-2);
+  background:var(--panel-2);
+  color:var(--text);
+  min-height:38px;
+  padding:0 14px;
+  border-radius:7px;
+  cursor:pointer;
+}
+button:hover{border-color:var(--accent);background:#1c2b38}
+button.primary{background:#1f5f7a;border-color:#58c5ec}
+button.ghost{background:transparent}
+button:disabled{opacity:.42;cursor:not-allowed}
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.rail{
+  position:sticky;top:0;height:100vh;
+  padding:22px 18px;
+  background:rgba(10,15,22,.86);
+  border-right:1px solid var(--line);
+  backdrop-filter:blur(14px);
+}
+.brand{font-weight:800;font-size:20px;line-height:1.12;margin:3px 0 4px}
+.sub{font-size:12px;color:var(--muted);line-height:1.45}
+.nav{display:grid;gap:8px;margin-top:28px}
+.nav button{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;background:transparent;border-color:transparent;color:var(--muted);
+}
+.nav button.active{background:var(--panel-2);border-color:var(--line-2);color:var(--text)}
+.rail-foot{position:absolute;left:18px;right:18px;bottom:20px;color:var(--faint);font-size:12px;line-height:1.5}
+main{padding:26px;max-width:1480px;width:100%;margin:0 auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}
+h1{font-size:28px;margin:0 0 5px}
+h2{font-size:19px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 10px;color:#dce8ee}
+p{color:var(--muted);line-height:1.65;margin:0}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:99px;padding:5px 10px;color:var(--muted);font-size:12px;white-space:nowrap}
+.grid{display:grid;gap:14px}
+.grid.two{grid-template-columns:1.06fr .94fr}
+.grid.three{grid-template-columns:repeat(3,1fr)}
+.grid.four{grid-template-columns:repeat(4,1fr)}
+.panel{
+  background:linear-gradient(180deg,rgba(23,33,44,.96),rgba(15,23,32,.96));
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:16px;
+  box-shadow:var(--shadow);
+}
+.view{display:none}
+.view.active{display:block}
+.machine-card,.route-card,.chip-card,.slot{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.035);
+  border-radius:7px;
+  padding:13px;
+}
+.machine-card,.route-card,.chip-card{cursor:pointer}
+.machine-card:hover,.route-card:hover,.chip-card:hover{border-color:var(--accent)}
+.machine-card.active,.route-card.active,.chip-card.selected{border-color:var(--accent);background:rgba(99,210,255,.09)}
+.machine-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.machine-name{font-size:18px;font-weight:800}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:2px 7px;border-radius:99px;white-space:nowrap}
+.tag.attack{color:#ffd0c8;border-color:rgba(255,115,95,.45)}
+.tag.guard{color:#c8e9ff;border-color:rgba(92,183,255,.45)}
+.tag.flow{color:#cdf7d4;border-color:rgba(119,220,138,.45)}
+.hero-art{
+  min-height:210px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.06),transparent),
+    radial-gradient(circle at 50% 35%,var(--theme-soft),transparent 55%),
+    #0e151d;
+}
+.machine-shape{
+  position:absolute;inset:34px 18%;
+  border:2px solid var(--theme);
+  border-radius:18px;
+  transform:skew(-8deg);
+  box-shadow:0 0 34px var(--theme-soft), inset 0 0 32px rgba(255,255,255,.06);
+}
+.machine-core{
+  position:absolute;left:50%;top:50%;width:84px;height:84px;
+  margin:-42px 0 0 -42px;border-radius:50%;
+  border:2px solid var(--theme);
+  background:radial-gradient(circle,rgba(255,255,255,.25),transparent 62%);
+}
+.machine-label{position:absolute;left:18px;bottom:16px;font-size:30px;font-weight:900;letter-spacing:1px;color:var(--theme)}
+.stat-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:7px;padding:10px}
+.stat b{display:block;font-size:16px}.stat span{font-size:12px;color:var(--muted)}
+.route-header{display:flex;justify-content:space-between;gap:10px}
+.milestones{display:grid;gap:8px;margin-top:12px}
+.milestone{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:start}
+.milestone strong{color:var(--accent)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{min-height:34px}
+.tabs button.active{background:#214457;border-color:var(--accent)}
+.chip-card{position:relative;min-height:116px}
+.chip-card .name{font-weight:800;margin-bottom:6px}
+.chip-card .effect{font-size:13px;color:var(--muted);line-height:1.45}
+.chip-card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip-card.attack{border-left:4px solid var(--attack)}
+.chip-card.guard{border-left:4px solid var(--guard)}
+.chip-card.flow{border-left:4px solid var(--flow)}
+.chip-card.signature{border-left:4px solid var(--theme)}
+.chip-card.locked{opacity:.48}
+.timeline{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px}
+.slot{min-height:118px}
+.slot .time{font-weight:800;color:var(--accent);margin-bottom:8px}
+.slot .mini{display:flex;flex-wrap:wrap;gap:6px}
+.mini-chip{font-size:12px;color:#dce8ee;border:1px solid var(--line);background:rgba(0,0,0,.18);padding:4px 7px;border-radius:6px}
+.mini-chip.active{border-color:var(--ok);color:#dfffe7}
+.validator{display:grid;gap:8px}
+.notice{border:1px solid var(--line);background:rgba(0,0,0,.16);border-radius:7px;padding:10px;color:var(--muted)}
+.notice.ok{border-color:rgba(126,231,135,.5);color:#c9ffd2}
+.notice.warn{border-color:rgba(255,209,102,.5);color:#ffe4a3}
+.notice.bad{border-color:rgba(255,95,115,.55);color:#ffc5cc}
+.meter{height:10px;background:#0b1118;border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.meter span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--ok));width:0%}
+.hud{
+  border:1px solid var(--line);
+  background:#06090d;
+  border-radius:8px;
+  overflow:hidden;
+}
+.hud-top,.hud-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:#111923;border-bottom:1px solid var(--line)}
+.hud-bottom{border-top:1px solid var(--line);border-bottom:0}
+.arena{
+  min-height:330px;
+  position:relative;
+  display:grid;place-items:center;
+  background:
+    linear-gradient(30deg,rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(150deg,rgba(255,255,255,.035) 1px,transparent 1px),
+    radial-gradient(circle at center,rgba(99,210,255,.08),transparent 45%),
+    #081018;
+  background-size:32px 32px,32px 32px,100% 100%,100% 100%;
+}
+.hex{
+  width:min(58vw,520px);aspect-ratio:1.1;
+  clip-path:polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0 50%);
+  border:2px solid var(--line-2);
+  background:rgba(99,210,255,.05);
+  position:relative;
+  box-shadow:inset 0 0 46px rgba(99,210,255,.1);
+}
+.paddle{position:absolute;width:70px;height:9px;background:var(--theme);border-radius:4px;box-shadow:0 0 16px var(--theme-soft)}
+.p1{left:50%;bottom:13%;transform:translateX(-50%)}
+.p2{right:16%;top:43%;transform:rotate(60deg)}
+.p3{left:16%;top:43%;transform:rotate(-60deg)}
+.ball{position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 18px #fff}
+.b1{left:46%;top:38%}.b2{left:58%;top:57%;background:var(--theme)}
+.resource{display:flex;gap:6px;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(99,210,255,.6)}
+.dot.empty{background:#263542;box-shadow:none}
+.sim-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input[type=range]{width:240px;accent-color:var(--accent)}
+.result-list{display:grid;gap:8px}
+.result-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.kbd{font-size:12px;color:var(--muted);border:1px solid var(--line);padding:2px 6px;border-radius:5px}
+@media (max-width:980px){
+  .app{grid-template-columns:1fr}
+  .rail{position:relative;height:auto}
+  .rail-foot{position:static;margin-top:22px}
+  main{padding:18px}
+  .grid.two,.grid.three,.grid.four{grid-template-columns:1fr}
+  .timeline{grid-template-columns:1fr}
+  .topbar{align-items:flex-start;flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand">GATEBREAKER<br>ARENA</div>
+    <div class="sub">一期界面交互原型<br>改装机 / 路线 / 芯片 / HUD</div>
+    <nav class="nav">
+      <button class="active" data-view="home">主界面 <span>01</span></button>
+      <button data-view="machine">改装机与路线 <span>02</span></button>
+      <button data-view="config">改装方案 <span>03</span></button>
+      <button data-view="ready">赛前预览 <span>04</span></button>
+      <button data-view="match">对局 HUD <span>05</span></button>
+      <button data-view="result">结算 <span>06</span></button>
+    </nav>
+    <div class="rail-foot">
+      <div>规则：1 专属 + 5 通用</div>
+      <div>激活：0 / 15 / 30 / 45 秒</div>
+      <div>当前版本：v0.1 原型</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">主界面</h1>
+        <p id="pageDesc">选择改装机、配置芯片方案，并预览对局 HUD。</p>
+      </div>
+      <div class="pill">工程点 <strong>1250</strong></div>
+    </div>
+
+    <section id="home" class="view active">
+      <div class="grid two">
+        <div class="panel">
+          <h2>当前出战</h2>
+          <div class="hero-art" id="homeArt">
+            <div class="machine-shape"></div>
+            <div class="machine-core"></div>
+            <div class="machine-label" id="homeMachineLabel">CRYO</div>
+          </div>
+          <div class="stat-list">
+            <div class="stat"><b id="homeMachine">霜降</b><span>改装机</span></div>
+            <div class="stat"><b id="homeRoute">极寒之路</b><span>主路线</span></div>
+            <div class="stat"><b id="homeMState">M3 可达</b><span>方案状态</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>快速入口</h2>
+          <div class="grid two">
+            <button class="primary" data-jump="machine">选择改装机</button>
+            <button data-jump="config">编辑改装方案</button>
+            <button data-jump="ready">赛前激活预览</button>
+            <button data-jump="match">对局 HUD 模拟</button>
+          </div>
+          <div style="height:16px"></div>
+          <h3>一期主线</h3>
+          <p>玩家选择一名改装机，锁定一条主路线，配置 1 张路线专属芯片与 5 张通用芯片。对局中按固定时间逐步激活，路线里程碑由匹配芯片数量和时间门槛推动。</p>
+          <div style="height:14px"></div>
+          <div class="timeline" id="homeTimeline"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="machine" class="view">
+      <div class="grid two">
+        <div class="panel">
+          <h2>选择改装机</h2>
+          <div class="grid" id="machineList"></div>
+        </div>
+        <div class="panel">
+          <h2 id="machineDetailTitle">霜降 CRYO</h2>
+          <div class="hero-art" id="machineArt">
+            <div class="machine-shape"></div>
+            <div class="machine-core"></div>
+            <div class="machine-label" id="machineCode">CRYO</div>
+          </div>
+          <div style="height:14px"></div>
+          <p id="machineDesc"></p>
+          <div style="height:14px"></div>
+          <h3>主路线</h3>
+          <div class="grid two" id="routeList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="config" class="view">
+      <div class="grid two">
+        <div class="panel">
+          <h2>路线专属芯片</h2>
+          <p>每套方案必须选择 1 张当前主路线的专属芯片。两个变体都是侧向选择，均提供 +3 适配。</p>
+          <div style="height:12px"></div>
+          <div class="grid two" id="signatureList"></div>
+          <div style="height:18px"></div>
+          <h2>通用芯片库</h2>
+          <div class="tabs" id="chipTabs">
+            <button class="active" data-filter="all">全部</button>
+            <button data-filter="attack">攻击</button>
+            <button data-filter="guard">防守</button>
+            <button data-filter="flow">速度</button>
+          </div>
+          <div class="grid three" id="chipLibrary"></div>
+        </div>
+        <div class="panel">
+          <h2>方案校验</h2>
+          <div class="validator" id="validator"></div>
+          <div style="height:16px"></div>
+          <h2>激活时间轴</h2>
+          <div class="timeline" id="configTimeline"></div>
+          <div style="height:16px"></div>
+          <h2>当前已选</h2>
+          <div class="grid" id="selectedChips"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ready" class="view">
+      <div class="grid two">
+        <div class="panel">
+          <h2>我方准备</h2>
+          <div class="notice ok" id="readySummary"></div>
+          <div style="height:14px"></div>
+          <div class="timeline" id="readyTimeline"></div>
+        </div>
+        <div class="panel">
+          <h2>对手公开信息</h2>
+          <div class="machine-card" style="cursor:default">
+            <div class="machine-title"><span class="machine-name">工事 FORT</span><span class="tag">炮台之路</span></div>
+            <p>类别摘要：攻击 3 / 速度 2。专属芯片：反击炮台。</p>
+          </div>
+          <div style="height:14px"></div>
+          <h2>倒计时</h2>
+          <div class="grid three" id="zeroCards"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="match" class="view">
+      <div class="panel">
+        <div class="sim-controls">
+          <span class="pill">模拟时间 <strong id="timeReadout">0s</strong></span>
+          <input id="timeSlider" type="range" min="0" max="60" value="0">
+          <button data-time="0">0s</button>
+          <button data-time="15">15s</button>
+          <button data-time="30">30s</button>
+          <button data-time="45">45s</button>
+          <button data-time="60">60s</button>
+        </div>
+        <div style="height:14px"></div>
+        <div class="hud">
+          <div class="hud-top">
+            <div><strong>P1 2</strong> <span class="kbd" id="hudMachine">霜降 / 极寒</span></div>
+            <div><strong id="hudClock">01:00</strong></div>
+            <div><span class="kbd">工事 / 炮台</span> <strong>1 P2</strong></div>
+          </div>
+          <div class="arena">
+            <div class="hex">
+              <div class="paddle p1"></div>
+              <div class="paddle p2"></div>
+              <div class="paddle p3"></div>
+              <div class="ball b1"></div>
+              <div class="ball b2"></div>
+            </div>
+          </div>
+          <div class="hud-bottom">
+            <div class="resource">弹药 <span class="dot"></span><span class="dot"></span><span class="dot empty"></span></div>
+            <div id="hudMilestones">M1 - / M2 - / M3 -</div>
+            <div id="hudNext">下一激活：15s</div>
+          </div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="timeline" id="matchTimeline"></div>
+      </div>
+    </section>
+
+    <section id="result" class="view">
+      <div class="grid two">
+        <div class="panel">
+          <h2>胜利</h2>
+          <div class="stat-list">
+            <div class="stat"><b>3 - 1</b><span>比分</span></div>
+            <div class="stat"><b>64s</b><span>时长</span></div>
+            <div class="stat"><b>+50</b><span>工程点</span></div>
+          </div>
+          <div style="height:16px"></div>
+          <button class="primary" data-jump="match">再来一局</button>
+          <button data-jump="config">调整方案</button>
+        </div>
+        <div class="panel">
+          <h2>构筑回顾</h2>
+          <div class="result-list" id="resultReview"></div>
+          <div style="height:14px"></div>
+          <div class="notice ok" id="resultKey"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const machines = {
+  frost: {
+    name:"霜降", code:"CRYO", theme:"var(--frost)", soft:"rgba(141,220,255,.18)",
+    desc:"状态控制型改装机。用带低温的球压迫敌方挡板，形成冻结或反击窗口。",
+    routes:[
+      {id:"deep", name:"极寒之路", cats:["attack","guard"], loop:"累积低温 → 冻结敌方 → 制造防守窗口", m2:"冻结附加移速压制", m3:"终盘强控制窗口",
+       signatures:[
+        {id:"SIG_FROST_DEEP_FREEZE_TOUCH", name:"寒霜之触", style:"积累稳定型", effect:"低温建立效率提高，冻结附加收益较低。"},
+        {id:"SIG_FROST_DEEP_FREEZE_DOMAIN", name:"冰封领域", style:"兑现压制型", effect:"强化冻结后的减速压制，但低温建立效率较低。"}
+       ]},
+      {id:"crystal", name:"冰晶之路", cats:["guard","flow"], loop:"保存低温 → 等待回合 → 转化为球速反击", m2:"低温不衰减", m3:"连续碰板叠加加速",
+       signatures:[
+        {id:"SIG_FROST_ICE_CRYSTAL_RESERVE", name:"霜化初成", style:"积累稳定型", effect:"降低低温流失，提高稳定转化率。"},
+        {id:"SIG_FROST_ICE_CRYSTAL_PRISM", name:"霜化棱镜", style:"兑现反击型", effect:"转化后的球速更高，但加速窗口更短。"}
+       ]}
+    ]
+  },
+  mech: {
+    name:"工事", code:"FORT", theme:"var(--mech)", soft:"rgba(243,197,91,.18)",
+    desc:"场地建造型改装机。部署屏障改变球路，把防线转化为反击角度。",
+    routes:[
+      {id:"fortress", name:"堡垒之路", cats:["attack","guard"], loop:"观察敌球密度 → 部署屏障 → 压缩空间", m2:"屏障优先生成在敌球密集区", m3:"多面屏障连接为墙链",
+       signatures:[
+        {id:"SIG_MECH_FORTRESS_FOUNDATION", name:"工事基座", style:"积累稳定型", effect:"提高屏障覆盖和持续，部署方向性较弱。"},
+        {id:"SIG_MECH_FORTRESS_DIRECTED", name:"定向工事", style:"兑现封锁型", effect:"更精准封锁敌球密集区，但屏障容错较低。"}
+       ]},
+      {id:"turret", name:"炮台之路", cats:["attack","flow"], loop:"预判路径 → 用屏障反弹 → 将球导向敌门", m2:"敌球碰屏障偏向敌门", m3:"屏障周期性发射电弧脉冲",
+       signatures:[
+        {id:"SIG_MECH_TURRET_GUIDANCE", name:"炮台校准", style:"积累稳定型", effect:"提高反弹导向稳定性，反攻峰值较低。"},
+        {id:"SIG_MECH_TURRET_COUNTER", name:"反击炮台", style:"兑现反攻型", effect:"提高反攻球威胁，牺牲屏障频率或持续。"}
+       ]}
+    ]
+  },
+  radiant: {
+    name:"蓄能", code:"RADI", theme:"var(--radiant)", soft:"rgba(246,226,122,.16)",
+    desc:"资源爆发型改装机。经营蓄能层数，在正确时机兑现多球爆发或持续增益。",
+    routes:[
+      {id:"charge", name:"充能之路", cats:["attack","guard"], loop:"累积层数 → 选择爆发时机 → 短时多球高压", m2:"爆发球分裂为 2 颗", m3:"爆发球分裂为 3 颗并获得回报",
+       signatures:[
+        {id:"SIG_RADIANT_CHARGE_RESERVE", name:"微光储能", style:"积累稳定型", effect:"更快积累蓄能，爆发规模较低。"},
+        {id:"SIG_RADIANT_CHARGE_JUDGMENT", name:"蓄能审判", style:"兑现爆发型", effect:"爆发与护盾回报更高，但蓄能门槛更高。"}
+       ]},
+      {id:"glow", name:"光芒之路", cats:["attack","flow"], loop:"累积层数 → 获得限时增益 → 持续反弹维持", m2:"每层提供球速增益", m3:"同时强化球速与挡板",
+       signatures:[
+        {id:"SIG_RADIANT_GLOW_STABLE", name:"光芒初绽", style:"积累稳定型", effect:"增益更易维持，单层峰值较低。"},
+        {id:"SIG_RADIANT_GLOW_AURA", name:"蓄能光环", style:"兑现经营型", effect:"高层增益更强，但衰减更快。"}
+       ]}
+    ]
+  }
+};
+
+const chips = [
+  {id:"STRIKE_SERVE", name:"重发球", cat:"attack", effect:"发球初速 +20%。"},
+  {id:"STRIKE_POWER", name:"蓄能击", cat:"attack", effect:"挡板反弹后球速 +15%，同一球每 2s 最多触发一次。"},
+  {id:"STRIKE_ANGLE", name:"折射瞄准", cat:"attack", effect:"挡板边缘反弹最大偏转角 +12°。"},
+  {id:"STRIKE_OVERCHARGE", name:"过载", cat:"attack", effect:"己方球速上限 +15%，但挡板长度 -8%。"},
+  {id:"GUARD_LENGTH", name:"长板", cat:"guard", effect:"挡板长度 +20%。"},
+  {id:"GUARD_GOAL", name:"收缩门", cat:"guard", effect:"己方球门半长度 -15%。"},
+  {id:"GUARD_BOUNCE", name:"弹性墙", cat:"guard", effect:"敌方球碰己方边墙后，球速 -15%。"},
+  {id:"GUARD_BRAKE", name:"紧急制动", cat:"guard", effect:"正飞向己方球门的敌方球速 -12%。"},
+  {id:"FLOW_SPEED", name:"疾驰", cat:"flow", effect:"挡板移动速度 +20%。"},
+  {id:"FLOW_AMMO", name:"快装填", cat:"flow", effect:"弹药冷却回复速度 +25%。"},
+  {id:"FLOW_CAPACITY", name:"弹药库", cat:"flow", effect:"最大弹药 +1。"},
+  {id:"FLOW_QUICK_SERVE", name:"速射", cat:"flow", effect:"发球后 2s 内下一次发球不消耗弹药，每 8s 最多触发一次。"}
+];
+
+const catName = {attack:"攻击", guard:"防守", flow:"速度"};
+const state = {
+  view:"home", machine:"frost", route:"deep",
+  signature:"SIG_FROST_DEEP_FREEZE_TOUCH",
+  selected:["STRIKE_SERVE","GUARD_LENGTH","STRIKE_POWER","GUARD_BOUNCE","STRIKE_ANGLE"],
+  filter:"all", time:0
+};
+
+function machine(){return machines[state.machine]}
+function route(){return machine().routes.find(r=>r.id===state.route)}
+function signature(){return route().signatures.find(s=>s.id===state.signature) || route().signatures[0]}
+function selectedChips(){return state.selected.map(id=>chips.find(c=>c.id===id)).filter(Boolean)}
+function isMatching(chip){return route().cats.includes(chip.cat)}
+function setTheme(){
+  document.documentElement.style.setProperty("--theme", machine().theme);
+  document.documentElement.style.setProperty("--theme-soft", machine().soft);
+}
+function chipTag(c){return `<span class="tag ${c.cat}">${catName[c.cat]}</span>`}
+function routeTags(r){return r.cats.map(c=>`<span class="tag ${c}">${catName[c]}</span>`).join("")}
+function activeUniversalAt(t){
+  const sel = selectedChips();
+  if(t < 15) return sel.slice(0,2);
+  if(t < 30) return sel.slice(0,3);
+  if(t < 45) return sel.slice(0,4);
+  return sel.slice(0,5);
+}
+function milestonesAt(t){
+  const count = activeUniversalAt(t).filter(isMatching).length;
+  return {m1:count>=1, m2:count>=2, m3:count>=4 && t>=45, count};
+}
+function finalMilestones(){
+  const count = selectedChips().filter(isMatching).length;
+  return {m1:count>=1, m2:count>=2, m3:count>=4, count};
+}
+function timelineHtml(t=999){
+  const sel = selectedChips();
+  const slots = [
+    {time:"0s", chips:[{name:signature().name, sig:true}, ...sel.slice(0,2)]},
+    {time:"15s", chips:sel.slice(2,3)},
+    {time:"30s", chips:sel.slice(3,4)},
+    {time:"45s", chips:sel.slice(4,5)}
+  ];
+  return slots.map((s,i)=>{
+    const threshold = [0,15,30,45][i];
+    return `<div class="slot">
+      <div class="time">${s.time}</div>
+      <div class="mini">${s.chips.map(c=>`<span class="mini-chip ${t>=threshold?"active":""}">${c.name}</span>`).join("") || "<span class='mini-chip'>未配置</span>"}</div>
+    </div>`;
+  }).join("");
+}
+function switchView(id){
+  state.view=id;
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===id));
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
+  const meta = {
+    home:["主界面","选择改装机、配置芯片方案，并预览对局 HUD。"],
+    machine:["改装机与路线","比较一期三名改装机，选择本局主路线。"],
+    config:["改装方案","配置 1 张专属芯片与 5 张通用芯片，确认激活时间轴。"],
+    ready:["赛前预览","确认 0/15/30/45 秒确定性激活内容。"],
+    match:["对局 HUD","模拟不同时间点下的 HUD、里程碑和激活状态。"],
+    result:["结算","查看构筑回顾、关键指标和奖励。"]
+  }[id];
+  document.getElementById("pageTitle").textContent=meta[0];
+  document.getElementById("pageDesc").textContent=meta[1];
+}
+
+function renderMachines(){
+  document.getElementById("machineList").innerHTML = Object.entries(machines).map(([id,m])=>`
+    <div class="machine-card ${state.machine===id?"active":""}" data-machine="${id}">
+      <div class="machine-title"><span class="machine-name">${m.name} ${m.code}</span><span class="tag">${m.routes.length} 路线</span></div>
+      <p>${m.desc}</p>
+    </div>`).join("");
+  document.querySelectorAll("[data-machine]").forEach(el=>el.onclick=()=>{
+    state.machine=el.dataset.machine;
+    state.route=machine().routes[0].id;
+    state.signature=route().signatures[0].id;
+    state.selected=defaultChipsForRoute(route());
+    render();
+  });
+}
+function defaultChipsForRoute(r){
+  const preferred = chips.filter(c=>r.cats.includes(c.cat)).slice(0,4).map(c=>c.id);
+  const extra = chips.find(c=>!preferred.includes(c.id)).id;
+  return [...preferred, extra].slice(0,5);
+}
+function renderMachineDetail(){
+  const m=machine(), r=route();
+  document.getElementById("machineDetailTitle").textContent=`${m.name} ${m.code}`;
+  document.getElementById("machineCode").textContent=m.code;
+  document.getElementById("machineDesc").textContent=m.desc;
+  document.getElementById("routeList").innerHTML=m.routes.map(rt=>`
+    <div class="route-card ${state.route===rt.id?"active":""}" data-route="${rt.id}">
+      <div class="route-header"><strong>${rt.name}</strong><span>${routeTags(rt)}</span></div>
+      <p>${rt.loop}</p>
+      <div class="milestones">
+        <div class="milestone"><strong>M2</strong><span>${rt.m2}</span></div>
+        <div class="milestone"><strong>M3</strong><span>${rt.m3}</span></div>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll("[data-route]").forEach(el=>el.onclick=()=>{
+    state.route=el.dataset.route;
+    state.signature=route().signatures[0].id;
+    state.selected=defaultChipsForRoute(route());
+    render();
+  });
+}
+function renderSignatures(){
+  document.getElementById("signatureList").innerHTML=route().signatures.map(s=>`
+    <div class="chip-card signature ${state.signature===s.id?"selected":""}" data-signature="${s.id}">
+      <div class="name">${s.name}</div>
+      <div class="effect">${s.effect}</div>
+      <div class="meta"><span class="tag">专属</span><span class="tag">${s.style}</span><span class="tag">+3 适配</span></div>
+    </div>`).join("");
+  document.querySelectorAll("[data-signature]").forEach(el=>el.onclick=()=>{state.signature=el.dataset.signature;render()});
+}
+function renderChips(){
+  const list = chips.filter(c=>state.filter==="all" || c.cat===state.filter);
+  document.getElementById("chipLibrary").innerHTML=list.map(c=>`
+    <div class="chip-card ${c.cat} ${state.selected.includes(c.id)?"selected":""}" data-chip="${c.id}">
+      <div class="name">${c.name}</div>
+      <div class="effect">${c.effect}</div>
+      <div class="meta">${chipTag(c)}${isMatching(c)?"<span class='tag'>匹配主路线</span>":"<span class='tag'>功能位</span>"}</div>
+    </div>`).join("");
+  document.querySelectorAll("[data-chip]").forEach(el=>el.onclick=()=>{
+    const id=el.dataset.chip;
+    if(state.selected.includes(id)) state.selected=state.selected.filter(x=>x!==id);
+    else if(state.selected.length<5) state.selected.push(id);
+    render();
+  });
+}
+function renderSelected(){
+  const sel = selectedChips();
+  document.getElementById("selectedChips").innerHTML = [
+    `<div class="chip-card signature selected"><div class="name">${signature().name}</div><div class="effect">${signature().effect}</div><div class="meta"><span class="tag">0s 激活</span><span class="tag">专属</span></div></div>`,
+    ...sel.map((c,i)=>`<div class="chip-card ${c.cat} selected">
+      <div class="machine-title"><span class="name">${i+1}. ${c.name}</span><span>${chipTag(c)}</span></div>
+      <div class="effect">${c.effect}</div>
+      <div class="meta">
+        <span class="tag">${i<2?"0s":i===2?"15s":i===3?"30s":"45s"}</span>
+        ${isMatching(c)?"<span class='tag'>路线匹配</span>":"<span class='tag'>功能自由位</span>"}
+        <button class="ghost" data-up="${c.id}" ${i===0?"disabled":""}>上移</button>
+        <button class="ghost" data-down="${c.id}" ${i===sel.length-1?"disabled":""}>下移</button>
+      </div>
+    </div>`)
+  ].join("");
+  document.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>moveChip(b.dataset.up,-1));
+  document.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>moveChip(b.dataset.down,1));
+}
+function moveChip(id,dir){
+  const i=state.selected.indexOf(id), j=i+dir;
+  if(i<0||j<0||j>=state.selected.length)return;
+  [state.selected[i],state.selected[j]]=[state.selected[j],state.selected[i]];
+  render();
+}
+function renderValidator(){
+  const sel=selectedChips();
+  const counts={attack:0,guard:0,flow:0};
+  sel.forEach(c=>counts[c.cat]++);
+  const m=finalMilestones();
+  const startMatch=sel.slice(0,2).some(isMatching);
+  const notices = [];
+  notices.push({type: state.signature ? "ok":"bad", text: state.signature ? `已选择专属芯片：${signature().name}`:"请选择 1 张路线专属芯片。"});
+  notices.push({type: sel.length===5 ? "ok":"bad", text: `通用芯片：${sel.length}/5`});
+  notices.push({type: Object.values(counts).some(v=>v>3) ? "bad":"ok", text: `类别上限：攻击 ${counts.attack}/3，防守 ${counts.guard}/3，速度 ${counts.flow}/3`});
+  notices.push({type: startMatch ? "ok":"bad", text: startMatch ? "0s 初选包含至少 1 张匹配芯片。":"0s 初选至少需要 1 张匹配主路线的通用芯片。"});
+  notices.push({type: m.m3 ? "ok":m.m2?"warn":"bad", text: `路线匹配芯片 ${m.count}/5：${m.m3?"终盘可达 M3":m.m2?"可达 M2，但无法触发 M3":"核心循环不足"}`});
+  document.getElementById("validator").innerHTML = notices.map(n=>`<div class="notice ${n.type}">${n.text}</div>`).join("");
+}
+function renderReady(){
+  const m=finalMilestones();
+  document.getElementById("readySummary").innerHTML=`${machine().name} / ${route().name} / ${signature().name}<br>匹配芯片 ${m.count}/5，${m.m3?"45s 后可触发 M3":"本方案无法稳定触发 M3"}`;
+  document.getElementById("zeroCards").innerHTML=[
+    `<div class="chip-card signature selected"><div class="name">${signature().name}</div><div class="effect">${signature().effect}</div></div>`,
+    ...selectedChips().slice(0,2).map(c=>`<div class="chip-card ${c.cat} selected"><div class="name">${c.name}</div><div class="effect">${c.effect}</div></div>`)
+  ].join("");
+}
+function renderHud(){
+  const t=Number(state.time);
+  const remain=Math.max(0,60-t);
+  const mm=String(Math.floor(remain/60)).padStart(2,"0");
+  const ss=String(remain%60).padStart(2,"0");
+  const ms=milestonesAt(t);
+  const next = t<15?"15s："+(selectedChips()[2]?.name||"未配置"):t<30?"30s："+(selectedChips()[3]?.name||"未配置"):t<45?"45s："+(selectedChips()[4]?.name||"未配置"):"全部芯片已激活";
+  document.getElementById("timeReadout").textContent=t+"s";
+  document.getElementById("timeSlider").value=t;
+  document.getElementById("hudClock").textContent=`${mm}:${ss}`;
+  document.getElementById("hudMachine").textContent=`${machine().name} / ${route().name.replace("之路","")}`;
+  document.getElementById("hudMilestones").textContent=`M1 ${ms.m1?"✓":"-"} / M2 ${ms.m2?"✓":"-"} / M3 ${ms.m3?"✓":"-"}`;
+  document.getElementById("hudNext").textContent=`下一激活：${next}`;
+}
+function renderResult(){
+  const sel=selectedChips();
+  document.getElementById("resultReview").innerHTML=[
+    ["0s",`${signature().name} + ${sel[0]?.name||""} + ${sel[1]?.name||""}`,"M1 启动"],
+    ["15s",sel[2]?.name||"未配置","M2 检查"],
+    ["30s",sel[3]?.name||"未配置","中盘补强"],
+    ["45s",sel[4]?.name||"未配置",finalMilestones().m3?"M3 达成":"M3 未达成"]
+  ].map(r=>`<div class="result-row"><span><strong>${r[0]}</strong> ${r[1]}</span><span>${r[2]}</span></div>`).join("");
+  const key = machine().name==="霜降" ? "关键表现：冻结触发 3 次 / 低温威胁球命中率 42%" :
+              machine().name==="工事" ? "关键表现：屏障阻挡 7 次 / 电弧命中 2 次" :
+              "关键表现：蓄能爆发 2 次 / 临时复制球得分 1 次";
+  document.getElementById("resultKey").textContent=key;
+}
+function renderHome(){
+  document.getElementById("homeMachine").textContent=machine().name;
+  document.getElementById("homeRoute").textContent=route().name;
+  document.getElementById("homeMachineLabel").textContent=machine().code;
+  document.getElementById("homeMState").textContent=finalMilestones().m3?"M3 可达":"需调整";
+}
+function render(){
+  setTheme();
+  renderHome();
+  renderMachines();
+  renderMachineDetail();
+  renderSignatures();
+  renderChips();
+  renderSelected();
+  renderValidator();
+  renderReady();
+  renderHud();
+  renderResult();
+  document.getElementById("homeTimeline").innerHTML=timelineHtml(999);
+  document.getElementById("configTimeline").innerHTML=timelineHtml(999);
+  document.getElementById("readyTimeline").innerHTML=timelineHtml(999);
+  document.getElementById("matchTimeline").innerHTML=timelineHtml(state.time);
+}
+
+document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>switchView(b.dataset.view));
+document.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>switchView(b.dataset.jump));
+document.querySelectorAll("#chipTabs button").forEach(b=>b.onclick=()=>{
+  state.filter=b.dataset.filter;
+  document.querySelectorAll("#chipTabs button").forEach(x=>x.classList.toggle("active",x===b));
+  renderChips();
+});
+document.getElementById("timeSlider").addEventListener("input",e=>{state.time=e.target.value;render()});
+document.querySelectorAll("[data-time]").forEach(b=>b.onclick=()=>{state.time=b.dataset.time;render()});
+render();
+</script>
+</body>
+</html>
+
