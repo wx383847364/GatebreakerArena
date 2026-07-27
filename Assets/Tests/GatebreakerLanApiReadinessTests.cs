@@ -6,6 +6,7 @@ using System.Net;
 using System.Reflection;
 using App.AOT.Networking.Lan;
 using App.HotUpdate.GatebreakerArena.Ball;
+using App.HotUpdate.GatebreakerArena.Chip;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
@@ -365,7 +366,7 @@ namespace Gatebreaker.Tests
             RoomSnapshot decoded = GatebreakerPayloadCodec.DecodeRoomSnapshot(
                 GatebreakerPayloadCodec.EncodeRoomSnapshot(snapshot));
 
-            Assert.AreEqual(3, GatebreakerEnvelopeCodec.ProtocolVersion);
+            Assert.AreEqual(4, GatebreakerEnvelopeCodec.ProtocolVersion);
             Assert.AreEqual(2, decoded.Players.Length);
             RoomPlayerSnapshot ai = decoded.Players.Single(player => player.PlayerId == 3);
             Assert.IsTrue(ai.IsAi);
@@ -965,6 +966,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(LanRoomState.Lobby, host.CurrentSnapshot.State);
             Assert.AreEqual(LanRoomState.Lobby, client.CurrentSnapshot.State);
 
+            Assert.IsTrue(client.SetLocalLoadout(CreateValidLoadout()));
             Assert.IsTrue(client.SetReady(true));
             PumpReliable(clientToHost, host, new LanConnectionId(1), null);
             PumpReliable(hostToClient, client, null, new LanConnectionId(1));
@@ -1530,6 +1532,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(LanRoomState.Lobby, host.CurrentSnapshot.State);
             Assert.AreEqual(LanRoomState.Lobby, client.CurrentSnapshot.State);
 
+            Assert.IsTrue(client.SetLocalLoadout(CreateValidLoadout()));
             Assert.IsTrue(client.SetReady(true));
             PumpReliable(clientToHost, host, new LanConnectionId(1), null);
             PumpReliable(hostToClient, client, null, new LanConnectionId(1));
@@ -1541,6 +1544,13 @@ namespace Gatebreaker.Tests
             PumpReliable(hostToClient, client, null, new LanConnectionId(1));
             Assert.AreEqual(LanRoomState.Playing, host.CurrentSnapshot.State);
             Assert.AreEqual(LanRoomState.Playing, client.CurrentSnapshot.State);
+        }
+
+        private static V1MatchLoadout CreateValidLoadout()
+        {
+            return new V1MatchLoadout("HERO_FROST_QUEEN", "PATH_FROST_EXTREME", "SIG_FROST_DEEP_FREEZE_TOUCH",
+                new[] { "STRIKE_POWER", "GUARD_LENGTH" },
+                new[] { "FLOW_SPEED", "STRIKE_SERVE", "GUARD_GOAL" });
         }
 
         private static void ForceComputerSlotsToLoseAiFlag(LanRoomService room)

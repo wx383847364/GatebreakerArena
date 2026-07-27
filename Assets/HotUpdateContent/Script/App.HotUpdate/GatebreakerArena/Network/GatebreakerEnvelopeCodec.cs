@@ -35,7 +35,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
     public static class GatebreakerEnvelopeCodec
     {
-        public const ushort ProtocolVersion = 3;
+        // V4 adds frozen V1 loadout fields to the room/player contract.
+        public const ushort ProtocolVersion = 4;
         public const int MaxPayloadBytes = 4096;
         private const int HeaderSize = 28;
 
@@ -168,6 +169,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteUInt64(value?.SessionId ?? 0UL);
             writer.WriteUInt32(value?.ChannelId ?? 0U);
             writer.WriteString(value?.RoomCode);
+            writer.WriteInt32(value?.RulesSchemaVersion ?? 0);
+            writer.WriteString(value?.RulesHash);
             writer.WriteUInt64(value?.HostClientInstanceId ?? 0UL);
             writer.WriteString(value?.HostPlayerName);
             writer.WriteInt32(value?.TcpPort ?? 0);
@@ -186,6 +189,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 SessionId = reader.ReadUInt64(),
                 ChannelId = reader.ReadUInt32(),
                 RoomCode = reader.ReadString(),
+                RulesSchemaVersion = reader.ReadInt32(),
+                RulesHash = reader.ReadString(),
                 HostClientInstanceId = reader.ReadUInt64(),
                 HostPlayerName = reader.ReadString(),
                 TcpPort = reader.ReadInt32(),
@@ -202,6 +207,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteUInt64(value?.ClientInstanceId ?? 0UL);
             writer.WriteString(value?.PlayerName);
             writer.WriteString(value?.RoomCode);
+            writer.WriteInt32(value?.RulesSchemaVersion ?? 0);
+            writer.WriteString(value?.RulesHash);
             return writer.ToArray();
         }
 
@@ -214,6 +221,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 ClientInstanceId = reader.ReadUInt64(),
                 PlayerName = reader.ReadString(),
                 RoomCode = reader.ReadString(),
+                RulesSchemaVersion = reader.ReadInt32(),
+                RulesHash = reader.ReadString(),
             };
         }
 
@@ -266,6 +275,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
             var writer = new LittleEndianWriter();
             writer.WriteUInt64(value?.ClientInstanceId ?? 0UL);
             writer.WriteBool(value?.IsReady ?? false);
+            writer.WriteString(value?.HeroId);
+            writer.WriteString(value?.PathId);
+            writer.WriteString(value?.SignatureChipId);
+            WriteStringArray(writer, value?.OpeningUniversalChipIds);
+            WriteStringArray(writer, value?.ScheduledUniversalChipIds);
             return writer.ToArray();
         }
 
@@ -276,6 +290,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 ClientInstanceId = reader.ReadUInt64(),
                 IsReady = reader.ReadBool(),
+                HeroId = reader.ReadString(),
+                PathId = reader.ReadString(),
+                SignatureChipId = reader.ReadString(),
+                OpeningUniversalChipIds = ReadStringArray(reader),
+                ScheduledUniversalChipIds = ReadStringArray(reader),
             };
         }
 
@@ -414,6 +433,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteUInt64(value?.SessionId ?? 0UL);
             writer.WriteUInt32(value?.ChannelId ?? 0U);
             writer.WriteString(value?.RoomCode);
+            writer.WriteInt32(value?.RulesSchemaVersion ?? 0);
+            writer.WriteString(value?.RulesHash);
             writer.WriteByte((byte)(value?.State ?? LanRoomState.Idle));
             writer.WriteBool(value?.IsHost ?? false);
             writer.WriteBool(value?.CanStart ?? false);
@@ -434,6 +455,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 SessionId = reader.ReadUInt64(),
                 ChannelId = reader.ReadUInt32(),
                 RoomCode = reader.ReadString(),
+                RulesSchemaVersion = reader.ReadInt32(),
+                RulesHash = reader.ReadString(),
                 State = (LanRoomState)reader.ReadByte(),
                 IsHost = reader.ReadBool(),
                 CanStart = reader.ReadBool(),
@@ -467,6 +490,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 writer.WriteBool(player.IsActive);
                 writer.WriteBool(player.IsAi);
                 writer.WriteString(player.HeroId);
+                writer.WriteString(player.PathId);
+                writer.WriteString(player.SignatureChipId);
+                WriteStringArray(writer, player.OpeningUniversalChipIds);
+                WriteStringArray(writer, player.ScheduledUniversalChipIds);
+                writer.WriteString(player.LoadoutHash);
                 WriteStringArray(writer, player.DeckChipIds);
             }
         }
@@ -491,6 +519,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     IsActive = reader.ReadBool(),
                     IsAi = reader.ReadBool(),
                     HeroId = reader.ReadString(),
+                    PathId = reader.ReadString(),
+                    SignatureChipId = reader.ReadString(),
+                    OpeningUniversalChipIds = ReadStringArray(reader),
+                    ScheduledUniversalChipIds = ReadStringArray(reader),
+                    LoadoutHash = reader.ReadString(),
                     DeckChipIds = ReadStringArray(reader),
                 };
             }

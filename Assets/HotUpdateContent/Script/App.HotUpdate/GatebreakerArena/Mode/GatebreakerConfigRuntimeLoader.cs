@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Core;
@@ -75,6 +76,11 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             try
             {
                 var root = JsonValueParser.ParseObject(json);
+                int version = ReadOptionalInt(root, "Version") ?? 0;
+                if (version < 2)
+                {
+                    throw new FormatException("Gatebreaker V1 rules require schema Version >= 2.");
+                }
                 var catalog = new GatebreakerModeCatalog(
                     ReadArray(root, "DT_ModeRule", ReadMode),
                     ReadArray(root, "DT_BallRule", ReadBall),
@@ -82,11 +88,13 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     ReadArray(root, "DT_MapRule", ReadMap),
                     ReadArray(root, "DT_PlayerColorRule", ReadPlayerColor),
                     ReadArray(root, "DT_UniversalChip", ReadUniversalChip),
-                    ReadOptionalArray(root, "DT_SignatureChip", ReadSignatureChip),
-                    ReadOptionalArray(root, "DT_Hero", ReadHero),
-                    ReadOptionalArray(root, "DT_HeroPath", ReadHeroPath));
+                    ReadArray(root, "DT_SignatureChip", ReadSignatureChip),
+                    ReadArray(root, "DT_Hero", ReadHero),
+                    ReadArray(root, "DT_HeroPath", ReadHeroPath));
 
-                return GatebreakerConfigLoadResult.Success(catalog, source, ReadOptionalInt(root, "Version"));
+                ValidateV1Catalog(catalog);
+
+                return GatebreakerConfigLoadResult.Success(catalog, source, version);
             }
             catch (Exception ex)
             {
@@ -94,6 +102,42 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     GatebreakerConfigLoadFailureReason.ParseFailed,
                     source,
                     $"Failed to parse Gatebreaker rules JSON: {ex.Message}");
+            }
+        }
+
+        private static void ValidateV1Catalog(GatebreakerModeCatalog catalog)
+        {
+            string[] heroIds = { "HERO_FROST_QUEEN", "HERO_MECH_ENGINEER", "HERO_RADIANT_PALADIN" };
+            if (catalog.AllHeroes.Count != 3 || heroIds.Any(id => !catalog.AllHeroes.ContainsKey(id)))
+            {
+                throw new FormatException("DT_Hero must contain exactly the three V1 heroes.");
+            }
+            if (catalog.AllHeroPaths.Count != 6 || catalog.AllUniversalChips.Count != 12 || catalog.AllSignatureChips.Count != 12)
+            {
+                throw new FormatException("V1 requires exactly 6 paths, 12 universal chips and 12 signature variants.");
+            }
+
+            foreach (HeroDefinition hero in catalog.AllHeroes.Values)
+            {
+                string[] pathIds = (hero.PathIds ?? Array.Empty<string>()).ToArray();
+                if (pathIds.Length != 2 || pathIds.Distinct(StringComparer.Ordinal).Count() != 2)
+                {
+                    throw new FormatException($"Hero '{hero.HeroId}' must declare exactly two unique paths.");
+                }
+                foreach (string pathId in pathIds)
+                {
+                    if (!catalog.AllHeroPaths.TryGetValue(pathId, out HeroPathDefinition path) || path.HeroId != hero.HeroId)
+                    {
+                        throw new FormatException($"Hero path '{pathId}' does not belong to '{hero.HeroId}'.");
+                    }
+                    SignatureChipDefinition[] variants = catalog.AllSignatureChips.Values
+                        .Where(chip => chip.HeroId == hero.HeroId && chip.PathId == pathId).ToArray();
+                    if (variants.Length != 2 || variants.Any(chip => chip.ResonanceValue != 3) ||
+                        !variants.Any(chip => chip.VariantKind == "Stable") || !variants.Any(chip => chip.VariantKind == "Style"))
+                    {
+                        throw new FormatException($"Path '{pathId}' must have Stable/Style signature variants with +3 resonance.");
+                    }
+                }
             }
         }
 
@@ -332,7 +376,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 DisplayName = ReadString(item, "DisplayName"),
                 HeroId = ReadString(item, "HeroId"),
                 PathId = ReadString(item, "PathId"),
-                Grade = ReadEnum<SignatureGrade>(item, "Grade"),
+                VariantKind = ReadOptionalString(item, "VariantKind"),
+                Parameters = ReadFloatMap(item, "Parameters"),
+                Grade = item.ContainsKey("Grade") ? ReadEnum<SignatureGrade>(item, "Grade") : SignatureGrade.Refined,
                 ResonanceValue = ReadInt(item, "ResonanceValue"),
                 Description = ReadOptionalString(item, "Description"),
                 EffectDesc = ReadOptionalString(item, "EffectDesc"),
@@ -434,6 +480,33 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 throw new FormatException($"'{key}.{pair.Key}' must be an integer.");
             }
 
+            return result;
+        }
+
+        private static IReadOnlyDictionary<string, float> ReadFloatMap(Dictionary<string, object> item, string key)
+        {
+            object value = ReadRequired(item, key);
+            if (!(value is Dictionary<string, object> map))
+            {
+                throw new FormatException($"JSON field '{key}' must be an object.");
+            }
+
+            var result = new Dictionary<string, float>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, object> pair in map)
+            {
+                if (pair.Value is double number)
+                {
+                    result[pair.Key] = (float)number;
+                }
+                else if (pair.Value is string text && float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed))
+                {
+                    result[pair.Key] = parsed;
+                }
+                else
+                {
+                    throw new FormatException($"'{key}.{pair.Key}' must be numeric.");
+                }
+            }
             return result;
         }
 

@@ -15,10 +15,9 @@ namespace App.HotUpdate.GatebreakerArena.Chip
 
         private static readonly HashSet<string> V1ChipIds = new HashSet<string>(StringComparer.Ordinal)
         {
-            "STRIKE_POWER", "STRIKE_SERVE", "STRIKE_OVERCHARGE",
-            "GUARD_LENGTH", "GUARD_GOAL", "GUARD_BOUNCE",
-            "FLOW_SPEED", "FLOW_AMMO", "FLOW_CAPACITY",
-            "CHAOS_SPIN", "CHAOS_RICOCHET", "CHAOS_DISRUPT",
+            "STRIKE_POWER", "STRIKE_SERVE", "STRIKE_ANGLE", "STRIKE_OVERCHARGE",
+            "GUARD_LENGTH", "GUARD_GOAL", "GUARD_BOUNCE", "GUARD_BRAKE",
+            "FLOW_SPEED", "FLOW_AMMO", "FLOW_CAPACITY", "FLOW_QUICK_SERVE",
         };
 
         public static bool IsV1UniversalChipId(string chipId)

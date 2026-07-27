@@ -144,7 +144,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     CreatePlayerColor(4, "Yellow", 1.0f, 0.86f, 0.18f),
                 },
                 CreateDefaultUniversalChips(),
-                Array.Empty<SignatureChipDefinition>(),
+                CreateDefaultSignatureChips(),
                 CreateDefaultHeroes(),
                 CreateDefaultHeroPaths());
         }
@@ -482,16 +482,16 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             {
                 CreateUniversalChip("STRIKE_POWER", "蓄能击", ChipCategory.Strike, ChipRarity.Common, "挡板反弹球速提高。"),
                 CreateUniversalChip("STRIKE_SERVE", "重发球", ChipCategory.Strike, ChipRarity.Common, "发球初速提高。"),
+                CreateUniversalChip("STRIKE_ANGLE", "折射瞄准", ChipCategory.Strike, ChipRarity.Common, "边缘反弹偏转提高。"),
                 CreateUniversalChip("STRIKE_OVERCHARGE", "过载", ChipCategory.Strike, ChipRarity.Common, "提高球速上限。"),
                 CreateUniversalChip("GUARD_LENGTH", "长板", ChipCategory.Guard, ChipRarity.Common, "挡板长度提高。"),
                 CreateUniversalChip("GUARD_GOAL", "收缩门", ChipCategory.Guard, ChipRarity.Common, "球门缩小。"),
                 CreateUniversalChip("GUARD_BOUNCE", "弹性墙", ChipCategory.Guard, ChipRarity.Common, "敌球反弹减速。"),
+                CreateUniversalChip("GUARD_BRAKE", "紧急制动", ChipCategory.Guard, ChipRarity.Common, "飞向球门的敌球减速。"),
                 CreateUniversalChip("FLOW_SPEED", "疾驰", ChipCategory.Flow, ChipRarity.Common, "挡板移速提高。"),
                 CreateUniversalChip("FLOW_AMMO", "快装填", ChipCategory.Flow, ChipRarity.Common, "发球冷却缩短。"),
                 CreateUniversalChip("FLOW_CAPACITY", "弹药库", ChipCategory.Flow, ChipRarity.Common, "最大弹药提高。"),
-                CreateUniversalChip("CHAOS_SPIN", "旋球", ChipCategory.Chaos, ChipRarity.Common, "墙弹确定性偏转。"),
-                CreateUniversalChip("CHAOS_RICOCHET", "连锁弹射", ChipCategory.Chaos, ChipRarity.Common, "固定碰撞计数强化。"),
-                CreateUniversalChip("CHAOS_DISRUPT", "扰乱", ChipCategory.Chaos, ChipRarity.Common, "命中敌方挡板后减速。"),
+                CreateUniversalChip("FLOW_QUICK_SERVE", "速射", ChipCategory.Flow, ChipRarity.Common, "短窗口内追加发球不耗弹药。"),
             };
         }
 
@@ -499,10 +499,27 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         {
             return new[]
             {
-                new HeroDefinition { HeroId = "HERO_FROST_QUEEN", DisplayName = "冰雪女王", ActiveAbilityId = "ABILITY_FROST_BLIZZARD", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_FROST_EXTREME", "PATH_FROST_CRYSTAL" } },
-                new HeroDefinition { HeroId = "HERO_THORN_GUARDIAN", DisplayName = "荆棘守护者", ActiveAbilityId = "ABILITY_THORN_ARMOR", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_THORN_BRISTLE", "PATH_THORN_GROWTH" } },
-                new HeroDefinition { HeroId = "HERO_RADIANT_PALADIN", DisplayName = "辉光圣骑", ActiveAbilityId = "ABILITY_RADIANT_SHIELD", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_RADIANT_HOLY_LIGHT", "PATH_RADIANT_RAY" } },
+                new HeroDefinition { HeroId = "HERO_FROST_QUEEN", DisplayName = "霜降", ActiveAbilityId = "ABILITY_FROST_COOLANT_OVERLOAD", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_FROST_EXTREME", "PATH_FROST_CRYSTAL" } },
+                new HeroDefinition { HeroId = "HERO_MECH_ENGINEER", DisplayName = "工事", ActiveAbilityId = "ABILITY_ENGINEER_BARRICADE", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_MECH_FORTRESS", "PATH_MECH_TURRET" } },
+                new HeroDefinition { HeroId = "HERO_RADIANT_PALADIN", DisplayName = "蓄能", ActiveAbilityId = "ABILITY_RADIANT_SHIELD", ActiveAbilityCooldownSeconds = 12f, PathIds = new[] { "PATH_RADIANT_CHARGE", "PATH_RADIANT_GLOW" } },
             };
+        }
+
+        private static IReadOnlyList<SignatureChipDefinition> CreateDefaultSignatureChips()
+        {
+            string[,] rows =
+            {
+                { "SIG_FROST_DEEP_FREEZE_TOUCH", "HERO_FROST_QUEEN", "PATH_FROST_EXTREME" }, { "SIG_FROST_DEEP_FREEZE_DOMAIN", "HERO_FROST_QUEEN", "PATH_FROST_EXTREME" },
+                { "SIG_FROST_ICE_CRYSTAL_RESERVE", "HERO_FROST_QUEEN", "PATH_FROST_CRYSTAL" }, { "SIG_FROST_ICE_CRYSTAL_PRISM", "HERO_FROST_QUEEN", "PATH_FROST_CRYSTAL" },
+                { "SIG_MECH_FORTRESS_FOUNDATION", "HERO_MECH_ENGINEER", "PATH_MECH_FORTRESS" }, { "SIG_MECH_FORTRESS_DIRECTED", "HERO_MECH_ENGINEER", "PATH_MECH_FORTRESS" },
+                { "SIG_MECH_TURRET_GUIDANCE", "HERO_MECH_ENGINEER", "PATH_MECH_TURRET" }, { "SIG_MECH_TURRET_COUNTER", "HERO_MECH_ENGINEER", "PATH_MECH_TURRET" },
+                { "SIG_RADIANT_CHARGE_RESERVE", "HERO_RADIANT_PALADIN", "PATH_RADIANT_CHARGE" }, { "SIG_RADIANT_CHARGE_JUDGMENT", "HERO_RADIANT_PALADIN", "PATH_RADIANT_CHARGE" },
+                { "SIG_RADIANT_GLOW_STABLE", "HERO_RADIANT_PALADIN", "PATH_RADIANT_GLOW" }, { "SIG_RADIANT_GLOW_AURA", "HERO_RADIANT_PALADIN", "PATH_RADIANT_GLOW" },
+            };
+            var result = new List<SignatureChipDefinition>();
+            for (int i = 0; i < rows.GetLength(0); i++)
+                result.Add(CreateSignatureChip(rows[i, 0], rows[i, 0], rows[i, 1], rows[i, 2], SignatureGrade.Refined, 3, "V1 fallback variant."));
+            return result;
         }
 
         private static IReadOnlyList<HeroPathDefinition> CreateDefaultHeroPaths()
@@ -511,10 +528,10 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             {
                 CreateHeroPath("PATH_FROST_EXTREME", "HERO_FROST_QUEEN", "极寒", ChipCategory.Strike, ChipCategory.Guard),
                 CreateHeroPath("PATH_FROST_CRYSTAL", "HERO_FROST_QUEEN", "冰晶", ChipCategory.Guard, ChipCategory.Flow),
-                CreateHeroPath("PATH_THORN_BRISTLE", "HERO_THORN_GUARDIAN", "荆棘", ChipCategory.Strike, ChipCategory.Guard),
-                CreateHeroPath("PATH_THORN_GROWTH", "HERO_THORN_GUARDIAN", "生长", ChipCategory.Guard, ChipCategory.Flow),
-                CreateHeroPath("PATH_RADIANT_HOLY_LIGHT", "HERO_RADIANT_PALADIN", "圣光", ChipCategory.Strike, ChipCategory.Guard),
-                CreateHeroPath("PATH_RADIANT_RAY", "HERO_RADIANT_PALADIN", "光芒", ChipCategory.Strike, ChipCategory.Flow),
+                CreateHeroPath("PATH_MECH_FORTRESS", "HERO_MECH_ENGINEER", "堡垒", ChipCategory.Strike, ChipCategory.Guard),
+                CreateHeroPath("PATH_MECH_TURRET", "HERO_MECH_ENGINEER", "炮台", ChipCategory.Strike, ChipCategory.Flow),
+                CreateHeroPath("PATH_RADIANT_CHARGE", "HERO_RADIANT_PALADIN", "充能", ChipCategory.Strike, ChipCategory.Guard),
+                CreateHeroPath("PATH_RADIANT_GLOW", "HERO_RADIANT_PALADIN", "光芒", ChipCategory.Strike, ChipCategory.Flow),
             };
         }
 
@@ -545,6 +562,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 DisplayName = displayName,
                 HeroId = heroId,
                 PathId = pathId,
+                VariantKind = chipId.EndsWith("TOUCH", StringComparison.Ordinal) || chipId.EndsWith("RESERVE", StringComparison.Ordinal) || chipId.EndsWith("FOUNDATION", StringComparison.Ordinal) || chipId.EndsWith("GUIDANCE", StringComparison.Ordinal) || chipId.EndsWith("STABLE", StringComparison.Ordinal) ? "Stable" : "Style",
+                Parameters = new Dictionary<string, float>(),
                 Grade = grade,
                 ResonanceValue = resonanceValue,
                 Description = description,

@@ -14,7 +14,7 @@ namespace App.HotUpdate.GatebreakerArena.Hero
     public sealed class HeroRuntimeSystem
     {
         public const string FrostQueenId = "HERO_FROST_QUEEN";
-        public const string ThornGuardianId = "HERO_THORN_GUARDIAN";
+        public const string EngineerId = "HERO_MECH_ENGINEER";
         public const string RadiantPaladinId = "HERO_RADIANT_PALADIN";
         public const int DefaultFramesPerSecond = 30;
 
@@ -33,7 +33,9 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             IReadOnlyList<HeroPathDefinition> heroPaths,
             IReadOnlyList<UniversalChipDefinition> activeChips,
             HeroRuntimeState runtimeState,
-            HeroCombatState combatState)
+            HeroCombatState combatState,
+            bool resetTransientState = true,
+            SignatureChipDefinition signatureChip = null)
         {
             if (hero == null)
             {
@@ -62,8 +64,17 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             runtimeState.HeroId = hero.HeroId ?? string.Empty;
             runtimeState.ActiveChipIds = chips.Select(chip => chip.ChipId ?? string.Empty).ToArray();
             runtimeState.PathStates = CalculatePathStates(ownedPaths, chips);
-            runtimeState.AbilityCooldownRemainingFrames = 0;
+            if (resetTransientState)
+            {
+                runtimeState.AbilityCooldownRemainingFrames = 0;
+            }
             combatState.HeroId = runtimeState.HeroId;
+            if (signatureChip != null)
+            {
+                combatState.SignatureParameters = (signatureChip.Parameters ?? new Dictionary<string, float>())
+                    .OrderBy(item => item.Key, StringComparer.Ordinal)
+                    .Select(item => new HeroParameterState { Key = item.Key, Value = item.Value }).ToList();
+            }
         }
 
         public IReadOnlyList<HeroPathRuntimeState> CalculatePathStates(
@@ -94,6 +105,7 @@ namespace App.HotUpdate.GatebreakerArena.Hero
         {
             ValidateContext(hero, runtimeState, combatState, framesPerSecond);
             HeroPathLevels paths = ResolvePathLevels(hero, heroPaths, runtimeState);
+            combatState.SimulationFrame++;
             switch (runtimeEvent.EventType)
             {
                 case HeroRuntimeEventType.OpponentPaddleHit:
@@ -121,33 +133,16 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             HeroPathLevels paths = ResolvePathLevels(hero, heroPaths, runtimeState);
             var effects = new HeroEffectBundle();
 
-            if (string.Equals(hero.HeroId, ThornGuardianId, StringComparison.Ordinal))
-            {
-                effects.OwnPaddleLengthMultiplier = GetThornLengthMultiplier(paths, combatState);
-            }
-            else if (string.Equals(hero.HeroId, RadiantPaladinId, StringComparison.Ordinal))
+            if (string.Equals(hero.HeroId, RadiantPaladinId, StringComparison.Ordinal))
             {
                 if (combatState.DivineShieldRemainingFrames > 0)
                 {
                     effects.OwnGoalImmuneFrames = combatState.DivineShieldRemainingFrames;
-                    if (paths.HolyLightLevel >= 2)
-                    {
-                        effects.OwnPaddleBounceSpeedMultiplier = 1.5f;
-                    }
-
-                    if (paths.BrillianceLevel >= 2)
-                    {
-                        effects.OwnPaddleMoveSpeedMultiplier = 1.5f;
-                    }
                 }
-
-                if (paths.BrillianceLevel >= 2)
+                if (paths.GlowLevel >= 1 && combatState.GlowStacks > 0)
                 {
-                    effects.OwnBallSpeedMultiplier *= 1f + combatState.RadianceStacks * 0.05f;
-                    if (combatState.TeamBallSpeedBoostRemainingFrames > 0)
-                    {
-                        effects.OwnBallSpeedMultiplier *= 1.5f;
-                    }
+                    float[] boosts = { 0f, 0.08f, 0.14f, 0.18f };
+                    effects.OwnBallSpeedMultiplier = Math.Min(GetParameter(combatState, "GlowCap", 1.4f), 1f + boosts[Math.Min(3, combatState.GlowStacks)]);
                 }
             }
 
@@ -169,21 +164,35 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             combatState.DivineShieldRemainingFrames = Math.Max(0, combatState.DivineShieldRemainingFrames - 1);
             combatState.BlizzardRemainingFrames = Math.Max(0, combatState.BlizzardRemainingFrames - 1);
             combatState.TeamBallSpeedBoostRemainingFrames = Math.Max(0, combatState.TeamBallSpeedBoostRemainingFrames - 1);
+            combatState.ArcPulseCooldownRemainingFrames = Math.Max(0, combatState.ArcPulseCooldownRemainingFrames - 1);
+            combatState.GlowDecayRemainingFrames = Math.Max(0, combatState.GlowDecayRemainingFrames - 1);
+            if (combatState.GlowDecayRemainingFrames == 0) combatState.GlowStacks = 0;
+            foreach (HeroFreezeImmunityState immunity in combatState.FreezeImmunityByOpponent)
+                immunity.RemainingFrames = Math.Max(0, immunity.RemainingFrames - 1);
+            foreach (HeroBarrierState barrier in combatState.Barriers)
+            {
+                barrier.RemainingFrames = Math.Max(0, barrier.RemainingFrames - 1);
+                barrier.DisabledRemainingFrames = Math.Max(0, barrier.DisabledRemainingFrames - 1);
+                barrier.HitWindowRemainingFrames = Math.Max(0, barrier.HitWindowRemainingFrames - 1);
+                if (barrier.HitWindowRemainingFrames == 0) barrier.HitsInWindow = 0;
+            }
+            combatState.Barriers.RemoveAll(barrier => barrier == null || barrier.RemainingFrames <= 0);
 
-            if (string.Equals(hero.HeroId, FrostQueenId, StringComparison.Ordinal) && paths.IceCrystalLevel < 1)
+            if (string.Equals(hero.HeroId, FrostQueenId, StringComparison.Ordinal))
             {
                 combatState.FrostDecayFrameProgress++;
                 if (combatState.FrostDecayFrameProgress >= framesPerSecond)
                 {
                     combatState.FrostDecayFrameProgress = 0;
-                    foreach (HeroFrostStackState frost in combatState.FrostByOpponent)
+                    int decay = (int)GetParameter(combatState, "FrostDecay", FrostDecayPerSecond);
+                    foreach (HeroBallFrostState frost in combatState.FrostByBall)
                     {
-                        frost.Amount = Math.Max(0, frost.Amount - FrostDecayPerSecond);
+                        frost.Amount = Math.Max(0, frost.Amount - decay);
                     }
                 }
             }
 
-            if (string.Equals(hero.HeroId, ThornGuardianId, StringComparison.Ordinal) &&
+            if (string.Equals(hero.HeroId, EngineerId, StringComparison.Ordinal) &&
                 paths.GrowthLevel >= 2 && combatState.ThornArmorRemainingFrames > 0)
             {
                 combatState.ThornArmorGrowthFrameProgress++;
@@ -216,13 +225,13 @@ namespace App.HotUpdate.GatebreakerArena.Hero
                 return input.HighestOpponentFrost >= 50;
             }
 
-            if (string.Equals(hero.HeroId, ThornGuardianId, StringComparison.Ordinal))
+            if (string.Equals(hero.HeroId, EngineerId, StringComparison.Ordinal))
             {
                 return input.HasEnemyBallInOwnDangerZone;
             }
 
             return string.Equals(hero.HeroId, RadiantPaladinId, StringComparison.Ordinal) &&
-                   (input.HasEnemyBallInOwnDangerZone || combatState.RadianceStacks >= 6);
+                   (input.HasEnemyBallInOwnDangerZone || combatState.ChargeStacks >= 5);
         }
 
         /// <summary>
@@ -244,12 +253,12 @@ namespace App.HotUpdate.GatebreakerArena.Hero
         /// <summary>Removes per-ball state after a ball leaves the deterministic simulation.</summary>
         public void RemoveBallState(HeroCombatState combatState, int ballId)
         {
-            if (combatState == null || ballId == 0 || combatState.IceCrystalBallSpeedStacks == null)
+            if (combatState == null || ballId == 0)
             {
                 return;
             }
-
-            combatState.IceCrystalBallSpeedStacks.RemoveAll(item => item == null || item.BallId == ballId);
+            combatState.IceCrystalBallSpeedStacks?.RemoveAll(item => item == null || item.BallId == ballId);
+            combatState.FrostByBall?.RemoveAll(item => item == null || item.BallId == ballId);
         }
 
         private static HeroRuntimeEventResult HandleOpponentPaddleHit(
@@ -262,8 +271,8 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             var result = new HeroRuntimeEventResult();
             if (string.Equals(hero.HeroId, FrostQueenId, StringComparison.Ordinal))
             {
-                HeroFrostStackState frost = GetOrCreateFrost(state, runtimeEvent.OtherPlayerId);
-                int increment = paths.ExtremeColdLevel >= 1 ? FrostM1PerHit : FrostBasePerHit;
+                HeroBallFrostState frost = GetOrCreateBallFrost(state, runtimeEvent.BallId);
+                int increment = (int)GetParameter(state, "FrostPerHit", paths.ExtremeColdLevel >= 1 || paths.IceCrystalLevel >= 1 ? 15 : FrostBasePerHit);
                 if (state.BlizzardRemainingFrames > 0)
                 {
                     increment = (int)Math.Ceiling(increment * 1.5f);
@@ -273,21 +282,33 @@ namespace App.HotUpdate.GatebreakerArena.Hero
                 if (frost.Amount >= FrostThreshold)
                 {
                     frost.Amount = 0;
-                    result.Effects.TargetPaddleFreezeFrames = SecondsToFrames(GetFrostFreezeSeconds(paths), framesPerSecond);
-                    if (paths.ExtremeColdLevel >= 2)
+                    if (paths.IceCrystalLevel >= 1 && runtimeEvent.BallId != 0)
                     {
-                        result.Effects.TargetPaddleFreezeFrames = SecondsToFrames(1.2f, framesPerSecond);
-                        result.Effects.TargetAllBallsFreezeFrames = SecondsToFrames(0.75f, framesPerSecond);
+                        HeroBallSpeedStackState ballState = GetOrCreateBallSpeedStack(state, runtimeEvent.BallId);
+                        ballState.Stacks = Math.Min(2, ballState.Stacks + 1);
+                        result.Effects.OwnBallSpeedMultiplier = GetParameter(state, "CrystalSpeed", 1.25f);
+                        result.Effects.RedirectBounceTowardsNearestEnemyGoal = paths.IceCrystalLevel >= 2;
                     }
-                }
-
-                if (paths.IceCrystalLevel >= 2 && runtimeEvent.BallId != 0)
-                {
-                    HeroBallSpeedStackState ballState = GetOrCreateBallSpeedStack(state, runtimeEvent.BallId);
-                    ballState.Stacks = Math.Min(IceCrystalMaxSpeedStacks, ballState.Stacks + 1);
-                    result.Effects.OwnBallSpeedMultiplier = 1.15f;
-                    result.Effects.RedirectBounceTowardsNearestEnemyGoal = true;
-                    result.Effects.BounceRedirectMaxDegrees = 8f;
+                    else
+                    {
+                        HeroFreezeImmunityState immunity = GetOrCreateFreezeImmunity(state, runtimeEvent.OtherPlayerId);
+                        if (immunity.RemainingFrames > 0)
+                        {
+                            result.Effects.TargetPaddleSlowFrames = SecondsToFrames(1f, framesPerSecond);
+                            result.Effects.TargetPaddleMoveSpeedMultiplier = 0.8f;
+                        }
+                        else
+                        {
+                            float freezeSeconds = GetParameter(state, "FreezeSeconds", 1.5f);
+                            result.Effects.TargetPaddleFreezeFrames = SecondsToFrames(freezeSeconds, framesPerSecond);
+                            immunity.RemainingFrames = SecondsToFrames(6f, framesPerSecond);
+                            if (paths.ExtremeColdLevel >= 2)
+                            {
+                                result.Effects.TargetPaddleSlowFrames = SecondsToFrames(1.5f, framesPerSecond);
+                                result.Effects.TargetPaddleMoveSpeedMultiplier = GetParameter(state, "FreezeSlowMultiplier", 0.8f);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -302,12 +323,14 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             int framesPerSecond)
         {
             var result = new HeroRuntimeEventResult();
-            if (string.Equals(hero.HeroId, ThornGuardianId, StringComparison.Ordinal) && state.ThornArmorRemainingFrames > 0)
+            if (string.Equals(hero.HeroId, EngineerId, StringComparison.Ordinal))
             {
-                result.Effects.OwnPaddleBounceSpeedMultiplier = paths.ThornsLevel >= 2
-                    ? 2f
-                    : paths.ThornsLevel >= 1 ? 1.5f : 1.3f;
-                result.Effects.RedirectBounceTowardsNearestEnemyGoal = paths.ThornsLevel >= 2;
+                if (paths.TurretLevel >= 1)
+                {
+                    result.Effects.OwnPaddleBounceSpeedMultiplier = GetParameter(state, "BounceSpeed", 1.2f);
+                    result.Effects.RedirectBounceTowardsNearestEnemyGoal = paths.TurretLevel >= 2;
+                    result.Effects.BounceRedirectMaxDegrees = GetParameter(state, "RedirectDegrees", 12f);
+                }
                 return result;
             }
 
@@ -316,23 +339,28 @@ namespace App.HotUpdate.GatebreakerArena.Hero
                 return result;
             }
 
-            state.RadianceStacks++;
-            int threshold = paths.HolyLightLevel >= 1 || paths.BrillianceLevel >= 1 ? 6 : 8;
-            if (state.RadianceStacks < threshold)
+            if (paths.GlowLevel >= 1)
             {
+                state.GlowStacks = Math.Min(3, state.GlowStacks + 1);
+                state.GlowDecayRemainingFrames = SecondsToFrames(GetParameter(state, "GlowSeconds", 5f), framesPerSecond);
+                result.Effects.OwnPaddleBounceSpeedMultiplier = 1f + state.GlowStacks * 0.06f;
                 return result;
             }
-
-            state.RadianceStacks = 0;
-            result.Effects.OwnPaddleBounceSpeedMultiplier = paths.HolyLightLevel >= 2
-                ? 2f
-                : paths.HolyLightLevel >= 1 ? 1.6f : 1.3f;
-            result.Effects.RedirectBounceTowardsNearestEnemyGoal = true;
-            if (paths.BrillianceLevel >= 2)
+            if (paths.ChargeLevel >= 1)
             {
-                state.TeamBallSpeedBoostRemainingFrames = SecondsToFrames(3f, framesPerSecond);
-                result.Effects.OwnTeamBallSpeedBoostFrames = state.TeamBallSpeedBoostRemainingFrames;
-                result.Effects.OwnTeamBallSpeedBoostMultiplierPercent = 50;
+                state.ChargeStacks++;
+                int threshold = (int)GetParameter(state, "ChargeThreshold", 6f);
+                if (state.ChargeStacks >= threshold)
+                {
+                    state.ChargeStacks = 0;
+                    result.Effects.OwnPaddleBounceSpeedMultiplier = GetParameter(state, "BurstSpeed", 1.45f);
+                    result.Effects.OwnGoalImmuneFrames = SecondsToFrames(GetParameter(state, "ShieldSeconds", 0.5f), framesPerSecond);
+                    if (paths.ChargeLevel >= 2)
+                    {
+                        result.Effects.TemporaryCloneCount = paths.ChargeLevel >= 3 ? 2 : 1;
+                        result.Effects.TemporaryCloneDurationFrames = SecondsToFrames(3f, framesPerSecond);
+                    }
+                }
             }
 
             return result;
@@ -345,25 +373,6 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             int framesPerSecond)
         {
             var result = new HeroRuntimeEventResult();
-            if (!string.Equals(hero.HeroId, ThornGuardianId, StringComparison.Ordinal))
-            {
-                return result;
-            }
-
-            int maximum = GetThornGrowthMaximum(paths);
-            state.ThornGrowthStacks = Math.Min(maximum, state.ThornGrowthStacks + 1);
-            result.Effects.OwnPaddleLengthMultiplier = GetThornLengthMultiplier(paths, state);
-            if (paths.ThornsLevel >= 1)
-            {
-                result.Effects.TargetServeAmmoDelta = -1;
-            }
-
-            if (paths.ThornsLevel >= 2)
-            {
-                result.Effects.TargetPaddleSlowFrames = SecondsToFrames(3f, framesPerSecond);
-                result.Effects.TargetPaddleMoveSpeedMultiplier = 0.8f;
-            }
-
             return result;
         }
 
@@ -386,14 +395,15 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             {
                 state.BlizzardRemainingFrames = SecondsToFrames(paths.ExtremeColdLevel >= 1 ? 5f : 4f, framesPerSecond);
             }
-            else if (string.Equals(hero.HeroId, ThornGuardianId, StringComparison.Ordinal))
+            else if (string.Equals(hero.HeroId, EngineerId, StringComparison.Ordinal))
             {
-                state.ThornArmorRemainingFrames = SecondsToFrames(4f, framesPerSecond);
-                state.ThornArmorGrowthFrameProgress = 0;
+                result.Effects.SpawnBarrier = true;
+                result.Effects.BarrierDurationFrames = SecondsToFrames(GetParameter(state, "BarrierSeconds", 8f), framesPerSecond);
+                result.Effects.BarrierLength = GetParameter(state, "BarrierLength", 1.5f);
             }
             else if (string.Equals(hero.HeroId, RadiantPaladinId, StringComparison.Ordinal))
             {
-                float duration = paths.HolyLightLevel >= 2 ? 3f : paths.HolyLightLevel >= 1 ? 2f : 1.5f;
+                float duration = paths.ChargeLevel >= 1 ? GetParameter(state, "ShieldSeconds", 0.5f) : 1.5f;
                 state.DivineShieldRemainingFrames = SecondsToFrames(duration, framesPerSecond);
                 result.Effects.OwnGoalImmuneFrames = state.DivineShieldRemainingFrames;
             }
@@ -416,19 +426,8 @@ namespace App.HotUpdate.GatebreakerArena.Hero
 
                 HeroPathRuntimeState runtimePath = (runtimeState.PathStates ?? Array.Empty<HeroPathRuntimeState>())
                     .FirstOrDefault(item => item != null && string.Equals(item.PathId, path.PathId, StringComparison.Ordinal));
-                int level = runtimePath != null ? Math.Min(2, Math.Max(0, runtimePath.Level)) : 0;
-                if (IsCategoryPair(path.ResonanceCategories, ChipCategory.Strike, ChipCategory.Guard))
-                {
-                    levels.SetStrikeGuard(level);
-                }
-                else if (IsCategoryPair(path.ResonanceCategories, ChipCategory.Guard, ChipCategory.Flow))
-                {
-                    levels.SetGuardFlow(level);
-                }
-                else if (IsCategoryPair(path.ResonanceCategories, ChipCategory.Strike, ChipCategory.Flow))
-                {
-                    levels.SetStrikeFlow(level);
-                }
+                int level = runtimePath != null ? Math.Min(3, Math.Max(0, runtimePath.Level)) : 0;
+                levels.Set(path.PathId, level);
             }
 
             return levels;
@@ -478,18 +477,35 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             return Math.Min(1.8f, 1f + state.ThornGrowthStacks * perStack);
         }
 
-        private static HeroFrostStackState GetOrCreateFrost(HeroCombatState state, int opponentPlayerId)
+        private static HeroBallFrostState GetOrCreateBallFrost(HeroCombatState state, int ballId)
         {
-            HeroFrostStackState frost = state.FrostByOpponent.FirstOrDefault(item => item.OpponentPlayerId == opponentPlayerId);
+            HeroBallFrostState frost = state.FrostByBall.FirstOrDefault(item => item.BallId == ballId);
             if (frost != null)
             {
                 return frost;
             }
 
-            frost = new HeroFrostStackState { OpponentPlayerId = opponentPlayerId };
-            state.FrostByOpponent.Add(frost);
-            state.FrostByOpponent.Sort((left, right) => left.OpponentPlayerId.CompareTo(right.OpponentPlayerId));
+            frost = new HeroBallFrostState { BallId = ballId };
+            state.FrostByBall.Add(frost);
+            state.FrostByBall.Sort((left, right) => left.BallId.CompareTo(right.BallId));
             return frost;
+        }
+
+        private static HeroFreezeImmunityState GetOrCreateFreezeImmunity(HeroCombatState state, int opponentPlayerId)
+        {
+            HeroFreezeImmunityState item = state.FreezeImmunityByOpponent.FirstOrDefault(value => value.OpponentPlayerId == opponentPlayerId);
+            if (item != null) return item;
+            item = new HeroFreezeImmunityState { OpponentPlayerId = opponentPlayerId };
+            state.FreezeImmunityByOpponent.Add(item);
+            state.FreezeImmunityByOpponent.Sort((left, right) => left.OpponentPlayerId.CompareTo(right.OpponentPlayerId));
+            return item;
+        }
+
+        private static float GetParameter(HeroCombatState state, string key, float fallback)
+        {
+            HeroParameterState parameter = (state.SignatureParameters ?? new List<HeroParameterState>())
+                .FirstOrDefault(item => item != null && string.Equals(item.Key, key, StringComparison.Ordinal));
+            return parameter != null ? parameter.Value : fallback;
         }
 
         private static HeroBallSpeedStackState GetOrCreateBallSpeedStack(HeroCombatState state, int ballId)
@@ -529,23 +545,22 @@ namespace App.HotUpdate.GatebreakerArena.Hero
             public int GrowthLevel { get; private set; }
             public int HolyLightLevel { get; private set; }
             public int BrillianceLevel { get; private set; }
+            public int FortressLevel { get; private set; }
+            public int TurretLevel { get; private set; }
+            public int ChargeLevel { get; private set; }
+            public int GlowLevel { get; private set; }
 
-            public void SetStrikeGuard(int level)
+            public void Set(string pathId, int level)
             {
-                ExtremeColdLevel = level;
-                ThornsLevel = level;
-                HolyLightLevel = level;
-            }
-
-            public void SetGuardFlow(int level)
-            {
-                IceCrystalLevel = level;
-                GrowthLevel = level;
-            }
-
-            public void SetStrikeFlow(int level)
-            {
-                BrillianceLevel = level;
+                switch (pathId)
+                {
+                    case "PATH_FROST_EXTREME": ExtremeColdLevel = level; break;
+                    case "PATH_FROST_CRYSTAL": IceCrystalLevel = level; break;
+                    case "PATH_MECH_FORTRESS": FortressLevel = level; break;
+                    case "PATH_MECH_TURRET": TurretLevel = level; break;
+                    case "PATH_RADIANT_CHARGE": ChargeLevel = level; break;
+                    case "PATH_RADIANT_GLOW": GlowLevel = level; break;
+                }
             }
         }
     }

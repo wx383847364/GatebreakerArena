@@ -677,6 +677,15 @@ namespace Gatebreaker.Tests
             public GameObject ModeSelectRoot { get; private set; }
             public Button LocalBattleButton { get; private set; }
             public Button OnlineBattleButton { get; private set; }
+            public GameObject LoadoutRoot { get; private set; }
+            public TMP_Dropdown LoadoutHeroDropdown { get; private set; }
+            public TMP_Dropdown LoadoutPathDropdown { get; private set; }
+            public TMP_Dropdown LoadoutSignatureDropdown { get; private set; }
+            public TMP_Dropdown[] LoadoutUniversalChipDropdowns { get; private set; }
+            public Button LoadoutUseDefaultButton { get; private set; }
+            public Button LoadoutConfirmButton { get; private set; }
+            public TMP_Text LoadoutErrorText { get; private set; }
+            public TMP_Text HeroHudText { get; private set; }
             public GameObject LanMenuRoot { get; private set; }
             public GameObject LanRoomInfoRoot { get; private set; }
             public GameObject LanStatusRoot { get; private set; }
@@ -753,6 +762,15 @@ namespace Gatebreaker.Tests
             public Object ModeSelectRootObject => ModeSelectRoot;
             public Object LocalBattleButtonObject => LocalBattleButton;
             public Object OnlineBattleButtonObject => OnlineBattleButton;
+            public Object LoadoutRootObject => LoadoutRoot;
+            public Object LoadoutHeroDropdownObject => LoadoutHeroDropdown;
+            public Object LoadoutPathDropdownObject => LoadoutPathDropdown;
+            public Object LoadoutSignatureDropdownObject => LoadoutSignatureDropdown;
+            public Object[] LoadoutUniversalChipDropdownObjects => LoadoutUniversalChipDropdowns;
+            public Object LoadoutUseDefaultButtonObject => LoadoutUseDefaultButton;
+            public Object LoadoutConfirmButtonObject => LoadoutConfirmButton;
+            public Object LoadoutErrorTextObject => LoadoutErrorText;
+            public Object HeroHudTextObject => HeroHudText;
             public Object LanMenuRootObject => LanMenuRoot;
             public Object LanRoomInfoRootObject => LanRoomInfoRoot;
             public Object LanStatusRootObject => LanStatusRoot;
@@ -883,6 +901,20 @@ namespace Gatebreaker.Tests
                     ModeSelectRoot = CreateRoot(parent, "ModeSelectRoot"),
                     LocalBattleButton = Add<Button>(parent, "LocalBattle"),
                     OnlineBattleButton = Add<Button>(parent, "OnlineBattle"),
+                    LoadoutRoot = CreateRoot(parent, "LoadoutRoot"),
+                    LoadoutHeroDropdown = Add<TMP_Dropdown>(parent, "LoadoutHero"),
+                    LoadoutPathDropdown = Add<TMP_Dropdown>(parent, "LoadoutPath"),
+                    LoadoutSignatureDropdown = Add<TMP_Dropdown>(parent, "LoadoutSignature"),
+                    LoadoutUniversalChipDropdowns = new[]
+                    {
+                        Add<TMP_Dropdown>(parent, "LoadoutChip0"), Add<TMP_Dropdown>(parent, "LoadoutChip1"),
+                        Add<TMP_Dropdown>(parent, "LoadoutChip2"), Add<TMP_Dropdown>(parent, "LoadoutChip3"),
+                        Add<TMP_Dropdown>(parent, "LoadoutChip4"),
+                    },
+                    LoadoutUseDefaultButton = Add<Button>(parent, "LoadoutDefault"),
+                    LoadoutConfirmButton = Add<Button>(parent, "LoadoutConfirm"),
+                    LoadoutErrorText = Add<TextMeshProUGUI>(parent, "LoadoutError"),
+                    HeroHudText = Add<TextMeshProUGUI>(parent, "HeroHud"),
                     LanMenuRoot = CreateRoot(parent, "LanMenuRoot"),
                     LanRoomInfoRoot = CreateRoot(parent, "LanRoomInfoRoot"),
                     LanStatusRoot = CreateRoot(parent, "LanStatusRoot"),

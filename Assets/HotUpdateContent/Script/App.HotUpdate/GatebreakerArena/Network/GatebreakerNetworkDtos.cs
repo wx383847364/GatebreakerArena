@@ -73,6 +73,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public ulong SessionId { get; set; }
         public uint ChannelId { get; set; }
         public string RoomCode { get; set; } = string.Empty;
+        public int RulesSchemaVersion { get; set; }
+        public string RulesHash { get; set; } = string.Empty;
         public ulong HostClientInstanceId { get; set; }
         public string HostPlayerName { get; set; } = string.Empty;
         public int TcpPort { get; set; }
@@ -87,6 +89,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public ulong ClientInstanceId { get; set; }
         public string PlayerName { get; set; } = string.Empty;
         public string RoomCode { get; set; } = string.Empty;
+        public int RulesSchemaVersion { get; set; }
+        public string RulesHash { get; set; } = string.Empty;
     }
 
     public sealed class RoomJoinResponse
@@ -107,6 +111,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public ulong SessionId { get; set; }
         public uint ChannelId { get; set; }
         public string RoomCode { get; set; } = string.Empty;
+        public int RulesSchemaVersion { get; set; }
+        public string RulesHash { get; set; } = string.Empty;
         public LanRoomState State { get; set; }
         public bool IsHost { get; set; }
         public bool CanStart { get; set; }
@@ -134,6 +140,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public bool IsActive { get; set; }
         public bool IsAi { get; set; }
         public string HeroId { get; set; } = string.Empty;
+        public string PathId { get; set; } = string.Empty;
+        public string SignatureChipId { get; set; } = string.Empty;
+        public string[] OpeningUniversalChipIds { get; set; } = Array.Empty<string>();
+        public string[] ScheduledUniversalChipIds { get; set; } = Array.Empty<string>();
+        public string LoadoutHash { get; set; } = string.Empty;
         public string[] DeckChipIds { get; set; } = Array.Empty<string>();
     }
 
@@ -141,6 +152,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
     {
         public ulong ClientInstanceId { get; set; }
         public bool IsReady { get; set; }
+        public string HeroId { get; set; } = string.Empty;
+        public string PathId { get; set; } = string.Empty;
+        public string SignatureChipId { get; set; } = string.Empty;
+        public string[] OpeningUniversalChipIds { get; set; } = Array.Empty<string>();
+        public string[] ScheduledUniversalChipIds { get; set; } = Array.Empty<string>();
     }
 
     public sealed class RoomStartAck

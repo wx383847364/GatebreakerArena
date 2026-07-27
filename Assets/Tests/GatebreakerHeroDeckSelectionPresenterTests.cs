@@ -21,7 +21,7 @@ namespace Gatebreaker.Tests
                 new[]
                 {
                     HeroDeckSelectionPresenter.FrostQueenHeroId,
-                    HeroDeckSelectionPresenter.ThornGuardianHeroId,
+                    HeroDeckSelectionPresenter.EngineerHeroId,
                     HeroDeckSelectionPresenter.RadiantPaladinHeroId,
                 },
                 presenter.AvailableHeroes.Select(hero => hero.HeroId));
@@ -64,23 +64,26 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(presenter.TryAddChip("FLOW_SPEED", out validation));
             Assert.IsTrue(presenter.TryAddChip("GUARD_LENGTH", out validation));
             Assert.IsTrue(presenter.TryAddChip("STRIKE_POWER", out validation));
+            Assert.IsTrue(presenter.TryAddChip("FLOW_AMMO", out validation));
+            Assert.IsTrue(presenter.TryAddChip("GUARD_GOAL", out validation));
 
             Assert.IsTrue(presenter.TryCreatePlayerSlot(0, 1, 7, false, out slot, out validation));
             Assert.AreEqual(HeroDeckSelectionPresenter.FrostQueenHeroId, slot.HeroId);
+            Assert.AreEqual("PATH_FROST_EXTREME", slot.Loadout.PathId);
+            Assert.AreEqual("SIG_FROST_DEEP_FREEZE_TOUCH", slot.Loadout.SignatureChipId);
             CollectionAssert.AreEqual(
-                new[] { "FLOW_SPEED", "GUARD_LENGTH", "STRIKE_POWER" },
+                new[] { "FLOW_SPEED", "GUARD_LENGTH", "STRIKE_POWER", "FLOW_AMMO", "GUARD_GOAL" },
                 slot.DeckChipIds);
         }
 
         [Test]
-        public void SelectionRejectsAChipBeyondTheEightChipDeckLimit()
+        public void SelectionRejectsAChipBeyondTheFiveChipDeckLimit()
         {
             var presenter = new HeroDeckSelectionPresenter(CreateV1Catalog());
             string[] deck =
             {
-                "STRIKE_POWER", "STRIKE_SERVE", "STRIKE_OVERCHARGE",
-                "GUARD_LENGTH", "GUARD_GOAL", "GUARD_BOUNCE",
-                "FLOW_SPEED", "FLOW_AMMO",
+                "STRIKE_POWER", "STRIKE_SERVE", "GUARD_LENGTH",
+                "GUARD_GOAL", "FLOW_SPEED",
             };
 
             for (int i = 0; i < deck.Length; i++)
@@ -88,7 +91,7 @@ namespace Gatebreaker.Tests
                 Assert.IsTrue(presenter.TryAddChip(deck[i], out HeroDeckSelectionValidation validation));
             }
 
-            Assert.IsFalse(presenter.TryAddChip("FLOW_CAPACITY", out HeroDeckSelectionValidation limitValidation));
+            Assert.IsFalse(presenter.TryAddChip("FLOW_AMMO", out HeroDeckSelectionValidation limitValidation));
             Assert.AreEqual(HeroDeckSelectionFailure.DeckFull, limitValidation.Failure);
         }
 
@@ -107,7 +110,7 @@ namespace Gatebreaker.Tests
 
         private static GatebreakerModeCatalog CreateV1Catalog()
         {
-            return CreateCatalog(includeFutureStrike: false);
+            return GatebreakerModeCatalog.CreateDefault();
         }
 
         private static GatebreakerModeCatalog CreateCatalogWithExtraStrike()
@@ -121,16 +124,16 @@ namespace Gatebreaker.Tests
             {
                 CreateChip("STRIKE_POWER", ChipCategory.Strike),
                 CreateChip("STRIKE_SERVE", ChipCategory.Strike),
+                CreateChip("STRIKE_ANGLE", ChipCategory.Strike),
                 CreateChip("STRIKE_OVERCHARGE", ChipCategory.Strike),
                 CreateChip("GUARD_LENGTH", ChipCategory.Guard),
                 CreateChip("GUARD_GOAL", ChipCategory.Guard),
                 CreateChip("GUARD_BOUNCE", ChipCategory.Guard),
+                CreateChip("GUARD_BRAKE", ChipCategory.Guard),
                 CreateChip("FLOW_SPEED", ChipCategory.Flow),
                 CreateChip("FLOW_AMMO", ChipCategory.Flow),
                 CreateChip("FLOW_CAPACITY", ChipCategory.Flow),
-                CreateChip("CHAOS_SPIN", ChipCategory.Chaos),
-                CreateChip("CHAOS_RICOCHET", ChipCategory.Chaos),
-                CreateChip("CHAOS_DISRUPT", ChipCategory.Chaos),
+                CreateChip("FLOW_QUICK_SERVE", ChipCategory.Flow),
             };
             if (includeFutureStrike)
             {
@@ -148,7 +151,7 @@ namespace Gatebreaker.Tests
                 new[]
                 {
                     CreateHero(HeroDeckSelectionPresenter.FrostQueenHeroId, "冰雪女王"),
-                    CreateHero(HeroDeckSelectionPresenter.ThornGuardianHeroId, "荆棘守护者"),
+                    CreateHero(HeroDeckSelectionPresenter.EngineerHeroId, "工事"),
                     CreateHero(HeroDeckSelectionPresenter.RadiantPaladinHeroId, "辉光圣骑"),
                     CreateHero("HERO_FUTURE", "未来英雄"),
                 },

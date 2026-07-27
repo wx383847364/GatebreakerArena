@@ -100,7 +100,11 @@ namespace App.HotUpdate.GatebreakerArena.Chip
                 case "ServeInitialSpeedMultiplier": snapshot.ServeInitialSpeedMultiplier = ApplyFloat(snapshot.ServeInitialSpeedMultiplier, op, value); break;
                 case "ServeCooldownMultiplier": snapshot.ServeCooldownMultiplier = ApplyFloat(snapshot.ServeCooldownMultiplier, op, value); break;
                 case "PaddleBounceSpeedMultiplier": snapshot.PaddleBounceSpeedMultiplier = ApplyFloat(snapshot.PaddleBounceSpeedMultiplier, op, value); break;
+                case "PaddleBounceAngleDegrees": snapshot.PaddleBounceAngleDegrees = ApplyFloat(snapshot.PaddleBounceAngleDegrees, op, value); break;
                 case "EnemyWallBounceSpeedMultiplier": snapshot.EnemyWallBounceSpeedMultiplier = ApplyFloat(snapshot.EnemyWallBounceSpeedMultiplier, op, value); break;
+                case "GoalBoundEnemySpeedMultiplier": snapshot.GoalBoundEnemySpeedMultiplier = ApplyFloat(snapshot.GoalBoundEnemySpeedMultiplier, op, value); break;
+                case "QuickServeWindowFrames": snapshot.QuickServeWindowFrames = ApplyInt(snapshot.QuickServeWindowFrames, op, value); break;
+                case "QuickServeCooldownFrames": snapshot.QuickServeCooldownFrames = ApplyInt(snapshot.QuickServeCooldownFrames, op, value); break;
                 case "EnemyPaddleMoveSpeedMultiplier": snapshot.EnemyPaddleMoveSpeedMultiplier = ApplyFloat(snapshot.EnemyPaddleMoveSpeedMultiplier, op, value); break;
                 case "WallBounceDeflectionDegrees": snapshot.WallBounceDeflectionDegrees = ApplyFloat(snapshot.WallBounceDeflectionDegrees, op, value); break;
                 case "RicochetSpeedMultiplier": snapshot.RicochetSpeedMultiplier = ApplyFloat(snapshot.RicochetSpeedMultiplier, op, value); break;
@@ -159,7 +163,9 @@ namespace App.HotUpdate.GatebreakerArena.Chip
         public float ServeInitialSpeedMultiplier { get; internal set; } = 1f;
         public float ServeCooldownMultiplier { get; internal set; } = 1f;
         public float PaddleBounceSpeedMultiplier { get; internal set; } = 1f;
+        public float PaddleBounceAngleDegrees { get; internal set; }
         public float EnemyWallBounceSpeedMultiplier { get; internal set; } = 1f;
+        public float GoalBoundEnemySpeedMultiplier { get; internal set; } = 1f;
         public float EnemyPaddleMoveSpeedMultiplier { get; internal set; } = 1f;
         public float WallBounceDeflectionDegrees { get; internal set; }
         public float RicochetSpeedMultiplier { get; internal set; } = 1f;
@@ -167,6 +173,8 @@ namespace App.HotUpdate.GatebreakerArena.Chip
         public int MaxBallsInMatch { get; internal set; }
         public int MaxServeAmmo { get; internal set; }
         public int RicochetRequiredCollisionCount { get; internal set; }
+        public int QuickServeWindowFrames { get; internal set; }
+        public int QuickServeCooldownFrames { get; internal set; }
 
         internal void ClampToRedlines()
         {
@@ -178,7 +186,9 @@ namespace App.HotUpdate.GatebreakerArena.Chip
             ServeInitialSpeedMultiplier = Clamp(ServeInitialSpeedMultiplier, 0.1f, 3f);
             ServeCooldownMultiplier = Clamp(ServeCooldownMultiplier, 1f / 3f, 3f);
             PaddleBounceSpeedMultiplier = Clamp(PaddleBounceSpeedMultiplier, 0.1f, 3f);
+            PaddleBounceAngleDegrees = Clamp(PaddleBounceAngleDegrees, 0f, 20f);
             EnemyWallBounceSpeedMultiplier = Clamp(EnemyWallBounceSpeedMultiplier, 0.1f, 3f);
+            GoalBoundEnemySpeedMultiplier = Clamp(GoalBoundEnemySpeedMultiplier, 0.1f, 3f);
             EnemyPaddleMoveSpeedMultiplier = Clamp(EnemyPaddleMoveSpeedMultiplier, 0.1f, 3f);
             WallBounceDeflectionDegrees = Clamp(WallBounceDeflectionDegrees, -15f, 15f);
             RicochetSpeedMultiplier = Clamp(RicochetSpeedMultiplier, 0.1f, 3f);
@@ -186,6 +196,8 @@ namespace App.HotUpdate.GatebreakerArena.Chip
             MaxBallsInMatch = Math.Max(0, Math.Min(25, MaxBallsInMatch));
             MaxServeAmmo = Math.Max(0, MaxServeAmmo);
             RicochetRequiredCollisionCount = Math.Max(0, RicochetRequiredCollisionCount);
+            QuickServeWindowFrames = Math.Max(0, QuickServeWindowFrames);
+            QuickServeCooldownFrames = Math.Max(0, QuickServeCooldownFrames);
         }
 
         private static float Clamp(float value, float min, float max)

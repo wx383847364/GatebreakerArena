@@ -14,5 +14,8 @@ namespace App.HotUpdate.GatebreakerArena.Ball
         public Vector2 Position { get; set; }
         public Vector2 Velocity { get; set; }
         public float ContactRadius { get; set; }
+        public int GoalBrakeAppliedMask { get; set; }
+        public int RootBallId { get; set; }
+        public int ExpireAtPlayingFrame { get; set; }
     }
 }

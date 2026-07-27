@@ -1,11 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
+using App.HotUpdate.GatebreakerArena.Chip;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
@@ -61,6 +63,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private GatebreakerInputService _inputService;
         private GatebreakerArenaHudPresenter _hudPresenter;
         private GatebreakerArenaSceneBindingService _sceneBindingService;
+        private HeroDeckSelectionPresenter _loadoutPresenter;
+        private readonly int[] _loadoutChipIndices = new int[5];
+        private V1MatchLoadout _selectedLocalLoadout;
+        private bool _loadoutForLan;
         private LanRoomService _lanRoomService;
         private LanRoomService _subscribedLanRoomService;
         private LanDiagnosticsService _lanDiagnosticsService;
@@ -168,6 +174,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 ResolveSceneUiBinding(context.Services),
                 BuildSceneUiCallbacks(),
                 context.Logger);
+            _loadoutPresenter = new HeroDeckSelectionPresenter(_runtime.ModeCatalog);
+            InitializeLoadoutUi();
             RefreshBoundHud();
             EnsureLanIdentity();
         }
@@ -1426,7 +1434,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (renderer is SpriteRenderer spriteRenderer && spriteRenderer.sprite != null)
             {
                 Vector2 size = spriteRenderer.drawMode == SpriteDrawMode.Simple
-                    ? spriteRenderer.sprite.bounds.size
+                    ? (Vector2)spriteRenderer.sprite.bounds.size
                     : spriteRenderer.size;
                 if (size.x <= 0.0001f || size.y <= 0.0001f)
                 {
@@ -2434,7 +2442,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void ResetPrototypeMatchForEntryUi()
         {
-            _runtime?.StartLocalPrototype();
+            _runtime?.StartLocalPrototype(localLoadout: _selectedLocalLoadout);
             _runtime?.SetLocalPlayer(_localPlayerId);
             EnsureSceneMatchesRuntime();
             ValidatePrefabBallContactRadius();
@@ -2495,8 +2503,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             return new GatebreakerArenaSceneUiCallbacks
             {
                 ServeRequested = RequestGuiServe,
-                LocalBattleRequested = StartLocalBattleCountdown,
+                LocalBattleRequested = BeginLocalBattle,
                 OnlineBattleRequested = ShowOnlineBattleMenu,
+                LoadoutHeroChanged = SelectLoadoutHero,
+                LoadoutPathChanged = SelectLoadoutPath,
+                LoadoutSignatureChanged = SelectLoadoutSignature,
+                LoadoutUniversalChipChanged = (slot, value) =>
+                {
+                    if (slot >= 0 && slot < _loadoutChipIndices.Length) _loadoutChipIndices[slot] = value;
+                },
+                LoadoutUseDefaultRequested = UseDefaultLoadout,
+                LoadoutConfirmRequested = ConfirmLoadout,
                 CreateLanHostRequested = CreateLanHost,
                 StartLanDiscoveryRequested = StartLanDiscovery,
                 JoinLanRoomRequested = JoinLanRoom,
@@ -2787,7 +2804,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _lanRoomService.RecordUiAction("ReadyClicked", BuildLanUiSnapshotDetail(_lanRoomService.CurrentSnapshot));
-            ToggleLanReady(_lanRoomService.CurrentSnapshot);
+            RoomSnapshot snapshot = _lanRoomService.CurrentSnapshot;
+            RoomPlayerSnapshot local = snapshot?.Players?.FirstOrDefault(player => player.IsLocal);
+            if (local != null && !local.IsReady && string.IsNullOrEmpty(local.LoadoutHash))
+            {
+                ShowLoadout(true);
+                return;
+            }
+            ToggleLanReady(snapshot);
         }
 
         private void StartLanLoading()
@@ -2877,6 +2901,119 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             _lanRoomCodeInput = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
         }
+
+        private void InitializeLoadoutUi()
+        {
+            if (_loadoutPresenter == null || _sceneBindingService == null) return;
+            _loadoutPresenter.TrySelectHero(_loadoutPresenter.AvailableHeroes[0].HeroId, out _);
+            UseDefaultLoadout();
+            RefreshLoadoutOptions();
+        }
+
+        private void ShowLoadout(bool forLan)
+        {
+            _loadoutForLan = forLan;
+            if (_loadoutPresenter == null) InitializeLoadoutUi();
+            if (_sceneBindingService == null || !_sceneBindingService.HasLoadoutBindings)
+            {
+                UseDefaultLoadout();
+                ConfirmLoadout();
+                return;
+            }
+            _sceneBindingService?.ShowLoadout();
+        }
+
+        private void BeginLocalBattle() => ShowLoadout(false);
+
+        private void SelectLoadoutHero(int index)
+        {
+            if (_loadoutPresenter == null || index < 0 || index >= _loadoutPresenter.AvailableHeroes.Count) return;
+            if (_loadoutPresenter.TrySelectHero(_loadoutPresenter.AvailableHeroes[index].HeroId, out _)) RefreshLoadoutOptions(false);
+        }
+
+        private void SelectLoadoutPath(int index)
+        {
+            HeroPathDefinition[] paths = GetSelectedHeroPaths();
+            if (_loadoutPresenter == null || index < 0 || index >= paths.Length) return;
+            if (_loadoutPresenter.TrySelectPath(paths[index].PathId, out _)) RefreshSignatureOptions();
+        }
+
+        private void SelectLoadoutSignature(int index)
+        {
+            SignatureChipDefinition[] signatures = GetSelectedPathSignatures();
+            if (_loadoutPresenter != null && index >= 0 && index < signatures.Length)
+                _loadoutPresenter.TrySelectSignatureChip(signatures[index].ChipId, out _);
+        }
+
+        private void UseDefaultLoadout()
+        {
+            if (_loadoutPresenter == null) return;
+            string[] defaults = { "STRIKE_POWER", "GUARD_LENGTH", "FLOW_SPEED", "STRIKE_SERVE", "GUARD_GOAL" };
+            for (int i = 0; i < defaults.Length; i++)
+                _loadoutChipIndices[i] = Math.Max(0, _loadoutPresenter.AvailableChips.ToList().FindIndex(chip => chip.ChipId == defaults[i]));
+            _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
+            _sceneBindingService?.SetLoadoutError(string.Empty);
+        }
+
+        private void ConfirmLoadout()
+        {
+            if (_loadoutPresenter == null) return;
+            _loadoutPresenter.ClearDeck();
+            for (int i = 0; i < _loadoutChipIndices.Length; i++)
+            {
+                int index = _loadoutChipIndices[i];
+                if (index < 0 || index >= _loadoutPresenter.AvailableChips.Count)
+                {
+                    _sceneBindingService?.SetLoadoutError("芯片槽位无效。");
+                    return;
+                }
+                if (!_loadoutPresenter.TryAddChip(_loadoutPresenter.AvailableChips[index].ChipId, out HeroDeckSelectionValidation validation))
+                {
+                    _sceneBindingService?.SetLoadoutError(validation.Message);
+                    return;
+                }
+            }
+            if (!_loadoutPresenter.TryCreatePlayerSlot(0, 0, _localPlayerId, false,
+                    out GatebreakerMatchPlayerSlot slot, out HeroDeckSelectionValidation result))
+            {
+                _sceneBindingService?.SetLoadoutError(result.Message);
+                return;
+            }
+            _selectedLocalLoadout = slot.Loadout;
+            if (_loadoutForLan)
+            {
+                if (_lanRoomService == null || !_lanRoomService.SetLocalLoadout(_selectedLocalLoadout))
+                {
+                    _sceneBindingService?.SetLoadoutError("房间已冻结或构筑校验失败。");
+                    return;
+                }
+                _sceneBindingService?.ShowLanRoomStatus();
+                ToggleLanReady(_lanRoomService.CurrentSnapshot);
+                return;
+            }
+            StartLocalBattleCountdown();
+        }
+
+        private void RefreshLoadoutOptions(bool includeHeroes = true)
+        {
+            HeroPathDefinition[] paths = GetSelectedHeroPaths();
+            SignatureChipDefinition[] signatures = GetSelectedPathSignatures();
+            string[] heroes = _loadoutPresenter.AvailableHeroes.Select(item => item.DisplayName + " · " + item.HeroId).ToArray();
+            string[] chips = _loadoutPresenter.AvailableChips.Select(item => item.DisplayName + " · " + item.ChipId).ToArray();
+            if (includeHeroes)
+                _sceneBindingService?.ConfigureLoadout(heroes, paths.Select(FormatPath).ToArray(), signatures.Select(FormatSignature).ToArray(), chips);
+            else
+                _sceneBindingService?.UpdateLoadoutPaths(paths.Select(FormatPath).ToArray(), signatures.Select(FormatSignature).ToArray());
+            _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
+        }
+
+        private void RefreshSignatureOptions() => _sceneBindingService?.UpdateLoadoutSignatures(GetSelectedPathSignatures().Select(FormatSignature).ToArray());
+        private HeroPathDefinition[] GetSelectedHeroPaths() => _runtime.ModeCatalog.AllHeroPaths.Values
+            .Where(path => path.HeroId == _loadoutPresenter.SelectedHeroId).OrderBy(path => path.PathId, StringComparer.Ordinal).ToArray();
+        private SignatureChipDefinition[] GetSelectedPathSignatures() => _runtime.ModeCatalog.AllSignatureChips.Values
+            .Where(chip => chip.PathId == _loadoutPresenter.SelectedPathId).OrderBy(chip => chip.VariantKind == "Stable" ? 0 : 1).ThenBy(chip => chip.ChipId, StringComparer.Ordinal).ToArray();
+        private static string FormatPath(HeroPathDefinition path) => path.DisplayName + " · " + path.PathId;
+        private static string FormatSignature(SignatureChipDefinition chip) => chip.DisplayName + " · " + chip.VariantKind;
 
         private void StartLocalBattleCountdown()
         {
@@ -3007,6 +3144,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
             GatebreakerHudSnapshot snapshot = _hudPresenter.BuildSnapshot(_localPlayerId);
             _sceneBindingService.UpdateHud(snapshot, _lastServeBlockReason);
+            PlayerRuntimeState localPlayer = _runtime?.FindPlayer(_localPlayerId);
+            HeroRuntimeState hero = localPlayer?.Hero;
+            int milestone = hero?.PathStates?.FirstOrDefault()?.Level ?? 0;
+            _sceneBindingService.SetHeroHud(hero == null || string.IsNullOrEmpty(hero.HeroId)
+                ? string.Empty
+                : $"路线：{hero.PathId}  专属：{hero.SignatureChipId}  M{milestone}  已激活：{hero.ActiveChipIds?.Count ?? 0}/5");
             _sceneBindingService.UpdateResult(snapshot);
             bool canShowTuning = _startupUiState == StartupUiState.LocalPlaying || IsLanPlaying();
             _sceneBindingService.UpdateBounceTuning(

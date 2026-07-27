@@ -15,7 +15,9 @@ SOURCE_FILES = {
     "DT_Hero": "DT_Hero.json",
     "DT_HeroPath": "DT_HeroPath.json",
     "DT_UniversalChip": "DT_UniversalChip.json",
+    "DT_SignatureChip": "DT_SignatureChip.json",
 }
+V1_REQUIRED_TABLES = {"DT_Hero", "DT_HeroPath", "DT_UniversalChip", "DT_SignatureChip"}
 
 
 @dataclass(frozen=True)
@@ -57,7 +59,7 @@ def _build_payload(config_root: Path) -> tuple[dict[str, Any], list[str], list[s
     warnings: list[str] = []
     errors: list[str] = []
     payload: dict[str, Any] = {
-        "Version": 1,
+        "Version": 2,
         "_FieldComments": _field_comments(),
     }
 
@@ -66,6 +68,7 @@ def _build_payload(config_root: Path) -> tuple[dict[str, Any], list[str], list[s
 
     for table_name, file_name in SOURCE_FILES.items():
         source_path = config_root / file_name
+        used_fallback = False
         if source_path.is_file():
             try:
                 rows = json.loads(source_path.read_text(encoding="utf-8"))
@@ -73,15 +76,25 @@ def _build_payload(config_root: Path) -> tuple[dict[str, Any], list[str], list[s
                 errors.append(f"{file_name}: invalid JSON: {exc}")
                 rows = []
         else:
-            warnings.append(f"{file_name} not found, using built-in GDD v0.3 defaults.")
-            rows = _default_rows(table_name)
+            used_fallback = True
+            if table_name in V1_REQUIRED_TABLES:
+                errors.append(f"{file_name}: required V1 source table is missing.")
+                rows = []
+            else:
+                warnings.append(f"{file_name} not found, using built-in defaults.")
+                rows = _default_rows(table_name)
 
         if not isinstance(rows, list) or not rows:
             errors.append(f"{file_name}: expected a non-empty array.")
             rows = []
 
-        _validate_table(table_name, rows, errors)
+        # Legacy fallback is only an editor safety net. Strict V1 validation applies
+        # to authored source tables, which are the only tables allowed in builds.
+        if not used_fallback:
+            _validate_table(table_name, rows, errors)
         payload[table_name] = rows
+
+    _validate_v1_relations(payload, errors)
 
     return payload, warnings, errors
 
@@ -122,6 +135,7 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         "DT_Hero": ("HeroId", "DisplayName", "ActiveAbilityId", "ActiveAbilityCooldownSeconds", "PathIds"),
         "DT_HeroPath": ("PathId", "HeroId", "DisplayName", "ResonanceCategories", "MilestoneEffects"),
         "DT_UniversalChip": ("ChipId", "DisplayName", "Category", "Rarity", "Modifiers", "ConditionalModifiers"),
+        "DT_SignatureChip": ("ChipId", "DisplayName", "HeroId", "PathId", "ResonanceValue", "Description", "VariantKind", "Parameters"),
     }
     for index, row in enumerate(rows):
         for field in required_fields[table_name]:
@@ -146,6 +160,8 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             _validate_hero_path(row, index, errors)
         if table_name == "DT_UniversalChip":
             _validate_universal_chip(row, index, errors)
+        if table_name == "DT_SignatureChip":
+            _validate_signature_chip(row, index, errors)
 
     if table_name == "DT_Hero":
         _validate_unique_ids(rows, "HeroId", table_name, errors)
@@ -153,6 +169,10 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         _validate_unique_ids(rows, "PathId", table_name, errors)
     elif table_name == "DT_UniversalChip":
         _validate_v1_universal_chip_set(rows, errors)
+    elif table_name == "DT_SignatureChip":
+        _validate_unique_ids(rows, "ChipId", table_name, errors)
+        if len(rows) != 12:
+            errors.append("DT_SignatureChip: V1 must contain exactly 12 route variants.")
 
 
 def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -405,12 +425,12 @@ def _validate_hero_path(row: dict[str, Any], index: int, errors: list[str]) -> N
         errors.append(f"DT_HeroPath[{index}]: ResonanceCategories contains an invalid category.")
 
     milestones = row.get("MilestoneEffects")
-    if not isinstance(milestones, list) or {item.get("PathLevel") for item in milestones if isinstance(item, dict)} != {1, 2}:
-        errors.append(f"DT_HeroPath[{index}]: MilestoneEffects must define exactly M1 and M2.")
+    if not isinstance(milestones, list) or {item.get("PathLevel") for item in milestones if isinstance(item, dict)} != {1, 2, 3}:
+        errors.append(f"DT_HeroPath[{index}]: MilestoneEffects must define exactly M1, M2 and M3.")
 
 
 def _validate_universal_chip(row: dict[str, Any], index: int, errors: list[str]) -> None:
-    if row.get("Category") not in {"Strike", "Guard", "Flow", "Chaos"}:
+    if row.get("Category") not in {"Strike", "Guard", "Flow"}:
         errors.append(f"DT_UniversalChip[{index}]: Category must be a V1 chip category.")
     if row.get("Rarity") != "Common":
         errors.append(f"DT_UniversalChip[{index}]: every V1 universal chip must be Common Lv1.")
@@ -444,14 +464,49 @@ def _validate_unique_ids(rows: list[Any], field: str, table_name: str, errors: l
 
 def _validate_v1_universal_chip_set(rows: list[Any], errors: list[str]) -> None:
     expected = {
-        "STRIKE_POWER", "STRIKE_SERVE", "STRIKE_OVERCHARGE",
-        "GUARD_LENGTH", "GUARD_GOAL", "GUARD_BOUNCE",
-        "FLOW_SPEED", "FLOW_AMMO", "FLOW_CAPACITY",
-        "CHAOS_SPIN", "CHAOS_RICOCHET", "CHAOS_DISRUPT",
+        "STRIKE_POWER", "STRIKE_SERVE", "STRIKE_ANGLE", "STRIKE_OVERCHARGE",
+        "GUARD_LENGTH", "GUARD_GOAL", "GUARD_BOUNCE", "GUARD_BRAKE",
+        "FLOW_SPEED", "FLOW_AMMO", "FLOW_CAPACITY", "FLOW_QUICK_SERVE",
     }
     actual = {row.get("ChipId") for row in rows if isinstance(row, dict)}
     if actual != expected:
         errors.append("DT_UniversalChip: must contain exactly the 12 frozen V1 universal chip ids.")
+
+
+def _validate_signature_chip(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    if _normalize_int(row.get("ResonanceValue")) != 3:
+        errors.append(f"DT_SignatureChip[{index}]: V1 variants must provide exactly +3 resonance.")
+    if row.get("VariantKind") not in {"Stable", "Style"}:
+        errors.append(f"DT_SignatureChip[{index}]: VariantKind must be Stable or Style.")
+    if not isinstance(row.get("Parameters"), dict):
+        errors.append(f"DT_SignatureChip[{index}]: Parameters must be an object.")
+    for legacy in ("Grade", "UpgradesTo", "UpgradeCost", "GradeModifiers"):
+        if legacy in row:
+            errors.append(f"DT_SignatureChip[{index}]: legacy field {legacy} is forbidden in V1.")
+
+
+def _validate_v1_relations(payload: dict[str, Any], errors: list[str]) -> None:
+    heroes = {row.get("HeroId"): row for row in payload.get("DT_Hero", []) if isinstance(row, dict)}
+    paths = {row.get("PathId"): row for row in payload.get("DT_HeroPath", []) if isinstance(row, dict)}
+    variants: dict[str, list[dict[str, Any]]] = {}
+    for path_id, path in paths.items():
+        if path.get("HeroId") not in heroes:
+            errors.append(f"DT_HeroPath: {path_id} references unknown hero.")
+    for hero_id, hero in heroes.items():
+        for path_id in hero.get("PathIds", []):
+            if path_id not in paths or paths[path_id].get("HeroId") != hero_id:
+                errors.append(f"DT_Hero: {hero_id} references invalid path {path_id}.")
+    for chip in payload.get("DT_SignatureChip", []):
+        if not isinstance(chip, dict):
+            continue
+        path_id = chip.get("PathId")
+        if chip.get("HeroId") not in heroes or path_id not in paths or paths[path_id].get("HeroId") != chip.get("HeroId"):
+            errors.append(f"DT_SignatureChip: {chip.get('ChipId')} has invalid hero/path binding.")
+        variants.setdefault(path_id, []).append(chip)
+    for path_id in paths:
+        rows = variants.get(path_id, [])
+        if len(rows) != 2 or {row.get("VariantKind") for row in rows} != {"Stable", "Style"}:
+            errors.append(f"DT_SignatureChip: {path_id} must have exactly one Stable and one Style variant.")
 
 
 def _validate_positive_number(
@@ -740,6 +795,26 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
         "DT_UniversalChip": _v1_default_universal_chips(),
     }
     return defaults[table_name]
+
+
+def _default_signature_rows() -> list[dict[str, Any]]:
+    pairs = [
+        ("FROST_DEEP_FREEZE_TOUCH", "HERO_FROST_QUEEN", "PATH_FROST_EXTREME", "Stable"),
+        ("FROST_DEEP_FREEZE_DOMAIN", "HERO_FROST_QUEEN", "PATH_FROST_EXTREME", "Style"),
+        ("FROST_ICE_CRYSTAL_RESERVE", "HERO_FROST_QUEEN", "PATH_FROST_CRYSTAL", "Stable"),
+        ("FROST_ICE_CRYSTAL_PRISM", "HERO_FROST_QUEEN", "PATH_FROST_CRYSTAL", "Style"),
+        ("MECH_FORTRESS_FOUNDATION", "HERO_MECH_ENGINEER", "PATH_MECH_FORTRESS", "Stable"),
+        ("MECH_FORTRESS_DIRECTED", "HERO_MECH_ENGINEER", "PATH_MECH_FORTRESS", "Style"),
+        ("MECH_TURRET_GUIDANCE", "HERO_MECH_ENGINEER", "PATH_MECH_TURRET", "Stable"),
+        ("MECH_TURRET_COUNTER", "HERO_MECH_ENGINEER", "PATH_MECH_TURRET", "Style"),
+        ("RADIANT_CHARGE_RESERVE", "HERO_RADIANT_PALADIN", "PATH_RADIANT_CHARGE", "Stable"),
+        ("RADIANT_CHARGE_JUDGMENT", "HERO_RADIANT_PALADIN", "PATH_RADIANT_CHARGE", "Style"),
+        ("RADIANT_GLOW_STABLE", "HERO_RADIANT_PALADIN", "PATH_RADIANT_GLOW", "Stable"),
+        ("RADIANT_GLOW_AURA", "HERO_RADIANT_PALADIN", "PATH_RADIANT_GLOW", "Style"),
+    ]
+    return [{"ChipId": "SIG_" + chip, "DisplayName": chip, "HeroId": hero, "PathId": path,
+             "ResonanceValue": 3, "VariantKind": kind, "Description": "V1 fallback variant.", "Parameters": {}}
+            for chip, hero, path, kind in pairs]
 
 
 def _v1_default_heroes() -> list[dict[str, Any]]:

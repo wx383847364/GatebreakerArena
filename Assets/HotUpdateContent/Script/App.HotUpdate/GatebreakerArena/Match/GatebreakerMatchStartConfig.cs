@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using App.HotUpdate.GatebreakerArena.Chip;
 
 namespace App.HotUpdate.GatebreakerArena.Match
 {
@@ -32,5 +33,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
         // copy them into HeroRuntimeState before any hero or chip rules are applied.
         public string HeroId { get; set; } = string.Empty;
         public IReadOnlyList<string> DeckChipIds { get; set; } = new string[0];
+        // V1 is authoritative when supplied; legacy fields are retained only for old local prototypes.
+        private V1MatchLoadout _loadout;
+        public V1MatchLoadout Loadout { get => _loadout; set => _loadout = value?.Clone(); }
     }
 }

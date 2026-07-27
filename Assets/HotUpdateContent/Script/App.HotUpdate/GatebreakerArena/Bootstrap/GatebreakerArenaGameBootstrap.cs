@@ -81,7 +81,7 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             var sceneBindingService = new GatebreakerArenaSceneBindingService();
             var visualAssetService = new GatebreakerVisualAssetService(assetsRuntime, logger);
             var lanDiagnosticsService = new LanDiagnosticsService();
-            var lanRoomService = new LanRoomService(logger, lanDiagnosticsService);
+            var lanRoomService = new LanRoomService(logger, lanDiagnosticsService, modeCatalog);
             ILanTransport lanTransport = serviceContainer.Get<ILanTransport>();
             LanRoomTransportBridge lanRoomTransportBridge = lanTransport != null
                 ? new LanRoomTransportBridge(lanRoomService, lanTransport, lanDiagnosticsService)

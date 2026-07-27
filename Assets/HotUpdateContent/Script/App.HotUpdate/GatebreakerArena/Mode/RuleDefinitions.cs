@@ -181,6 +181,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public string DisplayName { get; set; }
         public string HeroId { get; set; }
         public string PathId { get; set; }
+        // V1 uses equal-strength side variants rather than the legacy grade/upgrade tree.
+        public string VariantKind { get; set; }
+        public IReadOnlyDictionary<string, float> Parameters { get; set; }
         public SignatureGrade Grade { get; set; }
         public int ResonanceValue { get; set; }
         public string Description { get; set; }
@@ -257,8 +260,13 @@ namespace App.HotUpdate.GatebreakerArena.Mode
     public sealed class HeroRuntimeState
     {
         public string HeroId { get; set; } = string.Empty;
+        public string PathId { get; set; } = string.Empty;
+        public string SignatureChipId { get; set; } = string.Empty;
+        public IReadOnlyList<string> OpeningUniversalChipIds { get; set; } = new string[0];
+        public IReadOnlyList<string> ScheduledUniversalChipIds { get; set; } = new string[0];
         public IReadOnlyList<string> DeckChipIds { get; set; } = new string[0];
         public IReadOnlyList<string> ActiveChipIds { get; set; } = new string[0];
+        public int PlayingFrame { get; set; }
         public IReadOnlyList<HeroPathRuntimeState> PathStates { get; set; } = new HeroPathRuntimeState[0];
         public int AbilityCooldownRemainingFrames { get; set; }
         public IReadOnlyList<HeroTemporaryStatusState> TemporaryStatuses { get; set; } = new HeroTemporaryStatusState[0];

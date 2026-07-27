@@ -230,7 +230,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
             int aiCount = -1,
             string modeId = "PVE_STANDARD",
             string mapId = "MAP_ARENA_01",
-            string ballTypeId = "BALL_NORMAL")
+            string ballTypeId = "BALL_NORMAL",
+            V1MatchLoadout localLoadout = null)
         {
             int playerCount = ResolveLocalPrototypePlayerCount(aiCount, mapId);
             var activeSlots = new List<int>(playerCount);
@@ -239,6 +240,20 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 activeSlots.Add(i + 1);
             }
 
+            IReadOnlyList<GatebreakerMatchPlayerSlot> playerSlots = null;
+            if (localLoadout != null)
+            {
+                LoadoutValidationResult validation = V1MatchLoadoutValidator.Validate(_modeCatalog, localLoadout);
+                if (!validation.IsValid) throw new InvalidOperationException("Invalid local V1 loadout: " + validation.Error);
+                var slots = new List<GatebreakerMatchPlayerSlot>(playerCount);
+                for (int i = 0; i < playerCount; i++)
+                {
+                    V1MatchLoadout loadout = i == 0 ? localLoadout : CreateDefaultV1Loadout(i);
+                    slots.Add(new GatebreakerMatchPlayerSlot { SlotIndex = i, SideOrder = i, PlayerId = i + 1,
+                        IsAi = i != 0, HeroId = loadout.HeroId, DeckChipIds = loadout.OrderedUniversalChipIds, Loadout = loadout });
+                }
+                playerSlots = slots;
+            }
             StartMatch(new GatebreakerMatchStartConfig
             {
                 MatchId = "LOCAL_PROTOTYPE",
@@ -246,6 +261,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 MapId = mapId,
                 BallTypeId = ballTypeId,
                 ActiveSlots = activeSlots,
+                PlayerSlots = playerSlots,
                 LocalPlayerId = 1,
                 SimulationFps = GatebreakerMatchStartConfig.DefaultSimulationFps,
                 InputDelayFrames = 0,
@@ -260,6 +276,16 @@ namespace App.HotUpdate.GatebreakerArena.Match
             }
 
             _logger?.LogInfo("GatebreakerMatchRuntime: 本地原型开局完成。players={0}, balls={1}", _players.Count, _balls.Count);
+        }
+
+        private static V1MatchLoadout CreateDefaultV1Loadout(int variant)
+        {
+            if (variant % 3 == 1) return new V1MatchLoadout("HERO_MECH_ENGINEER", "PATH_MECH_FORTRESS", "SIG_MECH_FORTRESS_FOUNDATION",
+                new[] { "STRIKE_POWER", "GUARD_LENGTH" }, new[] { "FLOW_SPEED", "STRIKE_SERVE", "GUARD_GOAL" });
+            if (variant % 3 == 2) return new V1MatchLoadout("HERO_RADIANT_PALADIN", "PATH_RADIANT_CHARGE", "SIG_RADIANT_CHARGE_RESERVE",
+                new[] { "STRIKE_POWER", "GUARD_LENGTH" }, new[] { "FLOW_SPEED", "STRIKE_SERVE", "GUARD_GOAL" });
+            return new V1MatchLoadout("HERO_FROST_QUEEN", "PATH_FROST_EXTREME", "SIG_FROST_DEEP_FREEZE_TOUCH",
+                new[] { "STRIKE_POWER", "GUARD_LENGTH" }, new[] { "FLOW_SPEED", "STRIKE_SERVE", "GUARD_GOAL" });
         }
 
         private int ResolveLocalPrototypePlayerCount(int aiCount, string mapId)
@@ -469,6 +495,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             ApplyBallSpeedByElapsedTime();
             List<PaddleMotionState> paddleMotions = ApplyControlFrames(includeAi, safeDelta);
             SimulateBallsSwept(safeDelta, paddleMotions);
+            ResolveHeroBarriers();
             CommitPaddleMotions(paddleMotions);
             RefreshZoneDanger();
         }
@@ -482,6 +509,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return false;
             }
 
+            bool consumeFreeServe = player.QuickServeWindowRemainingFrames > 0;
             bool served = _serveResourceSystem.TryServe(
                 player.ServeResource,
                 _balls.Count(ball => ball.BallState == BallState.Flying || ball.BallState == BallState.GoalRebound),
@@ -494,6 +522,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return false;
             }
 
+            ApplyQuickServeAfterSuccess(player, consumeFreeServe);
+
             SpawnBallForPlayer(player, "Serve", GetServePosition(player), GetServeDirection(player, Vector2.zero), false);
             return true;
         }
@@ -505,6 +535,13 @@ namespace App.HotUpdate.GatebreakerArena.Match
             if (ball == null || zoneOwner == null)
             {
                 throw new InvalidOperationException("Goal entry requires a live ball and a valid zone owner.");
+            }
+            if (ball.RootBallId > 0)
+            {
+                foreach (BallRuntimeState sibling in _balls.Where(item => item != null && item != ball && item.RootBallId == ball.RootBallId).ToArray())
+                    RemoveBall(sibling);
+                if (ball.BallId != ball.RootBallId)
+                    ball.ExpireAtPlayingFrame = (FindPlayer(ball.OwnerPlayerId)?.Hero?.PlayingFrame ?? 0) + 1;
             }
 
             if (HasHeroStatus(zoneOwner, HeroTemporaryStatusType.Shielded))
@@ -615,6 +652,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
                     HashInt(ref hash, player.ServeResource.MaxOwnedBallsInField);
                     HashInt(ref hash, QuantizeFloat(player.ServeResource.ServeCooldownRemaining));
                     HashInt(ref hash, (int)player.ServeResource.LastBlockReason);
+                    HashInt(ref hash, player.QuickServeWindowRemainingFrames);
+                    HashInt(ref hash, player.QuickServeCooldownRemainingFrames);
                 }
                 else
                 {
@@ -641,6 +680,9 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 HashVector(ref hash, ball.Position);
                 HashVector(ref hash, ball.Velocity);
                 HashInt(ref hash, QuantizeFloat(GetBallContactRadius(ball)));
+                HashInt(ref hash, ball.GoalBrakeAppliedMask);
+                HashInt(ref hash, ball.RootBallId);
+                HashInt(ref hash, ball.ExpireAtPlayingFrame);
             }
 
             return new GatebreakerMatchChecksum(frameIndex, hash);
@@ -667,6 +709,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
             for (int i = 0; i < _players.Count; i++)
             {
                 PlayerRuntimeState player = _players[i];
+                player.QuickServeWindowRemainingFrames = Math.Max(0, player.QuickServeWindowRemainingFrames - 1);
+                player.QuickServeCooldownRemainingFrames = Math.Max(0, player.QuickServeCooldownRemainingFrames - 1);
                 bool isLocalPlayer = player.PlayerId == playerId;
                 player.IsLocalPlayer = isLocalPlayer;
                 if (preserveAiFlags)
@@ -786,10 +830,15 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private static HeroRuntimeState CreateInitialHeroState(GatebreakerMatchPlayerSlot slot)
         {
+            V1MatchLoadout loadout = slot?.Loadout;
             return new HeroRuntimeState
             {
-                HeroId = slot?.HeroId ?? string.Empty,
-                DeckChipIds = NormalizeIdentifierList(slot?.DeckChipIds),
+                HeroId = loadout?.HeroId ?? slot?.HeroId ?? string.Empty,
+                PathId = loadout?.PathId ?? string.Empty,
+                SignatureChipId = loadout?.SignatureChipId ?? string.Empty,
+                OpeningUniversalChipIds = loadout?.OpeningUniversalChipIds ?? Array.Empty<string>(),
+                ScheduledUniversalChipIds = loadout?.ScheduledUniversalChipIds ?? Array.Empty<string>(),
+                DeckChipIds = loadout?.OrderedUniversalChipIds ?? NormalizeIdentifierList(slot?.DeckChipIds),
                 ActiveChipIds = Array.Empty<string>(),
                 PathStates = Array.Empty<HeroPathRuntimeState>(),
                 AbilityCooldownRemainingFrames = 0,
@@ -807,6 +856,12 @@ namespace App.HotUpdate.GatebreakerArena.Match
             if (!_modeCatalog.AllHeroes.TryGetValue(player.Hero.HeroId, out HeroDefinition hero))
             {
                 throw new InvalidOperationException($"Unknown V1 hero '{player.Hero.HeroId}'.");
+            }
+
+            if (!string.IsNullOrEmpty(player.Hero.SignatureChipId))
+            {
+                ApplyV1LoadoutAtFrame(player, 0, true);
+                return;
             }
 
             AwakeningResult awakening = ResonanceAwakener.Awaken(
@@ -851,11 +906,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             player.ServeResource.MaxServeAmmo = chipRules.MaxServeAmmo;
             player.ServeResource.CurrentServeAmmo = Math.Min(player.ServeResource.CurrentServeAmmo, chipRules.MaxServeAmmo);
-            player.ServeResource.BaseServeCooldown *= chipRules.ServeCooldownMultiplier;
+            player.ServeResource.BaseServeCooldown = player.BaseServeCooldown * chipRules.ServeCooldownMultiplier;
             if (player.Paddle != null)
             {
-                player.Paddle.Length *= chipRules.PaddleLengthMultiplier;
-                player.Paddle.Speed *= chipRules.PaddleMoveSpeedMultiplier;
+                player.Paddle.Length = player.BasePaddleLength * chipRules.PaddleLengthMultiplier;
+                player.Paddle.Speed = player.BasePaddleSpeed * chipRules.PaddleMoveSpeedMultiplier;
             }
         }
 
@@ -869,7 +924,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return false;
             }
 
-            paths = (hero.PathIds ?? Array.Empty<string>())
+            paths = (string.IsNullOrEmpty(player.Hero.PathId) ? hero.PathIds ?? Array.Empty<string>() : new[] { player.Hero.PathId })
                 .Where(pathId => _modeCatalog.AllHeroPaths.ContainsKey(pathId))
                 .Select(pathId => _modeCatalog.GetHeroPath(pathId))
                 .ToArray();
@@ -894,6 +949,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
             for (int i = 0; i < _players.Count; i++)
             {
                 PlayerRuntimeState player = _players[i];
+                if (Phase == MatchPhase.Playing && !string.IsNullOrEmpty(player.Hero?.SignatureChipId))
+                {
+                    player.Hero.PlayingFrame++;
+                    ApplyV1LoadoutAtFrame(player, player.Hero.PlayingFrame, false);
+                }
                 if (!TryGetHeroContext(player, out HeroDefinition hero, out HeroPathDefinition[] paths))
                 {
                     continue;
@@ -902,6 +962,37 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 _heroRuntimeSystem.Tick(hero, paths, player.Hero, player.HeroCombat, SimulationFps);
                 TickHeroStatuses(player);
             }
+            foreach (BallRuntimeState expired in _balls.Where(ball => ball != null && ball.ExpireAtPlayingFrame > 0 &&
+                         FindPlayer(ball.OwnerPlayerId)?.Hero?.PlayingFrame >= ball.ExpireAtPlayingFrame).ToArray())
+                RemoveBall(expired);
+        }
+
+        private void ApplyV1LoadoutAtFrame(PlayerRuntimeState player, int playingFrame, bool force)
+        {
+            var loadout = new V1MatchLoadout(player.Hero.HeroId, player.Hero.PathId,
+                player.Hero.SignatureChipId, player.Hero.OpeningUniversalChipIds,
+                player.Hero.ScheduledUniversalChipIds);
+            LoadoutValidationResult validation = V1MatchLoadoutValidator.Validate(_modeCatalog, loadout);
+            if (!validation.IsValid) throw new InvalidOperationException("Invalid V1 loadout: " + validation.Error);
+            IReadOnlyList<string> active = V1ActivationSchedule.ResolveActive(loadout, playingFrame);
+            string[] universal = active.Where(_modeCatalog.AllUniversalChips.ContainsKey).ToArray();
+            if (!force && player.Hero.ActiveChipIds.SequenceEqual(universal)) return;
+            HeroDefinition hero = _modeCatalog.GetHero(loadout.HeroId);
+            HeroPathDefinition path = _modeCatalog.GetHeroPath(loadout.PathId);
+            player.Hero.DeckChipIds = loadout.OrderedUniversalChipIds;
+            _heroRuntimeSystem.Initialize(hero, new[] { path }, universal.Select(_modeCatalog.GetUniversalChip).ToArray(),
+                player.Hero, player.HeroCombat, force, _modeCatalog.GetSignatureChip(loadout.SignatureChipId));
+            player.Hero.PathId = loadout.PathId;
+            player.Hero.SignatureChipId = loadout.SignatureChipId;
+            player.Hero.PathStates = new[] { new HeroPathRuntimeState { PathId = loadout.PathId, Level = V1ActivationSchedule.ResolveMilestone(_modeCatalog, loadout, playingFrame) } };
+            ChipRuleSnapshot chipRules = ChipRuleInjector.Inject(_modeCatalog, hero.HeroId,
+                player.Hero.PathStates, universal, new ChipRuleBaseValues
+                {
+                    MaxBallsInMatch = EffectiveRule.MaxBallsInMatch,
+                    MaxServeAmmo = player.BaseMaxServeAmmo,
+                });
+            _chipRulesByPlayerId[player.PlayerId] = chipRules;
+            ApplyInitialChipRules(player, chipRules);
         }
 
         private void TryActivateHeroAbility(PlayerRuntimeState player)
@@ -921,6 +1012,10 @@ namespace App.HotUpdate.GatebreakerArena.Match
             if (result.AbilityActivated && result.Effects.OwnGoalImmuneFrames > 0)
             {
                 AddHeroStatus(player, HeroTemporaryStatusType.Shielded, result.Effects.OwnGoalImmuneFrames);
+            }
+            if (result.AbilityActivated && result.Effects.SpawnBarrier)
+            {
+                SpawnHeroBarrier(player, result.Effects);
             }
         }
 
@@ -1228,6 +1323,10 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 Paddle = paddle,
                 Zone = zone,
             };
+            player.BasePaddleLength = paddle.Length;
+            player.BasePaddleSpeed = paddle.Speed;
+            player.BaseServeCooldown = player.ServeResource.BaseServeCooldown;
+            player.BaseMaxServeAmmo = player.ServeResource.MaxServeAmmo;
 
             _players.Add(player);
             _paddles.Add(paddle);
@@ -1421,6 +1520,8 @@ namespace App.HotUpdate.GatebreakerArena.Match
             {
                 _serveResourceSystem.OnOwnedBallRemoved(owner.ServeResource);
             }
+            foreach (PlayerRuntimeState player in _players)
+                _heroRuntimeSystem.RemoveBallState(player.HeroCombat, ball.BallId);
         }
 
         private List<PaddleMotionState> ApplyControlFrames(bool includeAi, float deltaTime)
@@ -1453,20 +1554,20 @@ namespace App.HotUpdate.GatebreakerArena.Match
         {
             if (includeAi && player.IsAi)
             {
-                PlayerInputFrame frame = _aiService.BuildFrame(player, this);
+                PlayerInputFrame aiFrame = _aiService.BuildFrame(player, this);
                 if (TryGetHeroContext(player, out HeroDefinition hero, out HeroPathDefinition[] _) &&
                     _heroRuntimeSystem.ShouldAiUseAbility(
                         hero,
                         player.Hero,
                         player.HeroCombat,
                         new HeroAiAbilityDecisionInput(
-                            (player.HeroCombat.FrostByOpponent ?? new List<HeroFrostStackState>()).Select(item => item.Amount).DefaultIfEmpty(0).Max(),
+                            (player.HeroCombat.FrostByBall ?? new List<HeroBallFrostState>()).Select(item => item.Amount).DefaultIfEmpty(0).Max(),
                             IsPlayerInDanger(player))))
                 {
-                    return new PlayerInputFrame(frame.PlayerId, frame.MoveAxis, frame.ServePressed, frame.AimDirection, true);
+                    return new PlayerInputFrame(aiFrame.PlayerId, aiFrame.MoveAxis, aiFrame.ServePressed, aiFrame.AimDirection, true);
                 }
 
-                return frame;
+                return aiFrame;
             }
 
             return _inputFrames.TryGetValue(player.PlayerId, out PlayerInputFrame frame)
@@ -1548,6 +1649,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return false;
             }
 
+            bool consumeFreeServe = player.QuickServeWindowRemainingFrames > 0;
             bool served = _serveResourceSystem.TryServe(
                 player.ServeResource,
                 _balls.Count(ball => ball.BallState == BallState.Flying || ball.BallState == BallState.GoalRebound),
@@ -1560,8 +1662,32 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return false;
             }
 
+
+            ApplyQuickServeAfterSuccess(player, consumeFreeServe);
+
             SpawnBallForPlayer(player, "Serve", GetServePosition(player), GetServeDirection(player, frame.AimDirection), false);
             return true;
+        }
+
+        private void ApplyQuickServeAfterSuccess(PlayerRuntimeState player, bool consumeFreeServe)
+        {
+            if (player == null || !_chipRulesByPlayerId.TryGetValue(player.PlayerId, out ChipRuleSnapshot rules) ||
+                rules.QuickServeWindowFrames <= 0)
+            {
+                return;
+            }
+            if (consumeFreeServe)
+            {
+                player.ServeResource.CurrentServeAmmo = Math.Min(player.ServeResource.MaxServeAmmo,
+                    player.ServeResource.CurrentServeAmmo + 1);
+                player.QuickServeWindowRemainingFrames = 0;
+                return;
+            }
+            if (player.QuickServeCooldownRemainingFrames <= 0)
+            {
+                player.QuickServeWindowRemainingFrames = rules.QuickServeWindowFrames;
+                player.QuickServeCooldownRemainingFrames = rules.QuickServeCooldownFrames;
+            }
         }
 
         private void RefreshServeBlockReasons()
@@ -2534,6 +2660,17 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 paddle.Tangent,
                 BounceTuning,
                 normalizedPaddleVelocity);
+            PlayerRuntimeState ballOwner = FindPlayer(ball.OwnerPlayerId);
+            if (ballOwner != null && _chipRulesByPlayerId.TryGetValue(ballOwner.PlayerId, out ChipRuleSnapshot angleRules) &&
+                angleRules.PaddleBounceAngleDegrees > 0f && Mathf.Abs(hitOffset) >= 0.5f)
+            {
+                float radians = angleRules.PaddleBounceAngleDegrees * Mathf.Deg2Rad * Mathf.Sign(hitOffset);
+                float cosine = Mathf.Cos(radians);
+                float sine = Mathf.Sin(radians);
+                ball.Velocity = new Vector2(ball.Velocity.x * cosine - ball.Velocity.y * sine,
+                    ball.Velocity.x * sine + ball.Velocity.y * cosine);
+            }
+            ball.GoalBrakeAppliedMask = 0;
             _ballSimulation.ClampSpeed(ball, BallRule);
             HandlePaddleHeroAndChipEffects(ball, paddle);
         }
@@ -2644,6 +2781,71 @@ namespace App.HotUpdate.GatebreakerArena.Match
             if (effects.RedirectBounceTowardsNearestEnemyGoal && ball != null)
             {
                 RedirectBallTowardsEnemyGoal(ball, source.PlayerId);
+            }
+            if (effects.OwnGoalImmuneFrames > 0)
+                AddHeroStatus(source, HeroTemporaryStatusType.Shielded, effects.OwnGoalImmuneFrames);
+            if (effects.TemporaryCloneCount > 0 && ball != null)
+                SpawnTemporaryClones(source, ball, effects.TemporaryCloneCount, effects.TemporaryCloneDurationFrames);
+        }
+
+        private void SpawnHeroBarrier(PlayerRuntimeState player, HeroEffectBundle effects)
+        {
+            if (player?.Paddle == null || effects.BarrierDurationFrames <= 0) return;
+            Vector2 center = Vector2.Lerp(player.Paddle.Position, Vector2.zero, 0.45f);
+            player.HeroCombat.Barriers.Add(new HeroBarrierState
+            {
+                BarrierId = player.HeroCombat.NextBarrierId++, RemainingFrames = effects.BarrierDurationFrames,
+                Length = Math.Max(0.25f, effects.BarrierLength), CenterX = center.x, CenterY = center.y,
+                NormalX = player.Paddle.Normal.x, NormalY = player.Paddle.Normal.y,
+            });
+        }
+
+        private void ResolveHeroBarriers()
+        {
+            foreach (PlayerRuntimeState owner in _players.OrderBy(player => player.PlayerId))
+            foreach (HeroBarrierState barrier in (owner.HeroCombat.Barriers ?? new List<HeroBarrierState>()).OrderBy(item => item.BarrierId))
+            {
+                if (barrier.RemainingFrames <= 0 || barrier.DisabledRemainingFrames > 0) continue;
+                Vector2 center = new Vector2(barrier.CenterX, barrier.CenterY);
+                Vector2 normal = new Vector2(barrier.NormalX, barrier.NormalY).normalized;
+                Vector2 tangent = new Vector2(-normal.y, normal.x);
+                foreach (BallRuntimeState ball in _balls.OrderBy(item => item.BallId))
+                {
+                    if (ball == null || ball.BallState != BallState.Flying) continue;
+                    float normalDistance = Vector2.Dot(ball.Position - center, normal);
+                    float tangentDistance = Mathf.Abs(Vector2.Dot(ball.Position - center, tangent));
+                    if (Mathf.Abs(normalDistance) > GetBallContactRadius(ball) + 0.04f || tangentDistance > barrier.Length * 0.5f) continue;
+                    float normalSpeed = Vector2.Dot(ball.Velocity, normal);
+                    if (Mathf.Abs(normalSpeed) <= 0.001f) continue;
+                    ball.Velocity -= 2f * normalSpeed * normal;
+                    ball.Position += normal * Mathf.Sign(-normalSpeed) * (GetBallContactRadius(ball) + 0.05f);
+                    barrier.HitsInWindow = barrier.HitWindowRemainingFrames > 0 ? barrier.HitsInWindow + 1 : 1;
+                    barrier.HitWindowRemainingFrames = SimulationFps * 3 / 2;
+                    if (barrier.HitsInWindow >= 3) { barrier.DisabledRemainingFrames = SimulationFps; barrier.HitsInWindow = 0; }
+                    int level = owner.Hero.PathStates.FirstOrDefault()?.Level ?? 0;
+                    if (owner.Hero.PathId == "PATH_MECH_TURRET" && level >= 3 && owner.HeroCombat.ArcPulseCooldownRemainingFrames <= 0)
+                    {
+                        owner.HeroCombat.ArcPulseCooldownRemainingFrames = SimulationFps * 3;
+                        foreach (PlayerRuntimeState target in _players.Where(item => item.PlayerId != owner.PlayerId))
+                            AddHeroStatus(target, HeroTemporaryStatusType.Slowed, Mathf.CeilToInt(SimulationFps * 0.4f), 0.85f);
+                    }
+                    break;
+                }
+            }
+        }
+
+        private void SpawnTemporaryClones(PlayerRuntimeState owner, BallRuntimeState root, int count, int durationFrames)
+        {
+            int rootId = root.RootBallId > 0 ? root.RootBallId : root.BallId;
+            root.RootBallId = rootId;
+            for (int i = 0; i < count; i++)
+            {
+                float angle = (i == 0 ? -12f : 12f) * Mathf.Deg2Rad;
+                Vector2 direction = new Vector2(root.Velocity.x * Mathf.Cos(angle) - root.Velocity.y * Mathf.Sin(angle),
+                    root.Velocity.x * Mathf.Sin(angle) + root.Velocity.y * Mathf.Cos(angle)).normalized;
+                BallRuntimeState clone = SpawnBallForPlayer(owner, "HeroTemporaryClone", root.Position, direction, false);
+                clone.RootBallId = rootId;
+                clone.ExpireAtPlayingFrame = owner.Hero.PlayingFrame + Math.Max(1, durationFrames);
             }
         }
 
@@ -2793,6 +2995,15 @@ namespace App.HotUpdate.GatebreakerArena.Match
                     float distance = Mathf.Abs(Vector2.Dot(ball.Position - zone.Center, zone.Normal));
                     if (approach > 0f && distance <= BallRule.DangerPromptThreshold)
                     {
+                        PlayerRuntimeState defender = FindPlayer(zone.PlayerId);
+                        int bit = 1 << Math.Max(0, Math.Min(30, zone.PlayerId));
+                        if (defender != null && (ball.GoalBrakeAppliedMask & bit) == 0 &&
+                            _chipRulesByPlayerId.TryGetValue(defender.PlayerId, out ChipRuleSnapshot brakeRules) &&
+                            brakeRules.GoalBoundEnemySpeedMultiplier < 1f)
+                        {
+                            ball.Velocity *= brakeRules.GoalBoundEnemySpeedMultiplier;
+                            ball.GoalBrakeAppliedMask |= bit;
+                        }
                         zone.IsDanger = true;
                         break;
                     }
@@ -2938,6 +3149,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
             HashInt(ref hash, 1);
             HashString(ref hash, hero.HeroId);
+            HashString(ref hash, hero.PathId);
+            HashString(ref hash, hero.SignatureChipId);
+            HashOrderedIdentifierList(ref hash, hero.OpeningUniversalChipIds);
+            HashOrderedIdentifierList(ref hash, hero.ScheduledUniversalChipIds);
+            HashInt(ref hash, hero.PlayingFrame);
             HashIdentifierList(ref hash, hero.DeckChipIds);
             HashIdentifierList(ref hash, hero.ActiveChipIds);
             HashInt(ref hash, hero.AbilityCooldownRemainingFrames);
@@ -2986,6 +3202,32 @@ namespace App.HotUpdate.GatebreakerArena.Match
             HashInt(ref hash, combat.BlizzardRemainingFrames);
             HashInt(ref hash, combat.TeamBallSpeedBoostRemainingFrames);
             HashInt(ref hash, combat.FrostDecayFrameProgress);
+            HashInt(ref hash, combat.SimulationFrame);
+            HashInt(ref hash, combat.ChargeStacks);
+            HashInt(ref hash, combat.GlowStacks);
+            HashInt(ref hash, combat.GlowDecayRemainingFrames);
+            HashInt(ref hash, combat.ArcPulseCooldownRemainingFrames);
+            HashInt(ref hash, combat.NextBarrierId);
+            HeroParameterState[] parameters = (combat.SignatureParameters ?? new List<HeroParameterState>()).Where(item => item != null).OrderBy(item => item.Key, StringComparer.Ordinal).ToArray();
+            HashInt(ref hash, parameters.Length);
+            foreach (HeroParameterState parameter in parameters)
+            { HashString(ref hash, parameter.Key); HashInt(ref hash, QuantizeFloat(parameter.Value)); }
+            HeroBallFrostState[] ballFrost = (combat.FrostByBall ?? new List<HeroBallFrostState>()).Where(item => item != null).OrderBy(item => item.BallId).ToArray();
+            HashInt(ref hash, ballFrost.Length);
+            foreach (HeroBallFrostState item in ballFrost)
+            { HashInt(ref hash, item.BallId); HashInt(ref hash, item.Amount); }
+            HeroFreezeImmunityState[] immunities = (combat.FreezeImmunityByOpponent ?? new List<HeroFreezeImmunityState>()).Where(item => item != null).OrderBy(item => item.OpponentPlayerId).ToArray();
+            HashInt(ref hash, immunities.Length);
+            foreach (HeroFreezeImmunityState item in immunities)
+            { HashInt(ref hash, item.OpponentPlayerId); HashInt(ref hash, item.RemainingFrames); }
+            HeroBarrierState[] barriers = (combat.Barriers ?? new List<HeroBarrierState>()).Where(item => item != null).OrderBy(item => item.BarrierId).ToArray();
+            HashInt(ref hash, barriers.Length);
+            foreach (HeroBarrierState item in barriers)
+            {
+                HashInt(ref hash, item.BarrierId); HashInt(ref hash, item.RemainingFrames); HashInt(ref hash, item.DisabledRemainingFrames);
+                HashInt(ref hash, item.HitWindowRemainingFrames); HashInt(ref hash, item.HitsInWindow); HashInt(ref hash, QuantizeFloat(item.Length));
+                HashInt(ref hash, QuantizeFloat(item.CenterX)); HashInt(ref hash, QuantizeFloat(item.CenterY)); HashInt(ref hash, QuantizeFloat(item.NormalX)); HashInt(ref hash, QuantizeFloat(item.NormalY));
+            }
             HeroFrostStackState[] frost = (combat.FrostByOpponent ?? new List<HeroFrostStackState>())
                 .Where(item => item != null).OrderBy(item => item.OpponentPlayerId).ToArray();
             HashInt(ref hash, frost.Length);
@@ -3015,6 +3257,16 @@ namespace App.HotUpdate.GatebreakerArena.Match
             for (int i = 0; i < sorted.Length; i++)
             {
                 HashString(ref hash, sorted[i]);
+            }
+        }
+
+        private static void HashOrderedIdentifierList(ref uint hash, IReadOnlyList<string> values)
+        {
+            IReadOnlyList<string> ordered = values ?? Array.Empty<string>();
+            HashInt(ref hash, ordered.Count);
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                HashString(ref hash, ordered[i]);
             }
         }
 

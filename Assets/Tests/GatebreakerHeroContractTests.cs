@@ -48,13 +48,13 @@ namespace Gatebreaker.Tests
         public void StartConfig_InitializesStableHeroStateAndChecksumIncludesIt()
         {
             GatebreakerMatchRuntime frost = CreateRuntime("HERO_FROST_QUEEN", new[] { "FLOW_SPEED", "GUARD_LENGTH", "STRIKE_POWER" });
-            GatebreakerMatchRuntime thorn = CreateRuntime("HERO_THORN_GUARDIAN", new[] { "GUARD_LENGTH", "FLOW_SPEED", "STRIKE_POWER" });
+            GatebreakerMatchRuntime engineer = CreateRuntime("HERO_MECH_ENGINEER", new[] { "GUARD_LENGTH", "FLOW_SPEED", "STRIKE_POWER" });
 
             PlayerRuntimeState player = frost.FindPlayer(1);
             Assert.AreEqual("HERO_FROST_QUEEN", player.Hero.HeroId);
             CollectionAssert.AreEqual(new[] { "FLOW_SPEED", "GUARD_LENGTH", "STRIKE_POWER" }, player.Hero.DeckChipIds);
             Assert.AreEqual(3, player.Hero.ActiveChipIds.Count);
-            Assert.AreNotEqual(frost.CreateChecksum(0), thorn.CreateChecksum(0));
+            Assert.AreNotEqual(frost.CreateChecksum(0), engineer.CreateChecksum(0));
         }
 
         private static GatebreakerMatchRuntime CreateRuntime(string heroId, string[] deck)

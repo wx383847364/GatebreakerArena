@@ -25,7 +25,7 @@ namespace App.HotUpdate.GatebreakerArena.Match
             PaddleThickness = Math.Max(0.05f, paddleThickness);
             PaddleSpeed = Math.Max(0f, paddleSpeed);
             BoundarySegments = boundarySegments != null
-                ? new List<ArenaBoundarySegment>(boundarySegments)
+                ? (IReadOnlyList<ArenaBoundarySegment>)new List<ArenaBoundarySegment>(boundarySegments)
                 : Array.Empty<ArenaBoundarySegment>();
         }
 

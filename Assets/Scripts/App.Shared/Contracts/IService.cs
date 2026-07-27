@@ -221,6 +221,15 @@ namespace App.Shared.Contracts
         UnityEngine.Object ModeSelectRootObject { get; }
         UnityEngine.Object LocalBattleButtonObject { get; }
         UnityEngine.Object OnlineBattleButtonObject { get; }
+        UnityEngine.Object LoadoutRootObject { get; }
+        UnityEngine.Object LoadoutHeroDropdownObject { get; }
+        UnityEngine.Object LoadoutPathDropdownObject { get; }
+        UnityEngine.Object LoadoutSignatureDropdownObject { get; }
+        UnityEngine.Object[] LoadoutUniversalChipDropdownObjects { get; }
+        UnityEngine.Object LoadoutUseDefaultButtonObject { get; }
+        UnityEngine.Object LoadoutConfirmButtonObject { get; }
+        UnityEngine.Object LoadoutErrorTextObject { get; }
+        UnityEngine.Object HeroHudTextObject { get; }
         UnityEngine.Object LanMenuRootObject { get; }
         UnityEngine.Object LanRoomInfoRootObject { get; }
         UnityEngine.Object LanStatusRootObject { get; }

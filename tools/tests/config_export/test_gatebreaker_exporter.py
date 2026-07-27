@@ -14,6 +14,13 @@ if str(SCRIPT_ROOT) not in sys.path:
 from gatebreaker_exporter import export_all, validate_all  # noqa: E402
 
 
+def _copy_v1_sources(config_root: Path) -> None:
+    config_root.mkdir(parents=True, exist_ok=True)
+    source_root = Path(__file__).resolve().parents[3] / "Assets" / "Config"
+    for filename in ("DT_Hero.json", "DT_HeroPath.json", "DT_UniversalChip.json", "DT_SignatureChip.json"):
+        (config_root / filename).write_text((source_root / filename).read_text(encoding="utf-8"), encoding="utf-8")
+
+
 def _mode_row(**overrides: object) -> dict[str, object]:
     row: dict[str, object] = {
         "ModeId": "PVE_STANDARD",
@@ -60,7 +67,8 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
         self.assertEqual(3, len(result.payload["DT_Hero"]))
         self.assertEqual(6, len(result.payload["DT_HeroPath"]))
         self.assertEqual(12, len(result.payload["DT_UniversalChip"]))
-        self.assertNotIn("DT_SignatureChip", result.payload)
+        self.assertIn("DT_SignatureChip", result.payload)
+        self.assertEqual(12, len(result.payload["DT_SignatureChip"]))
 
     def test_v1_chip_source_rejects_missing_or_non_v1_chip_ids(self) -> None:
         with tempfile.TemporaryDirectory(prefix="gatebreaker_export_chip_invalid_") as temp_dir:
@@ -91,22 +99,8 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
 
             result = validate_all(repo_root, config_root, json_root, binary_root)
 
-            self.assertTrue(result.success, "\n".join(result.errors))
-            self.assertEqual(result.payload["DT_ModeRule"][0]["ModeId"], "PVE_STANDARD")
-            self.assertEqual(result.payload["DT_ModeRule"][0]["MatchDuration"], 60)
-            self.assertNotIn("Time", result.payload["DT_ModeRule"][0])
-            self.assertEqual(result.payload["DT_ModeRule"][0]["InitialBallsInMatch"], 0)
-            self.assertEqual(result.payload["DT_ModeRule"][0]["InitialServeAmmo"], 2)
-            self.assertEqual(result.payload["DT_ModeRule"][0]["MaxBallsInMatch"], 4)
-            self.assertEqual(result.payload["DT_ModeRule"][0]["BallSpeedByTime"], [[15, 10], [30, 15], [45, 20]])
-            self.assertEqual(result.payload["DT_BallRule"][0]["InitialSpeed"], 5.25)
-            self.assertEqual(result.payload["DT_BallRule"][0]["MaxSpeed"], 9.8)
-            self.assertEqual(result.payload["DT_MapRule"][0]["PaddleMoveSpeed"], 8)
-            self.assertIn("MatchDuration", result.payload["_FieldComments"]["DT_ModeRule"])
-            self.assertIn("PaddleMoveSpeed", result.payload["_FieldComments"]["DT_MapRule"])
-            self.assertEqual(result.payload["DT_PlayerColorRule"][0]["PlayerId"], 1)
-            self.assertEqual(result.payload["DT_PlayerColorRule"][0]["ColorName"], "Red")
-            self.assertTrue(result.warnings)
+            self.assertFalse(result.success)
+            self.assertTrue(any("required V1 source table" in error for error in result.errors))
 
     def test_export_writes_json_and_bytes(self) -> None:
         with tempfile.TemporaryDirectory(prefix="gatebreaker_export_write_") as temp_dir:
@@ -114,6 +108,8 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             config_root = repo_root / "Assets" / "Config"
             json_root = config_root / "json"
             binary_root = repo_root / "Assets" / "HotUpdateContent" / "Config"
+
+            _copy_v1_sources(config_root)
 
             result = export_all(repo_root, config_root, json_root, binary_root)
 
@@ -146,6 +142,7 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             json_root = config_root / "json"
             binary_root = repo_root / "Assets" / "HotUpdateContent" / "Config"
             config_root.mkdir(parents=True)
+            _copy_v1_sources(config_root)
             (config_root / "DT_ModeRule.json").write_text(json.dumps([_mode_row(Time=45)]) + "\n", encoding="utf-8")
 
             result = validate_all(repo_root, config_root, json_root, binary_root)
@@ -178,6 +175,7 @@ class GatebreakerConfigExporterTests(unittest.TestCase):
             json_root = config_root / "json"
             binary_root = repo_root / "Assets" / "HotUpdateContent" / "Config"
             config_root.mkdir(parents=True)
+            _copy_v1_sources(config_root)
             (config_root / "DT_ModeRule.json").write_text(json.dumps([_mode_row(MatchDuration=30)]) + "\n", encoding="utf-8")
 
             result = validate_all(repo_root, config_root, json_root, binary_root)

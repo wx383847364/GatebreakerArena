@@ -58,6 +58,15 @@ namespace App.AOT.Bootstrap
         [SerializeField] private GameObject _modeSelectRoot;
         [SerializeField] private Button _localBattleButton;
         [SerializeField] private Button _onlineBattleButton;
+        [SerializeField] private GameObject _loadoutRoot;
+        [SerializeField] private TMP_Dropdown _loadoutHeroDropdown;
+        [SerializeField] private TMP_Dropdown _loadoutPathDropdown;
+        [SerializeField] private TMP_Dropdown _loadoutSignatureDropdown;
+        [SerializeField] private TMP_Dropdown[] _loadoutUniversalChipDropdowns;
+        [SerializeField] private Button _loadoutUseDefaultButton;
+        [SerializeField] private Button _loadoutConfirmButton;
+        [SerializeField] private TMP_Text _loadoutErrorText;
+        [SerializeField] private TMP_Text _heroHudText;
         [SerializeField] private GameObject _lanMenuRoot;
         [SerializeField] private GameObject _lanRoomInfoRoot;
         [SerializeField] private GameObject _lanStatusRoot;
@@ -132,6 +141,15 @@ namespace App.AOT.Bootstrap
         public Object ModeSelectRootObject => _modeSelectRoot;
         public Object LocalBattleButtonObject => _localBattleButton;
         public Object OnlineBattleButtonObject => _onlineBattleButton;
+        public Object LoadoutRootObject => _loadoutRoot;
+        public Object LoadoutHeroDropdownObject => _loadoutHeroDropdown;
+        public Object LoadoutPathDropdownObject => _loadoutPathDropdown;
+        public Object LoadoutSignatureDropdownObject => _loadoutSignatureDropdown;
+        public Object[] LoadoutUniversalChipDropdownObjects => _loadoutUniversalChipDropdowns;
+        public Object LoadoutUseDefaultButtonObject => _loadoutUseDefaultButton;
+        public Object LoadoutConfirmButtonObject => _loadoutConfirmButton;
+        public Object LoadoutErrorTextObject => _loadoutErrorText;
+        public Object HeroHudTextObject => _heroHudText;
         public Object LanMenuRootObject => _lanMenuRoot;
         public Object LanRoomInfoRootObject => _lanRoomInfoRoot;
         public Object LanStatusRootObject => _lanStatusRoot;
@@ -258,6 +276,13 @@ namespace App.AOT.Bootstrap
                 }
             }
 
+            return true;
+        }
+
+        private static bool HasExactDropdownBindings(TMP_Dropdown[] dropdowns, int count)
+        {
+            if (dropdowns == null || dropdowns.Length != count) return false;
+            for (int i = 0; i < dropdowns.Length; i++) if (dropdowns[i] == null) return false;
             return true;
         }
 

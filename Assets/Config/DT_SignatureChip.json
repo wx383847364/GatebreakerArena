@@ -1,0 +1,14 @@
+[
+  {"ChipId":"SIG_FROST_DEEP_FREEZE_TOUCH","DisplayName":"寒霜之触","HeroId":"HERO_FROST_QUEEN","PathId":"PATH_FROST_EXTREME","ResonanceValue":3,"VariantKind":"Stable","Description":"低温命中 +18，冻结较短。","Parameters":{"FrostPerHit":18,"FreezeSeconds":1.3}},
+  {"ChipId":"SIG_FROST_DEEP_FREEZE_DOMAIN","DisplayName":"冰封领域","HeroId":"HERO_FROST_QUEEN","PathId":"PATH_FROST_EXTREME","ResonanceValue":3,"VariantKind":"Style","Description":"冻结后减速更强，低温建立较慢。","Parameters":{"FrostPerHit":12,"FreezeSlowMultiplier":0.7}},
+  {"ChipId":"SIG_FROST_ICE_CRYSTAL_RESERVE","DisplayName":"霜化初成","HeroId":"HERO_FROST_QUEEN","PathId":"PATH_FROST_CRYSTAL","ResonanceValue":3,"VariantKind":"Stable","Description":"低温衰减更慢，转化更稳定。","Parameters":{"FrostDecay":2,"CrystalSpeed":1.2}},
+  {"ChipId":"SIG_FROST_ICE_CRYSTAL_PRISM","DisplayName":"霜化棱镜","HeroId":"HERO_FROST_QUEEN","PathId":"PATH_FROST_CRYSTAL","ResonanceValue":3,"VariantKind":"Style","Description":"转化球速更高，窗口更短。","Parameters":{"FrostDecay":7,"CrystalSpeed":1.35}},
+  {"ChipId":"SIG_MECH_FORTRESS_FOUNDATION","DisplayName":"工事基座","HeroId":"HERO_MECH_ENGINEER","PathId":"PATH_MECH_FORTRESS","ResonanceValue":3,"VariantKind":"Stable","Description":"屏障更长、更持久。","Parameters":{"BarrierLength":1.8,"BarrierSeconds":10}},
+  {"ChipId":"SIG_MECH_FORTRESS_DIRECTED","DisplayName":"定向工事","HeroId":"HERO_MECH_ENGINEER","PathId":"PATH_MECH_FORTRESS","ResonanceValue":3,"VariantKind":"Style","Description":"定向部署，屏障容错较低。","Parameters":{"BarrierLength":1.3,"BarrierSeconds":6}},
+  {"ChipId":"SIG_MECH_TURRET_GUIDANCE","DisplayName":"炮台校准","HeroId":"HERO_MECH_ENGINEER","PathId":"PATH_MECH_TURRET","ResonanceValue":3,"VariantKind":"Stable","Description":"反弹导向更稳定。","Parameters":{"RedirectDegrees":5,"BounceSpeed":1.15}},
+  {"ChipId":"SIG_MECH_TURRET_COUNTER","DisplayName":"反击炮台","HeroId":"HERO_MECH_ENGINEER","PathId":"PATH_MECH_TURRET","ResonanceValue":3,"VariantKind":"Style","Description":"反攻更强，屏障窗口更短。","Parameters":{"RedirectDegrees":12,"BounceSpeed":1.35}},
+  {"ChipId":"SIG_RADIANT_CHARGE_RESERVE","DisplayName":"微光储能","HeroId":"HERO_RADIANT_PALADIN","PathId":"PATH_RADIANT_CHARGE","ResonanceValue":3,"VariantKind":"Stable","Description":"更快取得爆发，峰值较低。","Parameters":{"ChargeThreshold":5,"BurstSpeed":1.35}},
+  {"ChipId":"SIG_RADIANT_CHARGE_JUDGMENT","DisplayName":"蓄能审判","HeroId":"HERO_RADIANT_PALADIN","PathId":"PATH_RADIANT_CHARGE","ResonanceValue":3,"VariantKind":"Style","Description":"爆发更高，门槛更高。","Parameters":{"ChargeThreshold":7,"BurstSpeed":1.6}},
+  {"ChipId":"SIG_RADIANT_GLOW_STABLE","DisplayName":"光芒初绽","HeroId":"HERO_RADIANT_PALADIN","PathId":"PATH_RADIANT_GLOW","ResonanceValue":3,"VariantKind":"Stable","Description":"增益更易维持，峰值较低。","Parameters":{"GlowSeconds":6,"GlowCap":1.3}},
+  {"ChipId":"SIG_RADIANT_GLOW_AURA","DisplayName":"蓄能光环","HeroId":"HERO_RADIANT_PALADIN","PathId":"PATH_RADIANT_GLOW","ResonanceValue":3,"VariantKind":"Style","Description":"高层增益更强，衰减更快。","Parameters":{"GlowSeconds":3.5,"GlowCap":1.4}}
+]

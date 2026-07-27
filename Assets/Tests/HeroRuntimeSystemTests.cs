@@ -36,7 +36,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void FrostExtremeM2_FreezesTargetPaddleAndAllTargetBalls()
+        public void FrostExtremeM2_FreezesPerBallAndStartsOpponentImmunity()
         {
             HeroDefinition hero = CreateHero(HeroRuntimeSystem.FrostQueenId);
             HeroPathDefinition[] paths =
@@ -47,65 +47,57 @@ namespace Gatebreaker.Tests
             var combat = new HeroCombatState { HeroId = hero.HeroId };
 
             HeroRuntimeEventResult result = null;
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 7; i++)
             {
                 result = _system.HandleEvent(hero, paths, runtime, combat,
                     new HeroRuntimeEvent(HeroRuntimeEventType.OpponentPaddleHit, otherPlayerId: 2, ballId: 10));
             }
 
             Assert.IsNotNull(result);
-            Assert.AreEqual(36, result.Effects.TargetPaddleFreezeFrames);
-            Assert.AreEqual(23, result.Effects.TargetAllBallsFreezeFrames);
-            Assert.AreEqual(0, combat.FrostByOpponent[0].Amount);
+            Assert.AreEqual(45, result.Effects.TargetPaddleFreezeFrames);
+            Assert.AreEqual(0, combat.FrostByBall[0].Amount);
+            Assert.AreEqual(180, combat.FreezeImmunityByOpponent[0].RemainingFrames);
         }
 
         [Test]
-        public void ThornM2_ConcededGoalGrowsPaddleAndPunishesScorer()
+        public void EngineerFortress_AbilityCreatesDeterministicBarrierRequest()
         {
-            HeroDefinition hero = CreateHero(HeroRuntimeSystem.ThornGuardianId);
+            HeroDefinition hero = CreateHero(HeroRuntimeSystem.EngineerId);
             HeroPathDefinition[] paths =
             {
-                CreatePath("PATH_THORN", hero.HeroId, ChipCategory.Strike, ChipCategory.Guard),
-                CreatePath("PATH_GROWTH", hero.HeroId, ChipCategory.Guard, ChipCategory.Flow),
+                CreatePath("PATH_MECH_FORTRESS", hero.HeroId, ChipCategory.Strike, ChipCategory.Guard),
             };
-            HeroRuntimeState runtime = Initialize(hero, paths, ChipCategory.Strike, ChipCategory.Guard, ChipCategory.Flow);
+            HeroRuntimeState runtime = Initialize(hero, paths, ChipCategory.Strike, ChipCategory.Guard);
             var combat = new HeroCombatState { HeroId = hero.HeroId };
 
             HeroRuntimeEventResult result = _system.HandleEvent(hero, paths, runtime, combat,
-                new HeroRuntimeEvent(HeroRuntimeEventType.ConcededGoal, otherPlayerId: 2));
+                new HeroRuntimeEvent(HeroRuntimeEventType.AbilityPressed));
 
-            Assert.AreEqual(1, combat.ThornGrowthStacks);
-            Assert.AreEqual(-1, result.Effects.TargetServeAmmoDelta);
-            Assert.AreEqual(90, result.Effects.TargetPaddleSlowFrames);
-            Assert.AreEqual(0.8f, result.Effects.TargetPaddleMoveSpeedMultiplier);
-            Assert.AreEqual(1.05f, result.Effects.OwnPaddleLengthMultiplier);
+            Assert.IsTrue(result.AbilityActivated);
+            Assert.IsTrue(result.Effects.SpawnBarrier);
+            Assert.AreEqual(240, result.Effects.BarrierDurationFrames);
+            Assert.AreEqual(1.5f, result.Effects.BarrierLength);
         }
 
         [Test]
-        public void RadiantBrillianceM2_BurstAndShieldProduceConfiguredPersistentEffects()
+        public void RadiantChargeM2_BurstCreatesTemporaryCloneAndShield()
         {
             HeroDefinition hero = CreateHero(HeroRuntimeSystem.RadiantPaladinId);
             HeroPathDefinition[] paths =
             {
-                CreatePath("PATH_HOLY", hero.HeroId, ChipCategory.Strike, ChipCategory.Guard),
-                CreatePath("PATH_BRILLIANCE", hero.HeroId, ChipCategory.Strike, ChipCategory.Flow),
+                CreatePath("PATH_RADIANT_CHARGE", hero.HeroId, ChipCategory.Strike, ChipCategory.Guard),
             };
-            HeroRuntimeState runtime = Initialize(hero, paths, ChipCategory.Strike, ChipCategory.Guard, ChipCategory.Flow);
-            var combat = new HeroCombatState { HeroId = hero.HeroId, RadianceStacks = 5 };
+            HeroRuntimeState runtime = Initialize(hero, paths, ChipCategory.Strike, ChipCategory.Guard);
+            var combat = new HeroCombatState { HeroId = hero.HeroId, ChargeStacks = 5 };
 
             HeroRuntimeEventResult burst = _system.HandleEvent(hero, paths, runtime, combat,
                 new HeroRuntimeEvent(HeroRuntimeEventType.OwnPaddleHit, ballId: 7));
-            HeroRuntimeEventResult shield = _system.HandleEvent(hero, paths, runtime, combat,
-                new HeroRuntimeEvent(HeroRuntimeEventType.AbilityPressed));
-            HeroEffectBundle persistent = _system.GetPersistentEffects(hero, paths, runtime, combat);
 
-            Assert.AreEqual(2f, burst.Effects.OwnPaddleBounceSpeedMultiplier);
-            Assert.AreEqual(90, burst.Effects.OwnTeamBallSpeedBoostFrames);
-            Assert.IsTrue(shield.AbilityActivated);
-            Assert.AreEqual(90, shield.Effects.OwnGoalImmuneFrames);
-            Assert.AreEqual(1.5f, persistent.OwnPaddleBounceSpeedMultiplier);
-            Assert.AreEqual(1.5f, persistent.OwnPaddleMoveSpeedMultiplier);
-            Assert.AreEqual(1.5f, persistent.OwnBallSpeedMultiplier);
+            Assert.AreEqual(1.45f, burst.Effects.OwnPaddleBounceSpeedMultiplier);
+            Assert.AreEqual(15, burst.Effects.OwnGoalImmuneFrames);
+            Assert.AreEqual(1, burst.Effects.TemporaryCloneCount);
+            Assert.AreEqual(90, burst.Effects.TemporaryCloneDurationFrames);
+            Assert.AreEqual(0, combat.ChargeStacks);
         }
 
         [Test]
@@ -120,15 +112,15 @@ namespace Gatebreaker.Tests
             var combat = new HeroCombatState { HeroId = hero.HeroId };
 
             HeroRuntimeEventResult result = null;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 7; i++)
             {
                 result = _system.HandleEvent(hero, paths, runtime, combat,
                     new HeroRuntimeEvent(HeroRuntimeEventType.OpponentPaddleHit, otherPlayerId: 2, ballId: 3));
             }
 
-            Assert.AreEqual(1.15f, result.Effects.OwnBallSpeedMultiplier);
-            Assert.AreEqual(8f, result.Effects.BounceRedirectMaxDegrees);
-            Assert.AreEqual(1.45f, _system.GetIceCrystalBallSpeedMultiplier(combat, 3));
+            Assert.AreEqual(1.25f, result.Effects.OwnBallSpeedMultiplier);
+            Assert.IsTrue(result.Effects.RedirectBounceTowardsNearestEnemyGoal);
+            Assert.AreEqual(1.15f, _system.GetIceCrystalBallSpeedMultiplier(combat, 3));
         }
 
         [Test]

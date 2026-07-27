@@ -22,6 +22,16 @@ namespace App.HotUpdate.GatebreakerArena.Hero
         public int FrostDecayFrameProgress { get; set; }
         public List<HeroFrostStackState> FrostByOpponent { get; set; } = new List<HeroFrostStackState>();
         public List<HeroBallSpeedStackState> IceCrystalBallSpeedStacks { get; set; } = new List<HeroBallSpeedStackState>();
+        public List<HeroBallFrostState> FrostByBall { get; set; } = new List<HeroBallFrostState>();
+        public List<HeroFreezeImmunityState> FreezeImmunityByOpponent { get; set; } = new List<HeroFreezeImmunityState>();
+        public List<HeroBarrierState> Barriers { get; set; } = new List<HeroBarrierState>();
+        public int SimulationFrame { get; set; }
+        public int ChargeStacks { get; set; }
+        public int GlowStacks { get; set; }
+        public int GlowDecayRemainingFrames { get; set; }
+        public int ArcPulseCooldownRemainingFrames { get; set; }
+        public int NextBarrierId { get; set; } = 1;
+        public List<HeroParameterState> SignatureParameters { get; set; } = new List<HeroParameterState>();
     }
 
     [Serializable]
@@ -36,6 +46,23 @@ namespace App.HotUpdate.GatebreakerArena.Hero
     {
         public int BallId { get; set; }
         public int Stacks { get; set; }
+    }
+
+    [Serializable] public sealed class HeroBallFrostState { public int BallId { get; set; } public int Amount { get; set; } }
+    [Serializable] public sealed class HeroFreezeImmunityState { public int OpponentPlayerId { get; set; } public int RemainingFrames { get; set; } }
+    [Serializable] public sealed class HeroParameterState { public string Key { get; set; } = string.Empty; public float Value { get; set; } }
+    [Serializable] public sealed class HeroBarrierState
+    {
+        public int BarrierId { get; set; }
+        public int RemainingFrames { get; set; }
+        public int DisabledRemainingFrames { get; set; }
+        public int HitWindowRemainingFrames { get; set; }
+        public int HitsInWindow { get; set; }
+        public float Length { get; set; }
+        public float CenterX { get; set; }
+        public float CenterY { get; set; }
+        public float NormalX { get; set; }
+        public float NormalY { get; set; }
     }
 
     public enum HeroRuntimeEventType
@@ -85,6 +112,11 @@ namespace App.HotUpdate.GatebreakerArena.Hero
         public int TargetServeAmmoDelta { get; set; }
         public int OwnTeamBallSpeedBoostFrames { get; set; }
         public int OwnTeamBallSpeedBoostMultiplierPercent { get; set; }
+        public bool SpawnBarrier { get; set; }
+        public int BarrierDurationFrames { get; set; }
+        public float BarrierLength { get; set; }
+        public int TemporaryCloneCount { get; set; }
+        public int TemporaryCloneDurationFrames { get; set; }
 
         public static HeroEffectBundle None => new HeroEffectBundle();
     }

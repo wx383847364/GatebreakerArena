@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using App.HotUpdate.GatebreakerArena.Chip;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
@@ -11,17 +12,19 @@ namespace App.HotUpdate.GatebreakerArena.UI
     // catalog identity and deck-shape rules; it does not awaken chips or calculate paths.
     public sealed class HeroDeckSelectionPresenter
     {
-        public const int MaxDeckSize = 8;
+        public const int MaxDeckSize = 5;
         public const int MaxChipCountPerCategory = 3;
 
         public const string FrostQueenHeroId = "HERO_FROST_QUEEN";
-        public const string ThornGuardianHeroId = "HERO_THORN_GUARDIAN";
+        public const string EngineerHeroId = "HERO_MECH_ENGINEER";
+        [Obsolete("V1 uses HERO_MECH_ENGINEER.")]
+        public const string ThornGuardianHeroId = EngineerHeroId;
         public const string RadiantPaladinHeroId = "HERO_RADIANT_PALADIN";
 
         private static readonly string[] V1HeroIds =
         {
             FrostQueenHeroId,
-            ThornGuardianHeroId,
+            EngineerHeroId,
             RadiantPaladinHeroId,
         };
 
@@ -29,16 +32,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
         {
             "STRIKE_POWER",
             "STRIKE_SERVE",
+            "STRIKE_ANGLE",
             "STRIKE_OVERCHARGE",
             "GUARD_LENGTH",
             "GUARD_GOAL",
             "GUARD_BOUNCE",
+            "GUARD_BRAKE",
             "FLOW_SPEED",
             "FLOW_AMMO",
             "FLOW_CAPACITY",
-            "CHAOS_SPIN",
-            "CHAOS_RICOCHET",
-            "CHAOS_DISRUPT",
+            "FLOW_QUICK_SERVE",
         };
 
         private readonly GatebreakerModeCatalog _catalog;
@@ -57,6 +60,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public IReadOnlyList<HeroDeckChipOption> AvailableChips => _availableChips;
         public IReadOnlyList<string> SelectedDeckChipIds => _selectedDeckChipIds;
         public string SelectedHeroId { get; private set; } = string.Empty;
+        public string SelectedPathId { get; private set; } = string.Empty;
+        public string SelectedSignatureChipId { get; private set; } = string.Empty;
 
         public bool TrySelectHero(string heroId, out HeroDeckSelectionValidation validation)
         {
@@ -69,6 +74,40 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             SelectedHeroId = heroId;
+            HeroDefinition hero = _catalog.GetHero(heroId);
+            SelectedPathId = (hero.PathIds ?? Array.Empty<string>()).FirstOrDefault() ?? string.Empty;
+            SelectedSignatureChipId = _catalog.AllSignatureChips.Values
+                .Where(chip => chip.HeroId == heroId && chip.PathId == SelectedPathId)
+                .OrderBy(chip => chip.VariantKind == "Stable" ? 0 : 1)
+                .ThenBy(chip => chip.ChipId, StringComparer.Ordinal)
+                .Select(chip => chip.ChipId).FirstOrDefault() ?? string.Empty;
+            validation = HeroDeckSelectionValidation.Success();
+            return true;
+        }
+
+        public bool TrySelectPath(string pathId, out HeroDeckSelectionValidation validation)
+        {
+            if (string.IsNullOrEmpty(SelectedHeroId) || !_catalog.AllHeroPaths.TryGetValue(pathId ?? string.Empty, out HeroPathDefinition path) || path.HeroId != SelectedHeroId)
+            {
+                validation = HeroDeckSelectionValidation.Fail(HeroDeckSelectionFailure.UnknownPath, "The path does not belong to the selected V1 hero.");
+                return false;
+            }
+            SelectedPathId = pathId;
+            SelectedSignatureChipId = _catalog.AllSignatureChips.Values.Where(chip => chip.PathId == pathId)
+                .OrderBy(chip => chip.VariantKind == "Stable" ? 0 : 1).ThenBy(chip => chip.ChipId, StringComparer.Ordinal)
+                .Select(chip => chip.ChipId).FirstOrDefault() ?? string.Empty;
+            validation = HeroDeckSelectionValidation.Success();
+            return true;
+        }
+
+        public bool TrySelectSignatureChip(string chipId, out HeroDeckSelectionValidation validation)
+        {
+            if (!_catalog.AllSignatureChips.TryGetValue(chipId ?? string.Empty, out SignatureChipDefinition chip) || chip.HeroId != SelectedHeroId || chip.PathId != SelectedPathId)
+            {
+                validation = HeroDeckSelectionValidation.Fail(HeroDeckSelectionFailure.UnknownSignatureChip, "The signature chip does not belong to the selected path.");
+                return false;
+            }
+            SelectedSignatureChipId = chipId;
             validation = HeroDeckSelectionValidation.Success();
             return true;
         }
@@ -95,7 +134,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             {
                 validation = HeroDeckSelectionValidation.Fail(
                     HeroDeckSelectionFailure.DeckFull,
-                    "A V1 deck can contain at most eight chips.");
+                    "A V1 loadout contains exactly five universal chips.");
                 return false;
             }
 
@@ -151,6 +190,21 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 return false;
             }
 
+            if (_selectedDeckChipIds.Count != MaxDeckSize)
+            {
+                playerSlot = null;
+                validation = HeroDeckSelectionValidation.Fail(HeroDeckSelectionFailure.IncompleteLoadout, "Select exactly five ordered universal chips.");
+                return false;
+            }
+            var loadout = new V1MatchLoadout(SelectedHeroId, SelectedPathId, SelectedSignatureChipId,
+                _selectedDeckChipIds.Take(2), _selectedDeckChipIds.Skip(2).Take(3));
+            LoadoutValidationResult loadoutValidation = V1MatchLoadoutValidator.Validate(_catalog, loadout);
+            if (!loadoutValidation.IsValid)
+            {
+                playerSlot = null;
+                validation = HeroDeckSelectionValidation.Fail(HeroDeckSelectionFailure.InvalidLoadout, loadoutValidation.Error);
+                return false;
+            }
             playerSlot = new GatebreakerMatchPlayerSlot
             {
                 SlotIndex = slotIndex,
@@ -158,7 +212,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 PlayerId = playerId,
                 IsAi = isAi,
                 HeroId = SelectedHeroId,
-                DeckChipIds = _selectedDeckChipIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+                DeckChipIds = loadout.OrderedUniversalChipIds,
+                Loadout = loadout,
             };
             validation = HeroDeckSelectionValidation.Success();
             return true;
@@ -243,6 +298,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
         CategoryLimitReached = 5,
         HeroNotSelected = 6,
         InvalidPlayerId = 7,
+        UnknownPath = 8,
+        UnknownSignatureChip = 9,
+        IncompleteLoadout = 10,
+        InvalidLoadout = 11,
     }
 
     public sealed class HeroDeckSelectionValidation

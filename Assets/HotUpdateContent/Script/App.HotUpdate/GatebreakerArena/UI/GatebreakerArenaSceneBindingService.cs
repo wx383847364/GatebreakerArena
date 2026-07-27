@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Network;
@@ -18,6 +19,12 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public Action ServeRequested { get; set; }
         public Action LocalBattleRequested { get; set; }
         public Action OnlineBattleRequested { get; set; }
+        public Action<int> LoadoutHeroChanged { get; set; }
+        public Action<int> LoadoutPathChanged { get; set; }
+        public Action<int> LoadoutSignatureChanged { get; set; }
+        public Action<int, int> LoadoutUniversalChipChanged { get; set; }
+        public Action LoadoutUseDefaultRequested { get; set; }
+        public Action LoadoutConfirmRequested { get; set; }
         public Action CreateLanHostRequested { get; set; }
         public Action StartLanDiscoveryRequested { get; set; }
         public Action JoinLanRoomRequested { get; set; }
@@ -49,6 +56,15 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private Button _skillButton;
         private Button _localBattleButton;
         private Button _onlineBattleButton;
+        private GameObject _loadoutRoot;
+        private TMP_Dropdown _loadoutHeroDropdown;
+        private TMP_Dropdown _loadoutPathDropdown;
+        private TMP_Dropdown _loadoutSignatureDropdown;
+        private TMP_Dropdown[] _loadoutUniversalChipDropdowns = Array.Empty<TMP_Dropdown>();
+        private Button _loadoutUseDefaultButton;
+        private Button _loadoutConfirmButton;
+        private TMP_Text _loadoutErrorText;
+        private TMP_Text _heroHudText;
         private Button _lanCreateButton;
         private Button _lanBackButton;
         private Button _lanDiscoverButton;
@@ -161,6 +177,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _lanStartButton != null &&
             _lanLeaveButton != null &&
             _lanAcknowledgeStartButton != null;
+        public bool HasLoadoutBindings => _loadoutRoot != null && _loadoutHeroDropdown != null &&
+            _loadoutPathDropdown != null && _loadoutSignatureDropdown != null &&
+            _loadoutUniversalChipDropdowns.Length == 5 && _loadoutUniversalChipDropdowns.All(item => item != null) &&
+            _loadoutUseDefaultButton != null && _loadoutConfirmButton != null && _loadoutErrorText != null;
 
         public void Bind(
             IGatebreakerArenaSceneUiBinding binding,
@@ -244,6 +264,15 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _modeSelectRoot = RequireGameObject(binding.ModeSelectRootObject, nameof(binding.ModeSelectRootObject));
             _localBattleButton = Require<Button>(binding.LocalBattleButtonObject, nameof(binding.LocalBattleButtonObject));
             _onlineBattleButton = Require<Button>(binding.OnlineBattleButtonObject, nameof(binding.OnlineBattleButtonObject));
+            _loadoutRoot = RequireGameObject(binding.LoadoutRootObject, nameof(binding.LoadoutRootObject));
+            _loadoutHeroDropdown = Require<TMP_Dropdown>(binding.LoadoutHeroDropdownObject, nameof(binding.LoadoutHeroDropdownObject));
+            _loadoutPathDropdown = Require<TMP_Dropdown>(binding.LoadoutPathDropdownObject, nameof(binding.LoadoutPathDropdownObject));
+            _loadoutSignatureDropdown = Require<TMP_Dropdown>(binding.LoadoutSignatureDropdownObject, nameof(binding.LoadoutSignatureDropdownObject));
+            _loadoutUniversalChipDropdowns = RequireDropdownArray(binding.LoadoutUniversalChipDropdownObjects, nameof(binding.LoadoutUniversalChipDropdownObjects));
+            _loadoutUseDefaultButton = Require<Button>(binding.LoadoutUseDefaultButtonObject, nameof(binding.LoadoutUseDefaultButtonObject));
+            _loadoutConfirmButton = Require<Button>(binding.LoadoutConfirmButtonObject, nameof(binding.LoadoutConfirmButtonObject));
+            _loadoutErrorText = Require<TMP_Text>(binding.LoadoutErrorTextObject, nameof(binding.LoadoutErrorTextObject));
+            _heroHudText = Require<TMP_Text>(binding.HeroHudTextObject, nameof(binding.HeroHudTextObject));
             _lanMenuRoot = RequireGameObject(binding.LanMenuRootObject, nameof(binding.LanMenuRootObject));
             _lanRoomInfoRoot = RequireGameObject(binding.LanRoomInfoRootObject, nameof(binding.LanRoomInfoRootObject));
             _lanStatusRoot = RequireGameObject(binding.LanStatusRootObject, nameof(binding.LanStatusRootObject));
@@ -274,6 +303,16 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddButtonListener(_skillButton, HandleSkillButtonClicked);
             AddButtonListener(_localBattleButton, () => _callbacks.LocalBattleRequested?.Invoke());
             AddButtonListener(_onlineBattleButton, () => _callbacks.OnlineBattleRequested?.Invoke());
+            AddButtonListener(_loadoutUseDefaultButton, () => _callbacks.LoadoutUseDefaultRequested?.Invoke());
+            AddButtonListener(_loadoutConfirmButton, () => _callbacks.LoadoutConfirmRequested?.Invoke());
+            AddDropdownListener(_loadoutHeroDropdown, 0, value => _callbacks.LoadoutHeroChanged?.Invoke(value));
+            AddDropdownListener(_loadoutPathDropdown, 0, value => _callbacks.LoadoutPathChanged?.Invoke(value));
+            AddDropdownListener(_loadoutSignatureDropdown, 0, value => _callbacks.LoadoutSignatureChanged?.Invoke(value));
+            for (int i = 0; i < _loadoutUniversalChipDropdowns.Length; i++)
+            {
+                int slot = i;
+                AddDropdownListener(_loadoutUniversalChipDropdowns[i], i, value => _callbacks.LoadoutUniversalChipChanged?.Invoke(slot, value));
+            }
             AddButtonListener(_lanBackButton, () => _callbacks.LeaveLanRoomRequested?.Invoke());
             AddButtonListener(_lanCreateButton, () => _callbacks.CreateLanHostRequested?.Invoke());
             AddButtonListener(_lanDiscoverButton, () => _callbacks.StartLanDiscoveryRequested?.Invoke());
@@ -315,6 +354,37 @@ namespace App.HotUpdate.GatebreakerArena.UI
             ShowModeSelect();
             SetActive(_resultRoot, false);
         }
+
+        public void ConfigureLoadout(IReadOnlyList<string> heroes, IReadOnlyList<string> paths,
+            IReadOnlyList<string> signatures, IReadOnlyList<string> universalChips)
+        {
+            SetDropdownOptions(_loadoutHeroDropdown, heroes);
+            SetDropdownOptions(_loadoutPathDropdown, paths);
+            SetDropdownOptions(_loadoutSignatureDropdown, signatures);
+            for (int i = 0; i < _loadoutUniversalChipDropdowns.Length; i++)
+                SetDropdownOptions(_loadoutUniversalChipDropdowns[i], universalChips, i);
+        }
+
+        public void UpdateLoadoutPaths(IReadOnlyList<string> paths, IReadOnlyList<string> signatures)
+        {
+            SetDropdownOptions(_loadoutPathDropdown, paths);
+            SetDropdownOptions(_loadoutSignatureDropdown, signatures);
+        }
+
+        public void UpdateLoadoutSignatures(IReadOnlyList<string> signatures) => SetDropdownOptions(_loadoutSignatureDropdown, signatures);
+        public void SetLoadoutChipSelections(IReadOnlyList<int> indices)
+        {
+            for (int i = 0; i < _loadoutUniversalChipDropdowns.Length; i++)
+            {
+                TMP_Dropdown dropdown = _loadoutUniversalChipDropdowns[i];
+                int value = indices != null && i < indices.Count ? indices[i] : i;
+                dropdown?.SetValueWithoutNotify(Mathf.Clamp(value, 0, Mathf.Max(0, (dropdown?.options.Count ?? 1) - 1)));
+                dropdown?.RefreshShownValue();
+            }
+        }
+        public void ShowLoadout() { SetActive(_modeSelectRoot, false); SetActive(_loadoutRoot, true); SetText(_loadoutErrorText, string.Empty); }
+        public void SetLoadoutError(string message) => SetText(_loadoutErrorText, message ?? string.Empty);
+        public void SetHeroHud(string text) => SetText(_heroHudText, text ?? string.Empty);
 
         public void MarkBound()
         {
@@ -432,6 +502,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
         {
             SetActive(_lanRoot, true);
             SetActive(_modeSelectRoot, true);
+            SetActive(_loadoutRoot, false);
             SetActive(_lanBackButton != null ? _lanBackButton.gameObject : null, false);
             SetActive(_lanMenuRoot, false);
             SetActive(_lanRoomInfoRoot, false);
@@ -488,6 +559,15 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _buttonListeners.Clear();
             _localBattleButton = null;
             _onlineBattleButton = null;
+            _loadoutRoot = null;
+            _loadoutHeroDropdown = null;
+            _loadoutPathDropdown = null;
+            _loadoutSignatureDropdown = null;
+            _loadoutUniversalChipDropdowns = Array.Empty<TMP_Dropdown>();
+            _loadoutUseDefaultButton = null;
+            _loadoutConfirmButton = null;
+            _loadoutErrorText = null;
+            _heroHudText = null;
             for (int i = 0; i < _inputListeners.Count; i++)
             {
                 InputListener listener = _inputListeners[i];
@@ -669,6 +749,27 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             return texts;
+        }
+
+        private TMP_Dropdown[] RequireDropdownArray(UnityEngine.Object[] sources, string bindingName)
+        {
+            if (sources == null || sources.Length != 5)
+            {
+                _logger?.LogWarning("GatebreakerArenaSceneBindingService: {0} must contain five dropdowns.", bindingName);
+                return Array.Empty<TMP_Dropdown>();
+            }
+            var result = new TMP_Dropdown[sources.Length];
+            for (int i = 0; i < sources.Length; i++) result[i] = Require<TMP_Dropdown>(sources[i], bindingName + "[" + i + "]");
+            return result;
+        }
+
+        private static void SetDropdownOptions(TMP_Dropdown dropdown, IReadOnlyList<string> options, int selectedIndex = 0)
+        {
+            if (dropdown == null) return;
+            dropdown.ClearOptions();
+            dropdown.AddOptions((options ?? Array.Empty<string>()).Select(value => value ?? string.Empty).ToList());
+            dropdown.SetValueWithoutNotify(Mathf.Clamp(selectedIndex, 0, Mathf.Max(0, dropdown.options.Count - 1)));
+            dropdown.RefreshShownValue();
         }
 
         private TMP_Text[] OptionalTextArray(UnityEngine.Object[] sources, string bindingName, bool warnWhenMissing = true)

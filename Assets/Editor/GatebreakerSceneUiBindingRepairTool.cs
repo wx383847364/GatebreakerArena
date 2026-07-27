@@ -108,6 +108,15 @@ namespace Gatebreaker.Editor
             Require<GameObject>(serializedBinding, "_modeSelectRoot", errors);
             Require<Button>(serializedBinding, "_localBattleButton", errors);
             Require<Button>(serializedBinding, "_onlineBattleButton", errors);
+            Require<GameObject>(serializedBinding, "_loadoutRoot", errors);
+            Require<TMP_Dropdown>(serializedBinding, "_loadoutHeroDropdown", errors);
+            Require<TMP_Dropdown>(serializedBinding, "_loadoutPathDropdown", errors);
+            Require<TMP_Dropdown>(serializedBinding, "_loadoutSignatureDropdown", errors);
+            RequireArray<TMP_Dropdown>(serializedBinding, "_loadoutUniversalChipDropdowns", 5, errors);
+            Require<Button>(serializedBinding, "_loadoutUseDefaultButton", errors);
+            Require<Button>(serializedBinding, "_loadoutConfirmButton", errors);
+            Require<TMP_Text>(serializedBinding, "_loadoutErrorText", errors);
+            Require<TMP_Text>(serializedBinding, "_heroHudText", errors);
             Require<GameObject>(serializedBinding, "_lanMenuRoot", errors);
             Require<GameObject>(serializedBinding, "_lanRoomInfoRoot", errors);
             Require<GameObject>(serializedBinding, "_lanStatusRoot", errors);
@@ -157,6 +166,10 @@ namespace Gatebreaker.Editor
 
             Transform gmPanel = EnsureGmPanel(canvas);
             Transform modeSelectPanel = EnsureModeSelectPanel(lanRoot);
+            TMP_Dropdown dropdownTemplate = FindRequired<TMP_Dropdown>(lanRoot, "LanPanel/CreateRoom/RoomType/Dropdown");
+            Transform loadoutPanel = EnsureLoadoutPanel(lanRoot, dropdownTemplate.transform);
+            TMP_Text heroHudText = EnsureText(downPanel, "HeroHudText", string.Empty, 13,
+                new Vector2(0f, 82f), new Vector2(520f, 42f), TextAlignmentOptions.Center);
             Transform lanBackButton = EnsureLanBackButton(lanRoot);
             Transform startCountdownPanel = EnsureStartCountdownPanel(canvas);
             Transform discoverButton = EnsureClonedButton(
@@ -237,6 +250,20 @@ namespace Gatebreaker.Editor
             Set(serializedBinding, "_modeSelectRoot", modeSelectPanel.gameObject);
             Set(serializedBinding, "_localBattleButton", FindRequired<Button>(modeSelectPanel, "LocalBattleButton"));
             Set(serializedBinding, "_onlineBattleButton", FindRequired<Button>(modeSelectPanel, "OnlineBattleButton"));
+            Set(serializedBinding, "_loadoutRoot", loadoutPanel.gameObject);
+            Set(serializedBinding, "_loadoutHeroDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "HeroDropdown"));
+            Set(serializedBinding, "_loadoutPathDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "PathDropdown"));
+            Set(serializedBinding, "_loadoutSignatureDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "SignatureDropdown"));
+            SetArray(serializedBinding, "_loadoutUniversalChipDropdowns",
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown0"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown1"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown2"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown3"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown4"));
+            Set(serializedBinding, "_loadoutUseDefaultButton", FindRequired<Button>(loadoutPanel, "UseDefaultButton"));
+            Set(serializedBinding, "_loadoutConfirmButton", FindRequired<Button>(loadoutPanel, "ConfirmButton"));
+            Set(serializedBinding, "_loadoutErrorText", FindRequired<TMP_Text>(loadoutPanel, "ErrorText"));
+            Set(serializedBinding, "_heroHudText", heroHudText);
             Set(serializedBinding, "_lanMenuRoot", lanPanel.gameObject);
             Set(serializedBinding, "_lanRoomInfoRoot", roomInfoPanel.gameObject);
             Set(serializedBinding, "_lanStatusRoot", lanStatusPanel.gameObject);
@@ -334,6 +361,44 @@ namespace Gatebreaker.Editor
             EnsureButton(panel, "LocalBattleButton", "人机对战", new Vector2(0f, 20f), new Vector2(260f, 48f), new Color(0.92f, 0.08f, 0.08f, 1f));
             EnsureButton(panel, "OnlineBattleButton", "联机对战", new Vector2(0f, -48f), new Vector2(260f, 48f), new Color(0.06f, 0.62f, 0.08f, 1f));
             return panel;
+        }
+
+        private static Transform EnsureLoadoutPanel(Transform lanRoot, Transform dropdownTemplate)
+        {
+            Transform panel = EnsureRectChild(lanRoot, "LoadoutPanel", new Vector2(0.5f, 0.52f), new Vector2(0.5f, 0.52f),
+                new Vector2(0.5f, 0.5f), new Vector2(560f, 650f), Vector2.zero);
+            EnsureComponent<Image>(panel.gameObject).color = new Color(0f, 0f, 0f, 0.84f);
+            EnsureText(panel, "Title", "英雄与芯片构筑", 26, new Vector2(0f, 292f), new Vector2(500f, 36f), TextAlignmentOptions.Center);
+            string[] names = { "HeroDropdown", "PathDropdown", "SignatureDropdown", "ChipDropdown0", "ChipDropdown1", "ChipDropdown2", "ChipDropdown3", "ChipDropdown4" };
+            string[] labels = { "英雄", "路线", "专属芯片", "开局芯片 1", "开局芯片 2", "15 秒", "30 秒", "45 秒" };
+            for (int i = 0; i < names.Length; i++)
+            {
+                float y = 232f - i * 54f;
+                EnsureText(panel, names[i] + "Label", labels[i], 14, new Vector2(-194f, y), new Vector2(110f, 28f), TextAlignmentOptions.Left);
+                EnsureClonedDropdown(dropdownTemplate, panel, names[i], new Vector2(60f, y), new Vector2(360f, 36f));
+            }
+            EnsureButton(panel, "UseDefaultButton", "一键使用", new Vector2(-112f, -236f), new Vector2(180f, 42f), new Color(0.12f, 0.38f, 0.72f, 1f));
+            EnsureButton(panel, "ConfirmButton", "确认构筑", new Vector2(112f, -236f), new Vector2(180f, 42f), new Color(0.08f, 0.62f, 0.22f, 1f));
+            EnsureText(panel, "ErrorText", string.Empty, 13, new Vector2(0f, -282f), new Vector2(500f, 42f), TextAlignmentOptions.Center);
+            panel.gameObject.SetActive(false);
+            return panel;
+        }
+
+        private static TMP_Dropdown EnsureClonedDropdown(Transform source, Transform parent, string name, Vector2 position, Vector2 size)
+        {
+            Transform target = parent.Find(name);
+            if (target == null)
+            {
+                target = UnityEngine.Object.Instantiate(source.gameObject, parent).transform;
+                target.name = name;
+            }
+            RectTransform rect = target as RectTransform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            TMP_Dropdown dropdown = target.GetComponent<TMP_Dropdown>();
+            dropdown.onValueChanged.RemoveAllListeners();
+            return dropdown;
         }
 
         private static Transform EnsureStartCountdownPanel(Transform canvas)

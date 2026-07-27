@@ -1,4 +1,6 @@
 using System.Collections;
+using System;
+using System.IO;
 using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Mode;
@@ -256,7 +258,7 @@ namespace Gatebreaker.Tests
 
         private static string CreateRulesJson(object scoreRuleType, object spawnLayoutType)
         {
-            return string.Format(
+            string json = string.Format(
                 @"{{
   ""Version"": 7,
   ""DT_ModeRule"": [
@@ -420,6 +422,40 @@ namespace Gatebreaker.Tests
 }}",
                 FormatJsonValue(scoreRuleType),
                 FormatJsonValue(spawnLayoutType));
+            string canonical = File.ReadAllText(Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
+            string[] requiredTables = { "DT_UniversalChip", "DT_SignatureChip", "DT_Hero", "DT_HeroPath" };
+            int insertAt = json.LastIndexOf('}');
+            for (int i = 0; i < requiredTables.Length; i++)
+            {
+                string table = requiredTables[i];
+                json = json.Insert(insertAt, $",\n  \"{table}\": {ExtractJsonArray(canonical, table)}\n");
+                insertAt = json.LastIndexOf('}');
+            }
+            return json;
+        }
+
+        private static string ExtractJsonArray(string json, string key)
+        {
+            int keyIndex = json.IndexOf($"\"{key}\"", StringComparison.Ordinal);
+            int start = json.IndexOf('[', keyIndex);
+            int depth = 0;
+            bool inString = false;
+            bool escaped = false;
+            for (int i = start; i < json.Length; i++)
+            {
+                char ch = json[i];
+                if (inString)
+                {
+                    if (escaped) escaped = false;
+                    else if (ch == '\\') escaped = true;
+                    else if (ch == '"') inString = false;
+                    continue;
+                }
+                if (ch == '"') inString = true;
+                else if (ch == '[') depth++;
+                else if (ch == ']' && --depth == 0) return json.Substring(start, i - start + 1);
+            }
+            throw new InvalidDataException($"Missing canonical array '{key}'.");
         }
 
         private static string FormatJsonValue(object value)
@@ -461,12 +497,12 @@ namespace Gatebreaker.Tests
 
         private sealed class FakeAssetHandle : IAssetHandle
         {
-            public FakeAssetHandle(Object assetObject)
+            public FakeAssetHandle(UnityEngine.Object assetObject)
             {
                 AssetObject = assetObject;
             }
 
-            public Object AssetObject { get; }
+            public UnityEngine.Object AssetObject { get; }
             public bool Released { get; private set; }
 
             public void Release()

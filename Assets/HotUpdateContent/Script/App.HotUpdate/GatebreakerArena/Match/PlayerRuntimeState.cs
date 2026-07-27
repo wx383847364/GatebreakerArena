@@ -22,5 +22,11 @@ namespace App.HotUpdate.GatebreakerArena.Match
         public ZoneRuntimeState Zone { get; set; }
         public HeroRuntimeState Hero { get; set; } = new HeroRuntimeState();
         public HeroCombatState HeroCombat { get; set; } = new HeroCombatState();
+        public float BasePaddleLength { get; set; }
+        public float BasePaddleSpeed { get; set; }
+        public float BaseServeCooldown { get; set; }
+        public int BaseMaxServeAmmo { get; set; }
+        public int QuickServeWindowRemainingFrames { get; set; }
+        public int QuickServeCooldownRemainingFrames { get; set; }
     }
 }
