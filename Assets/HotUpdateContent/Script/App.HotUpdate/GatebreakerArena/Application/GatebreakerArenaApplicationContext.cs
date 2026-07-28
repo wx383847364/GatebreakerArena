@@ -1,4 +1,5 @@
 using App.HotUpdate.GatebreakerArena.AI;
+using App.HotUpdate.GatebreakerArena.BrickDuel;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
@@ -23,6 +24,7 @@ namespace App.HotUpdate.GatebreakerArena.Application
             GatebreakerArenaHudPresenter hudPresenter,
             GatebreakerArenaSceneBindingService sceneBindingService,
             GatebreakerVisualAssetService visualAssetService,
+            BrickDuelVisualAssetService brickDuelVisualAssetService,
             LanDiagnosticsService lanDiagnosticsService,
             LanRoomService lanRoomService,
             LanRoomTransportBridge lanRoomTransportBridge,
@@ -40,6 +42,7 @@ namespace App.HotUpdate.GatebreakerArena.Application
             HudPresenter = hudPresenter;
             SceneBindingService = sceneBindingService;
             VisualAssetService = visualAssetService;
+            BrickDuelVisualAssetService = brickDuelVisualAssetService;
             LanDiagnosticsService = lanDiagnosticsService;
             LanRoomService = lanRoomService;
             LanRoomTransportBridge = lanRoomTransportBridge;
@@ -58,6 +61,7 @@ namespace App.HotUpdate.GatebreakerArena.Application
         public GatebreakerArenaHudPresenter HudPresenter { get; }
         public GatebreakerArenaSceneBindingService SceneBindingService { get; }
         public GatebreakerVisualAssetService VisualAssetService { get; }
+        public BrickDuelVisualAssetService BrickDuelVisualAssetService { get; }
         public LanDiagnosticsService LanDiagnosticsService { get; }
         public LanRoomService LanRoomService { get; }
         public LanRoomTransportBridge LanRoomTransportBridge { get; }

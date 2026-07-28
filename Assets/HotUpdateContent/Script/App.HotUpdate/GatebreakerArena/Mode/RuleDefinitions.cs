@@ -142,6 +142,57 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float Alpha { get; set; }
     }
 
+    /// <summary>
+    /// Local endless 1v1 brick-tide rules. This definition stays in HotUpdate because
+    /// it is gameplay data rather than a stable host/network contract.
+    /// </summary>
+    public sealed class BrickDuelRuleDefinition
+    {
+        public string RuleId { get; set; }
+        public int SimulationFps { get; set; }
+        public int CountdownSeconds { get; set; }
+        public int InitialCoreHealth { get; set; }
+        public int InitialRows { get; set; }
+        public int Columns { get; set; }
+        public float ArenaHalfWidth { get; set; }
+        public float CoreLineY { get; set; }
+        public float PaddleSpawnY { get; set; }
+        public float PaddleHalfWidth { get; set; }
+        public float PaddleHalfHeight { get; set; }
+        public float PaddleMoveSpeed { get; set; }
+        public float BrickWidth { get; set; }
+        public float BrickHeight { get; set; }
+        public float BallRadius { get; set; }
+        public float BallSpeed { get; set; }
+        public float BaseTideSpeed { get; set; }
+        public float BallResetSeconds { get; set; }
+        public float StuckTimeoutSeconds { get; set; }
+        public float StuckMovementEpsilon { get; set; }
+        public float PressureIntervalSeconds { get; set; }
+        public float PressureIncrement { get; set; }
+        public float DangerDistance { get; set; }
+        public int GreenHealth { get; set; }
+        public int RedHealth { get; set; }
+        public int YellowHealth { get; set; }
+        public int MysteryHealth { get; set; }
+        public int BrickCoreDamage { get; set; }
+        public float GreenWeight { get; set; }
+        public float RedWeight { get; set; }
+        public float YellowWeight { get; set; }
+        public float MysteryWeight { get; set; }
+        public int RandomSeed { get; set; }
+        public string AiLevelId { get; set; }
+        public IReadOnlyList<string> InitialRowPatterns { get; set; }
+        public string ScenePrefabLocation { get; set; }
+        public string PaddlePrefabLocation { get; set; }
+        public string PlayerBallPrefabLocation { get; set; }
+        public string AiBallPrefabLocation { get; set; }
+        public string GreenBrickPrefabLocation { get; set; }
+        public string RedBrickPrefabLocation { get; set; }
+        public string YellowBrickPrefabLocation { get; set; }
+        public string MysteryBrickPrefabLocation { get; set; }
+    }
+
     // --- Chip modifier structs ---
 
     public sealed class UniversalChipModifierDefinition

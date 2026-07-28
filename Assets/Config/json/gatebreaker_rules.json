@@ -31,6 +31,57 @@
       "WallBounceFactor": 1.0
     }
   ],
+  "DT_BrickDuelRule": [
+    {
+      "AiBallPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball02.prefab",
+      "AiLevelId": "AI_NORMAL",
+      "ArenaHalfWidth": 3.5,
+      "BallRadius": 0.2,
+      "BallResetSeconds": 0.5,
+      "BallSpeed": 0.865333,
+      "BaseTideSpeed": 0.035733,
+      "BrickCoreDamage": 1,
+      "BrickHeight": 0.46,
+      "BrickWidth": 0.66,
+      "Columns": 9,
+      "CoreLineY": 5.4,
+      "CountdownSeconds": 5,
+      "DangerDistance": 0.92,
+      "GreenBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_01.prefab",
+      "GreenHealth": 1,
+      "GreenWeight": 0.25,
+      "InitialCoreHealth": 5,
+      "InitialRowPatterns": [
+        "Green,Red,Yellow,Mystery,Green,Red,Yellow,Mystery,Green",
+        "Red,Yellow,Mystery,Green,Red,Yellow,Mystery,Green,Red",
+        "Yellow,Mystery,Green,Red,Yellow,Mystery,Green,Red,Yellow"
+      ],
+      "InitialRows": 3,
+      "MysteryBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_04.prefab",
+      "MysteryHealth": 1,
+      "MysteryWeight": 0.25,
+      "PaddleHalfHeight": 0.075,
+      "PaddleHalfWidth": 0.375,
+      "PaddleMoveSpeed": 8.0,
+      "PaddlePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+      "PaddleSpawnY": 4.7,
+      "PlayerBallPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
+      "PressureIncrement": 0.25,
+      "PressureIntervalSeconds": 30.0,
+      "RandomSeed": 1,
+      "RedBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_02.prefab",
+      "RedHealth": 2,
+      "RedWeight": 0.25,
+      "RuleId": "BRICK_DUEL_V0",
+      "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab",
+      "SimulationFps": 30,
+      "StuckMovementEpsilon": 0.01,
+      "StuckTimeoutSeconds": 2.0,
+      "YellowBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_03.prefab",
+      "YellowHealth": 3,
+      "YellowWeight": 0.25
+    }
+  ],
   "DT_Hero": [
     {
       "ActiveAbilityCooldownSeconds": 12.0,
@@ -1259,10 +1310,16 @@
       "Rarity": "Common"
     }
   ],
-  "Version": 2,
+  "Version": 3,
   "_FieldComments": {
     "DT_BallRule": {
       "BallContactRadius": "球体碰撞半径，单位为场景距离；用于球与边界、球门和挡板碰撞判定。"
+    },
+    "DT_BrickDuelRule": {
+      "BallSpeed": "按 SceneSingle 标定后的固定球速；V0 不随压力等级变化。",
+      "BaseTideSpeed": "砖潮基础速度 V0；运行时乘以 1 + 0.25 × floor(t / 30)。",
+      "InitialRowPatterns": "三行九列的权威开局序列；上下半场使用镜像位置。",
+      "RandomSeed": "后续砖行的确定性随机种子；双方共用同一权威行。"
     },
     "DT_Hero": {
       "ActiveAbilityCooldownSeconds": "主动技能冷却，单位秒；倒计时结束进入 Playing 后才开始计时。",

@@ -1,5 +1,8 @@
+using System.Linq;
+using App.HotUpdate.GatebreakerArena.BrickDuel;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Paddle;
 using App.HotUpdate.GatebreakerArena.UI;
@@ -627,6 +630,123 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(4, selectedPlayerCount);
         }
 
+        [Test]
+        public void SingleBattleNavigationUsesDedicatedCallbacksAndKeepsFutureModesDisabled()
+        {
+            int openRequests = 0;
+            int duelRequests = 0;
+            int backRequests = 0;
+            int pauseRequests = 0;
+            _service.Bind(
+                _binding,
+                new GatebreakerArenaSceneUiCallbacks
+                {
+                    SingleBattleRequested = () => openRequests++,
+                    BrickDuelRequested = () => duelRequests++,
+                    SingleSelectBackRequested = () => backRequests++,
+                    BrickDuelPauseRequested = () => pauseRequests++,
+                },
+                null);
+
+            _binding.SingleBattleButton.onClick.Invoke();
+            _service.ShowSingleSelect(true);
+            _binding.BrickDuel1v1Button.onClick.Invoke();
+            _binding.SingleSelectBackButton.onClick.Invoke();
+            _binding.BrickDuelPauseButton.onClick.Invoke();
+
+            Assert.AreEqual(1, openRequests);
+            Assert.AreEqual(1, duelRequests);
+            Assert.AreEqual(1, backRequests);
+            Assert.AreEqual(1, pauseRequests);
+            Assert.IsTrue(_binding.SingleSelectRoot.activeSelf);
+            Assert.IsTrue(_binding.BrickDuel1v1Button.interactable);
+            Assert.IsFalse(_binding.BrickDuel1v2Button.interactable);
+            Assert.IsFalse(_binding.BrickDuel1v3Button.interactable);
+        }
+
+        [Test]
+        public void BrickDuelHudShowsElapsedPressureHealthAndDangerWithoutLegacyPanels()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+            _service.ShowBrickDuelHud();
+            var snapshot = new BrickDuelSnapshot
+            {
+                Phase = BrickDuelPhase.Playing,
+                ElapsedFrames = 825,
+                BottomCoreHealth = 3,
+                TopCoreHealth = 4,
+                PressureLevel = 0,
+                PressureMultiplier = 1f,
+                FramesUntilPressureIncrease = 75,
+                BottomDangerDistance = 0.5f,
+            };
+            var rule = new BrickDuelRuleDefinition
+            {
+                SimulationFps = 30,
+                DangerDistance = 0.92f,
+            };
+
+            _service.UpdateBrickDuel(snapshot, rule, null);
+
+            StringAssert.Contains("00:27", _binding.BrickDuelCenterText.text);
+            StringAssert.Contains("Lv.0", _binding.BrickDuelCenterText.text);
+            StringAssert.Contains("1.00", _binding.BrickDuelCenterText.text);
+            Assert.AreEqual("\u2665\u2665\u2665", _binding.BrickDuelPlayerHealthText.text);
+            Assert.AreEqual("\u2665\u2665\u2665\u2665", _binding.BrickDuelOpponentHealthText.text);
+            StringAssert.Contains("危险", _binding.BrickDuelStatusText.text);
+            Assert.IsTrue(_binding.BrickDuelHudRoot.activeSelf);
+            Assert.IsFalse(_binding.TopPanel2PRoot.activeSelf);
+            Assert.IsFalse(_binding.GmRoot.activeSelf);
+        }
+
+        [Test]
+        public void BrickDuelCoreDamageFlashesOnlyTheDamagedSideAndModeExitClearsIt()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+            _service.ShowBrickDuelHud();
+            var snapshot = new BrickDuelSnapshot
+            {
+                Phase = BrickDuelPhase.Playing,
+                BottomCoreHealth = 5,
+                TopCoreHealth = 5,
+                PressureLevel = 0,
+                PressureMultiplier = 1f,
+                FramesUntilPressureIncrease = 900,
+                BottomDangerDistance = 2f,
+            };
+            var rule = new BrickDuelRuleDefinition
+            {
+                SimulationFps = 30,
+                DangerDistance = 0.92f,
+            };
+            _service.UpdateBrickDuel(snapshot, rule, null);
+
+            snapshot.BottomCoreHealth = 4;
+            _service.UpdateBrickDuel(snapshot, rule, null);
+
+            Assert.IsTrue(_binding.BrickDuelBottomCoreHitFeedback.gameObject.activeSelf);
+            Assert.IsFalse(_binding.BrickDuelTopCoreHitFeedback.gameObject.activeSelf);
+
+            _service.ShowModeSelect();
+
+            Assert.IsFalse(_binding.BrickDuelBottomCoreHitFeedback.gameObject.activeSelf);
+            Assert.IsFalse(_binding.BrickDuelTopCoreHitFeedback.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void BrickDuelResultHidesLegacyScoreAndRankingRows()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+
+            _service.UpdateBrickDuelResult(BrickDuelResult.Draw);
+
+            Assert.IsTrue(_binding.ResultRoot.activeSelf);
+            Assert.AreEqual("平局", _binding.ResultTitleText.text);
+            Assert.IsFalse(_binding.ResultScoreText.gameObject.activeSelf);
+            Assert.IsTrue(_binding.ResultRankLabelTexts.All(text => !text.gameObject.activeSelf));
+            Assert.IsTrue(_binding.ResultRankNameTexts.All(text => !text.gameObject.activeSelf));
+        }
+
         private sealed class TestSceneUiBinding : IGatebreakerArenaSceneUiBinding
         {
             public Button SkillButton { get; private set; }
@@ -677,6 +797,27 @@ namespace Gatebreaker.Tests
             public GameObject ModeSelectRoot { get; private set; }
             public Button LocalBattleButton { get; private set; }
             public Button OnlineBattleButton { get; private set; }
+            public Button SingleBattleButton { get; private set; }
+            public GameObject SingleSelectRoot { get; private set; }
+            public TMP_Text SingleSelectTitleText { get; private set; }
+            public Button BrickDuel1v1Button { get; private set; }
+            public Button BrickDuel1v2Button { get; private set; }
+            public Button BrickDuel1v3Button { get; private set; }
+            public Button SingleSelectBackButton { get; private set; }
+            public GameObject BrickDuelHudRoot { get; private set; }
+            public TMP_Text BrickDuelOpponentHealthText { get; private set; }
+            public TMP_Text BrickDuelPlayerHealthText { get; private set; }
+            public TMP_Text BrickDuelCenterText { get; private set; }
+            public TMP_Text BrickDuelStatusText { get; private set; }
+            public Graphic BrickDuelBottomCoreHitFeedback { get; private set; }
+            public Graphic BrickDuelTopCoreHitFeedback { get; private set; }
+            public Button BrickDuelPauseButton { get; private set; }
+            public RectTransform BrickDuelMovementPad { get; private set; }
+            public RectTransform BrickDuelMovementHandle { get; private set; }
+            public RectTransform BrickDuelMovementLeftArrowInput { get; private set; }
+            public RectTransform BrickDuelMovementRightArrowInput { get; private set; }
+            public Graphic BrickDuelMovementLeftArrowHighlight { get; private set; }
+            public Graphic BrickDuelMovementRightArrowHighlight { get; private set; }
             public GameObject LoadoutRoot { get; private set; }
             public TMP_Dropdown LoadoutHeroDropdown { get; private set; }
             public TMP_Dropdown LoadoutPathDropdown { get; private set; }
@@ -762,6 +903,27 @@ namespace Gatebreaker.Tests
             public Object ModeSelectRootObject => ModeSelectRoot;
             public Object LocalBattleButtonObject => LocalBattleButton;
             public Object OnlineBattleButtonObject => OnlineBattleButton;
+            public Object SingleBattleButtonObject => SingleBattleButton;
+            public Object SingleSelectRootObject => SingleSelectRoot;
+            public Object SingleSelectTitleTextObject => SingleSelectTitleText;
+            public Object BrickDuel1v1ButtonObject => BrickDuel1v1Button;
+            public Object BrickDuel1v2ButtonObject => BrickDuel1v2Button;
+            public Object BrickDuel1v3ButtonObject => BrickDuel1v3Button;
+            public Object SingleSelectBackButtonObject => SingleSelectBackButton;
+            public Object BrickDuelHudRootObject => BrickDuelHudRoot;
+            public Object BrickDuelOpponentHealthTextObject => BrickDuelOpponentHealthText;
+            public Object BrickDuelPlayerHealthTextObject => BrickDuelPlayerHealthText;
+            public Object BrickDuelCenterTextObject => BrickDuelCenterText;
+            public Object BrickDuelStatusTextObject => BrickDuelStatusText;
+            public Object BrickDuelBottomCoreHitFeedbackObject => BrickDuelBottomCoreHitFeedback;
+            public Object BrickDuelTopCoreHitFeedbackObject => BrickDuelTopCoreHitFeedback;
+            public Object BrickDuelPauseButtonObject => BrickDuelPauseButton;
+            public Object BrickDuelMovementPadObject => BrickDuelMovementPad;
+            public Object BrickDuelMovementHandleObject => BrickDuelMovementHandle;
+            public Object BrickDuelMovementLeftArrowInputObject => BrickDuelMovementLeftArrowInput;
+            public Object BrickDuelMovementRightArrowInputObject => BrickDuelMovementRightArrowInput;
+            public Object BrickDuelMovementLeftArrowHighlightObject => BrickDuelMovementLeftArrowHighlight;
+            public Object BrickDuelMovementRightArrowHighlightObject => BrickDuelMovementRightArrowHighlight;
             public Object LoadoutRootObject => LoadoutRoot;
             public Object LoadoutHeroDropdownObject => LoadoutHeroDropdown;
             public Object LoadoutPathDropdownObject => LoadoutPathDropdown;
@@ -901,6 +1063,27 @@ namespace Gatebreaker.Tests
                     ModeSelectRoot = CreateRoot(parent, "ModeSelectRoot"),
                     LocalBattleButton = Add<Button>(parent, "LocalBattle"),
                     OnlineBattleButton = Add<Button>(parent, "OnlineBattle"),
+                    SingleBattleButton = Add<Button>(parent, "SingleBattle"),
+                    SingleSelectRoot = CreateRoot(parent, "SingleSelectRoot"),
+                    SingleSelectTitleText = Add<TextMeshProUGUI>(parent, "SingleSelectTitle"),
+                    BrickDuel1v1Button = Add<Button>(parent, "BrickDuel1v1"),
+                    BrickDuel1v2Button = Add<Button>(parent, "BrickDuel1v2"),
+                    BrickDuel1v3Button = Add<Button>(parent, "BrickDuel1v3"),
+                    SingleSelectBackButton = Add<Button>(parent, "SingleSelectBack"),
+                    BrickDuelHudRoot = CreateRoot(parent, "BrickDuelHudRoot"),
+                    BrickDuelOpponentHealthText = Add<TextMeshProUGUI>(parent, "BrickDuelOpponentHealth"),
+                    BrickDuelPlayerHealthText = Add<TextMeshProUGUI>(parent, "BrickDuelPlayerHealth"),
+                    BrickDuelCenterText = Add<TextMeshProUGUI>(parent, "BrickDuelCenter"),
+                    BrickDuelStatusText = Add<TextMeshProUGUI>(parent, "BrickDuelStatus"),
+                    BrickDuelBottomCoreHitFeedback = AddClearImage(parent, "BrickDuelBottomCoreHitFeedback"),
+                    BrickDuelTopCoreHitFeedback = AddClearImage(parent, "BrickDuelTopCoreHitFeedback"),
+                    BrickDuelPauseButton = Add<Button>(parent, "BrickDuelPause"),
+                    BrickDuelMovementPad = Add<RectTransform>(parent, "BrickDuelMovementPad"),
+                    BrickDuelMovementHandle = Add<RectTransform>(parent, "BrickDuelMovementHandle"),
+                    BrickDuelMovementLeftArrowInput = Add<RectTransform>(parent, "BrickDuelMovementLeftArrowInput"),
+                    BrickDuelMovementRightArrowInput = Add<RectTransform>(parent, "BrickDuelMovementRightArrowInput"),
+                    BrickDuelMovementLeftArrowHighlight = AddClearImage(parent, "BrickDuelMovementLeftHighlight"),
+                    BrickDuelMovementRightArrowHighlight = AddClearImage(parent, "BrickDuelMovementRightHighlight"),
                     LoadoutRoot = CreateRoot(parent, "LoadoutRoot"),
                     LoadoutHeroDropdown = Add<TMP_Dropdown>(parent, "LoadoutHero"),
                     LoadoutPathDropdown = Add<TMP_Dropdown>(parent, "LoadoutPath"),

@@ -81,6 +81,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 {
                     throw new FormatException("Gatebreaker V1 rules require schema Version >= 2.");
                 }
+                IEnumerable<BrickDuelRuleDefinition> brickDuelRules = version >= 3
+                    ? ReadArray(root, "DT_BrickDuelRule", ReadBrickDuelRule)
+                    : Array.Empty<BrickDuelRuleDefinition>();
                 var catalog = new GatebreakerModeCatalog(
                     ReadArray(root, "DT_ModeRule", ReadMode),
                     ReadArray(root, "DT_BallRule", ReadBall),
@@ -90,9 +93,14 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     ReadArray(root, "DT_UniversalChip", ReadUniversalChip),
                     ReadArray(root, "DT_SignatureChip", ReadSignatureChip),
                     ReadArray(root, "DT_Hero", ReadHero),
-                    ReadArray(root, "DT_HeroPath", ReadHeroPath));
+                    ReadArray(root, "DT_HeroPath", ReadHeroPath),
+                    brickDuelRules);
 
                 ValidateV1Catalog(catalog);
+                if (version >= 3)
+                {
+                    ValidateBrickDuelCatalog(catalog);
+                }
 
                 return GatebreakerConfigLoadResult.Success(catalog, source, version);
             }
@@ -138,6 +146,111 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                         throw new FormatException($"Path '{pathId}' must have Stable/Style signature variants with +3 resonance.");
                     }
                 }
+            }
+        }
+
+        private static void ValidateBrickDuelCatalog(GatebreakerModeCatalog catalog)
+        {
+            if (!catalog.HasBrickDuelRule ||
+                !catalog.TryGetBrickDuelRule("BRICK_DUEL_V0", out BrickDuelRuleDefinition rule))
+            {
+                throw new FormatException("DT_BrickDuelRule must contain BRICK_DUEL_V0.");
+            }
+
+            if (rule.SimulationFps != 30 ||
+                rule.CountdownSeconds != 5 ||
+                rule.InitialCoreHealth != 5 ||
+                rule.InitialRows != 3 ||
+                rule.Columns != 9)
+            {
+                throw new FormatException("BRICK_DUEL_V0 must use 30 FPS, 5 second countdown, 5 health and a 3x9 opening grid.");
+            }
+
+            if (rule.GreenHealth != 1 || rule.RedHealth != 2 ||
+                rule.YellowHealth != 3 || rule.MysteryHealth != 1 ||
+                rule.BrickCoreDamage != 1)
+            {
+                throw new FormatException("BRICK_DUEL_V0 brick health/damage values do not match the endless rules.");
+            }
+
+            if (rule.ArenaHalfWidth <= 0f || rule.CoreLineY <= 0f ||
+                rule.PaddleSpawnY <= 0f || rule.PaddleSpawnY >= rule.CoreLineY ||
+                rule.PaddleHalfWidth <= 0f || rule.PaddleHalfHeight <= 0f ||
+                rule.PaddleMoveSpeed <= 0f || rule.BrickWidth <= 0f ||
+                rule.BrickHeight <= 0f || rule.BallRadius <= 0f ||
+                rule.BallSpeed <= 0f || rule.BaseTideSpeed <= 0f ||
+                rule.StuckTimeoutSeconds <= 0f || rule.StuckMovementEpsilon <= 0f ||
+                rule.DangerDistance <= 0f)
+            {
+                throw new FormatException("BRICK_DUEL_V0 geometry, movement and timeout values must be positive and inside the field.");
+            }
+
+            if (Math.Abs(rule.BallResetSeconds - 0.5f) > 0.0001f ||
+                Math.Abs(rule.PressureIntervalSeconds - 30f) > 0.0001f ||
+                Math.Abs(rule.PressureIncrement - 0.25f) > 0.0001f)
+            {
+                throw new FormatException("BRICK_DUEL_V0 must use the documented reset and pressure timing.");
+            }
+
+            float weightTotal = rule.GreenWeight + rule.RedWeight + rule.YellowWeight + rule.MysteryWeight;
+            if (rule.GreenWeight <= 0f || rule.RedWeight <= 0f ||
+                rule.YellowWeight <= 0f || rule.MysteryWeight <= 0f ||
+                Math.Abs(weightTotal - 1f) > 0.0001f)
+            {
+                throw new FormatException("BRICK_DUEL_V0 brick weights must be positive and total 1.");
+            }
+
+            string[] patterns = (rule.InitialRowPatterns ?? Array.Empty<string>()).ToArray();
+            if (patterns.Length != rule.InitialRows)
+            {
+                throw new FormatException("BRICK_DUEL_V0 InitialRowPatterns must match InitialRows.");
+            }
+
+            var allowedTypes = new HashSet<string>(
+                new[] { "Green", "Red", "Yellow", "Mystery" },
+                StringComparer.Ordinal);
+            for (int rowIndex = 0; rowIndex < patterns.Length; rowIndex++)
+            {
+                string[] cells = (patterns[rowIndex] ?? string.Empty)
+                    .Split(',')
+                    .Select(cell => cell.Trim())
+                    .ToArray();
+                if (cells.Length != rule.Columns || cells.Any(cell => !allowedTypes.Contains(cell)))
+                {
+                    throw new FormatException(
+                        $"BRICK_DUEL_V0 InitialRowPatterns[{rowIndex}] must contain {rule.Columns} valid brick names.");
+                }
+            }
+
+            if (rule.Columns * rule.BrickWidth > rule.ArenaHalfWidth * 2f + 0.0001f ||
+                rule.InitialRows * rule.BrickHeight >= rule.PaddleSpawnY ||
+                rule.BallRadius >= rule.ArenaHalfWidth ||
+                rule.DangerDistance > rule.CoreLineY)
+            {
+                throw new FormatException(
+                    "BRICK_DUEL_V0 grid, ball and danger geometry must fit inside the configured half-field.");
+            }
+
+            if (string.IsNullOrWhiteSpace(rule.AiLevelId))
+            {
+                throw new FormatException("BRICK_DUEL_V0 AiLevelId is required.");
+            }
+            catalog.GetAi(rule.AiLevelId);
+
+            string[] assetLocations =
+            {
+                rule.ScenePrefabLocation,
+                rule.PaddlePrefabLocation,
+                rule.PlayerBallPrefabLocation,
+                rule.AiBallPrefabLocation,
+                rule.GreenBrickPrefabLocation,
+                rule.RedBrickPrefabLocation,
+                rule.YellowBrickPrefabLocation,
+                rule.MysteryBrickPrefabLocation,
+            };
+            if (assetLocations.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new FormatException("BRICK_DUEL_V0 requires all scene, paddle, ball and brick prefab locations.");
             }
         }
 
@@ -288,6 +401,56 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Green = ReadFloat(item, "Green"),
                 Blue = ReadFloat(item, "Blue"),
                 Alpha = ReadFloat(item, "Alpha"),
+            };
+        }
+
+        private static BrickDuelRuleDefinition ReadBrickDuelRule(Dictionary<string, object> item)
+        {
+            return new BrickDuelRuleDefinition
+            {
+                RuleId = ReadString(item, "RuleId"),
+                SimulationFps = ReadInt(item, "SimulationFps"),
+                CountdownSeconds = ReadInt(item, "CountdownSeconds"),
+                InitialCoreHealth = ReadInt(item, "InitialCoreHealth"),
+                InitialRows = ReadInt(item, "InitialRows"),
+                Columns = ReadInt(item, "Columns"),
+                ArenaHalfWidth = ReadFloat(item, "ArenaHalfWidth"),
+                CoreLineY = ReadFloat(item, "CoreLineY"),
+                PaddleSpawnY = ReadFloat(item, "PaddleSpawnY"),
+                PaddleHalfWidth = ReadFloat(item, "PaddleHalfWidth"),
+                PaddleHalfHeight = ReadFloat(item, "PaddleHalfHeight"),
+                PaddleMoveSpeed = ReadFloat(item, "PaddleMoveSpeed"),
+                BrickWidth = ReadFloat(item, "BrickWidth"),
+                BrickHeight = ReadFloat(item, "BrickHeight"),
+                BallRadius = ReadFloat(item, "BallRadius"),
+                BallSpeed = ReadFloat(item, "BallSpeed"),
+                BaseTideSpeed = ReadFloat(item, "BaseTideSpeed"),
+                BallResetSeconds = ReadFloat(item, "BallResetSeconds"),
+                StuckTimeoutSeconds = ReadFloat(item, "StuckTimeoutSeconds"),
+                StuckMovementEpsilon = ReadFloat(item, "StuckMovementEpsilon"),
+                PressureIntervalSeconds = ReadFloat(item, "PressureIntervalSeconds"),
+                PressureIncrement = ReadFloat(item, "PressureIncrement"),
+                DangerDistance = ReadFloat(item, "DangerDistance"),
+                GreenHealth = ReadInt(item, "GreenHealth"),
+                RedHealth = ReadInt(item, "RedHealth"),
+                YellowHealth = ReadInt(item, "YellowHealth"),
+                MysteryHealth = ReadInt(item, "MysteryHealth"),
+                BrickCoreDamage = ReadInt(item, "BrickCoreDamage"),
+                GreenWeight = ReadFloat(item, "GreenWeight"),
+                RedWeight = ReadFloat(item, "RedWeight"),
+                YellowWeight = ReadFloat(item, "YellowWeight"),
+                MysteryWeight = ReadFloat(item, "MysteryWeight"),
+                RandomSeed = ReadInt(item, "RandomSeed"),
+                AiLevelId = ReadString(item, "AiLevelId"),
+                InitialRowPatterns = ReadOptionalStringList(item, "InitialRowPatterns"),
+                ScenePrefabLocation = ReadString(item, "ScenePrefabLocation"),
+                PaddlePrefabLocation = ReadString(item, "PaddlePrefabLocation"),
+                PlayerBallPrefabLocation = ReadString(item, "PlayerBallPrefabLocation"),
+                AiBallPrefabLocation = ReadString(item, "AiBallPrefabLocation"),
+                GreenBrickPrefabLocation = ReadString(item, "GreenBrickPrefabLocation"),
+                RedBrickPrefabLocation = ReadString(item, "RedBrickPrefabLocation"),
+                YellowBrickPrefabLocation = ReadString(item, "YellowBrickPrefabLocation"),
+                MysteryBrickPrefabLocation = ReadString(item, "MysteryBrickPrefabLocation"),
             };
         }
 

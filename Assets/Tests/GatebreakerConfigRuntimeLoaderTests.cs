@@ -13,6 +13,78 @@ namespace Gatebreaker.Tests
 {
     public sealed class GatebreakerConfigRuntimeLoaderTests
     {
+        [Test]
+        public void ParseJson_VersionThreeLoadsBrickDuelRule()
+        {
+            string json = File.ReadAllText(Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
+
+            GatebreakerConfigLoadResult result = GatebreakerConfigRuntimeLoader.ParseJson(json);
+
+            Assert.IsTrue(result.Succeeded, result.Message);
+            Assert.AreEqual(3, result.Version);
+            Assert.IsTrue(result.Catalog.HasBrickDuelRule);
+            Assert.IsTrue(result.Catalog.TryGetBrickDuelRule(
+                "BRICK_DUEL_V0",
+                out BrickDuelRuleDefinition rule));
+            Assert.AreEqual(30, rule.SimulationFps);
+            Assert.AreEqual(3, rule.InitialRowPatterns.Count);
+            Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab", rule.ScenePrefabLocation);
+        }
+
+        [Test]
+        public void ParseJson_VersionTwoKeepsLegacyModesAndDisablesBrickDuel()
+        {
+            string json = File.ReadAllText(Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"))
+                .Replace("\"Version\": 3", "\"Version\": 2");
+
+            GatebreakerConfigLoadResult result = GatebreakerConfigRuntimeLoader.ParseJson(json);
+
+            Assert.IsTrue(result.Succeeded, result.Message);
+            Assert.IsFalse(result.Catalog.HasBrickDuelRule);
+            Assert.IsNotNull(result.Catalog.GetMode("PVE_STANDARD"));
+        }
+
+        [Test]
+        public void ParseJson_VersionThreeRequiresValidBrickDuelTable()
+        {
+            string canonical = File.ReadAllText(Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
+            string missing = canonical.Replace("\"DT_BrickDuelRule\": [", "\"MissingBrickDuelRule\": [");
+            string invalidWeights = canonical.Replace("\"GreenWeight\": 0.25", "\"GreenWeight\": 0.5");
+
+            GatebreakerConfigLoadResult missingResult = GatebreakerConfigRuntimeLoader.ParseJson(missing);
+            GatebreakerConfigLoadResult invalidResult = GatebreakerConfigRuntimeLoader.ParseJson(invalidWeights);
+
+            Assert.IsFalse(missingResult.Succeeded);
+            StringAssert.Contains("DT_BrickDuelRule", missingResult.Message);
+            Assert.IsFalse(invalidResult.Succeeded);
+            StringAssert.Contains("weights", invalidResult.Message);
+        }
+
+        [Test]
+        public void ParseJson_VersionThreeRejectsIllegalBrickDuelHealthSpeedAndResourcePath()
+        {
+            string canonical = File.ReadAllText(
+                Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
+            GatebreakerConfigLoadResult invalidHealth =
+                GatebreakerConfigRuntimeLoader.ParseJson(
+                    canonical.Replace("\"GreenHealth\": 1", "\"GreenHealth\": 2"));
+            GatebreakerConfigLoadResult invalidSpeed =
+                GatebreakerConfigRuntimeLoader.ParseJson(
+                    canonical.Replace("\"BallSpeed\": 0.865333", "\"BallSpeed\": 0"));
+            GatebreakerConfigLoadResult invalidPath =
+                GatebreakerConfigRuntimeLoader.ParseJson(
+                    canonical.Replace(
+                        "\"ScenePrefabLocation\": \"Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab\"",
+                        "\"ScenePrefabLocation\": \"\""));
+
+            Assert.IsFalse(invalidHealth.Succeeded);
+            StringAssert.Contains("health/damage", invalidHealth.Message);
+            Assert.IsFalse(invalidSpeed.Succeeded);
+            StringAssert.Contains("movement", invalidSpeed.Message);
+            Assert.IsFalse(invalidPath.Succeeded);
+            StringAssert.Contains("prefab locations", invalidPath.Message);
+        }
+
         [UnityTest]
         public IEnumerator LoadAsync_LoadsRulesBytesThroughAssetsRuntime()
         {
@@ -423,7 +495,14 @@ namespace Gatebreaker.Tests
                 FormatJsonValue(scoreRuleType),
                 FormatJsonValue(spawnLayoutType));
             string canonical = File.ReadAllText(Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
-            string[] requiredTables = { "DT_UniversalChip", "DT_SignatureChip", "DT_Hero", "DT_HeroPath" };
+            string[] requiredTables =
+            {
+                "DT_UniversalChip",
+                "DT_SignatureChip",
+                "DT_Hero",
+                "DT_HeroPath",
+                "DT_BrickDuelRule",
+            };
             int insertAt = json.LastIndexOf('}');
             for (int i = 0; i < requiredTables.Length; i++)
             {

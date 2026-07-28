@@ -78,6 +78,22 @@ namespace Gatebreaker.Editor
                 errors.Add("Missing GatebreakerArenaSceneUiBinding in BootstrapScene.");
                 return errors;
             }
+            Transform previewRoot = FindSceneRoot(scene, "BrickDuelPreviewRoot");
+            if (previewRoot == null)
+            {
+                errors.Add("Missing BrickDuelPreviewRoot in BootstrapScene.");
+            }
+            else
+            {
+                if (previewRoot.gameObject.activeSelf)
+                {
+                    errors.Add("BrickDuelPreviewRoot must be inactive by default.");
+                }
+                if (previewRoot.childCount < 10)
+                {
+                    errors.Add("BrickDuelPreviewRoot must contain SceneSingle and the nine-brick preview.");
+                }
+            }
 
             var serializedBinding = new SerializedObject(binding);
             Require<Button>(serializedBinding, "_skillButton", errors);
@@ -108,6 +124,27 @@ namespace Gatebreaker.Editor
             Require<GameObject>(serializedBinding, "_modeSelectRoot", errors);
             Require<Button>(serializedBinding, "_localBattleButton", errors);
             Require<Button>(serializedBinding, "_onlineBattleButton", errors);
+            Require<Button>(serializedBinding, "_singleBattleButton", errors);
+            Require<GameObject>(serializedBinding, "_singleSelectRoot", errors);
+            Require<TMP_Text>(serializedBinding, "_singleSelectTitleText", errors);
+            Require<Button>(serializedBinding, "_brickDuel1v1Button", errors);
+            Require<Button>(serializedBinding, "_brickDuel1v2Button", errors);
+            Require<Button>(serializedBinding, "_brickDuel1v3Button", errors);
+            Require<Button>(serializedBinding, "_singleSelectBackButton", errors);
+            Require<GameObject>(serializedBinding, "_brickDuelHudRoot", errors);
+            Require<TMP_Text>(serializedBinding, "_brickDuelOpponentHealthText", errors);
+            Require<TMP_Text>(serializedBinding, "_brickDuelPlayerHealthText", errors);
+            Require<TMP_Text>(serializedBinding, "_brickDuelCenterText", errors);
+            Require<TMP_Text>(serializedBinding, "_brickDuelStatusText", errors);
+            Require<Graphic>(serializedBinding, "_brickDuelBottomCoreHitFeedback", errors);
+            Require<Graphic>(serializedBinding, "_brickDuelTopCoreHitFeedback", errors);
+            Require<Button>(serializedBinding, "_brickDuelPauseButton", errors);
+            Require<RectTransform>(serializedBinding, "_brickDuelMovementPad", errors);
+            Require<RectTransform>(serializedBinding, "_brickDuelMovementHandle", errors);
+            Require<RectTransform>(serializedBinding, "_brickDuelMovementLeftArrowInput", errors);
+            Require<RectTransform>(serializedBinding, "_brickDuelMovementRightArrowInput", errors);
+            Require<Graphic>(serializedBinding, "_brickDuelMovementLeftArrowHighlight", errors);
+            Require<Graphic>(serializedBinding, "_brickDuelMovementRightArrowHighlight", errors);
             Require<GameObject>(serializedBinding, "_loadoutRoot", errors);
             Require<TMP_Dropdown>(serializedBinding, "_loadoutHeroDropdown", errors);
             Require<TMP_Dropdown>(serializedBinding, "_loadoutPathDropdown", errors);
@@ -142,6 +179,7 @@ namespace Gatebreaker.Editor
             RequireArray<TMP_Text>(serializedBinding, "_lanRoomPlayerReadyTexts", 4, errors);
             Require<GameObject>(serializedBinding, "_startCountdownRoot", errors);
             Require<TMP_Text>(serializedBinding, "_startCountdownText", errors);
+            ValidateBrickDuelHudLayout(serializedBinding, errors);
 
             return errors;
         }
@@ -149,6 +187,7 @@ namespace Gatebreaker.Editor
         private static void RepairBootstrapScene()
         {
             Scene scene = OpenBootstrapScene();
+            EnsureBrickDuelPreviewRoot(scene);
             GatebreakerArenaSceneUiBinding binding = FindSceneBinding(scene);
             if (binding == null)
             {
@@ -166,6 +205,34 @@ namespace Gatebreaker.Editor
 
             Transform gmPanel = EnsureGmPanel(canvas);
             Transform modeSelectPanel = EnsureModeSelectPanel(lanRoot);
+            Transform singleSelectPanel = FindRequired(canvas, "SingleSelectPanel");
+            Transform panelSingle = FindRequired(canvas, "Panel_Single");
+            ConfigureBrickDuelHudLayout(panelSingle);
+            TMP_Text brickDuelStatusText = FindRequired<TMP_Text>(panelSingle, "TimeImage/Text");
+            Button brickDuelPauseButton = EnsureComponent<Button>(brickDuelStatusText.gameObject);
+            brickDuelPauseButton.targetGraphic = brickDuelStatusText;
+            brickDuelPauseButton.onClick.RemoveAllListeners();
+            Graphic brickDuelBottomCoreHitFeedback = EnsureBrickDuelCoreHitFeedback(
+                canvas,
+                "BrickDuelBottomCoreHitFeedback",
+                0.13f,
+                new Color32(255, 86, 61, 184));
+            Graphic brickDuelTopCoreHitFeedback = EnsureBrickDuelCoreHitFeedback(
+                canvas,
+                "BrickDuelTopCoreHitFeedback",
+                0.87f,
+                new Color32(234, 247, 255, 184));
+            Transform singleSelectBackButton = FindRequired(singleSelectPanel, "Title");
+            Button singleSelectBack = EnsureComponent<Button>(singleSelectBackButton.gameObject);
+            singleSelectBack.targetGraphic = singleSelectBackButton.GetComponent<TMP_Text>();
+            singleSelectBack.onClick.RemoveAllListeners();
+            singleSelectBackButton.GetComponent<TMP_Text>().text = "挑战模式 · 返回";
+            Button single1v2Button = FindRequired<Button>(singleSelectPanel, "1v2BattleButton");
+            Button single1v3Button = FindRequired<Button>(singleSelectPanel, "1v3BattleButton");
+            single1v2Button.interactable = false;
+            single1v3Button.interactable = false;
+            SetFirstChildText(single1v2Button.transform, "1v2 人机对战 · 未开放");
+            SetFirstChildText(single1v3Button.transform, "1v3 人机对战 · 未开放");
             TMP_Dropdown dropdownTemplate = FindRequired<TMP_Dropdown>(lanRoot, "LanPanel/CreateRoom/RoomType/Dropdown");
             Transform loadoutPanel = EnsureLoadoutPanel(lanRoot, dropdownTemplate.transform);
             TMP_Text heroHudText = EnsureText(downPanel, "HeroHudText", string.Empty, 13,
@@ -250,6 +317,27 @@ namespace Gatebreaker.Editor
             Set(serializedBinding, "_modeSelectRoot", modeSelectPanel.gameObject);
             Set(serializedBinding, "_localBattleButton", FindRequired<Button>(modeSelectPanel, "LocalBattleButton"));
             Set(serializedBinding, "_onlineBattleButton", FindRequired<Button>(modeSelectPanel, "OnlineBattleButton"));
+            Set(serializedBinding, "_singleBattleButton", FindRequired<Button>(modeSelectPanel, "SingleBattleButton"));
+            Set(serializedBinding, "_singleSelectRoot", singleSelectPanel.gameObject);
+            Set(serializedBinding, "_singleSelectTitleText", FindRequired<TMP_Text>(singleSelectPanel, "Title"));
+            Set(serializedBinding, "_brickDuel1v1Button", FindRequired<Button>(singleSelectPanel, "1v1BattleButton"));
+            Set(serializedBinding, "_brickDuel1v2Button", single1v2Button);
+            Set(serializedBinding, "_brickDuel1v3Button", single1v3Button);
+            Set(serializedBinding, "_singleSelectBackButton", singleSelectBack);
+            Set(serializedBinding, "_brickDuelHudRoot", panelSingle.gameObject);
+            Set(serializedBinding, "_brickDuelOpponentHealthText", FindRequired<TMP_Text>(panelSingle, "Title_bg/2PInfo/1PHP"));
+            Set(serializedBinding, "_brickDuelPlayerHealthText", FindRequired<TMP_Text>(panelSingle, "Title_bg/1PInfo/1PHP"));
+            Set(serializedBinding, "_brickDuelCenterText", FindRequired<TMP_Text>(panelSingle, "TimeImage/Time"));
+            Set(serializedBinding, "_brickDuelStatusText", brickDuelStatusText);
+            Set(serializedBinding, "_brickDuelBottomCoreHitFeedback", brickDuelBottomCoreHitFeedback);
+            Set(serializedBinding, "_brickDuelTopCoreHitFeedback", brickDuelTopCoreHitFeedback);
+            Set(serializedBinding, "_brickDuelPauseButton", brickDuelPauseButton);
+            Set(serializedBinding, "_brickDuelMovementPad", FindRequired<RectTransform>(panelSingle, "joystick_bg"));
+            Set(serializedBinding, "_brickDuelMovementHandle", FindRequired<RectTransform>(panelSingle, "joystick_bg/joystick"));
+            Set(serializedBinding, "_brickDuelMovementLeftArrowInput", FindRequired<RectTransform>(panelSingle, "joystick_bg/MovementLeftArrowInput"));
+            Set(serializedBinding, "_brickDuelMovementRightArrowInput", FindRequired<RectTransform>(panelSingle, "joystick_bg/MovementRightArrowInput"));
+            Set(serializedBinding, "_brickDuelMovementLeftArrowHighlight", FindRequired<Graphic>(panelSingle, "joystick_bg/MovementLeftArrowInput"));
+            Set(serializedBinding, "_brickDuelMovementRightArrowHighlight", FindRequired<Graphic>(panelSingle, "joystick_bg/MovementRightArrowInput"));
             Set(serializedBinding, "_loadoutRoot", loadoutPanel.gameObject);
             Set(serializedBinding, "_loadoutHeroDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "HeroDropdown"));
             Set(serializedBinding, "_loadoutPathDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "PathDropdown"));
@@ -354,12 +442,13 @@ namespace Gatebreaker.Editor
 
         private static Transform EnsureModeSelectPanel(Transform lanRoot)
         {
-            Transform panel = EnsureRectChild(lanRoot, "ModeSelectPanel", new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.5f), new Vector2(420f, 240f), Vector2.zero);
+            Transform panel = EnsureRectChild(lanRoot, "ModeSelectPanel", new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.5f), new Vector2(420f, 300f), Vector2.zero);
             var image = EnsureComponent<Image>(panel.gameObject);
             image.color = new Color(0f, 0f, 0f, 0.76f);
-            EnsureText(panel, "Title", "BATTLE MODE", 28, new Vector2(0f, 80f), new Vector2(380f, 40f), TextAlignmentOptions.Center);
-            EnsureButton(panel, "LocalBattleButton", "人机对战", new Vector2(0f, 20f), new Vector2(260f, 48f), new Color(0.92f, 0.08f, 0.08f, 1f));
-            EnsureButton(panel, "OnlineBattleButton", "联机对战", new Vector2(0f, -48f), new Vector2(260f, 48f), new Color(0.06f, 0.62f, 0.08f, 1f));
+            EnsureText(panel, "Title", "BATTLE MODE", 28, new Vector2(0f, 112f), new Vector2(380f, 40f), TextAlignmentOptions.Center);
+            EnsureButton(panel, "LocalBattleButton", "经典人机对战", new Vector2(0f, 48f), new Vector2(260f, 48f), new Color(0.92f, 0.08f, 0.08f, 1f));
+            EnsureButton(panel, "SingleBattleButton", "1v1 砖潮挑战", new Vector2(0f, -12f), new Vector2(260f, 48f), new Color(0.72f, 0.18f, 0.88f, 1f));
+            EnsureButton(panel, "OnlineBattleButton", "联机对战", new Vector2(0f, -72f), new Vector2(260f, 48f), new Color(0.06f, 0.62f, 0.08f, 1f));
             return panel;
         }
 
@@ -648,6 +737,78 @@ namespace Gatebreaker.Editor
             return child;
         }
 
+        private static Graphic EnsureBrickDuelCoreHitFeedback(
+            Transform canvas,
+            string name,
+            float anchorY,
+            Color color)
+        {
+            Transform child = EnsureRectChild(
+                canvas,
+                name,
+                new Vector2(0.08f, anchorY),
+                new Vector2(0.92f, anchorY),
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0f, 14f),
+                Vector2.zero);
+            var image = EnsureComponent<Image>(child.gameObject);
+            image.color = color;
+            image.raycastTarget = false;
+            child.SetAsLastSibling();
+            child.gameObject.SetActive(false);
+            return image;
+        }
+
+        private static void ConfigureBrickDuelHudLayout(Transform panelSingle)
+        {
+            var timeImage = FindRequired<RectTransform>(panelSingle, "TimeImage");
+            timeImage.sizeDelta = new Vector2(720f, 92f);
+
+            TMP_Text center = FindRequired<TMP_Text>(panelSingle, "TimeImage/Time");
+            center.rectTransform.anchoredPosition = new Vector2(0f, 18f);
+            center.rectTransform.sizeDelta = new Vector2(620f, 38f);
+            center.fontSize = 28f;
+            center.enableAutoSizing = true;
+            center.fontSizeMin = 18f;
+            center.fontSizeMax = 30f;
+            center.enableWordWrapping = false;
+            center.overflowMode = TextOverflowModes.Overflow;
+
+            TMP_Text status = FindRequired<TMP_Text>(panelSingle, "TimeImage/Text");
+            status.rectTransform.anchoredPosition = new Vector2(0f, -23f);
+            status.rectTransform.sizeDelta = new Vector2(680f, 30f);
+            status.fontSize = 20f;
+            status.enableAutoSizing = true;
+            status.fontSizeMin = 13f;
+            status.fontSizeMax = 20f;
+            status.enableWordWrapping = false;
+            status.overflowMode = TextOverflowModes.Overflow;
+        }
+
+        private static void ValidateBrickDuelHudLayout(
+            SerializedObject serializedBinding,
+            List<string> errors)
+        {
+            TMP_Text center = serializedBinding.FindProperty("_brickDuelCenterText")
+                ?.objectReferenceValue as TMP_Text;
+            TMP_Text status = serializedBinding.FindProperty("_brickDuelStatusText")
+                ?.objectReferenceValue as TMP_Text;
+            if (center != null &&
+                (center.rectTransform.rect.width < 600f ||
+                 !center.enableAutoSizing ||
+                 center.enableWordWrapping))
+            {
+                errors.Add("_brickDuelCenterText must be at least 600px wide, auto-sized, and single-line.");
+            }
+            if (status != null &&
+                (status.rectTransform.rect.width < 660f ||
+                 !status.enableAutoSizing ||
+                 status.enableWordWrapping))
+            {
+                errors.Add("_brickDuelStatusText must be at least 660px wide, auto-sized, and single-line.");
+            }
+        }
+
         private static TMP_Text EnsureText(Transform parent, string name, string value, int fontSize, Vector2 anchoredPosition, Vector2 sizeDelta, TextAlignmentOptions alignment)
         {
             Transform child = EnsureRectChild(parent, name, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), sizeDelta, anchoredPosition);
@@ -753,6 +914,52 @@ namespace Gatebreaker.Editor
                 if (binding != null)
                 {
                     return binding;
+                }
+            }
+
+            return null;
+        }
+
+        private static Transform EnsureBrickDuelPreviewRoot(Scene scene)
+        {
+            Transform previewRoot = FindSceneRoot(scene, "BrickDuelPreviewRoot");
+            if (previewRoot == null)
+            {
+                var rootObject = new GameObject("BrickDuelPreviewRoot");
+                SceneManager.MoveGameObjectToScene(rootObject, scene);
+                Undo.RegisterCreatedObjectUndo(rootObject, "Create BrickDuelPreviewRoot");
+                previewRoot = rootObject.transform;
+            }
+
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root == null || root.transform == previewRoot)
+                {
+                    continue;
+                }
+
+                bool isPreview = string.Equals(root.name, "SceneSingle", StringComparison.Ordinal) ||
+                                 root.name.StartsWith("Brick_01", StringComparison.Ordinal) ||
+                                 string.Equals(root.name, "Brick_02", StringComparison.Ordinal) ||
+                                 string.Equals(root.name, "Brick_03", StringComparison.Ordinal) ||
+                                 string.Equals(root.name, "Brick_04", StringComparison.Ordinal);
+                if (isPreview)
+                {
+                    Undo.SetTransformParent(root.transform, previewRoot, "Group BrickDuel preview");
+                }
+            }
+
+            previewRoot.gameObject.SetActive(false);
+            return previewRoot;
+        }
+
+        private static Transform FindSceneRoot(Scene scene, string name)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root != null && string.Equals(root.name, name, StringComparison.Ordinal))
+                {
+                    return root.transform;
                 }
             }
 

@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
+using App.HotUpdate.GatebreakerArena.BrickDuel;
 using App.HotUpdate.GatebreakerArena.Chip;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
@@ -72,6 +73,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private LanDiagnosticsService _lanDiagnosticsService;
         private ILanTransport _lanTransport;
         private GatebreakerVisualAssetService _visualAssetService;
+        private BrickDuelSessionController _brickDuelSession;
+        private GatebreakerModeCatalog _modeCatalog;
+        private BrickDuelRuleDefinition _brickDuelRule;
         private GatebreakerVisualAssetSet _visualAssets;
         private Transform _visualRoot;
         private Transform _poolRoot;
@@ -116,6 +120,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private int _lastVisualFrameIndex = int.MinValue;
         private bool _visualFrameAdvanced = true;
         private float _visualInterpolationElapsed;
+        private float _brickDuelMoveAxis;
+        private bool _brickDuelStarting;
+        private int _lastBrickDuelUiFrame = int.MinValue;
 
         private enum StartupUiState
         {
@@ -165,6 +172,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _visualAssetService = context.VisualAssetService;
+            _modeCatalog = context.ModeCatalog;
+            _brickDuelSession = new BrickDuelSessionController(context.BrickDuelVisualAssetService);
+            _modeCatalog.TryGetBrickDuelRule("BRICK_DUEL_V0", out _brickDuelRule);
             SubscribeLanRoomService(context.LanRoomService);
             _lanDiagnosticsService = context.LanDiagnosticsService;
             _lanTransport = context.Services?.Get<ILanTransport>();
@@ -221,6 +231,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             HandleLanDiagnosticsShortcuts();
+
+            if (_brickDuelStarting)
+            {
+                return;
+            }
+
+            if (_brickDuelSession != null && _brickDuelSession.IsActive)
+            {
+                TickBrickDuel();
+                return;
+            }
 
             if (HandleStartupUiState())
             {
@@ -534,7 +555,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            ConfigurePrototypeCamera();
+            if (_brickDuelSession != null && _brickDuelSession.IsActive)
+            {
+                ConfigureBrickDuelCamera();
+            }
+            else
+            {
+                ConfigurePrototypeCamera();
+            }
         }
 
         private void UpdateVisualInterpolationClock()
@@ -775,6 +803,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             SubscribeLanRoomService(null);
 
+            _brickDuelSession?.Dispose();
+            _brickDuelSession = null;
             _visualAssets?.Dispose();
             DestroyBallViewCache();
             DestroyPaddleViewCache();
@@ -2505,6 +2535,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 ServeRequested = RequestGuiServe,
                 LocalBattleRequested = BeginLocalBattle,
                 OnlineBattleRequested = ShowOnlineBattleMenu,
+                SingleBattleRequested = ShowSingleBattleMenu,
+                BrickDuelRequested = StartBrickDuel,
+                SingleSelectBackRequested = ReturnFromSingleSelect,
+                BrickDuelPauseRequested = ToggleBrickDuelPause,
                 LoadoutHeroChanged = SelectLoadoutHero,
                 LoadoutPathChanged = SelectLoadoutPath,
                 LoadoutSignatureChanged = SelectLoadoutSignature,
@@ -2525,6 +2559,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 LanRoomPlayerCountChanged = SetLanRoomPlayerCount,
                 LanRoomCodeChanged = SetLanRoomCode,
                 MoveAxisChanged = SetGuiMoveAxis,
+                BrickDuelMoveAxisChanged = SetBrickDuelMoveAxis,
                 HitOffsetInfluenceChanged = value => _runtime?.BounceTuning?.SetHitOffsetInfluenceValue(value),
                 PaddleVelocityInfluenceChanged = value => _runtime?.BounceTuning?.SetPaddleVelocityInfluenceValue(value),
                 MinimumOutwardShareChanged = value => _runtime?.BounceTuning?.SetMinimumOutwardShareValue(value),
@@ -2832,6 +2867,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void RequestResultRestart()
         {
+            if (_brickDuelSession != null && _brickDuelSession.IsActive)
+            {
+                RestartBrickDuel();
+                return;
+            }
+
             RoomSnapshot snapshot = _lanRoomService?.CurrentSnapshot;
             if (!IsLanResultRoom(snapshot))
             {
@@ -2861,6 +2902,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void RequestResultBack()
         {
+            if (_brickDuelSession != null && _brickDuelSession.IsActive)
+            {
+                StopBrickDuelAndShowModeSelect();
+                return;
+            }
+
             RoomSnapshot snapshot = _lanRoomService?.CurrentSnapshot;
             if (!IsLanResultRoom(snapshot) || IsLanRoomTerminal(snapshot))
             {
@@ -2924,6 +2971,187 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         }
 
         private void BeginLocalBattle() => ShowLoadout(false);
+
+        private void ShowSingleBattleMenu()
+        {
+            bool available = _brickDuelRule != null;
+            _startupUiState = StartupUiState.ModeSelect;
+            _sceneBindingService?.ShowSingleSelect(available);
+        }
+
+        private void ReturnFromSingleSelect()
+        {
+            _startupUiState = StartupUiState.ModeSelect;
+            _sceneBindingService?.ShowModeSelect();
+        }
+
+        private async void StartBrickDuel()
+        {
+            if (_brickDuelStarting || (_brickDuelSession != null && _brickDuelSession.IsActive))
+            {
+                return;
+            }
+
+            if (_brickDuelRule == null || _modeCatalog == null ||
+                !_modeCatalog.TryGetBrickDuelRule("BRICK_DUEL_V0", out _brickDuelRule))
+            {
+                _sceneBindingService?.ShowSingleSelect(false);
+                return;
+            }
+
+            _brickDuelStarting = true;
+            _sceneBindingService?.ShowStartCountdown("资源加载中");
+            try
+            {
+                AiRuleDefinition aiRule = _modeCatalog.GetAi(_brickDuelRule.AiLevelId);
+                bool started = await _brickDuelSession.StartAsync(_brickDuelRule, aiRule);
+                if (!started)
+                {
+                    Debug.LogWarning(_brickDuelSession.LastError);
+                    _sceneBindingService?.ShowSingleSelect(true, _brickDuelSession.LastError);
+                    return;
+                }
+
+                SetLegacyVisualsActive(false);
+                _brickDuelMoveAxis = 0f;
+                _lastBrickDuelUiFrame = int.MinValue;
+                _sceneBindingService?.ShowBrickDuelHud();
+                _sceneBindingService?.UpdateBrickDuel(
+                    _brickDuelSession.Snapshot,
+                    _brickDuelRule,
+                    null);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                _brickDuelSession?.Stop();
+                SetLegacyVisualsActive(true);
+                _sceneBindingService?.ShowSingleSelect(true, "1v1 启动失败，请重试");
+            }
+            finally
+            {
+                _brickDuelStarting = false;
+            }
+        }
+
+        private void TickBrickDuel()
+        {
+            BrickDuelRuntime runtime = _brickDuelSession.Runtime;
+            if (runtime == null)
+            {
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
+            {
+                _brickDuelSession.SetPaused(!runtime.IsPaused);
+            }
+
+            float keyboardAxis = 0f;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+            {
+                keyboardAxis -= 1f;
+            }
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+            {
+                keyboardAxis += 1f;
+            }
+            float moveAxis = Mathf.Clamp(keyboardAxis + _brickDuelMoveAxis, -1f, 1f);
+            _brickDuelSession.Tick(Time.deltaTime, moveAxis);
+            _sceneBindingService?.PreviewBrickDuelMoveAxis(moveAxis);
+
+            BrickDuelSnapshot snapshot = _brickDuelSession.Snapshot;
+            BrickDuelFrameEvents events = snapshot != null &&
+                                          snapshot.SimulationFrame != _lastBrickDuelUiFrame
+                ? runtime.LastFrameEvents
+                : null;
+            if (snapshot != null)
+            {
+                _lastBrickDuelUiFrame = snapshot.SimulationFrame;
+            }
+            _sceneBindingService?.UpdateBrickDuel(snapshot, _brickDuelRule, events);
+        }
+
+        private void SetBrickDuelMoveAxis(float moveAxis)
+        {
+            _brickDuelMoveAxis = Mathf.Clamp(moveAxis, -1f, 1f);
+        }
+
+        private void ToggleBrickDuelPause()
+        {
+            BrickDuelRuntime runtime = _brickDuelSession?.Runtime;
+            if (runtime != null && runtime.Phase == BrickDuelPhase.Playing)
+            {
+                _brickDuelSession.SetPaused(!runtime.IsPaused);
+            }
+        }
+
+        private async void RestartBrickDuel()
+        {
+            if (_brickDuelStarting || _brickDuelRule == null || _modeCatalog == null)
+            {
+                return;
+            }
+
+            _brickDuelStarting = true;
+            _sceneBindingService?.UpdateBrickDuelResult(BrickDuelResult.None);
+            _sceneBindingService?.ShowStartCountdown("资源重新加载中");
+            try
+            {
+                AiRuleDefinition aiRule = _modeCatalog.GetAi(_brickDuelRule.AiLevelId);
+                bool started = await _brickDuelSession.StartAsync(_brickDuelRule, aiRule);
+                if (!started)
+                {
+                    SetLegacyVisualsActive(true);
+                    _sceneBindingService?.ShowSingleSelect(true, _brickDuelSession.LastError);
+                    return;
+                }
+
+                _brickDuelMoveAxis = 0f;
+                _lastBrickDuelUiFrame = int.MinValue;
+                _sceneBindingService?.ShowBrickDuelHud();
+                _sceneBindingService?.UpdateBrickDuel(
+                    _brickDuelSession.Snapshot,
+                    _brickDuelRule,
+                    null);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                _brickDuelSession?.Stop();
+                SetLegacyVisualsActive(true);
+                _sceneBindingService?.ShowSingleSelect(true, "1v1 重开失败，请重试");
+            }
+            finally
+            {
+                _brickDuelStarting = false;
+            }
+        }
+
+        private void StopBrickDuelAndShowModeSelect()
+        {
+            _brickDuelSession?.Stop();
+            _brickDuelMoveAxis = 0f;
+            _lastBrickDuelUiFrame = int.MinValue;
+            SetLegacyVisualsActive(true);
+            _startupUiState = StartupUiState.ModeSelect;
+            _sceneBindingService?.HideBrickDuelHud();
+            _sceneBindingService?.ShowModeSelect();
+            RefreshBoundHud();
+        }
+
+        private void SetLegacyVisualsActive(bool active)
+        {
+            if (_visualRoot != null && _visualRoot.gameObject.activeSelf != active)
+            {
+                _visualRoot.gameObject.SetActive(active);
+            }
+            if (_debugCollisionOverlayRoot != null &&
+                _debugCollisionOverlayRoot.gameObject.activeSelf != active)
+            {
+                _debugCollisionOverlayRoot.gameObject.SetActive(active);
+            }
+        }
 
         private void SelectLoadoutHero(int index)
         {
@@ -3300,6 +3528,39 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _prototypeCamera.orthographicSize = CalculateOrthographicSize(viewHalfHeight, viewHalfWidth, aspect);
+            _prototypeCamera.nearClipPlane = 0.1f;
+            _prototypeCamera.farClipPlane = CameraHeight + 10f;
+            _prototypeCamera.cullingMask &= ~(1 << GetSceneDebugLayer());
+            _prototypeCamera.clearFlags = CameraClearFlags.SolidColor;
+            _prototypeCamera.backgroundColor = new Color(0.03f, 0.04f, 0.05f);
+        }
+
+        private void ConfigureBrickDuelCamera()
+        {
+            if (_brickDuelRule == null)
+            {
+                return;
+            }
+
+            if (_prototypeCamera == null)
+            {
+                _prototypeCamera = Camera.main;
+                if (_prototypeCamera == null)
+                {
+                    GameObject cameraObject = new GameObject("Gatebreaker Prototype Camera");
+                    _prototypeCamera = cameraObject.AddComponent<Camera>();
+                    cameraObject.tag = "MainCamera";
+                }
+            }
+
+            _prototypeCamera.rect = new Rect(0f, 0f, 1f, 1f);
+            _prototypeCamera.transform.position = new Vector3(0f, 0f, -CameraHeight);
+            _prototypeCamera.transform.rotation = Quaternion.identity;
+            _prototypeCamera.orthographic = true;
+            float aspect = Mathf.Max(0.1f, _prototypeCamera.aspect);
+            float vertical = _brickDuelRule.CoreLineY + CameraMargin;
+            float horizontal = (_brickDuelRule.ArenaHalfWidth + CameraMargin) / aspect;
+            _prototypeCamera.orthographicSize = Mathf.Max(vertical, horizontal);
             _prototypeCamera.nearClipPlane = 0.1f;
             _prototypeCamera.farClipPlane = CameraHeight + 10f;
             _prototypeCamera.cullingMask &= ~(1 << GetSceneDebugLayer());

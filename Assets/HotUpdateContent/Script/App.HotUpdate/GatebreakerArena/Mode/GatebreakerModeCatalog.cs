@@ -15,6 +15,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         private readonly Dictionary<string, SignatureChipDefinition> _signatureChips;
         private readonly Dictionary<string, HeroDefinition> _heroes;
         private readonly Dictionary<string, HeroPathDefinition> _heroPaths;
+        private readonly Dictionary<string, BrickDuelRuleDefinition> _brickDuelRules;
 
         public GatebreakerModeCatalog(
             IEnumerable<ModeRuleDefinition> modes,
@@ -39,6 +40,31 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             IEnumerable<SignatureChipDefinition> signatureChips,
             IEnumerable<HeroDefinition> heroes,
             IEnumerable<HeroPathDefinition> heroPaths)
+            : this(
+                modes,
+                balls,
+                aiRules,
+                maps,
+                playerColors,
+                universalChips,
+                signatureChips,
+                heroes,
+                heroPaths,
+                Array.Empty<BrickDuelRuleDefinition>())
+        {
+        }
+
+        public GatebreakerModeCatalog(
+            IEnumerable<ModeRuleDefinition> modes,
+            IEnumerable<BallRuleDefinition> balls,
+            IEnumerable<AiRuleDefinition> aiRules,
+            IEnumerable<MapRuleDefinition> maps,
+            IEnumerable<PlayerColorRuleDefinition> playerColors,
+            IEnumerable<UniversalChipDefinition> universalChips,
+            IEnumerable<SignatureChipDefinition> signatureChips,
+            IEnumerable<HeroDefinition> heroes,
+            IEnumerable<HeroPathDefinition> heroPaths,
+            IEnumerable<BrickDuelRuleDefinition> brickDuelRules)
         {
             _modes = IndexBy(modes, item => item.ModeId);
             _balls = IndexBy(balls, item => item.BallTypeId);
@@ -49,6 +75,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             _signatureChips = IndexBy(signatureChips, item => item.ChipId);
             _heroes = IndexBy(heroes ?? Array.Empty<HeroDefinition>(), item => item.HeroId);
             _heroPaths = IndexBy(heroPaths ?? Array.Empty<HeroPathDefinition>(), item => item.PathId);
+            _brickDuelRules = IndexBy(
+                brickDuelRules ?? Array.Empty<BrickDuelRuleDefinition>(),
+                item => item.RuleId);
         }
 
         public static GatebreakerModeCatalog CreateDefault()
@@ -210,6 +239,20 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             return _heroPaths.TryGetValue(pathId, out HeroPathDefinition path)
                 ? path
                 : throw new KeyNotFoundException($"Unknown hero path rule: {pathId}");
+        }
+
+        public bool HasBrickDuelRule => _brickDuelRules.Count > 0;
+
+        public bool TryGetBrickDuelRule(string ruleId, out BrickDuelRuleDefinition rule)
+        {
+            return _brickDuelRules.TryGetValue(ruleId, out rule);
+        }
+
+        public BrickDuelRuleDefinition GetBrickDuelRule(string ruleId)
+        {
+            return TryGetBrickDuelRule(ruleId, out BrickDuelRuleDefinition rule)
+                ? rule
+                : throw new KeyNotFoundException($"Unknown BrickDuel rule: {ruleId}");
         }
 
         public IReadOnlyDictionary<string, UniversalChipDefinition> AllUniversalChips => _universalChips;

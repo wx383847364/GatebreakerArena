@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using App.HotUpdate.GatebreakerArena.BrickDuel;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Paddle;
 using App.Shared.Contracts;
@@ -19,6 +21,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public Action ServeRequested { get; set; }
         public Action LocalBattleRequested { get; set; }
         public Action OnlineBattleRequested { get; set; }
+        public Action SingleBattleRequested { get; set; }
+        public Action BrickDuelRequested { get; set; }
+        public Action SingleSelectBackRequested { get; set; }
+        public Action BrickDuelPauseRequested { get; set; }
         public Action<int> LoadoutHeroChanged { get; set; }
         public Action<int> LoadoutPathChanged { get; set; }
         public Action<int> LoadoutSignatureChanged { get; set; }
@@ -36,6 +42,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
         public Action<int> LanRoomPlayerCountChanged { get; set; }
         public Action<string> LanRoomCodeChanged { get; set; }
         public Action<float> MoveAxisChanged { get; set; }
+        public Action<float> BrickDuelMoveAxisChanged { get; set; }
         public Action<int> HitOffsetInfluenceChanged { get; set; }
         public Action<int> PaddleVelocityInfluenceChanged { get; set; }
         public Action<int> MinimumOutwardShareChanged { get; set; }
@@ -48,6 +55,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
     public sealed class GatebreakerArenaSceneBindingService
     {
+        private const float BrickDuelCoreHitFlashDurationSeconds = 0.14f;
         private readonly List<ButtonListener> _buttonListeners = new List<ButtonListener>();
         private readonly List<InputListener> _inputListeners = new List<InputListener>();
         private readonly List<DropdownListener> _dropdownListeners = new List<DropdownListener>();
@@ -56,6 +64,45 @@ namespace App.HotUpdate.GatebreakerArena.UI
         private Button _skillButton;
         private Button _localBattleButton;
         private Button _onlineBattleButton;
+        private Button _singleBattleButton;
+        private Button _brickDuel1v1Button;
+        private Button _brickDuel1v2Button;
+        private Button _brickDuel1v3Button;
+        private Button _singleSelectBackButton;
+        private TMP_Text _singleSelectTitleText;
+        private GameObject _singleSelectRoot;
+        private GameObject _brickDuelHudRoot;
+        private TMP_Text _brickDuelOpponentHealthText;
+        private TMP_Text _brickDuelPlayerHealthText;
+        private TMP_Text _brickDuelCenterText;
+        private TMP_Text _brickDuelStatusText;
+        private Graphic _brickDuelBottomCoreHitFeedback;
+        private Graphic _brickDuelTopCoreHitFeedback;
+        private Button _brickDuelPauseButton;
+        private RectTransform _brickDuelMovementPad;
+        private RectTransform _brickDuelMovementHandle;
+        private RectTransform _brickDuelMovementLeftArrowInput;
+        private RectTransform _brickDuelMovementRightArrowInput;
+        private Graphic _brickDuelMovementLeftArrowHighlight;
+        private Graphic _brickDuelMovementRightArrowHighlight;
+        private Vector2 _brickDuelMovementHandleRestPosition;
+        private bool _hasBrickDuelMovementHandleRestPosition;
+        private Color _brickDuelMovementLeftArrowRestColor;
+        private Color _brickDuelMovementRightArrowRestColor;
+        private bool _hasBrickDuelMovementLeftArrowRestColor;
+        private bool _hasBrickDuelMovementRightArrowRestColor;
+        private bool _brickDuelPressurePulsePendingReset;
+        private bool _brickDuelImpactPulsePendingReset;
+        private bool _brickDuelBottomCoreFlashPendingReset;
+        private bool _brickDuelTopCoreFlashPendingReset;
+        private float _brickDuelBottomCoreFlashUntil;
+        private float _brickDuelTopCoreFlashUntil;
+        private Vector3 _brickDuelCenterTextRestScale = Vector3.one;
+        private Vector3 _brickDuelStatusTextRestScale = Vector3.one;
+        private Color _brickDuelStatusTextRestColor = Color.white;
+        private int _brickDuelLastPressureLevel = -1;
+        private int _brickDuelLastBottomHealth = -1;
+        private int _brickDuelLastTopHealth = -1;
         private GameObject _loadoutRoot;
         private TMP_Dropdown _loadoutHeroDropdown;
         private TMP_Dropdown _loadoutPathDropdown;
@@ -182,6 +229,22 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _loadoutUniversalChipDropdowns.Length == 5 && _loadoutUniversalChipDropdowns.All(item => item != null) &&
             _loadoutUseDefaultButton != null && _loadoutConfirmButton != null && _loadoutErrorText != null;
 
+        public bool HasBrickDuelBindings =>
+            _singleBattleButton != null &&
+            _singleSelectRoot != null &&
+            _brickDuel1v1Button != null &&
+            _singleSelectBackButton != null &&
+            _brickDuelHudRoot != null &&
+            _brickDuelOpponentHealthText != null &&
+            _brickDuelPlayerHealthText != null &&
+            _brickDuelCenterText != null &&
+            _brickDuelStatusText != null &&
+            _brickDuelBottomCoreHitFeedback != null &&
+            _brickDuelTopCoreHitFeedback != null &&
+            _brickDuelPauseButton != null &&
+            _brickDuelMovementPad != null &&
+            _brickDuelMovementHandle != null;
+
         public void Bind(
             IGatebreakerArenaSceneUiBinding binding,
             Action serveRequested,
@@ -264,6 +327,64 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _modeSelectRoot = RequireGameObject(binding.ModeSelectRootObject, nameof(binding.ModeSelectRootObject));
             _localBattleButton = Require<Button>(binding.LocalBattleButtonObject, nameof(binding.LocalBattleButtonObject));
             _onlineBattleButton = Require<Button>(binding.OnlineBattleButtonObject, nameof(binding.OnlineBattleButtonObject));
+            _singleBattleButton = Require<Button>(binding.SingleBattleButtonObject, nameof(binding.SingleBattleButtonObject));
+            _singleSelectRoot = RequireGameObject(binding.SingleSelectRootObject, nameof(binding.SingleSelectRootObject));
+            _singleSelectTitleText = Require<TMP_Text>(binding.SingleSelectTitleTextObject, nameof(binding.SingleSelectTitleTextObject));
+            _brickDuel1v1Button = Require<Button>(binding.BrickDuel1v1ButtonObject, nameof(binding.BrickDuel1v1ButtonObject));
+            _brickDuel1v2Button = Require<Button>(binding.BrickDuel1v2ButtonObject, nameof(binding.BrickDuel1v2ButtonObject));
+            _brickDuel1v3Button = Require<Button>(binding.BrickDuel1v3ButtonObject, nameof(binding.BrickDuel1v3ButtonObject));
+            _singleSelectBackButton = Require<Button>(binding.SingleSelectBackButtonObject, nameof(binding.SingleSelectBackButtonObject));
+            _brickDuelHudRoot = RequireGameObject(binding.BrickDuelHudRootObject, nameof(binding.BrickDuelHudRootObject));
+            _brickDuelOpponentHealthText = Require<TMP_Text>(
+                binding.BrickDuelOpponentHealthTextObject,
+                nameof(binding.BrickDuelOpponentHealthTextObject));
+            _brickDuelPlayerHealthText = Require<TMP_Text>(
+                binding.BrickDuelPlayerHealthTextObject,
+                nameof(binding.BrickDuelPlayerHealthTextObject));
+            _brickDuelCenterText = Require<TMP_Text>(
+                binding.BrickDuelCenterTextObject,
+                nameof(binding.BrickDuelCenterTextObject));
+            _brickDuelStatusText = Require<TMP_Text>(
+                binding.BrickDuelStatusTextObject,
+                nameof(binding.BrickDuelStatusTextObject));
+            _brickDuelBottomCoreHitFeedback = Require<Graphic>(
+                binding.BrickDuelBottomCoreHitFeedbackObject,
+                nameof(binding.BrickDuelBottomCoreHitFeedbackObject));
+            _brickDuelTopCoreHitFeedback = Require<Graphic>(
+                binding.BrickDuelTopCoreHitFeedbackObject,
+                nameof(binding.BrickDuelTopCoreHitFeedbackObject));
+            _brickDuelPauseButton = Require<Button>(
+                binding.BrickDuelPauseButtonObject,
+                nameof(binding.BrickDuelPauseButtonObject));
+            _brickDuelCenterTextRestScale = _brickDuelCenterText.rectTransform.localScale;
+            _brickDuelStatusTextRestScale = _brickDuelStatusText.rectTransform.localScale;
+            _brickDuelStatusTextRestColor = _brickDuelStatusText.color;
+            SetActive(_brickDuelBottomCoreHitFeedback.gameObject, false);
+            SetActive(_brickDuelTopCoreHitFeedback.gameObject, false);
+            _brickDuelMovementPad = Require<RectTransform>(
+                binding.BrickDuelMovementPadObject,
+                nameof(binding.BrickDuelMovementPadObject));
+            _brickDuelMovementHandle = Require<RectTransform>(
+                binding.BrickDuelMovementHandleObject,
+                nameof(binding.BrickDuelMovementHandleObject));
+            _brickDuelMovementLeftArrowInput = Require<RectTransform>(
+                binding.BrickDuelMovementLeftArrowInputObject,
+                nameof(binding.BrickDuelMovementLeftArrowInputObject));
+            _brickDuelMovementRightArrowInput = Require<RectTransform>(
+                binding.BrickDuelMovementRightArrowInputObject,
+                nameof(binding.BrickDuelMovementRightArrowInputObject));
+            _brickDuelMovementLeftArrowHighlight = Require<Graphic>(
+                binding.BrickDuelMovementLeftArrowHighlightObject,
+                nameof(binding.BrickDuelMovementLeftArrowHighlightObject));
+            _brickDuelMovementRightArrowHighlight = Require<Graphic>(
+                binding.BrickDuelMovementRightArrowHighlightObject,
+                nameof(binding.BrickDuelMovementRightArrowHighlightObject));
+            if (_brickDuelMovementHandle != null)
+            {
+                _brickDuelMovementHandleRestPosition = _brickDuelMovementHandle.anchoredPosition;
+                _hasBrickDuelMovementHandleRestPosition = true;
+            }
+            CaptureBrickDuelMovementArrowRestColors();
             _loadoutRoot = RequireGameObject(binding.LoadoutRootObject, nameof(binding.LoadoutRootObject));
             _loadoutHeroDropdown = Require<TMP_Dropdown>(binding.LoadoutHeroDropdownObject, nameof(binding.LoadoutHeroDropdownObject));
             _loadoutPathDropdown = Require<TMP_Dropdown>(binding.LoadoutPathDropdownObject, nameof(binding.LoadoutPathDropdownObject));
@@ -303,6 +424,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddButtonListener(_skillButton, HandleSkillButtonClicked);
             AddButtonListener(_localBattleButton, () => _callbacks.LocalBattleRequested?.Invoke());
             AddButtonListener(_onlineBattleButton, () => _callbacks.OnlineBattleRequested?.Invoke());
+            AddButtonListener(_singleBattleButton, () => _callbacks.SingleBattleRequested?.Invoke());
+            AddButtonListener(_brickDuel1v1Button, () => _callbacks.BrickDuelRequested?.Invoke());
+            AddButtonListener(_singleSelectBackButton, () => _callbacks.SingleSelectBackRequested?.Invoke());
+            AddButtonListener(_brickDuelPauseButton, () => _callbacks.BrickDuelPauseRequested?.Invoke());
             AddButtonListener(_loadoutUseDefaultButton, () => _callbacks.LoadoutUseDefaultRequested?.Invoke());
             AddButtonListener(_loadoutConfirmButton, () => _callbacks.LoadoutConfirmRequested?.Invoke());
             AddDropdownListener(_loadoutHeroDropdown, 0, value => _callbacks.LoadoutHeroChanged?.Invoke(value));
@@ -327,6 +452,10 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddMovementListeners(_movementHandle);
             AddFixedMovementListeners(_movementLeftArrowInput, -1f);
             AddFixedMovementListeners(_movementRightArrowInput, 1f);
+            AddBrickDuelMovementListeners(_brickDuelMovementPad);
+            AddBrickDuelMovementListeners(_brickDuelMovementHandle);
+            AddBrickDuelFixedMovementListeners(_brickDuelMovementLeftArrowInput, -1f);
+            AddBrickDuelFixedMovementListeners(_brickDuelMovementRightArrowInput, 1f);
             AddInputListener(_lanPlayerNameInput, _callbacks.InitialLanPlayerName, value => _callbacks.LanPlayerNameChanged?.Invoke(value));
             AddDropdownListener(
                 _lanRoomTypeDropdown,
@@ -351,6 +480,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
             SetActive(_hudRoot, true);
             SetActive(_gmRoot, true);
+            _brickDuel1v2Button.interactable = false;
+            _brickDuel1v3Button.interactable = false;
             ShowModeSelect();
             SetActive(_resultRoot, false);
         }
@@ -448,7 +579,180 @@ namespace App.HotUpdate.GatebreakerArena.UI
             SetText(_resultTitleText, "比赛结束");
             SetText(_resultBodyText, BuildWinnerText(snapshot));
             SetText(_resultScoreText, BuildScoreRows(snapshot) + "\n按 R 重新开始");
+            SetActive(_resultScoreText != null ? _resultScoreText.gameObject : null, true);
+            SetTextObjectsActive(_resultRankLabelTexts, true);
+            SetTextObjectsActive(_resultRankNameTexts, true);
             UpdateResultRanking(snapshot);
+        }
+
+        public void UpdateBrickDuel(
+            BrickDuelSnapshot snapshot,
+            BrickDuelRuleDefinition rule,
+            BrickDuelFrameEvents frameEvents)
+        {
+            if (snapshot == null || rule == null)
+            {
+                return;
+            }
+
+            if (_brickDuelPressurePulsePendingReset && _brickDuelCenterText != null)
+            {
+                _brickDuelCenterText.rectTransform.localScale = _brickDuelCenterTextRestScale;
+                _brickDuelPressurePulsePendingReset = false;
+            }
+            if (_brickDuelImpactPulsePendingReset && _brickDuelStatusText != null)
+            {
+                _brickDuelStatusText.rectTransform.localScale = _brickDuelStatusTextRestScale;
+                _brickDuelStatusText.color = _brickDuelStatusTextRestColor;
+                _brickDuelImpactPulsePendingReset = false;
+            }
+            if (_brickDuelBottomCoreFlashPendingReset &&
+                Time.unscaledTime >= _brickDuelBottomCoreFlashUntil)
+            {
+                SetActive(
+                    _brickDuelBottomCoreHitFeedback != null
+                        ? _brickDuelBottomCoreHitFeedback.gameObject
+                        : null,
+                    false);
+                _brickDuelBottomCoreFlashPendingReset = false;
+            }
+            if (_brickDuelTopCoreFlashPendingReset &&
+                Time.unscaledTime >= _brickDuelTopCoreFlashUntil)
+            {
+                SetActive(
+                    _brickDuelTopCoreHitFeedback != null
+                        ? _brickDuelTopCoreHitFeedback.gameObject
+                        : null,
+                    false);
+                _brickDuelTopCoreFlashPendingReset = false;
+            }
+
+            SetText(_brickDuelOpponentHealthText, FormatCoreHealth(snapshot.TopCoreHealth));
+            SetText(_brickDuelPlayerHealthText, FormatCoreHealth(snapshot.BottomCoreHealth));
+            string elapsed = FormatElapsed(snapshot.ElapsedFrames, rule.SimulationFps);
+            SetText(
+                _brickDuelCenterText,
+                $"{elapsed} / Lv.{snapshot.PressureLevel} / {snapshot.PressureMultiplier:0.00}×");
+
+            float secondsUntilPressure = snapshot.FramesUntilPressureIncrease /
+                                         (float)Mathf.Max(1, rule.SimulationFps);
+            bool isDanger = snapshot.BottomDangerDistance <= rule.DangerDistance;
+            SetText(
+                _brickDuelStatusText,
+                snapshot.IsPaused
+                    ? "已暂停 · 点击继续"
+                    : isDanger
+                    ? $"危险：核心线逼近  ·  下次提速 {secondsUntilPressure:0.0}s · 点击暂停"
+                    : $"下次提速 {secondsUntilPressure:0.0}s · 点击暂停");
+
+            Color currentColor = ResolvePressureColor(snapshot.PressureLevel);
+            if (snapshot.Phase == BrickDuelPhase.Playing && secondsUntilPressure <= 3f)
+            {
+                float elapsedSeconds = snapshot.ElapsedFrames / (float)Mathf.Max(1, rule.SimulationFps);
+                bool useNext = Mathf.FloorToInt(elapsedSeconds * 2f) % 2 != 0;
+                currentColor = useNext
+                    ? ResolvePressureColor(snapshot.PressureLevel + 1)
+                    : currentColor;
+            }
+
+            if (_brickDuelCenterText != null)
+            {
+                _brickDuelCenterText.color = currentColor;
+            }
+
+            bool pressureChanged = frameEvents != null && frameEvents.PressureLevelChanged;
+            pressureChanged |= _brickDuelLastPressureLevel >= 0 &&
+                               snapshot.PressureLevel != _brickDuelLastPressureLevel;
+            if (pressureChanged && _brickDuelCenterText != null)
+            {
+                _brickDuelCenterText.rectTransform.localScale =
+                    _brickDuelCenterTextRestScale * 1.15f;
+                _brickDuelCenterText.color = Color.white;
+                _brickDuelPressurePulsePendingReset = true;
+            }
+
+            bool bottomDamaged = (frameEvents != null && frameEvents.BottomCoreDamage > 0) ||
+                                 (_brickDuelLastBottomHealth >= 0 &&
+                                  snapshot.BottomCoreHealth < _brickDuelLastBottomHealth);
+            bool topDamaged = (frameEvents != null && frameEvents.TopCoreDamage > 0) ||
+                              (_brickDuelLastTopHealth >= 0 &&
+                               snapshot.TopCoreHealth < _brickDuelLastTopHealth);
+            if ((bottomDamaged || topDamaged) && _brickDuelStatusText != null)
+            {
+                _brickDuelStatusText.rectTransform.localScale =
+                    _brickDuelStatusTextRestScale * 1.08f;
+                _brickDuelStatusText.color = bottomDamaged
+                    ? new Color32(255, 86, 61, 255)
+                    : new Color32(234, 247, 255, 255);
+                _brickDuelImpactPulsePendingReset = true;
+            }
+            if (bottomDamaged && _brickDuelBottomCoreHitFeedback != null)
+            {
+                SetActive(_brickDuelBottomCoreHitFeedback.gameObject, true);
+                _brickDuelBottomCoreFlashPendingReset = true;
+                _brickDuelBottomCoreFlashUntil =
+                    Time.unscaledTime + BrickDuelCoreHitFlashDurationSeconds;
+            }
+            if (topDamaged && _brickDuelTopCoreHitFeedback != null)
+            {
+                SetActive(_brickDuelTopCoreHitFeedback.gameObject, true);
+                _brickDuelTopCoreFlashPendingReset = true;
+                _brickDuelTopCoreFlashUntil =
+                    Time.unscaledTime + BrickDuelCoreHitFlashDurationSeconds;
+            }
+
+            _brickDuelLastPressureLevel = snapshot.PressureLevel;
+            _brickDuelLastBottomHealth = snapshot.BottomCoreHealth;
+            _brickDuelLastTopHealth = snapshot.TopCoreHealth;
+
+            bool isCountdown = snapshot.Phase == BrickDuelPhase.Countdown;
+            SetActive(_startCountdownRoot, isCountdown);
+            if (isCountdown)
+            {
+                int seconds = Mathf.Max(
+                    1,
+                    Mathf.CeilToInt(snapshot.CountdownFramesRemaining /
+                                    (float)Mathf.Max(1, rule.SimulationFps)));
+                SetText(_startCountdownText, seconds.ToString(CultureInfo.InvariantCulture));
+            }
+
+            if (snapshot.Phase == BrickDuelPhase.Result)
+            {
+                UpdateBrickDuelResult(snapshot.Result);
+            }
+        }
+
+        public void UpdateBrickDuelResult(BrickDuelResult result)
+        {
+            SetActive(_resultRoot, result != BrickDuelResult.None);
+            if (result == BrickDuelResult.None)
+            {
+                return;
+            }
+
+            string title;
+            switch (result)
+            {
+                case BrickDuelResult.PlayerWin:
+                    title = "胜利";
+                    break;
+                case BrickDuelResult.PlayerLose:
+                    title = "失败";
+                    break;
+                case BrickDuelResult.Draw:
+                    title = "平局";
+                    break;
+                default:
+                    title = "比赛结束";
+                    break;
+            }
+
+            SetText(_resultTitleText, title);
+            SetText(_resultBodyText, title);
+            SetText(_resultScoreText, string.Empty);
+            SetActive(_resultScoreText != null ? _resultScoreText.gameObject : null, false);
+            SetTextObjectsActive(_resultRankLabelTexts, false);
+            SetTextObjectsActive(_resultRankNameTexts, false);
         }
 
         public void UpdateBounceTuning(PaddleBounceTuning tuning, MatchPhase phase)
@@ -502,12 +806,85 @@ namespace App.HotUpdate.GatebreakerArena.UI
         {
             SetActive(_lanRoot, true);
             SetActive(_modeSelectRoot, true);
+            SetActive(_singleSelectRoot, false);
+            SetActive(_brickDuelHudRoot, false);
+            HideBrickDuelCoreHitFeedback();
+            SetActive(_hudRoot, true);
+            SetActive(_gmRoot, true);
+            SetActive(_skillButton != null ? _skillButton.gameObject : null, true);
+            SetActive(_ballCountText != null ? _ballCountText.gameObject : null, true);
+            SetActive(_heroHudText != null ? _heroHudText.gameObject : null, true);
             SetActive(_loadoutRoot, false);
             SetActive(_lanBackButton != null ? _lanBackButton.gameObject : null, false);
             SetActive(_lanMenuRoot, false);
             SetActive(_lanRoomInfoRoot, false);
             SetActive(_lanStatusRoot, false);
             SetActive(_startCountdownRoot, false);
+            SetActive(_resultRoot, false);
+        }
+
+        public void ShowSingleSelect(bool brickDuelAvailable, string message = null)
+        {
+            SetActive(_lanRoot, true);
+            SetActive(_modeSelectRoot, false);
+            SetActive(_singleSelectRoot, true);
+            SetActive(_brickDuelHudRoot, false);
+            HideBrickDuelCoreHitFeedback();
+            SetActive(_loadoutRoot, false);
+            SetActive(_lanMenuRoot, false);
+            SetActive(_lanRoomInfoRoot, false);
+            SetActive(_lanStatusRoot, false);
+            SetActive(_startCountdownRoot, false);
+            SetActive(_resultRoot, false);
+            if (_brickDuel1v1Button != null)
+            {
+                _brickDuel1v1Button.interactable = brickDuelAvailable;
+            }
+            if (_brickDuel1v2Button != null)
+            {
+                _brickDuel1v2Button.interactable = false;
+            }
+            if (_brickDuel1v3Button != null)
+            {
+                _brickDuel1v3Button.interactable = false;
+            }
+            SetText(
+                _singleSelectTitleText,
+                !string.IsNullOrWhiteSpace(message)
+                    ? $"{message} · 返回"
+                    : brickDuelAvailable
+                        ? "挑战模式 · 返回"
+                        : "挑战模式 · 配置未更新 · 返回");
+        }
+
+        public void ShowBrickDuelHud()
+        {
+            SetActive(_lanRoot, false);
+            SetActive(_modeSelectRoot, false);
+            SetActive(_singleSelectRoot, false);
+            SetActive(_loadoutRoot, false);
+            SetActive(_brickDuelHudRoot, true);
+            SetActive(_hudRoot, false);
+            SetActive(_topPanel2PRoot, false);
+            SetActive(_topPanel3PRoot, false);
+            SetActive(_topPanel4PRoot, false);
+            SetActive(_gmRoot, false);
+            SetActive(_skillButton != null ? _skillButton.gameObject : null, false);
+            SetActive(_ballCountText != null ? _ballCountText.gameObject : null, false);
+            SetActive(_heroHudText != null ? _heroHudText.gameObject : null, false);
+            SetActive(_resultRoot, false);
+            HideBrickDuelCoreHitFeedback();
+            _brickDuelLastPressureLevel = -1;
+            _brickDuelLastBottomHealth = -1;
+            _brickDuelLastTopHealth = -1;
+        }
+
+        public void HideBrickDuelHud()
+        {
+            SetActive(_brickDuelHudRoot, false);
+            SetActive(_startCountdownRoot, false);
+            HideBrickDuelCoreHitFeedback();
+            PreviewBrickDuelMoveAxis(0f);
         }
 
         public void ShowOnlineMenu()
@@ -559,6 +936,45 @@ namespace App.HotUpdate.GatebreakerArena.UI
             _buttonListeners.Clear();
             _localBattleButton = null;
             _onlineBattleButton = null;
+            _singleBattleButton = null;
+            _brickDuel1v1Button = null;
+            _brickDuel1v2Button = null;
+            _brickDuel1v3Button = null;
+            _singleSelectBackButton = null;
+            _singleSelectTitleText = null;
+            _singleSelectRoot = null;
+            _brickDuelHudRoot = null;
+            _brickDuelOpponentHealthText = null;
+            _brickDuelPlayerHealthText = null;
+            _brickDuelCenterText = null;
+            _brickDuelStatusText = null;
+            _brickDuelBottomCoreHitFeedback = null;
+            _brickDuelTopCoreHitFeedback = null;
+            _brickDuelPauseButton = null;
+            _brickDuelMovementPad = null;
+            _brickDuelMovementHandle = null;
+            _brickDuelMovementLeftArrowInput = null;
+            _brickDuelMovementRightArrowInput = null;
+            _brickDuelMovementLeftArrowHighlight = null;
+            _brickDuelMovementRightArrowHighlight = null;
+            _brickDuelMovementHandleRestPosition = Vector2.zero;
+            _hasBrickDuelMovementHandleRestPosition = false;
+            _brickDuelMovementLeftArrowRestColor = Color.clear;
+            _brickDuelMovementRightArrowRestColor = Color.clear;
+            _hasBrickDuelMovementLeftArrowRestColor = false;
+            _hasBrickDuelMovementRightArrowRestColor = false;
+            _brickDuelPressurePulsePendingReset = false;
+            _brickDuelImpactPulsePendingReset = false;
+            _brickDuelBottomCoreFlashPendingReset = false;
+            _brickDuelTopCoreFlashPendingReset = false;
+            _brickDuelBottomCoreFlashUntil = 0f;
+            _brickDuelTopCoreFlashUntil = 0f;
+            _brickDuelCenterTextRestScale = Vector3.one;
+            _brickDuelStatusTextRestScale = Vector3.one;
+            _brickDuelStatusTextRestColor = Color.white;
+            _brickDuelLastPressureLevel = -1;
+            _brickDuelLastBottomHealth = -1;
+            _brickDuelLastTopHealth = -1;
             _loadoutRoot = null;
             _loadoutHeroDropdown = null;
             _loadoutPathDropdown = null;
@@ -941,6 +1357,32 @@ namespace App.HotUpdate.GatebreakerArena.UI
             AddEventTriggerListener(target, EventTriggerType.EndDrag, HandleMovementRelease);
         }
 
+        private void AddBrickDuelMovementListeners(RectTransform target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            AddEventTriggerListener(target, EventTriggerType.PointerDown, HandleBrickDuelMovementPointer);
+            AddEventTriggerListener(target, EventTriggerType.Drag, HandleBrickDuelMovementPointer);
+            AddEventTriggerListener(target, EventTriggerType.PointerUp, HandleBrickDuelMovementRelease);
+            AddEventTriggerListener(target, EventTriggerType.EndDrag, HandleBrickDuelMovementRelease);
+        }
+
+        private void AddBrickDuelFixedMovementListeners(RectTransform target, float axis)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            AddEventTriggerListener(target, EventTriggerType.PointerDown, _ => SetBrickDuelMoveAxis(axis));
+            AddEventTriggerListener(target, EventTriggerType.Drag, _ => SetBrickDuelMoveAxis(axis));
+            AddEventTriggerListener(target, EventTriggerType.PointerUp, HandleBrickDuelMovementRelease);
+            AddEventTriggerListener(target, EventTriggerType.EndDrag, HandleBrickDuelMovementRelease);
+        }
+
         private void AddEventTriggerListener(
             Component target,
             EventTriggerType eventType,
@@ -995,6 +1437,38 @@ namespace App.HotUpdate.GatebreakerArena.UI
             SetMoveAxis(0f);
         }
 
+        private void HandleBrickDuelMovementPointer(BaseEventData eventData)
+        {
+            if (_brickDuelMovementPad == null)
+            {
+                SetBrickDuelMoveAxis(0f);
+                return;
+            }
+
+            var pointerEvent = eventData as PointerEventData;
+            if (pointerEvent == null)
+            {
+                return;
+            }
+
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    _brickDuelMovementPad,
+                    pointerEvent.position,
+                    pointerEvent.pressEventCamera,
+                    out Vector2 localPoint))
+            {
+                return;
+            }
+
+            float halfWidth = Mathf.Max(1f, _brickDuelMovementPad.rect.width * 0.5f);
+            SetBrickDuelMoveAxis(Mathf.Clamp(localPoint.x / halfWidth, -1f, 1f));
+        }
+
+        private void HandleBrickDuelMovementRelease(BaseEventData eventData)
+        {
+            SetBrickDuelMoveAxis(0f);
+        }
+
         private void SetMoveAxis(float axis)
         {
             float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
@@ -1007,6 +1481,38 @@ namespace App.HotUpdate.GatebreakerArena.UI
             float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
             UpdateMovementHandle(clampedAxis);
             UpdateMovementArrowHighlights(clampedAxis);
+        }
+
+        private void SetBrickDuelMoveAxis(float axis)
+        {
+            float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
+            _callbacks?.BrickDuelMoveAxisChanged?.Invoke(clampedAxis);
+            PreviewBrickDuelMoveAxis(clampedAxis);
+        }
+
+        public void PreviewBrickDuelMoveAxis(float axis)
+        {
+            float clampedAxis = Mathf.Clamp(axis, -1f, 1f);
+            if (_brickDuelMovementHandle != null && _hasBrickDuelMovementHandleRestPosition)
+            {
+                float padWidth = _brickDuelMovementPad != null ? _brickDuelMovementPad.rect.width : 0f;
+                float handleWidth = _brickDuelMovementHandle.rect.width *
+                                    Mathf.Abs(_brickDuelMovementHandle.localScale.x);
+                float maxOffset = Mathf.Max(0f, (padWidth - handleWidth) * 0.5f);
+                _brickDuelMovementHandle.anchoredPosition =
+                    _brickDuelMovementHandleRestPosition + Vector2.right * maxOffset * clampedAxis;
+            }
+
+            SetMovementArrowHighlight(
+                _brickDuelMovementLeftArrowHighlight,
+                _brickDuelMovementLeftArrowRestColor,
+                _hasBrickDuelMovementLeftArrowRestColor,
+                clampedAxis < -0.01f);
+            SetMovementArrowHighlight(
+                _brickDuelMovementRightArrowHighlight,
+                _brickDuelMovementRightArrowRestColor,
+                _hasBrickDuelMovementRightArrowRestColor,
+                clampedAxis > 0.01f);
         }
 
         private void UpdateMovementHandle(float axis)
@@ -1037,6 +1543,23 @@ namespace App.HotUpdate.GatebreakerArena.UI
             }
 
             UpdateMovementArrowHighlights(0f);
+        }
+
+        private void CaptureBrickDuelMovementArrowRestColors()
+        {
+            if (_brickDuelMovementLeftArrowHighlight != null)
+            {
+                _brickDuelMovementLeftArrowRestColor = _brickDuelMovementLeftArrowHighlight.color;
+                _hasBrickDuelMovementLeftArrowRestColor = true;
+            }
+
+            if (_brickDuelMovementRightArrowHighlight != null)
+            {
+                _brickDuelMovementRightArrowRestColor = _brickDuelMovementRightArrowHighlight.color;
+                _hasBrickDuelMovementRightArrowRestColor = true;
+            }
+
+            PreviewBrickDuelMoveAxis(0f);
         }
 
         private void UpdateMovementArrowHighlights(float axis)
@@ -1088,6 +1611,19 @@ namespace App.HotUpdate.GatebreakerArena.UI
             if (text.text != value)
             {
                 text.text = value;
+            }
+        }
+
+        private static void SetTextObjectsActive(TMP_Text[] texts, bool active)
+        {
+            if (texts == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < texts.Length; i++)
+            {
+                SetActive(texts[i] != null ? texts[i].gameObject : null, active);
             }
         }
 
@@ -1212,6 +1748,24 @@ namespace App.HotUpdate.GatebreakerArena.UI
             {
                 gameObject.SetActive(isActive);
             }
+        }
+
+        private void HideBrickDuelCoreHitFeedback()
+        {
+            SetActive(
+                _brickDuelBottomCoreHitFeedback != null
+                    ? _brickDuelBottomCoreHitFeedback.gameObject
+                    : null,
+                false);
+            SetActive(
+                _brickDuelTopCoreHitFeedback != null
+                    ? _brickDuelTopCoreHitFeedback.gameObject
+                    : null,
+                false);
+            _brickDuelBottomCoreFlashPendingReset = false;
+            _brickDuelTopCoreFlashPendingReset = false;
+            _brickDuelBottomCoreFlashUntil = 0f;
+            _brickDuelTopCoreFlashUntil = 0f;
         }
 
         private void HandleSkillButtonClicked()
@@ -1380,6 +1934,59 @@ namespace App.HotUpdate.GatebreakerArena.UI
         {
             int totalSeconds = Mathf.CeilToInt(Mathf.Max(0f, remainingTime));
             return $"{totalSeconds / 60:00}:{totalSeconds % 60:00}";
+        }
+
+        private static string FormatElapsed(int elapsedFrames, int simulationFps)
+        {
+            int totalSeconds = Mathf.Max(0, elapsedFrames) / Mathf.Max(1, simulationFps);
+            return $"{totalSeconds / 60:00}:{totalSeconds % 60:00}";
+        }
+
+        private static string FormatCoreHealth(int health)
+        {
+            int safeHealth = Mathf.Max(0, health);
+            return safeHealth > 0
+                ? new string('\u2665', safeHealth)
+                : "0";
+        }
+
+        private static Color ResolvePressureColor(int pressureLevel)
+        {
+            string colorCode;
+            switch (pressureLevel)
+            {
+                case 0:
+                    colorCode = "#EAF7FF";
+                    break;
+                case 1:
+                    colorCode = "#FFE66D";
+                    break;
+                case 2:
+                    colorCode = "#FFC247";
+                    break;
+                case 3:
+                    colorCode = "#FF8A3D";
+                    break;
+                case 4:
+                    colorCode = "#FF563D";
+                    break;
+                case 5:
+                    colorCode = "#FF334F";
+                    break;
+                case 6:
+                    colorCode = "#FF2D7A";
+                    break;
+                case 7:
+                    colorCode = "#D946EF";
+                    break;
+                default:
+                    colorCode = pressureLevel % 2 == 0 ? "#FF334F" : "#D946EF";
+                    break;
+            }
+
+            return ColorUtility.TryParseHtmlString(colorCode, out Color color)
+                ? color
+                : Color.white;
         }
 
         private static string FormatPhase(MatchPhase phase)

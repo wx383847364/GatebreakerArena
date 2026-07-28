@@ -221,6 +221,27 @@ namespace App.Shared.Contracts
         UnityEngine.Object ModeSelectRootObject { get; }
         UnityEngine.Object LocalBattleButtonObject { get; }
         UnityEngine.Object OnlineBattleButtonObject { get; }
+        UnityEngine.Object SingleBattleButtonObject { get; }
+        UnityEngine.Object SingleSelectRootObject { get; }
+        UnityEngine.Object SingleSelectTitleTextObject { get; }
+        UnityEngine.Object BrickDuel1v1ButtonObject { get; }
+        UnityEngine.Object BrickDuel1v2ButtonObject { get; }
+        UnityEngine.Object BrickDuel1v3ButtonObject { get; }
+        UnityEngine.Object SingleSelectBackButtonObject { get; }
+        UnityEngine.Object BrickDuelHudRootObject { get; }
+        UnityEngine.Object BrickDuelOpponentHealthTextObject { get; }
+        UnityEngine.Object BrickDuelPlayerHealthTextObject { get; }
+        UnityEngine.Object BrickDuelCenterTextObject { get; }
+        UnityEngine.Object BrickDuelStatusTextObject { get; }
+        UnityEngine.Object BrickDuelBottomCoreHitFeedbackObject { get; }
+        UnityEngine.Object BrickDuelTopCoreHitFeedbackObject { get; }
+        UnityEngine.Object BrickDuelPauseButtonObject { get; }
+        UnityEngine.Object BrickDuelMovementPadObject { get; }
+        UnityEngine.Object BrickDuelMovementHandleObject { get; }
+        UnityEngine.Object BrickDuelMovementLeftArrowInputObject { get; }
+        UnityEngine.Object BrickDuelMovementRightArrowInputObject { get; }
+        UnityEngine.Object BrickDuelMovementLeftArrowHighlightObject { get; }
+        UnityEngine.Object BrickDuelMovementRightArrowHighlightObject { get; }
         UnityEngine.Object LoadoutRootObject { get; }
         UnityEngine.Object LoadoutHeroDropdownObject { get; }
         UnityEngine.Object LoadoutPathDropdownObject { get; }

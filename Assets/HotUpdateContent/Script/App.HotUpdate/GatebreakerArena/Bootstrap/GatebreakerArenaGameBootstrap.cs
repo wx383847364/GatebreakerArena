@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.AI;
 using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
+using App.HotUpdate.GatebreakerArena.BrickDuel;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
@@ -80,6 +81,7 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             var hudPresenter = new GatebreakerArenaHudPresenter(matchRuntime);
             var sceneBindingService = new GatebreakerArenaSceneBindingService();
             var visualAssetService = new GatebreakerVisualAssetService(assetsRuntime, logger);
+            var brickDuelVisualAssetService = new BrickDuelVisualAssetService(assetsRuntime, logger);
             var lanDiagnosticsService = new LanDiagnosticsService();
             var lanRoomService = new LanRoomService(logger, lanDiagnosticsService, modeCatalog);
             ILanTransport lanTransport = serviceContainer.Get<ILanTransport>();
@@ -100,6 +102,7 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
             serviceContainer.RegisterSingleton(hudPresenter);
             serviceContainer.RegisterSingleton(sceneBindingService);
             serviceContainer.RegisterSingleton(visualAssetService);
+            serviceContainer.RegisterSingleton(brickDuelVisualAssetService);
             serviceContainer.RegisterSingleton(lanDiagnosticsService);
             serviceContainer.RegisterSingleton(lanRoomService);
             serviceContainer.RegisterSingleton(networkMatchController);
@@ -124,6 +127,7 @@ namespace App.HotUpdate.GatebreakerArena.Bootstrap
                 hudPresenter,
                 sceneBindingService,
                 visualAssetService,
+                brickDuelVisualAssetService,
                 lanDiagnosticsService,
                 lanRoomService,
                 lanRoomTransportBridge,

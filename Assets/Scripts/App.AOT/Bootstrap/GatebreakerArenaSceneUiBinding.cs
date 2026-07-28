@@ -58,6 +58,27 @@ namespace App.AOT.Bootstrap
         [SerializeField] private GameObject _modeSelectRoot;
         [SerializeField] private Button _localBattleButton;
         [SerializeField] private Button _onlineBattleButton;
+        [SerializeField] private Button _singleBattleButton;
+        [SerializeField] private GameObject _singleSelectRoot;
+        [SerializeField] private TMP_Text _singleSelectTitleText;
+        [SerializeField] private Button _brickDuel1v1Button;
+        [SerializeField] private Button _brickDuel1v2Button;
+        [SerializeField] private Button _brickDuel1v3Button;
+        [SerializeField] private Button _singleSelectBackButton;
+        [SerializeField] private GameObject _brickDuelHudRoot;
+        [SerializeField] private TMP_Text _brickDuelOpponentHealthText;
+        [SerializeField] private TMP_Text _brickDuelPlayerHealthText;
+        [SerializeField] private TMP_Text _brickDuelCenterText;
+        [SerializeField] private TMP_Text _brickDuelStatusText;
+        [SerializeField] private Graphic _brickDuelBottomCoreHitFeedback;
+        [SerializeField] private Graphic _brickDuelTopCoreHitFeedback;
+        [SerializeField] private Button _brickDuelPauseButton;
+        [SerializeField] private RectTransform _brickDuelMovementPad;
+        [SerializeField] private RectTransform _brickDuelMovementHandle;
+        [SerializeField] private RectTransform _brickDuelMovementLeftArrowInput;
+        [SerializeField] private RectTransform _brickDuelMovementRightArrowInput;
+        [SerializeField] private Graphic _brickDuelMovementLeftArrowHighlight;
+        [SerializeField] private Graphic _brickDuelMovementRightArrowHighlight;
         [SerializeField] private GameObject _loadoutRoot;
         [SerializeField] private TMP_Dropdown _loadoutHeroDropdown;
         [SerializeField] private TMP_Dropdown _loadoutPathDropdown;
@@ -141,6 +162,27 @@ namespace App.AOT.Bootstrap
         public Object ModeSelectRootObject => _modeSelectRoot;
         public Object LocalBattleButtonObject => _localBattleButton;
         public Object OnlineBattleButtonObject => _onlineBattleButton;
+        public Object SingleBattleButtonObject => _singleBattleButton;
+        public Object SingleSelectRootObject => _singleSelectRoot;
+        public Object SingleSelectTitleTextObject => _singleSelectTitleText;
+        public Object BrickDuel1v1ButtonObject => _brickDuel1v1Button;
+        public Object BrickDuel1v2ButtonObject => _brickDuel1v2Button;
+        public Object BrickDuel1v3ButtonObject => _brickDuel1v3Button;
+        public Object SingleSelectBackButtonObject => _singleSelectBackButton;
+        public Object BrickDuelHudRootObject => _brickDuelHudRoot;
+        public Object BrickDuelOpponentHealthTextObject => _brickDuelOpponentHealthText;
+        public Object BrickDuelPlayerHealthTextObject => _brickDuelPlayerHealthText;
+        public Object BrickDuelCenterTextObject => _brickDuelCenterText;
+        public Object BrickDuelStatusTextObject => _brickDuelStatusText;
+        public Object BrickDuelBottomCoreHitFeedbackObject => _brickDuelBottomCoreHitFeedback;
+        public Object BrickDuelTopCoreHitFeedbackObject => _brickDuelTopCoreHitFeedback;
+        public Object BrickDuelPauseButtonObject => _brickDuelPauseButton;
+        public Object BrickDuelMovementPadObject => _brickDuelMovementPad;
+        public Object BrickDuelMovementHandleObject => _brickDuelMovementHandle;
+        public Object BrickDuelMovementLeftArrowInputObject => _brickDuelMovementLeftArrowInput;
+        public Object BrickDuelMovementRightArrowInputObject => _brickDuelMovementRightArrowInput;
+        public Object BrickDuelMovementLeftArrowHighlightObject => _brickDuelMovementLeftArrowHighlight;
+        public Object BrickDuelMovementRightArrowHighlightObject => _brickDuelMovementRightArrowHighlight;
         public Object LoadoutRootObject => _loadoutRoot;
         public Object LoadoutHeroDropdownObject => _loadoutHeroDropdown;
         public Object LoadoutPathDropdownObject => _loadoutPathDropdown;
@@ -217,6 +259,27 @@ namespace App.AOT.Bootstrap
             _modeSelectRoot != null &&
             _localBattleButton != null &&
             _onlineBattleButton != null &&
+            _singleBattleButton != null &&
+            _singleSelectRoot != null &&
+            _singleSelectTitleText != null &&
+            _brickDuel1v1Button != null &&
+            _brickDuel1v2Button != null &&
+            _brickDuel1v3Button != null &&
+            _singleSelectBackButton != null &&
+            _brickDuelHudRoot != null &&
+            _brickDuelOpponentHealthText != null &&
+            _brickDuelPlayerHealthText != null &&
+            _brickDuelCenterText != null &&
+            _brickDuelStatusText != null &&
+            _brickDuelBottomCoreHitFeedback != null &&
+            _brickDuelTopCoreHitFeedback != null &&
+            _brickDuelPauseButton != null &&
+            _brickDuelMovementPad != null &&
+            _brickDuelMovementHandle != null &&
+            _brickDuelMovementLeftArrowInput != null &&
+            _brickDuelMovementRightArrowInput != null &&
+            _brickDuelMovementLeftArrowHighlight != null &&
+            _brickDuelMovementRightArrowHighlight != null &&
             _lanMenuRoot != null &&
             _lanRoomInfoRoot != null &&
             _lanStatusRoot != null &&

@@ -12,12 +12,19 @@ SOURCE_FILES = {
     "DT_AIRule": "DT_AIRule.json",
     "DT_MapRule": "DT_MapRule.json",
     "DT_PlayerColorRule": "DT_PlayerColorRule.json",
+    "DT_BrickDuelRule": "DT_BrickDuelRule.json",
     "DT_Hero": "DT_Hero.json",
     "DT_HeroPath": "DT_HeroPath.json",
     "DT_UniversalChip": "DT_UniversalChip.json",
     "DT_SignatureChip": "DT_SignatureChip.json",
 }
-V1_REQUIRED_TABLES = {"DT_Hero", "DT_HeroPath", "DT_UniversalChip", "DT_SignatureChip"}
+V1_REQUIRED_TABLES = {
+    "DT_BrickDuelRule",
+    "DT_Hero",
+    "DT_HeroPath",
+    "DT_UniversalChip",
+    "DT_SignatureChip",
+}
 
 
 @dataclass(frozen=True)
@@ -59,7 +66,7 @@ def _build_payload(config_root: Path) -> tuple[dict[str, Any], list[str], list[s
     warnings: list[str] = []
     errors: list[str] = []
     payload: dict[str, Any] = {
-        "Version": 2,
+        "Version": 3,
         "_FieldComments": _field_comments(),
     }
 
@@ -132,6 +139,21 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             "GoalCenters",
         ),
         "DT_PlayerColorRule": ("PlayerId", "Red", "Green", "Blue", "Alpha"),
+        "DT_BrickDuelRule": (
+            "RuleId", "SimulationFps", "CountdownSeconds", "InitialCoreHealth",
+            "InitialRows", "Columns", "ArenaHalfWidth", "CoreLineY", "PaddleSpawnY",
+            "PaddleHalfWidth", "PaddleHalfHeight", "PaddleMoveSpeed", "BrickWidth",
+            "BrickHeight", "BallRadius", "BallSpeed", "BaseTideSpeed",
+            "BallResetSeconds", "StuckTimeoutSeconds", "StuckMovementEpsilon",
+            "PressureIntervalSeconds", "PressureIncrement", "DangerDistance",
+            "GreenHealth", "RedHealth", "YellowHealth", "MysteryHealth",
+            "BrickCoreDamage", "GreenWeight", "RedWeight", "YellowWeight",
+            "MysteryWeight", "RandomSeed", "AiLevelId", "InitialRowPatterns",
+            "ScenePrefabLocation", "PaddlePrefabLocation", "PlayerBallPrefabLocation",
+            "AiBallPrefabLocation", "GreenBrickPrefabLocation",
+            "RedBrickPrefabLocation", "YellowBrickPrefabLocation",
+            "MysteryBrickPrefabLocation",
+        ),
         "DT_Hero": ("HeroId", "DisplayName", "ActiveAbilityId", "ActiveAbilityCooldownSeconds", "PathIds"),
         "DT_HeroPath": ("PathId", "HeroId", "DisplayName", "ResonanceCategories", "MilestoneEffects"),
         "DT_UniversalChip": ("ChipId", "DisplayName", "Category", "Rarity", "Modifiers", "ConditionalModifiers"),
@@ -154,6 +176,8 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             _validate_vector_array(row, "GoalCenters", 1, table_name, index, errors)
             _validate_map_player_side_bindings(row, index, errors)
             _validate_collision_layouts(row, index, errors)
+        if table_name == "DT_BrickDuelRule":
+            _validate_brick_duel(row, index, errors)
         if table_name == "DT_Hero":
             _validate_hero(row, index, errors)
         if table_name == "DT_HeroPath":
@@ -173,6 +197,101 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         _validate_unique_ids(rows, "ChipId", table_name, errors)
         if len(rows) != 12:
             errors.append("DT_SignatureChip: V1 must contain exactly 12 route variants.")
+    elif table_name == "DT_BrickDuelRule":
+        _validate_unique_ids(rows, "RuleId", table_name, errors)
+        if len(rows) != 1 or rows[0].get("RuleId") != "BRICK_DUEL_V0":
+            errors.append("DT_BrickDuelRule: Version 3 requires exactly BRICK_DUEL_V0.")
+
+
+def _validate_brick_duel(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_BrickDuelRule[{index}]"
+    fixed_values = {
+        "SimulationFps": 30,
+        "CountdownSeconds": 5,
+        "InitialCoreHealth": 5,
+        "InitialRows": 3,
+        "Columns": 9,
+        "GreenHealth": 1,
+        "RedHealth": 2,
+        "YellowHealth": 3,
+        "MysteryHealth": 1,
+        "BrickCoreDamage": 1,
+        "BallResetSeconds": 0.5,
+        "PressureIntervalSeconds": 30,
+        "PressureIncrement": 0.25,
+    }
+    for field, expected in fixed_values.items():
+        if field in row and _normalize_number(row[field]) != _normalize_number(expected):
+            errors.append(f"{prefix}: {field} must be {expected}.")
+
+    positive_fields = (
+        "ArenaHalfWidth", "CoreLineY", "PaddleSpawnY", "PaddleHalfWidth",
+        "PaddleHalfHeight", "PaddleMoveSpeed", "BrickWidth", "BrickHeight",
+        "BallRadius", "BallSpeed", "BaseTideSpeed", "StuckTimeoutSeconds",
+        "StuckMovementEpsilon", "DangerDistance",
+    )
+    for field in positive_fields:
+        _validate_positive_number(row, field, "DT_BrickDuelRule", index, errors)
+
+    patterns = row.get("InitialRowPatterns")
+    rows = _normalize_int(row.get("InitialRows"))
+    columns = _normalize_int(row.get("Columns"))
+    allowed = {"Green", "Red", "Yellow", "Mystery"}
+    if not isinstance(patterns, list) or len(patterns) != rows:
+        errors.append(f"{prefix}: InitialRowPatterns must contain InitialRows strings.")
+    else:
+        for pattern_index, pattern in enumerate(patterns):
+            cells = [cell.strip() for cell in pattern.split(",")] if isinstance(pattern, str) else []
+            if len(cells) != columns or any(cell not in allowed for cell in cells):
+                errors.append(
+                    f"{prefix}.InitialRowPatterns[{pattern_index}]: "
+                    f"expected {columns} Green/Red/Yellow/Mystery cells."
+                )
+
+    weights = [
+        row.get("GreenWeight"),
+        row.get("RedWeight"),
+        row.get("YellowWeight"),
+        row.get("MysteryWeight"),
+    ]
+    if any(not isinstance(value, (int, float)) or value <= 0 for value in weights):
+        errors.append(f"{prefix}: all brick weights must be positive numbers.")
+    elif abs(sum(float(value) for value in weights) - 1.0) > 0.0001:
+        errors.append(f"{prefix}: brick weights must total 1.")
+
+    if isinstance(row.get("CoreLineY"), (int, float)) and isinstance(row.get("PaddleSpawnY"), (int, float)):
+        if float(row["PaddleSpawnY"]) >= float(row["CoreLineY"]):
+            errors.append(f"{prefix}: PaddleSpawnY must be inside CoreLineY.")
+
+    geometry_fields = (
+        row.get("Columns"),
+        row.get("BrickWidth"),
+        row.get("ArenaHalfWidth"),
+        row.get("InitialRows"),
+        row.get("BrickHeight"),
+        row.get("PaddleSpawnY"),
+        row.get("BallRadius"),
+        row.get("DangerDistance"),
+        row.get("CoreLineY"),
+    )
+    if all(isinstance(value, (int, float)) for value in geometry_fields):
+        if float(row["Columns"]) * float(row["BrickWidth"]) > float(row["ArenaHalfWidth"]) * 2:
+            errors.append(f"{prefix}: the brick grid must fit inside ArenaHalfWidth.")
+        if float(row["InitialRows"]) * float(row["BrickHeight"]) >= float(row["PaddleSpawnY"]):
+            errors.append(f"{prefix}: opening rows must stay inside PaddleSpawnY.")
+        if float(row["BallRadius"]) >= float(row["ArenaHalfWidth"]):
+            errors.append(f"{prefix}: BallRadius must fit inside ArenaHalfWidth.")
+        if float(row["DangerDistance"]) > float(row["CoreLineY"]):
+            errors.append(f"{prefix}: DangerDistance must not exceed CoreLineY.")
+
+    asset_fields = (
+        "ScenePrefabLocation", "PaddlePrefabLocation", "PlayerBallPrefabLocation",
+        "AiBallPrefabLocation", "GreenBrickPrefabLocation", "RedBrickPrefabLocation",
+        "YellowBrickPrefabLocation", "MysteryBrickPrefabLocation",
+    )
+    for field in asset_fields:
+        if not isinstance(row.get(field), str) or not row[field].strip():
+            errors.append(f"{prefix}: {field} must be a non-empty asset location.")
 
 
 def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -882,6 +1001,12 @@ def _field_comments() -> dict[str, dict[str, str]]:
             "BoundaryPoints": "场地边界点，按顺时针或逆时针顺序填写；运行时用相邻点生成碰撞边。",
             "GoalCenters": "每条边对应的球门中心点；数量应与边界段数量匹配。",
             "CollisionLayouts": "按玩家人数记录的地图阻挡线数据；运行时优先用它生成边界、进球判定和调试红线。",
+        },
+        "DT_BrickDuelRule": {
+            "BallSpeed": "按 SceneSingle 标定后的固定球速；V0 不随压力等级变化。",
+            "BaseTideSpeed": "砖潮基础速度 V0；运行时乘以 1 + 0.25 × floor(t / 30)。",
+            "InitialRowPatterns": "三行九列的权威开局序列；上下半场使用镜像位置。",
+            "RandomSeed": "后续砖行的确定性随机种子；双方共用同一权威行。",
         },
         "DT_Hero": {
             "PathIds": "V1 每名英雄固定关联两条共鸣路径；对局开始时仅使用这里定义的路径。",
