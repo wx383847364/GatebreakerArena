@@ -245,6 +245,6 @@ bash tools/validation/run_gatebreaker_playmode_smoke.sh
 
 ## 完成情况
 
-- 当前状态：已落地，继续维护
-- 最近更新：2026-05-30
-- 说明：moving swept collision 已作为当前 runtime 默认推进方式；后续修改以保持规则边界、补齐测试和降低 runtime 文件复杂度为主。
+- 当前状态：已完成
+- 进度说明：补齐多球移除快照遍历；砖潮采用全墙 CCD、单向挡板正面 CCD，并新增与求解器一致的 SceneDebug 碰撞线和回归测试。
+- 最近更新：2026-07-29，补齐多球移除快照遍历；砖潮采用全墙 CCD、单向挡板正面 CCD，并新增与求解器一致的 SceneDebug 碰撞线和回归测试。

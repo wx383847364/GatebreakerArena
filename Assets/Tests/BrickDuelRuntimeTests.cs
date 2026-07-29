@@ -105,6 +105,366 @@ namespace Gatebreaker.Tests
                 item.Health < InitialHealth(rule, item.InitialType)));
         }
 
+        [TestCase(BrickDuelSide.Bottom, 0f, -5f, 0f, -1f, 0f, 1f)]
+        [TestCase(BrickDuelSide.Top, 0f, 5f, 0f, 1f, 0f, -1f)]
+        [TestCase(BrickDuelSide.Bottom, -3.1f, -2f, -1f, 0f, 1f, 0f)]
+        [TestCase(BrickDuelSide.Bottom, 3.1f, -2f, 1f, 0f, -1f, 0f)]
+        [TestCase(BrickDuelSide.Bottom, 0f, -0.4f, 0f, 1f, 0f, -1f)]
+        [TestCase(BrickDuelSide.Top, 0f, 0.4f, 0f, -1f, 0f, 1f)]
+        public void ContinuousCollision_ReflectsFromEveryClosedHalfFieldWall(
+            BrickDuelSide side,
+            float positionX,
+            float positionY,
+            float velocityX,
+            float velocityY,
+            float expectedX,
+            float expectedY)
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), side);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(positionX, positionY));
+            SetState(
+                ball,
+                nameof(BrickDuelBallState.Velocity),
+                new Vector2(velocityX, velocityY).normalized * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), side);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(10f, 10f));
+
+            new BrickDuelCollisionSolver().StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.2f,
+                0f,
+                new HashSet<int>());
+
+            Assert.GreaterOrEqual(ball.Position.x, -rule.ArenaHalfWidth + rule.BallRadius - 0.001f);
+            Assert.LessOrEqual(ball.Position.x, rule.ArenaHalfWidth - rule.BallRadius + 0.001f);
+            if (side == BrickDuelSide.Bottom)
+            {
+                Assert.GreaterOrEqual(ball.Position.y, -rule.CoreLineY + rule.BallRadius - 0.001f);
+                Assert.LessOrEqual(ball.Position.y, -rule.BallRadius + 0.001f);
+            }
+            else
+            {
+                Assert.GreaterOrEqual(ball.Position.y, rule.BallRadius - 0.001f);
+                Assert.LessOrEqual(ball.Position.y, rule.CoreLineY - rule.BallRadius + 0.001f);
+            }
+
+            Assert.Greater(
+                Vector2.Dot(ball.Velocity, new Vector2(expectedX, expectedY)),
+                0f);
+        }
+
+        [Test]
+        public void ContinuousCollision_RecoversOutsideBallByReflectingItInside()
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), BrickDuelSide.Bottom);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(4f, -6f));
+            SetState(
+                ball,
+                nameof(BrickDuelBallState.Velocity),
+                new Vector2(1f, -1f).normalized * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), BrickDuelSide.Bottom);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(10f, 10f));
+
+            new BrickDuelCollisionSolver().StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.01f,
+                0f,
+                new HashSet<int>());
+
+            Assert.IsTrue(ball.IsActive);
+            Assert.LessOrEqual(ball.Position.x, rule.ArenaHalfWidth - rule.BallRadius + 0.001f);
+            Assert.GreaterOrEqual(ball.Position.y, -rule.CoreLineY + rule.BallRadius - 0.001f);
+            Assert.Less(ball.Velocity.x, 0f);
+            Assert.Greater(ball.Velocity.y, 0f);
+        }
+
+        [Test]
+        public void OuterWallBounce_DoesNotResetBallOrDamageCore()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+            SetState(
+                runtime.BottomBall,
+                nameof(BrickDuelBallState.Position),
+                new Vector2(0f, -runtime.Rule.CoreLineY + runtime.Rule.BallRadius + 0.02f));
+            SetState(
+                runtime.BottomBall,
+                nameof(BrickDuelBallState.Velocity),
+                Vector2.down * runtime.Rule.BallSpeed);
+            int bottomHealth = runtime.BottomCoreHealth;
+            int topHealth = runtime.TopCoreHealth;
+
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.IsTrue(runtime.BottomBall.IsActive);
+            Assert.IsFalse(runtime.LastFrameEvents.BottomBallReset);
+            Assert.AreEqual(bottomHealth, runtime.BottomCoreHealth);
+            Assert.AreEqual(topHealth, runtime.TopCoreHealth);
+            Assert.Greater(runtime.BottomBall.Velocity.y, 0f);
+        }
+
+        [TestCase(BrickDuelSide.Bottom, -2f, -1.3f, -1f)]
+        [TestCase(BrickDuelSide.Top, 2f, 1.3f, 1f)]
+        public void ContinuousCollision_PaddleReflectsApproachingFront(
+            BrickDuelSide side,
+            float paddleY,
+            float ballY,
+            float incomingY)
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            rule.BallSpeed = 120f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), side);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0f, ballY));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.up * incomingY * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), side);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, paddleY));
+
+            new BrickDuelCollisionSolver().StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.005f,
+                0f,
+                new HashSet<int>());
+
+            Vector2 frontNormal = side == BrickDuelSide.Bottom ? Vector2.up : Vector2.down;
+            Assert.Greater(Vector2.Dot(ball.Velocity, frontNormal), 0f);
+        }
+
+        [TestCase(BrickDuelSide.Bottom, -2f, -2.1f, 1f)]
+        [TestCase(BrickDuelSide.Top, 2f, 2.1f, -1f)]
+        public void ContinuousCollision_BacksideBallPassesThroughPaddle(
+            BrickDuelSide side,
+            float paddleY,
+            float ballY,
+            float returningY)
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), side);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0f, ballY));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.up * returningY * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), side);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, paddleY));
+
+            new BrickDuelCollisionSolver().StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.15f,
+                0f,
+                new HashSet<int>());
+
+            Vector2 frontNormal = side == BrickDuelSide.Bottom ? Vector2.up : Vector2.down;
+            float contactDistance = rule.PaddleHalfHeight + rule.BallRadius;
+            Assert.Greater(Vector2.Dot(ball.Velocity, frontNormal), 0f);
+            Assert.Greater(
+                Vector2.Dot(ball.Position - paddle.Position, frontNormal),
+                contactDistance);
+        }
+
+        [TestCase(BrickDuelSide.Bottom, -2f, -1.8f, -1f)]
+        [TestCase(BrickDuelSide.Top, 2f, 1.8f, 1f)]
+        public void ContinuousCollision_RecoversApproachingFrontOverlap(
+            BrickDuelSide side,
+            float paddleY,
+            float ballY,
+            float incomingY)
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), side);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0f, ballY));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.up * incomingY * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), side);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, paddleY));
+
+            new BrickDuelCollisionSolver().StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.05f,
+                0f,
+                new HashSet<int>());
+
+            Vector2 frontNormal = side == BrickDuelSide.Bottom ? Vector2.up : Vector2.down;
+            float contactDistance = rule.PaddleHalfHeight + rule.BallRadius;
+            Assert.Greater(Vector2.Dot(ball.Velocity, frontNormal), 0f);
+            Assert.GreaterOrEqual(
+                Vector2.Dot(ball.Position - paddle.Position, frontNormal),
+                contactDistance);
+        }
+
+        [TestCase(0.574f, true)]
+        [TestCase(0.576f, false)]
+        public void ContinuousCollision_PaddleFaceUsesExpandedHalfWidth(
+            float ballX,
+            bool shouldHit)
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), BrickDuelSide.Bottom);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(ballX, -1.3f));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.down * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), BrickDuelSide.Bottom);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, -2f));
+
+            new BrickDuelCollisionSolver().StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.2f,
+                0f,
+                new HashSet<int>());
+
+            if (shouldHit)
+            {
+                Assert.Greater(ball.Velocity.y, 0f);
+            }
+            else
+            {
+                Assert.Less(ball.Velocity.y, 0f);
+            }
+        }
+
+        [Test]
+        public void OuterWallReturn_PassesThroughPaddleWithoutResetOrCoreDamage()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+            SetState(
+                runtime.BottomBall,
+                nameof(BrickDuelBallState.Position),
+                new Vector2(0f, -runtime.Rule.CoreLineY + runtime.Rule.BallRadius + 0.02f));
+            SetState(
+                runtime.BottomBall,
+                nameof(BrickDuelBallState.Velocity),
+                Vector2.down * runtime.Rule.BallSpeed);
+            int bottomHealth = runtime.BottomCoreHealth;
+            int topHealth = runtime.TopCoreHealth;
+            bool resetOccurred = false;
+
+            for (int frame = 0; frame < 12; frame++)
+            {
+                runtime.StepFrame(new BrickDuelFrameInput(0f));
+                resetOccurred |= runtime.LastFrameEvents.BottomBallReset;
+            }
+
+            float frontContactY = runtime.BottomPaddle.Position.y +
+                                  runtime.Rule.PaddleHalfHeight +
+                                  runtime.Rule.BallRadius;
+            Assert.IsTrue(runtime.BottomBall.IsActive);
+            Assert.IsFalse(resetOccurred);
+            Assert.AreEqual(bottomHealth, runtime.BottomCoreHealth);
+            Assert.AreEqual(topHealth, runtime.TopCoreHealth);
+            Assert.Greater(runtime.BottomBall.Position.y, frontContactY);
+            Assert.Greater(runtime.BottomBall.Velocity.y, 0f);
+        }
+
+        [Test]
+        public void CollisionOverlay_MatchesSolverContactEnvelopes()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            BrickDuelSnapshot snapshot = runtime.CreateSnapshot();
+
+            IReadOnlyList<BrickDuelCollisionOverlayLine> lines =
+                BrickDuelCollisionOverlayGeometry.BuildLines(runtime.Rule, snapshot);
+
+            Assert.AreEqual(8, lines.Count(line => line.Kind == BrickDuelCollisionOverlayLineKind.Wall));
+            Assert.AreEqual(2, lines.Count(line => line.Kind == BrickDuelCollisionOverlayLineKind.Paddle));
+            Assert.AreEqual(
+                snapshot.Bricks.Count * 4,
+                lines.Count(line => line.Kind == BrickDuelCollisionOverlayLineKind.Brick));
+            float minimumX = -runtime.Rule.ArenaHalfWidth + runtime.Rule.BallRadius;
+            float maximumX = runtime.Rule.ArenaHalfWidth - runtime.Rule.BallRadius;
+            float paddleContactHalfWidth = runtime.Rule.PaddleHalfWidth + runtime.Rule.BallRadius;
+            float paddleContactDistance = runtime.Rule.PaddleHalfHeight + runtime.Rule.BallRadius;
+            Assert.IsTrue(HasOverlayLine(
+                lines,
+                BrickDuelCollisionOverlayLineKind.Wall,
+                new Vector2(minimumX, -runtime.Rule.CoreLineY + runtime.Rule.BallRadius),
+                new Vector2(maximumX, -runtime.Rule.CoreLineY + runtime.Rule.BallRadius)));
+            Assert.IsTrue(HasOverlayLine(
+                lines,
+                BrickDuelCollisionOverlayLineKind.Wall,
+                new Vector2(minimumX, -runtime.Rule.BallRadius),
+                new Vector2(maximumX, -runtime.Rule.BallRadius)));
+            Assert.IsTrue(HasOverlayLine(
+                lines,
+                BrickDuelCollisionOverlayLineKind.Wall,
+                new Vector2(minimumX, runtime.Rule.BallRadius),
+                new Vector2(maximumX, runtime.Rule.BallRadius)));
+            Assert.IsTrue(HasOverlayLine(
+                lines,
+                BrickDuelCollisionOverlayLineKind.Wall,
+                new Vector2(minimumX, runtime.Rule.CoreLineY - runtime.Rule.BallRadius),
+                new Vector2(maximumX, runtime.Rule.CoreLineY - runtime.Rule.BallRadius)));
+            Assert.IsTrue(HasOverlayLine(
+                lines,
+                BrickDuelCollisionOverlayLineKind.Paddle,
+                snapshot.BottomPaddle.Position +
+                new Vector2(-paddleContactHalfWidth, paddleContactDistance),
+                snapshot.BottomPaddle.Position +
+                new Vector2(paddleContactHalfWidth, paddleContactDistance)));
+            Assert.IsTrue(HasOverlayLine(
+                lines,
+                BrickDuelCollisionOverlayLineKind.Paddle,
+                snapshot.TopPaddle.Position +
+                new Vector2(-paddleContactHalfWidth, -paddleContactDistance),
+                snapshot.TopPaddle.Position +
+                new Vector2(paddleContactHalfWidth, -paddleContactDistance)));
+        }
+
         [Test]
         public void ContinuousCollision_UsesMovingPaddlePathInsteadOfOnlyItsFinalPosition()
         {
@@ -353,10 +713,15 @@ namespace Gatebreaker.Tests
                 item.Position.x == 0f &&
                 item.Position.y < -1f);
             int targetId = target.BrickId;
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
 
-            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps + 180);
+            BrickDuelBrickState after = target;
+            for (int frame = 0; frame < 600 && after.Health == 3; frame++)
+            {
+                runtime.StepFrame(new BrickDuelFrameInput(0f));
+                after = runtime.Bricks.Single(item => item.BrickId == targetId);
+            }
 
-            BrickDuelBrickState after = runtime.Bricks.Single(item => item.BrickId == targetId);
             Assert.AreEqual(2, after.Health);
             Assert.AreEqual(BrickDuelBrickType.Red, after.VisualType);
         }
@@ -393,7 +758,7 @@ namespace Gatebreaker.Tests
                 BrickWidth = 0.66f,
                 BrickHeight = 0.46f,
                 BallRadius = 0.2f,
-                BallSpeed = 0.865333f,
+                BallSpeed = 3f,
                 BaseTideSpeed = 0.035733f,
                 BallResetSeconds = 0.5f,
                 StuckTimeoutSeconds = 2f,
@@ -455,6 +820,20 @@ namespace Gatebreaker.Tests
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.IsNotNull(property, propertyName);
             property.SetValue(target, value);
+        }
+
+        private static bool HasOverlayLine(
+            IReadOnlyList<BrickDuelCollisionOverlayLine> lines,
+            BrickDuelCollisionOverlayLineKind kind,
+            Vector2 start,
+            Vector2 end)
+        {
+            return lines.Any(line =>
+                line.Kind == kind &&
+                ((Vector2.Distance(line.Start, start) <= 0.0001f &&
+                  Vector2.Distance(line.End, end) <= 0.0001f) ||
+                 (Vector2.Distance(line.Start, end) <= 0.0001f &&
+                  Vector2.Distance(line.End, start) <= 0.0001f)));
         }
     }
 }

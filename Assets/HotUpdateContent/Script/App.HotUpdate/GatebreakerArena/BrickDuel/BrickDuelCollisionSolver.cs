@@ -25,6 +25,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 return;
             }
 
+            RecoverBallInsideArena(ball, rule);
             float remaining = deltaTime;
             float elapsed = 0f;
             for (int impactIndex = 0; impactIndex < MaxImpactsPerFrame && remaining > 0.000001f; impactIndex++)
@@ -72,12 +73,15 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ? reflected.normalized
                     : candidate.Normal;
                 ball.Velocity = direction * rule.BallSpeed;
-                ball.Position += candidate.Normal * SeparationEpsilon;
+                ball.Position += candidate.Normal *
+                                 (candidate.SeparationDistance + SeparationEpsilon);
                 float separationTime =
                     SeparationEpsilon / Mathf.Max(relativeVelocity.magnitude, 0.001f);
                 remaining = Mathf.Max(0f, remaining - separationTime);
                 elapsed = Mathf.Min(deltaTime, elapsed + separationTime);
             }
+
+            RecoverBallInsideArena(ball, rule);
         }
 
         private static CollisionCandidate FindEarliestCollision(
@@ -123,19 +127,28 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 ball.Side == BrickDuelSide.Bottom ? Vector2.down : Vector2.up,
                 ref best);
 
-            Vector2 paddleCenter = paddleStartPosition + paddleVelocity * elapsed;
-            Vector2 paddleExtents = new Vector2(
-                rule.PaddleHalfWidth + rule.BallRadius,
-                rule.PaddleHalfHeight + rule.BallRadius);
-            TryAabb(
+            float outerBoundary = ball.Side == BrickDuelSide.Bottom
+                ? -rule.CoreLineY + rule.BallRadius
+                : rule.CoreLineY - rule.BallRadius;
+            TryPlane(
                 position,
-                velocity - paddleVelocity,
+                velocity,
+                maxTime,
+                outerBoundary,
+                false,
+                ball.Side == BrickDuelSide.Bottom ? Vector2.up : Vector2.down,
+                ref best);
+
+            Vector2 paddleCenter = paddleStartPosition + paddleVelocity * elapsed;
+            TryPaddleFace(
+                position,
+                velocity,
                 maxTime,
                 paddleCenter,
-                paddleExtents,
-                null,
-                true,
                 paddleVelocity,
+                ball.Side,
+                rule.PaddleHalfWidth + rule.BallRadius,
+                rule.PaddleHalfHeight + rule.BallRadius,
                 ref best);
 
             Vector2 brickExtents = new Vector2(
@@ -165,6 +178,137 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             return best;
+        }
+
+        private static void TryPaddleFace(
+            Vector2 origin,
+            Vector2 velocity,
+            float maxTime,
+            Vector2 paddleCenter,
+            Vector2 paddleVelocity,
+            BrickDuelSide side,
+            float contactHalfWidth,
+            float contactDistance,
+            ref CollisionCandidate best)
+        {
+            Vector2 normal = side == BrickDuelSide.Bottom
+                ? Vector2.up
+                : Vector2.down;
+            Vector2 relativeVelocity = velocity - paddleVelocity;
+            float normalVelocity = Vector2.Dot(relativeVelocity, normal);
+            if (normalVelocity >= -0.000001f)
+            {
+                return;
+            }
+
+            float normalDistance = Vector2.Dot(origin - paddleCenter, normal);
+            if (normalDistance < 0f)
+            {
+                return;
+            }
+
+            float hitTime = 0f;
+            float separationDistance = 0f;
+            if (normalDistance > contactDistance)
+            {
+                hitTime = (contactDistance - normalDistance) / normalVelocity;
+                if (hitTime < 0f || hitTime > maxTime)
+                {
+                    return;
+                }
+            }
+            else
+            {
+                separationDistance = contactDistance - normalDistance;
+            }
+
+            if (hitTime >= best.Time)
+            {
+                return;
+            }
+
+            Vector2 paddleAtHit = paddleCenter + paddleVelocity * hitTime;
+            Vector2 ballAtHit = origin + velocity * hitTime;
+            if (Mathf.Abs(ballAtHit.x - paddleAtHit.x) > contactHalfWidth)
+            {
+                return;
+            }
+
+            best = new CollisionCandidate(
+                true,
+                hitTime,
+                normal,
+                null,
+                true,
+                paddleVelocity,
+                paddleAtHit,
+                separationDistance);
+        }
+
+        private static void RecoverBallInsideArena(
+            BrickDuelBallState ball,
+            BrickDuelRuleDefinition rule)
+        {
+            float minimumX = -rule.ArenaHalfWidth + rule.BallRadius;
+            float maximumX = rule.ArenaHalfWidth - rule.BallRadius;
+            float minimumY = ball.Side == BrickDuelSide.Bottom
+                ? -rule.CoreLineY + rule.BallRadius
+                : rule.BallRadius;
+            float maximumY = ball.Side == BrickDuelSide.Bottom
+                ? -rule.BallRadius
+                : rule.CoreLineY - rule.BallRadius;
+            Vector2 position = ball.Position;
+            Vector2 velocity = ball.Velocity;
+            bool corrected = false;
+
+            if (position.x < minimumX)
+            {
+                position.x = minimumX;
+                if (velocity.x < 0f)
+                {
+                    velocity.x = -velocity.x;
+                }
+                corrected = true;
+            }
+            else if (position.x > maximumX)
+            {
+                position.x = maximumX;
+                if (velocity.x > 0f)
+                {
+                    velocity.x = -velocity.x;
+                }
+                corrected = true;
+            }
+
+            if (position.y < minimumY)
+            {
+                position.y = minimumY;
+                if (velocity.y < 0f)
+                {
+                    velocity.y = -velocity.y;
+                }
+                corrected = true;
+            }
+            else if (position.y > maximumY)
+            {
+                position.y = maximumY;
+                if (velocity.y > 0f)
+                {
+                    velocity.y = -velocity.y;
+                }
+                corrected = true;
+            }
+
+            if (!corrected)
+            {
+                return;
+            }
+
+            ball.Position = position;
+            if (velocity.sqrMagnitude > 0.0001f)
+            {
+                ball.Velocity = velocity.normalized * rule.BallSpeed;
+            }
         }
 
         private static void TryPlane(
@@ -337,7 +481,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 BrickDuelBrickState brick,
                 bool isPaddle,
                 Vector2 colliderVelocity,
-                Vector2 colliderCenter)
+                Vector2 colliderCenter,
+                float separationDistance = 0f)
             {
                 Hit = hit;
                 Time = time;
@@ -346,6 +491,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 IsPaddle = isPaddle;
                 ColliderVelocity = colliderVelocity;
                 ColliderCenter = colliderCenter;
+                SeparationDistance = separationDistance;
             }
 
             public bool Hit { get; }
@@ -355,6 +501,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             public bool IsPaddle { get; }
             public Vector2 ColliderVelocity { get; }
             public Vector2 ColliderCenter { get; }
+            public float SeparationDistance { get; }
 
             public static CollisionCandidate None(float maxTime)
             {

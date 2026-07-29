@@ -888,6 +888,28 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(0, runtime.Balls.Count);
         }
 
+        [TestCase(0f)]
+        [TestCase(0.03f)]
+        public void TickHandlesScoringCloneRemovingEarlierSibling(float deltaTime)
+        {
+            GatebreakerMatchRuntime runtime = CreateRuntime();
+            runtime.StartLocalPrototype(aiCount: 3);
+            Assert.IsTrue(runtime.TryServe(1, out ServeBlockReason firstReason), firstReason.ToString());
+            Assert.IsTrue(runtime.TryServe(1, out ServeBlockReason secondReason), secondReason.ToString());
+            BallRuntimeState root = runtime.Balls[0];
+            BallRuntimeState scoringClone = runtime.Balls[1];
+            root.RootBallId = root.BallId;
+            scoringClone.RootBallId = root.BallId;
+            ArenaBoundarySegment rightGoal = runtime.Arena.BoundarySegments[2];
+            scoringClone.Position = rightGoal.GoalCenter - rightGoal.InwardNormal * 0.2f;
+            scoringClone.Velocity = -rightGoal.InwardNormal;
+
+            Assert.DoesNotThrow(() => runtime.Tick(deltaTime));
+
+            Assert.AreEqual(1, runtime.FindPlayer(1).Score);
+            Assert.AreEqual(0, runtime.Balls.Count);
+        }
+
         [Test]
         public void LocalPrototypeTickReboundsOwnedBallEnteringOwnGoal()
         {

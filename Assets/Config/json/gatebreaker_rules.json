@@ -38,7 +38,7 @@
       "ArenaHalfWidth": 3.5,
       "BallRadius": 0.2,
       "BallResetSeconds": 0.5,
-      "BallSpeed": 0.865333,
+      "BallSpeed": 3.0,
       "BaseTideSpeed": 0.035733,
       "BrickCoreDamage": 1,
       "BrickHeight": 0.46,

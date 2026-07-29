@@ -15,7 +15,7 @@
     "BrickWidth": 0.66,
     "BrickHeight": 0.46,
     "BallRadius": 0.2,
-    "BallSpeed": 0.865333,
+    "BallSpeed": 3.0,
     "BaseTideSpeed": 0.035733,
     "BallResetSeconds": 0.5,
     "StuckTimeoutSeconds": 2.0,

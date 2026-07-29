@@ -316,11 +316,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             int stuckFrameLimit = Mathf.Max(
                 1,
                 Mathf.RoundToInt(_rule.StuckTimeoutSeconds * _rule.SimulationFps));
-            bool outside = Mathf.Abs(ball.Position.x) > _rule.ArenaHalfWidth + _rule.BallRadius ||
-                           (ball.Side == BrickDuelSide.Bottom
-                               ? ball.Position.y < -_rule.CoreLineY - _rule.BallRadius
-                               : ball.Position.y > _rule.CoreLineY + _rule.BallRadius);
-            if (outside || ball.StuckFrames >= stuckFrameLimit)
+            if (ball.StuckFrames >= stuckFrameLimit)
             {
                 BeginBallReset(ball);
             }

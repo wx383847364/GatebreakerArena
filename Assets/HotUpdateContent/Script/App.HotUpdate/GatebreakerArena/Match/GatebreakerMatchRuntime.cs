@@ -1717,14 +1717,15 @@ namespace App.HotUpdate.GatebreakerArena.Match
                 return;
             }
 
-            for (int i = _balls.Count - 1; i >= 0; i--)
+            BallRuntimeState[] ballsToSimulate = _balls.ToArray();
+            for (int i = ballsToSimulate.Length - 1; i >= 0; i--)
             {
                 if (Phase != MatchPhase.Playing && Phase != MatchPhase.Overtime)
                 {
                     return;
                 }
 
-                BallRuntimeState ball = _balls[i];
+                BallRuntimeState ball = ballsToSimulate[i];
                 if (ball == null || (ball.BallState != BallState.Flying && ball.BallState != BallState.GoalRebound))
                 {
                     continue;
@@ -2448,9 +2449,10 @@ namespace App.HotUpdate.GatebreakerArena.Match
 
         private void ResolveFieldCollisions()
         {
-            for (int i = _balls.Count - 1; i >= 0; i--)
+            BallRuntimeState[] ballsToResolve = _balls.ToArray();
+            for (int i = ballsToResolve.Length - 1; i >= 0; i--)
             {
-                BallRuntimeState ball = _balls[i];
+                BallRuntimeState ball = ballsToResolve[i];
                 if (ball == null || (ball.BallState != BallState.Flying && ball.BallState != BallState.GoalRebound))
                 {
                     continue;

@@ -8,6 +8,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 {
     public sealed class BrickDuelSessionController : IDisposable
     {
+        private const string DebugCollisionOverlayName = "BrickDuelDebugCollisionOverlay";
+        private const string SceneDebugLayerName = "SceneDebug";
+        private const int SceneDebugLayerFallback = 6;
+        private const int DebugOverlaySortingOrder = 1200;
+        private const float DebugOverlayDepth = -0.08f;
         private readonly BrickDuelVisualAssetService _assetService;
         private readonly Dictionary<int, BrickView> _brickViews = new Dictionary<int, BrickView>();
         private readonly Dictionary<BrickDuelBrickType, Stack<GameObject>> _brickPools =
@@ -15,6 +20,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private readonly HashSet<int> _liveBrickIds = new HashSet<int>();
         private readonly List<SpecialFeedbackView> _specialFeedbackViews =
             new List<SpecialFeedbackView>();
+        private readonly List<LineRenderer> _debugCollisionLines = new List<LineRenderer>();
         private BrickDuelVisualAssetSet _assets;
         private GameObject _root;
         private GameObject _scene;
@@ -22,6 +28,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private GameObject _topPaddle;
         private GameObject _bottomBall;
         private GameObject _topBall;
+        private Transform _debugCollisionOverlayRoot;
+        private Material _debugOverlayMaterial;
         private float _frameAccumulator;
         private int _operationVersion;
         private bool _disposed;
@@ -146,6 +154,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             _brickPools.Clear();
             _liveBrickIds.Clear();
             _specialFeedbackViews.Clear();
+            ClearDebugCollisionOverlay();
             if (_root != null)
             {
                 UnityEngine.Object.Destroy(_root);
@@ -202,6 +211,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             SetActive(_bottomBall, snapshot.BottomBall.IsActive);
             SetActive(_topBall, snapshot.TopBall.IsActive);
             SyncBrickViews(snapshot.Bricks);
+            SyncDebugCollisionOverlay(snapshot);
         }
 
         private void SyncBrickViews(IReadOnlyList<BrickDuelBrickState> bricks)
@@ -360,6 +370,142 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             {
                 target.SetActive(active);
             }
+        }
+
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        private void SyncDebugCollisionOverlay(BrickDuelSnapshot snapshot)
+        {
+            if (_root == null || Runtime?.Rule == null || snapshot == null)
+            {
+                return;
+            }
+
+            EnsureDebugCollisionOverlayRoot();
+            IReadOnlyList<BrickDuelCollisionOverlayLine> lines =
+                BrickDuelCollisionOverlayGeometry.BuildLines(Runtime.Rule, snapshot);
+            for (int i = 0; i < lines.Count; i++)
+            {
+                BrickDuelCollisionOverlayLine source = lines[i];
+                LineRenderer line = EnsureDebugCollisionLine(i);
+                line.gameObject.SetActive(true);
+                line.positionCount = 2;
+                line.SetPosition(0, new Vector3(source.Start.x, source.Start.y, DebugOverlayDepth));
+                line.SetPosition(1, new Vector3(source.End.x, source.End.y, DebugOverlayDepth));
+                ApplyDebugCollisionStyle(line, source.Kind);
+            }
+
+            for (int i = lines.Count; i < _debugCollisionLines.Count; i++)
+            {
+                if (_debugCollisionLines[i] != null)
+                {
+                    _debugCollisionLines[i].gameObject.SetActive(false);
+                }
+            }
+        }
+
+        private void EnsureDebugCollisionOverlayRoot()
+        {
+            if (_debugCollisionOverlayRoot != null)
+            {
+                return;
+            }
+
+            var overlayObject = new GameObject(DebugCollisionOverlayName);
+            overlayObject.layer = GetSceneDebugLayer();
+            _debugCollisionOverlayRoot = overlayObject.transform;
+            _debugCollisionOverlayRoot.SetParent(_root.transform, false);
+            _debugCollisionOverlayRoot.localPosition = Vector3.zero;
+            _debugCollisionOverlayRoot.localRotation = Quaternion.identity;
+            _debugCollisionOverlayRoot.localScale = Vector3.one;
+        }
+
+        private LineRenderer EnsureDebugCollisionLine(int index)
+        {
+            while (_debugCollisionLines.Count <= index)
+            {
+                var lineObject = new GameObject("Brick Duel Debug Collision Line");
+                lineObject.layer = GetSceneDebugLayer();
+                lineObject.transform.SetParent(_debugCollisionOverlayRoot, false);
+                LineRenderer line = lineObject.AddComponent<LineRenderer>();
+                line.useWorldSpace = false;
+                line.sharedMaterial = GetDebugOverlayMaterial();
+                line.textureMode = LineTextureMode.Stretch;
+                line.alignment = LineAlignment.View;
+                line.numCapVertices = 2;
+                line.numCornerVertices = 2;
+                line.sortingOrder = DebugOverlaySortingOrder;
+                _debugCollisionLines.Add(line);
+            }
+
+            return _debugCollisionLines[index];
+        }
+
+        private Material GetDebugOverlayMaterial()
+        {
+            if (_debugOverlayMaterial != null)
+            {
+                return _debugOverlayMaterial;
+            }
+
+            Shader shader = Shader.Find("Sprites/Default") ??
+                            Shader.Find("Universal Render Pipeline/Unlit") ??
+                            Shader.Find("Unlit/Color") ??
+                            Shader.Find("Standard") ??
+                            Shader.Find("Diffuse");
+            _debugOverlayMaterial = new Material(shader);
+            _debugOverlayMaterial.color = Color.white;
+            return _debugOverlayMaterial;
+        }
+
+        private static void ApplyDebugCollisionStyle(
+            LineRenderer line,
+            BrickDuelCollisionOverlayLineKind kind)
+        {
+            Color color;
+            float width;
+            switch (kind)
+            {
+                case BrickDuelCollisionOverlayLineKind.Paddle:
+                    color = new Color(1f, 0.1f, 1f, 1f);
+                    width = 0.02f;
+                    break;
+                case BrickDuelCollisionOverlayLineKind.Brick:
+                    color = new Color(1f, 0.88f, 0.1f, 0.72f);
+                    width = 0.008f;
+                    break;
+                case BrickDuelCollisionOverlayLineKind.Wall:
+                default:
+                    color = new Color(1f, 0.08f, 0.04f, 1f);
+                    width = 0.034f;
+                    break;
+            }
+
+            line.startColor = color;
+            line.endColor = color;
+            line.startWidth = width;
+            line.endWidth = width;
+        }
+
+        private void ClearDebugCollisionOverlay()
+        {
+            _debugCollisionLines.Clear();
+            if (_debugCollisionOverlayRoot != null)
+            {
+                UnityEngine.Object.Destroy(_debugCollisionOverlayRoot.gameObject);
+                _debugCollisionOverlayRoot = null;
+            }
+
+            if (_debugOverlayMaterial != null)
+            {
+                UnityEngine.Object.Destroy(_debugOverlayMaterial);
+                _debugOverlayMaterial = null;
+            }
+        }
+
+        private static int GetSceneDebugLayer()
+        {
+            int layer = LayerMask.NameToLayer(SceneDebugLayerName);
+            return layer >= 0 ? layer : SceneDebugLayerFallback;
         }
 
         private sealed class BrickView

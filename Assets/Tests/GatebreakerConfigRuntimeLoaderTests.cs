@@ -70,7 +70,7 @@ namespace Gatebreaker.Tests
                     canonical.Replace("\"GreenHealth\": 1", "\"GreenHealth\": 2"));
             GatebreakerConfigLoadResult invalidSpeed =
                 GatebreakerConfigRuntimeLoader.ParseJson(
-                    canonical.Replace("\"BallSpeed\": 0.865333", "\"BallSpeed\": 0"));
+                    canonical.Replace("\"BallSpeed\": 3.0", "\"BallSpeed\": 0"));
             GatebreakerConfigLoadResult invalidPath =
                 GatebreakerConfigRuntimeLoader.ParseJson(
                     canonical.Replace(
