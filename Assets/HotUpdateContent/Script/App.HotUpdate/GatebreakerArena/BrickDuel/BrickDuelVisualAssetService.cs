@@ -44,6 +44,24 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 assets.SetBrick(
                     BrickDuelBrickType.Mystery,
                     await LoadRequiredAsync(rule.MysteryBrickPrefabLocation, "mystery-brick"));
+
+                if (rule.ItemDrops != null && rule.ItemDrops.Count > 0)
+                {
+                    IReadOnlyList<BrickDuelItemDefinition> itemDefinitions =
+                        BrickDuelItemDropBag.ResolveDefinitions(rule.ItemDrops);
+                    for (int i = 0; i < itemDefinitions.Count; i++)
+                    {
+                        BrickDuelItemDefinition item = itemDefinitions[i];
+                        BrickDuelLoadedSprite loaded = await LoadOptionalSpriteAsync(
+                            item.IconLocation,
+                            item.ItemId);
+                        if (loaded != null)
+                        {
+                            assets.SetItemSprite(item.ItemId, loaded);
+                        }
+                    }
+                }
+
                 return assets;
             }
             catch (Exception ex)
@@ -82,12 +100,63 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 throw;
             }
         }
+
+        private async Task<BrickDuelLoadedSprite> LoadOptionalSpriteAsync(string location, string itemId)
+        {
+            if (_assetsRuntime == null || string.IsNullOrWhiteSpace(location))
+            {
+                return null;
+            }
+
+            IAssetHandle handle = null;
+            try
+            {
+                handle = await _assetsRuntime.LoadAssetAsync(location);
+                if (handle == null)
+                {
+                    return null;
+                }
+
+                if (handle.AssetObject is Sprite sprite)
+                {
+                    return new BrickDuelLoadedSprite(location, sprite, handle, ownedTexture: null);
+                }
+
+                if (handle.AssetObject is Texture2D texture)
+                {
+                    Sprite created = Sprite.Create(
+                        texture,
+                        new Rect(0f, 0f, texture.width, texture.height),
+                        new Vector2(0.5f, 0.5f),
+                        Mathf.Max(texture.width, texture.height));
+                    return new BrickDuelLoadedSprite(location, created, handle, ownedTexture: null);
+                }
+
+                handle.Release();
+                _logger?.LogWarning(
+                    "BrickDuel item icon '{0}' is not a Sprite/Texture2D: {1}",
+                    itemId,
+                    location);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                handle?.Release();
+                _logger?.LogWarning(
+                    "BrickDuel item icon load failed for '{0}': {1}",
+                    itemId,
+                    ex.Message);
+                return null;
+            }
+        }
     }
 
     public sealed class BrickDuelVisualAssetSet : IDisposable
     {
         private readonly Dictionary<BrickDuelBrickType, BrickDuelLoadedPrefab> _bricks =
             new Dictionary<BrickDuelBrickType, BrickDuelLoadedPrefab>();
+        private readonly Dictionary<string, BrickDuelLoadedSprite> _itemSprites =
+            new Dictionary<string, BrickDuelLoadedSprite>(StringComparer.Ordinal);
 
         public BrickDuelLoadedPrefab Scene { get; internal set; }
         public BrickDuelLoadedPrefab Paddle { get; internal set; }
@@ -105,9 +174,27 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             return _bricks.TryGetValue(type, out BrickDuelLoadedPrefab prefab) ? prefab : null;
         }
 
+        public Sprite GetItemSprite(string itemId)
+        {
+            return !string.IsNullOrEmpty(itemId) &&
+                   _itemSprites.TryGetValue(itemId, out BrickDuelLoadedSprite loaded)
+                ? loaded.Sprite
+                : null;
+        }
+
         internal void SetBrick(BrickDuelBrickType type, BrickDuelLoadedPrefab prefab)
         {
             _bricks[type] = prefab;
+        }
+
+        internal void SetItemSprite(string itemId, BrickDuelLoadedSprite sprite)
+        {
+            if (string.IsNullOrEmpty(itemId) || sprite == null)
+            {
+                return;
+            }
+
+            _itemSprites[itemId] = sprite;
         }
 
         public void Dispose()
@@ -125,6 +212,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 brick?.Dispose();
             }
             _bricks.Clear();
+            foreach (BrickDuelLoadedSprite sprite in _itemSprites.Values)
+            {
+                sprite?.Dispose();
+            }
+            _itemSprites.Clear();
         }
     }
 
@@ -146,6 +238,38 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         {
             _handle?.Release();
             _handle = null;
+        }
+    }
+
+    public sealed class BrickDuelLoadedSprite : IDisposable
+    {
+        private IAssetHandle _handle;
+        private Texture2D _ownedTexture;
+
+        public BrickDuelLoadedSprite(
+            string location,
+            Sprite sprite,
+            IAssetHandle handle,
+            Texture2D ownedTexture)
+        {
+            Location = location ?? string.Empty;
+            Sprite = sprite;
+            _handle = handle;
+            _ownedTexture = ownedTexture;
+        }
+
+        public string Location { get; }
+        public Sprite Sprite { get; }
+
+        public void Dispose()
+        {
+            _handle?.Release();
+            _handle = null;
+            if (_ownedTexture != null)
+            {
+                UnityEngine.Object.Destroy(_ownedTexture);
+                _ownedTexture = null;
+            }
         }
     }
 }

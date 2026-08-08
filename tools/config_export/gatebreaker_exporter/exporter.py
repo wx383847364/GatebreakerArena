@@ -13,6 +13,7 @@ SOURCE_FILES = {
     "DT_MapRule": "DT_MapRule.json",
     "DT_PlayerColorRule": "DT_PlayerColorRule.json",
     "DT_BrickDuelRule": "DT_BrickDuelRule.json",
+    "DT_BrickDuelItemDrop": "DT_BrickDuelItemDrop.json",
     "DT_Hero": "DT_Hero.json",
     "DT_HeroPath": "DT_HeroPath.json",
     "DT_UniversalChip": "DT_UniversalChip.json",
@@ -148,11 +149,16 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             "PressureIntervalSeconds", "PressureIncrement", "DangerDistance",
             "GreenHealth", "RedHealth", "YellowHealth", "MysteryHealth",
             "BrickCoreDamage", "GreenWeight", "RedWeight", "YellowWeight",
-            "MysteryWeight", "RandomSeed", "AiLevelId", "InitialRowPatterns",
+            "MysteryWeight", "BrickCompositionIntervalSeconds", "BrickCompositionStages",
+            "RandomSeed", "AiLevelId", "InitialRowPatterns",
             "ScenePrefabLocation", "PaddlePrefabLocation", "PlayerBallPrefabLocation",
             "AiBallPrefabLocation", "GreenBrickPrefabLocation",
             "RedBrickPrefabLocation", "YellowBrickPrefabLocation",
             "MysteryBrickPrefabLocation",
+        ),
+        "DT_BrickDuelItemDrop": (
+            "DropTableId", "SortOrder", "ItemId", "ItemName", "DropWeight",
+            "BagCopies", "Enabled", "IconLocation",
         ),
         "DT_Hero": ("HeroId", "DisplayName", "ActiveAbilityId", "ActiveAbilityCooldownSeconds", "PathIds"),
         "DT_HeroPath": ("PathId", "HeroId", "DisplayName", "ResonanceCategories", "MilestoneEffects"),
@@ -178,6 +184,8 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             _validate_collision_layouts(row, index, errors)
         if table_name == "DT_BrickDuelRule":
             _validate_brick_duel(row, index, errors)
+        if table_name == "DT_BrickDuelItemDrop":
+            _validate_brick_duel_item_drop(row, index, errors)
         if table_name == "DT_Hero":
             _validate_hero(row, index, errors)
         if table_name == "DT_HeroPath":
@@ -201,6 +209,48 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         _validate_unique_ids(rows, "RuleId", table_name, errors)
         if len(rows) != 1 or rows[0].get("RuleId") != "BRICK_DUEL_V0":
             errors.append("DT_BrickDuelRule: Version 3 requires exactly BRICK_DUEL_V0.")
+    elif table_name == "DT_BrickDuelItemDrop":
+        _validate_brick_duel_item_drop_table(rows, errors)
+
+
+def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_BrickDuelItemDrop[{index}]"
+    if row.get("DropTableId") != "BRICK_DUEL_ITEM_V0":
+        errors.append(f"{prefix}: DropTableId must be BRICK_DUEL_ITEM_V0.")
+    enabled = row.get("Enabled", True)
+    if not isinstance(enabled, bool):
+        errors.append(f"{prefix}: Enabled must be a boolean.")
+        enabled = True
+    if enabled:
+        _validate_positive_number(row, "DropWeight", "DT_BrickDuelItemDrop", index, errors)
+    else:
+        weight = row.get("DropWeight")
+        if not isinstance(weight, (int, float)) or float(weight) < 0:
+            errors.append(f"{prefix}: DropWeight must be a number >= 0 when disabled.")
+    copies = row.get("BagCopies")
+    if not isinstance(copies, int) or copies < 1:
+        errors.append(f"{prefix}: BagCopies must be an integer >= 1.")
+    icon = row.get("IconLocation")
+    if not isinstance(icon, str) or not icon.strip():
+        errors.append(f"{prefix}: IconLocation must be a non-empty string.")
+
+
+def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: list[str]) -> None:
+    expected = {
+        "DUEL_ITEM_WIDE_PADDLE",
+        "DUEL_ITEM_LARGE_BALL",
+        "DUEL_ITEM_PHASE_DRILL",
+        "DUEL_ITEM_DAMPING_PULSE",
+        "DUEL_ITEM_CORE_BUFFER",
+    }
+    item_ids = {row.get("ItemId") for row in rows}
+    if item_ids != expected:
+        errors.append(
+            "DT_BrickDuelItemDrop: must contain exactly the five V0 duel item ids."
+        )
+    weight_total = sum(float(row.get("DropWeight") or 0.0) for row in rows if row.get("Enabled", True))
+    if abs(weight_total - 1.0) > 0.0001:
+        errors.append("DT_BrickDuelItemDrop: enabled DropWeight values must total 1.")
 
 
 def _validate_brick_duel(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -219,6 +269,7 @@ def _validate_brick_duel(row: dict[str, Any], index: int, errors: list[str]) -> 
         "BallResetSeconds": 0.5,
         "PressureIntervalSeconds": 30,
         "PressureIncrement": 0.25,
+        "BrickCompositionIntervalSeconds": 30,
     }
     for field, expected in fixed_values.items():
         if field in row and _normalize_number(row[field]) != _normalize_number(expected):
@@ -254,10 +305,27 @@ def _validate_brick_duel(row: dict[str, Any], index: int, errors: list[str]) -> 
         row.get("YellowWeight"),
         row.get("MysteryWeight"),
     ]
-    if any(not isinstance(value, (int, float)) or value <= 0 for value in weights):
-        errors.append(f"{prefix}: all brick weights must be positive numbers.")
-    elif abs(sum(float(value) for value in weights) - 1.0) > 0.0001:
-        errors.append(f"{prefix}: brick weights must total 1.")
+    _validate_brick_composition_weights(weights, prefix, errors)
+
+    stages = row.get("BrickCompositionStages")
+    if not isinstance(stages, list) or len(stages) != 6:
+        errors.append(f"{prefix}: BrickCompositionStages must contain exactly 6 stages.")
+    else:
+        for stage_index, stage in enumerate(stages):
+            if not isinstance(stage, dict):
+                errors.append(f"{prefix}.BrickCompositionStages[{stage_index}]: must be an object.")
+                continue
+            stage_weights = [
+                stage.get("GreenWeight"),
+                stage.get("RedWeight"),
+                stage.get("YellowWeight"),
+                stage.get("MysteryWeight"),
+            ]
+            _validate_brick_composition_weights(
+                stage_weights,
+                f"{prefix}.BrickCompositionStages[{stage_index}]",
+                errors,
+            )
 
     if isinstance(row.get("CoreLineY"), (int, float)) and isinstance(row.get("PaddleSpawnY"), (int, float)):
         if float(row["PaddleSpawnY"]) >= float(row["CoreLineY"]):
@@ -292,6 +360,21 @@ def _validate_brick_duel(row: dict[str, Any], index: int, errors: list[str]) -> 
     for field in asset_fields:
         if not isinstance(row.get(field), str) or not row[field].strip():
             errors.append(f"{prefix}: {field} must be a non-empty asset location.")
+
+
+def _validate_brick_composition_weights(
+    weights: list[Any],
+    context: str,
+    errors: list[str],
+) -> None:
+    if any(not isinstance(value, (int, float)) or float(value) < 0 for value in weights):
+        errors.append(f"{context}: brick weights must be non-negative numbers.")
+        return
+    total = sum(float(value) for value in weights)
+    if abs(total - 1.0) > 0.0001:
+        errors.append(f"{context}: brick weights must total 1.")
+    elif total <= 0:
+        errors.append(f"{context}: must include at least one positive brick weight.")
 
 
 def _normalize_mode_time_fields(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -1005,8 +1088,15 @@ def _field_comments() -> dict[str, dict[str, str]]:
         "DT_BrickDuelRule": {
             "BallSpeed": "按 SceneSingle 标定后的固定球速；V0 不随压力等级变化。",
             "BaseTideSpeed": "砖潮基础速度 V0；运行时乘以 1 + 0.25 × floor(t / 30)。",
+            "BrickCompositionIntervalSeconds": "砖块配比阶段间隔，单位秒；C(t)=min(floor(t/间隔), 阶段数-1)。",
+            "BrickCompositionStages": "按时间推进的绿/红/黄/？权重表；仅影响新补行，不改写已有砖。",
             "InitialRowPatterns": "三行九列的权威开局序列；上下半场使用镜像位置。",
             "RandomSeed": "后续砖行的确定性随机种子；双方共用同一权威行。",
+        },
+        "DT_BrickDuelItemDrop": {
+            "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。",
+            "BagCopies": "每袋该道具的份数；默认每种 2 份组成 10 件洗牌袋。",
+            "IconLocation": "道具舱图标资源路径。",
         },
         "DT_Hero": {
             "PathIds": "V1 每名英雄固定关联两条共鸣路径；对局开始时仅使用这里定义的路径。",

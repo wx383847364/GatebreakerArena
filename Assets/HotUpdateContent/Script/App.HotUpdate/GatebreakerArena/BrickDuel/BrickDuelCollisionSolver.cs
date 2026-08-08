@@ -18,6 +18,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             BrickDuelRuleDefinition rule,
             float deltaTime,
             float tideSpeed,
+            float paddleHalfWidth,
+            float ballRadius,
+            ref int pierceCharges,
+            ISet<int> ignoredBrickIds,
             ISet<int> hitBrickIds)
         {
             if (ball == null || !ball.IsActive || deltaTime <= 0f)
@@ -25,7 +29,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 return;
             }
 
-            RecoverBallInsideArena(ball, rule);
+            RecoverBallInsideArena(ball, rule, ballRadius);
             float remaining = deltaTime;
             float elapsed = 0f;
             for (int impactIndex = 0; impactIndex < MaxImpactsPerFrame && remaining > 0.000001f; impactIndex++)
@@ -38,7 +42,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     rule,
                     elapsed,
                     remaining,
-                    tideSpeed);
+                    tideSpeed,
+                    paddleHalfWidth,
+                    ballRadius,
+                    ignoredBrickIds);
                 if (!candidate.Hit)
                 {
                     ball.Position += ball.Velocity * remaining;
@@ -49,9 +56,27 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 remaining -= candidate.Time;
                 elapsed += candidate.Time;
 
+                bool pierceBrick = false;
                 if (candidate.Brick != null)
                 {
                     hitBrickIds.Add(candidate.Brick.BrickId);
+                    ignoredBrickIds?.Add(candidate.Brick.BrickId);
+                    if (pierceCharges > 0)
+                    {
+                        pierceBrick = true;
+                        pierceCharges--;
+                    }
+                }
+
+                if (pierceBrick)
+                {
+                    // Keep travel direction; only separate enough to leave the contact surface.
+                    ball.Position += candidate.Normal * SeparationEpsilon;
+                    float separationTime =
+                        SeparationEpsilon / Mathf.Max(ball.Velocity.magnitude, 0.001f);
+                    remaining = Mathf.Max(0f, remaining - separationTime);
+                    elapsed = Mathf.Min(deltaTime, elapsed + separationTime);
+                    continue;
                 }
 
                 Vector2 relativeVelocity = ball.Velocity - candidate.ColliderVelocity;
@@ -61,7 +86,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 if (candidate.IsPaddle)
                 {
                     float hitOffset = (ball.Position.x - candidate.ColliderCenter.x) /
-                                      Mathf.Max(0.001f, rule.PaddleHalfWidth);
+                                      Mathf.Max(0.001f, paddleHalfWidth);
                     float tangentShare = Mathf.Clamp(hitOffset, -1f, 1f) * 0.72f +
                                          paddle.MoveAxis * 0.18f;
                     float outwardY = ball.Side == BrickDuelSide.Bottom ? 1f : -1f;
@@ -75,13 +100,116 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 ball.Velocity = direction * rule.BallSpeed;
                 ball.Position += candidate.Normal *
                                  (candidate.SeparationDistance + SeparationEpsilon);
-                float separationTime =
+                float bounceSeparationTime =
                     SeparationEpsilon / Mathf.Max(relativeVelocity.magnitude, 0.001f);
-                remaining = Mathf.Max(0f, remaining - separationTime);
-                elapsed = Mathf.Min(deltaTime, elapsed + separationTime);
+                remaining = Mathf.Max(0f, remaining - bounceSeparationTime);
+                elapsed = Mathf.Min(deltaTime, elapsed + bounceSeparationTime);
             }
 
-            RecoverBallInsideArena(ball, rule);
+            RecoverBallInsideArena(ball, rule, ballRadius);
+        }
+
+        public static void RefreshIgnoredBrickContacts(
+            BrickDuelBallState ball,
+            IList<BrickDuelBrickState> bricks,
+            BrickDuelRuleDefinition rule,
+            float ballRadius,
+            ISet<int> ignoredBrickIds)
+        {
+            if (ball == null || ignoredBrickIds == null || ignoredBrickIds.Count == 0)
+            {
+                return;
+            }
+
+            Vector2 extents = new Vector2(
+                rule.BrickWidth * 0.5f + ballRadius,
+                rule.BrickHeight * 0.5f + ballRadius);
+            var stale = new List<int>();
+            foreach (int brickId in ignoredBrickIds)
+            {
+                BrickDuelBrickState brick = null;
+                for (int i = 0; i < bricks.Count; i++)
+                {
+                    if (bricks[i].BrickId == brickId)
+                    {
+                        brick = bricks[i];
+                        break;
+                    }
+                }
+
+                if (brick == null || brick.Side != ball.Side || brick.Health <= 0)
+                {
+                    stale.Add(brickId);
+                    continue;
+                }
+
+                Vector2 delta = ball.Position - brick.Position;
+                if (Mathf.Abs(delta.x) > extents.x || Mathf.Abs(delta.y) > extents.y)
+                {
+                    stale.Add(brickId);
+                }
+            }
+
+            for (int i = 0; i < stale.Count; i++)
+            {
+                ignoredBrickIds.Remove(stale[i]);
+            }
+        }
+
+        public static void SeparateBallFromBricksAndWalls(
+            BrickDuelBallState ball,
+            IList<BrickDuelBrickState> bricks,
+            BrickDuelRuleDefinition rule,
+            float ballRadius)
+        {
+            if (ball == null)
+            {
+                return;
+            }
+
+            RecoverBallInsideArena(ball, rule, ballRadius);
+            Vector2 extents = new Vector2(
+                rule.BrickWidth * 0.5f + ballRadius,
+                rule.BrickHeight * 0.5f + ballRadius);
+            for (int pass = 0; pass < 4; pass++)
+            {
+                bool moved = false;
+                for (int i = 0; i < bricks.Count; i++)
+                {
+                    BrickDuelBrickState brick = bricks[i];
+                    if (brick.Side != ball.Side || brick.Health <= 0)
+                    {
+                        continue;
+                    }
+
+                    Vector2 delta = ball.Position - brick.Position;
+                    float overlapX = extents.x - Mathf.Abs(delta.x);
+                    float overlapY = extents.y - Mathf.Abs(delta.y);
+                    if (overlapX <= 0f || overlapY <= 0f)
+                    {
+                        continue;
+                    }
+
+                    if (overlapX < overlapY)
+                    {
+                        float sign = delta.x >= 0f ? 1f : -1f;
+                        ball.Position += new Vector2(sign * (overlapX + SeparationEpsilon), 0f);
+                    }
+                    else
+                    {
+                        float sign = delta.y >= 0f ? 1f : -1f;
+                        ball.Position += new Vector2(0f, sign * (overlapY + SeparationEpsilon));
+                    }
+
+                    moved = true;
+                }
+
+                RecoverBallInsideArena(ball, rule, ballRadius);
+                if (!moved)
+                {
+                    break;
+                }
+            }
         }
 
         private static CollisionCandidate FindEarliestCollision(
@@ -92,7 +220,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             BrickDuelRuleDefinition rule,
             float elapsed,
             float maxTime,
-            float tideSpeed)
+            float tideSpeed,
+            float paddleHalfWidth,
+            float ballRadius,
+            ISet<int> ignoredBrickIds)
         {
             CollisionCandidate best = CollisionCandidate.None(maxTime);
             Vector2 velocity = ball.Velocity;
@@ -102,7 +233,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 position,
                 velocity,
                 maxTime,
-                -rule.ArenaHalfWidth + rule.BallRadius,
+                -rule.ArenaHalfWidth + ballRadius,
                 true,
                 Vector2.right,
                 ref best);
@@ -110,14 +241,14 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 position,
                 velocity,
                 maxTime,
-                rule.ArenaHalfWidth - rule.BallRadius,
+                rule.ArenaHalfWidth - ballRadius,
                 true,
                 Vector2.left,
                 ref best);
 
             float centerBoundary = ball.Side == BrickDuelSide.Bottom
-                ? -rule.BallRadius
-                : rule.BallRadius;
+                ? -ballRadius
+                : ballRadius;
             TryPlane(
                 position,
                 velocity,
@@ -128,8 +259,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 ref best);
 
             float outerBoundary = ball.Side == BrickDuelSide.Bottom
-                ? -rule.CoreLineY + rule.BallRadius
-                : rule.CoreLineY - rule.BallRadius;
+                ? -rule.CoreLineY + ballRadius
+                : rule.CoreLineY - ballRadius;
             TryPlane(
                 position,
                 velocity,
@@ -147,17 +278,22 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 paddleCenter,
                 paddleVelocity,
                 ball.Side,
-                rule.PaddleHalfWidth + rule.BallRadius,
-                rule.PaddleHalfHeight + rule.BallRadius,
+                paddleHalfWidth + ballRadius,
+                rule.PaddleHalfHeight + ballRadius,
                 ref best);
 
             Vector2 brickExtents = new Vector2(
-                rule.BrickWidth * 0.5f + rule.BallRadius,
-                rule.BrickHeight * 0.5f + rule.BallRadius);
+                rule.BrickWidth * 0.5f + ballRadius,
+                rule.BrickHeight * 0.5f + ballRadius);
             for (int i = 0; i < bricks.Count; i++)
             {
                 BrickDuelBrickState brick = bricks[i];
                 if (brick.Side != ball.Side || brick.Health <= 0)
+                {
+                    continue;
+                }
+
+                if (ignoredBrickIds != null && ignoredBrickIds.Contains(brick.BrickId))
                 {
                     continue;
                 }
@@ -247,16 +383,17 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
         private static void RecoverBallInsideArena(
             BrickDuelBallState ball,
-            BrickDuelRuleDefinition rule)
+            BrickDuelRuleDefinition rule,
+            float ballRadius)
         {
-            float minimumX = -rule.ArenaHalfWidth + rule.BallRadius;
-            float maximumX = rule.ArenaHalfWidth - rule.BallRadius;
+            float minimumX = -rule.ArenaHalfWidth + ballRadius;
+            float maximumX = rule.ArenaHalfWidth - ballRadius;
             float minimumY = ball.Side == BrickDuelSide.Bottom
-                ? -rule.CoreLineY + rule.BallRadius
-                : rule.BallRadius;
+                ? -rule.CoreLineY + ballRadius
+                : ballRadius;
             float maximumY = ball.Side == BrickDuelSide.Bottom
-                ? -rule.BallRadius
-                : rule.CoreLineY - rule.BallRadius;
+                ? -ballRadius
+                : rule.CoreLineY - ballRadius;
             Vector2 position = ball.Position;
             Vector2 velocity = ball.Velocity;
             bool corrected = false;

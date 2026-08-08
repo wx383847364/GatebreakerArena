@@ -123,7 +123,13 @@ def is_iteration_log(path: str) -> bool:
 
 def sync_indexes() -> None:
     subprocess.run(
-        ["python3", str(REPO_ROOT / "tools/doc_maintenance/update_project_docs.py"), "--doc-root", str(DOC_ROOT), "sync"],
+        [
+            sys.executable,
+            str(REPO_ROOT / "tools/doc_maintenance/update_project_docs.py"),
+            "--doc-root",
+            str(DOC_ROOT),
+            "sync",
+        ],
         check=True,
         cwd=str(REPO_ROOT),
     )

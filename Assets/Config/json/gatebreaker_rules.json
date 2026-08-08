@@ -31,25 +31,116 @@
       "WallBounceFactor": 1.0
     }
   ],
+  "DT_BrickDuelItemDrop": [
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 0.0,
+      "Enabled": false,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
+      "ItemId": "DUEL_ITEM_WIDE_PADDLE",
+      "ItemName": "宽幅组件",
+      "SortOrder": 1
+    },
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 0.0,
+      "Enabled": false,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
+      "ItemId": "DUEL_ITEM_LARGE_BALL",
+      "ItemName": "扩容球体",
+      "SortOrder": 2
+    },
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 1.0,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+      "ItemId": "DUEL_ITEM_PHASE_DRILL",
+      "ItemName": "相位钻头",
+      "SortOrder": 3
+    },
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 0.0,
+      "Enabled": false,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
+      "ItemId": "DUEL_ITEM_DAMPING_PULSE",
+      "ItemName": "阻尼脉冲",
+      "SortOrder": 4
+    },
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 0.0,
+      "Enabled": false,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
+      "ItemId": "DUEL_ITEM_CORE_BUFFER",
+      "ItemName": "核心缓冲",
+      "SortOrder": 5
+    }
+  ],
   "DT_BrickDuelRule": [
     {
       "AiBallPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball02.prefab",
       "AiLevelId": "AI_NORMAL",
-      "ArenaHalfWidth": 3.5,
-      "BallRadius": 0.2,
+      "ArenaHalfWidth": 3.0,
+      "BallRadius": 0.1,
       "BallResetSeconds": 0.5,
       "BallSpeed": 3.0,
       "BaseTideSpeed": 0.035733,
+      "BrickCompositionIntervalSeconds": 30.0,
+      "BrickCompositionStages": [
+        {
+          "GreenWeight": 0.9,
+          "MysteryWeight": 0.05,
+          "RedWeight": 0.05,
+          "YellowWeight": 0.0
+        },
+        {
+          "GreenWeight": 0.75,
+          "MysteryWeight": 0.05,
+          "RedWeight": 0.15,
+          "YellowWeight": 0.05
+        },
+        {
+          "GreenWeight": 0.6,
+          "MysteryWeight": 0.05,
+          "RedWeight": 0.25,
+          "YellowWeight": 0.1
+        },
+        {
+          "GreenWeight": 0.45,
+          "MysteryWeight": 0.05,
+          "RedWeight": 0.35,
+          "YellowWeight": 0.15
+        },
+        {
+          "GreenWeight": 0.3,
+          "MysteryWeight": 0.05,
+          "RedWeight": 0.45,
+          "YellowWeight": 0.2
+        },
+        {
+          "GreenWeight": 0.2,
+          "MysteryWeight": 0.05,
+          "RedWeight": 0.5,
+          "YellowWeight": 0.25
+        }
+      ],
       "BrickCoreDamage": 1,
       "BrickHeight": 0.46,
       "BrickWidth": 0.66,
       "Columns": 9,
-      "CoreLineY": 5.4,
+      "CoreLineY": 4.9,
       "CountdownSeconds": 5,
       "DangerDistance": 0.92,
       "GreenBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_01.prefab",
       "GreenHealth": 1,
-      "GreenWeight": 0.25,
+      "GreenWeight": 0.9,
       "InitialCoreHealth": 5,
       "InitialRowPatterns": [
         "Green,Red,Yellow,Mystery,Green,Red,Yellow,Mystery,Green",
@@ -59,7 +150,7 @@
       "InitialRows": 3,
       "MysteryBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_04.prefab",
       "MysteryHealth": 1,
-      "MysteryWeight": 0.25,
+      "MysteryWeight": 0.05,
       "PaddleHalfHeight": 0.075,
       "PaddleHalfWidth": 0.375,
       "PaddleMoveSpeed": 8.0,
@@ -71,7 +162,7 @@
       "RandomSeed": 1,
       "RedBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_02.prefab",
       "RedHealth": 2,
-      "RedWeight": 0.25,
+      "RedWeight": 0.05,
       "RuleId": "BRICK_DUEL_V0",
       "ScenePrefabLocation": "Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab",
       "SimulationFps": 30,
@@ -79,7 +170,7 @@
       "StuckTimeoutSeconds": 2.0,
       "YellowBrickPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Brick_03.prefab",
       "YellowHealth": 3,
-      "YellowWeight": 0.25
+      "YellowWeight": 0.0
     }
   ],
   "DT_Hero": [
@@ -1315,9 +1406,16 @@
     "DT_BallRule": {
       "BallContactRadius": "球体碰撞半径，单位为场景距离；用于球与边界、球门和挡板碰撞判定。"
     },
+    "DT_BrickDuelItemDrop": {
+      "BagCopies": "每袋该道具的份数；默认每种 2 份组成 10 件洗牌袋。",
+      "IconLocation": "道具舱图标资源路径。",
+      "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。"
+    },
     "DT_BrickDuelRule": {
       "BallSpeed": "按 SceneSingle 标定后的固定球速；V0 不随压力等级变化。",
       "BaseTideSpeed": "砖潮基础速度 V0；运行时乘以 1 + 0.25 × floor(t / 30)。",
+      "BrickCompositionIntervalSeconds": "砖块配比阶段间隔，单位秒；C(t)=min(floor(t/间隔), 阶段数-1)。",
+      "BrickCompositionStages": "按时间推进的绿/红/黄/？权重表；仅影响新补行，不改写已有砖。",
       "InitialRowPatterns": "三行九列的权威开局序列；上下半场使用镜像位置。",
       "RandomSeed": "后续砖行的确定性随机种子；双方共用同一权威行。"
     },

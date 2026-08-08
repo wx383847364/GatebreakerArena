@@ -180,6 +180,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float RedWeight { get; set; }
         public float YellowWeight { get; set; }
         public float MysteryWeight { get; set; }
+        public float BrickCompositionIntervalSeconds { get; set; }
+        public IReadOnlyList<BrickDuelCompositionStageDefinition> BrickCompositionStages { get; set; }
         public int RandomSeed { get; set; }
         public string AiLevelId { get; set; }
         public IReadOnlyList<string> InitialRowPatterns { get; set; }
@@ -191,6 +193,60 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public string RedBrickPrefabLocation { get; set; }
         public string YellowBrickPrefabLocation { get; set; }
         public string MysteryBrickPrefabLocation { get; set; }
+        public IReadOnlyList<BrickDuelItemDropDefinition> ItemDrops { get; set; }
+
+        public int ResolveBrickCompositionStageIndex(float elapsedSeconds)
+        {
+            float interval = BrickCompositionIntervalSeconds > 0.0001f
+                ? BrickCompositionIntervalSeconds
+                : 30f;
+            int maxIndex = BrickCompositionStages != null && BrickCompositionStages.Count > 0
+                ? BrickCompositionStages.Count - 1
+                : 0;
+            if (elapsedSeconds < 0f)
+            {
+                elapsedSeconds = 0f;
+            }
+
+            int stage = (int)(elapsedSeconds / interval);
+            return stage > maxIndex ? maxIndex : stage;
+        }
+
+        public BrickDuelCompositionStageDefinition ResolveBrickCompositionWeights(float elapsedSeconds)
+        {
+            if (BrickCompositionStages == null || BrickCompositionStages.Count == 0)
+            {
+                return new BrickDuelCompositionStageDefinition
+                {
+                    GreenWeight = GreenWeight,
+                    RedWeight = RedWeight,
+                    YellowWeight = YellowWeight,
+                    MysteryWeight = MysteryWeight,
+                };
+            }
+
+            return BrickCompositionStages[ResolveBrickCompositionStageIndex(elapsedSeconds)];
+        }
+    }
+
+    public sealed class BrickDuelCompositionStageDefinition
+    {
+        public float GreenWeight { get; set; }
+        public float RedWeight { get; set; }
+        public float YellowWeight { get; set; }
+        public float MysteryWeight { get; set; }
+    }
+
+    public sealed class BrickDuelItemDropDefinition
+    {
+        public string DropTableId { get; set; }
+        public int SortOrder { get; set; }
+        public string ItemId { get; set; }
+        public string ItemName { get; set; }
+        public float DropWeight { get; set; }
+        public int BagCopies { get; set; }
+        public bool Enabled { get; set; }
+        public string IconLocation { get; set; }
     }
 
     // --- Chip modifier structs ---

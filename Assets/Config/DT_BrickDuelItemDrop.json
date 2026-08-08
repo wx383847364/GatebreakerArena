@@ -4,9 +4,9 @@
     "SortOrder": 1,
     "ItemId": "DUEL_ITEM_WIDE_PADDLE",
     "ItemName": "宽幅组件",
-    "DropWeight": 0.20,
+    "DropWeight": 0.0,
     "BagCopies": 2,
-    "Enabled": true,
+    "Enabled": false,
     "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png"
   },
   {
@@ -14,9 +14,9 @@
     "SortOrder": 2,
     "ItemId": "DUEL_ITEM_LARGE_BALL",
     "ItemName": "扩容球体",
-    "DropWeight": 0.20,
+    "DropWeight": 0.0,
     "BagCopies": 2,
-    "Enabled": true,
+    "Enabled": false,
     "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png"
   },
   {
@@ -24,7 +24,7 @@
     "SortOrder": 3,
     "ItemId": "DUEL_ITEM_PHASE_DRILL",
     "ItemName": "相位钻头",
-    "DropWeight": 0.20,
+    "DropWeight": 1.0,
     "BagCopies": 2,
     "Enabled": true,
     "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png"
@@ -34,9 +34,9 @@
     "SortOrder": 4,
     "ItemId": "DUEL_ITEM_DAMPING_PULSE",
     "ItemName": "阻尼脉冲",
-    "DropWeight": 0.20,
+    "DropWeight": 0.0,
     "BagCopies": 2,
-    "Enabled": true,
+    "Enabled": false,
     "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png"
   },
   {
@@ -44,9 +44,9 @@
     "SortOrder": 5,
     "ItemId": "DUEL_ITEM_CORE_BUFFER",
     "ItemName": "核心缓冲",
-    "DropWeight": 0.20,
+    "DropWeight": 0.0,
     "BagCopies": 2,
-    "Enabled": true,
+    "Enabled": false,
     "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png"
   }
 ]

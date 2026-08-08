@@ -28,7 +28,15 @@ namespace Gatebreaker.Tests
                 out BrickDuelRuleDefinition rule));
             Assert.AreEqual(30, rule.SimulationFps);
             Assert.AreEqual(3, rule.InitialRowPatterns.Count);
+            Assert.AreEqual(30f, rule.BrickCompositionIntervalSeconds, 0.0001f);
+            Assert.AreEqual(6, rule.BrickCompositionStages.Count);
+            Assert.AreEqual(0.90f, rule.BrickCompositionStages[0].GreenWeight, 0.0001f);
+            Assert.AreEqual(0.00f, rule.BrickCompositionStages[0].YellowWeight, 0.0001f);
+            Assert.AreEqual(0.20f, rule.BrickCompositionStages[5].GreenWeight, 0.0001f);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab", rule.ScenePrefabLocation);
+            Assert.IsNotNull(rule.ItemDrops);
+            Assert.AreEqual(5, rule.ItemDrops.Count);
+            Assert.AreEqual("DUEL_ITEM_WIDE_PADDLE", rule.ItemDrops[0].ItemId);
         }
 
         [Test]
@@ -49,7 +57,7 @@ namespace Gatebreaker.Tests
         {
             string canonical = File.ReadAllText(Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
             string missing = canonical.Replace("\"DT_BrickDuelRule\": [", "\"MissingBrickDuelRule\": [");
-            string invalidWeights = canonical.Replace("\"GreenWeight\": 0.25", "\"GreenWeight\": 0.5");
+            string invalidWeights = canonical.Replace("\"GreenWeight\": 0.9", "\"GreenWeight\": 0.5");
 
             GatebreakerConfigLoadResult missingResult = GatebreakerConfigRuntimeLoader.ParseJson(missing);
             GatebreakerConfigLoadResult invalidResult = GatebreakerConfigRuntimeLoader.ParseJson(invalidWeights);

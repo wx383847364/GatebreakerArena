@@ -6,15 +6,15 @@
     "InitialCoreHealth": 5,
     "InitialRows": 3,
     "Columns": 9,
-    "ArenaHalfWidth": 3.5,
-    "CoreLineY": 5.4,
+    "ArenaHalfWidth": 3.0,
+    "CoreLineY": 4.9,
     "PaddleSpawnY": 4.7,
     "PaddleHalfWidth": 0.375,
     "PaddleHalfHeight": 0.075,
     "PaddleMoveSpeed": 8.0,
     "BrickWidth": 0.66,
     "BrickHeight": 0.46,
-    "BallRadius": 0.2,
+    "BallRadius": 0.1,
     "BallSpeed": 3.0,
     "BaseTideSpeed": 0.035733,
     "BallResetSeconds": 0.5,
@@ -28,10 +28,49 @@
     "YellowHealth": 3,
     "MysteryHealth": 1,
     "BrickCoreDamage": 1,
-    "GreenWeight": 0.25,
-    "RedWeight": 0.25,
-    "YellowWeight": 0.25,
-    "MysteryWeight": 0.25,
+    "GreenWeight": 0.90,
+    "RedWeight": 0.05,
+    "YellowWeight": 0.00,
+    "MysteryWeight": 0.05,
+    "BrickCompositionIntervalSeconds": 30.0,
+    "BrickCompositionStages": [
+      {
+        "GreenWeight": 0.90,
+        "RedWeight": 0.05,
+        "YellowWeight": 0.00,
+        "MysteryWeight": 0.05
+      },
+      {
+        "GreenWeight": 0.75,
+        "RedWeight": 0.15,
+        "YellowWeight": 0.05,
+        "MysteryWeight": 0.05
+      },
+      {
+        "GreenWeight": 0.60,
+        "RedWeight": 0.25,
+        "YellowWeight": 0.10,
+        "MysteryWeight": 0.05
+      },
+      {
+        "GreenWeight": 0.45,
+        "RedWeight": 0.35,
+        "YellowWeight": 0.15,
+        "MysteryWeight": 0.05
+      },
+      {
+        "GreenWeight": 0.30,
+        "RedWeight": 0.45,
+        "YellowWeight": 0.20,
+        "MysteryWeight": 0.05
+      },
+      {
+        "GreenWeight": 0.20,
+        "RedWeight": 0.50,
+        "YellowWeight": 0.25,
+        "MysteryWeight": 0.05
+      }
+    ],
     "RandomSeed": 1,
     "AiLevelId": "AI_NORMAL",
     "InitialRowPatterns": [

@@ -28,13 +28,42 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public Vector2 End { get; }
     }
 
+    public readonly struct BrickDuelWallOverlayBounds
+    {
+        public BrickDuelWallOverlayBounds(
+            float minimumX,
+            float maximumX,
+            float minimumY,
+            float maximumY)
+        {
+            MinimumX = minimumX;
+            MaximumX = maximumX;
+            MinimumY = minimumY;
+            MaximumY = maximumY;
+        }
+
+        public float MinimumX { get; }
+        public float MaximumX { get; }
+        public float MinimumY { get; }
+        public float MaximumY { get; }
+
+        public bool IsValid =>
+            MaximumX > MinimumX + 0.0001f &&
+            MaximumY > MinimumY + 0.0001f;
+    }
+
     public static class BrickDuelCollisionOverlayGeometry
     {
         private const float SegmentEpsilon = 0.0001f;
+        private const string BottomWallName = "Position01";
+        private const string RightWallName = "Position02";
+        private const string LeftWallName = "Position03";
+        private const string TopWallName = "Position04";
 
         public static IReadOnlyList<BrickDuelCollisionOverlayLine> BuildLines(
             BrickDuelRuleDefinition rule,
-            BrickDuelSnapshot snapshot)
+            BrickDuelSnapshot snapshot,
+            BrickDuelWallOverlayBounds? wallBounds = null)
         {
             if (rule == null || snapshot == null)
             {
@@ -42,38 +71,46 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             int brickCount = snapshot.Bricks != null ? snapshot.Bricks.Count : 0;
-            var lines = new List<BrickDuelCollisionOverlayLine>(10 + brickCount * 4);
-            float minimumX = -rule.ArenaHalfWidth + rule.BallRadius;
-            float maximumX = rule.ArenaHalfWidth - rule.BallRadius;
+            var lines = new List<BrickDuelCollisionOverlayLine>(16 + brickCount * 4);
+            float minimumX = wallBounds.HasValue ? wallBounds.Value.MinimumX : -rule.ArenaHalfWidth;
+            float maximumX = wallBounds.HasValue ? wallBounds.Value.MaximumX : rule.ArenaHalfWidth;
+            float minimumY = wallBounds.HasValue ? wallBounds.Value.MinimumY : -rule.CoreLineY;
+            float maximumY = wallBounds.HasValue ? wallBounds.Value.MaximumY : rule.CoreLineY;
             AddRectangle(
                 lines,
                 BrickDuelCollisionOverlayLineKind.Wall,
-                new Vector2(minimumX, -rule.CoreLineY + rule.BallRadius),
-                new Vector2(maximumX, -rule.BallRadius));
+                new Vector2(minimumX, minimumY),
+                new Vector2(maximumX, 0f));
             AddRectangle(
                 lines,
                 BrickDuelCollisionOverlayLineKind.Wall,
-                new Vector2(minimumX, rule.BallRadius),
-                new Vector2(maximumX, rule.CoreLineY - rule.BallRadius));
+                new Vector2(minimumX, 0f),
+                new Vector2(maximumX, maximumY));
 
-            float paddleContactHalfWidth = rule.PaddleHalfWidth + rule.BallRadius;
-            float paddleContactDistance = rule.PaddleHalfHeight + rule.BallRadius;
-            AddPaddleFace(
+            Vector2 bottomPaddleExtents = new Vector2(
+                snapshot.BottomPaddleHalfWidth > 0.0001f
+                    ? snapshot.BottomPaddleHalfWidth
+                    : rule.PaddleHalfWidth,
+                rule.PaddleHalfHeight);
+            Vector2 topPaddleExtents = new Vector2(
+                snapshot.TopPaddleHalfWidth > 0.0001f
+                    ? snapshot.TopPaddleHalfWidth
+                    : rule.PaddleHalfWidth,
+                rule.PaddleHalfHeight);
+            AddAabb(
                 lines,
+                BrickDuelCollisionOverlayLineKind.Paddle,
                 snapshot.BottomPaddle?.Position,
-                Vector2.up,
-                paddleContactHalfWidth,
-                paddleContactDistance);
-            AddPaddleFace(
+                bottomPaddleExtents);
+            AddAabb(
                 lines,
+                BrickDuelCollisionOverlayLineKind.Paddle,
                 snapshot.TopPaddle?.Position,
-                Vector2.down,
-                paddleContactHalfWidth,
-                paddleContactDistance);
+                topPaddleExtents);
 
             Vector2 brickExtents = new Vector2(
-                rule.BrickWidth * 0.5f + rule.BallRadius,
-                rule.BrickHeight * 0.5f + rule.BallRadius);
+                rule.BrickWidth * 0.5f,
+                rule.BrickHeight * 0.5f);
             if (snapshot.Bricks != null)
             {
                 for (int i = 0; i < snapshot.Bricks.Count; i++)
@@ -95,24 +132,83 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             return lines;
         }
 
-        private static void AddPaddleFace(
-            List<BrickDuelCollisionOverlayLine> lines,
-            Vector2? center,
-            Vector2 normal,
-            float contactHalfWidth,
-            float contactDistance)
+        public static bool TryResolveWallInnerBounds(
+            Transform sceneRoot,
+            out BrickDuelWallOverlayBounds bounds)
         {
-            if (!center.HasValue)
+            bounds = default;
+            if (sceneRoot == null)
             {
-                return;
+                return false;
             }
 
-            Vector2 contactCenter = center.Value + normal * contactDistance;
-            AddLine(
-                lines,
-                BrickDuelCollisionOverlayLineKind.Paddle,
-                contactCenter + Vector2.left * contactHalfWidth,
-                contactCenter + Vector2.right * contactHalfWidth);
+            if (!TryGetWallRendererBounds(sceneRoot, LeftWallName, out Bounds left) ||
+                !TryGetWallRendererBounds(sceneRoot, RightWallName, out Bounds right) ||
+                !TryGetWallRendererBounds(sceneRoot, BottomWallName, out Bounds bottom) ||
+                !TryGetWallRendererBounds(sceneRoot, TopWallName, out Bounds top))
+            {
+                return false;
+            }
+
+            // Position01~04 内侧：左墙 max.x、右墙 min.x、底墙 max.y、顶墙 min.y
+            float halfWidth = Mathf.Min(-left.max.x, right.min.x);
+            float halfHeight = Mathf.Min(-bottom.max.y, top.min.y);
+            bounds = new BrickDuelWallOverlayBounds(
+                -halfWidth,
+                halfWidth,
+                -halfHeight,
+                halfHeight);
+            return bounds.IsValid;
+        }
+
+        public static bool TryApplyWallInnerBoundsToRule(
+            BrickDuelRuleDefinition rule,
+            BrickDuelWallOverlayBounds bounds)
+        {
+            if (rule == null || !bounds.IsValid)
+            {
+                return false;
+            }
+
+            float halfWidth = Mathf.Min(-bounds.MinimumX, bounds.MaximumX);
+            float halfHeight = Mathf.Min(-bounds.MinimumY, bounds.MaximumY);
+            if (halfWidth <= rule.BallRadius || halfHeight <= rule.BallRadius)
+            {
+                return false;
+            }
+
+            rule.ArenaHalfWidth = halfWidth;
+            rule.CoreLineY = halfHeight;
+            if (rule.PaddleSpawnY >= rule.CoreLineY)
+            {
+                rule.PaddleSpawnY = Mathf.Max(
+                    rule.PaddleHalfHeight + rule.BallRadius + 0.02f,
+                    rule.CoreLineY - 0.2f);
+            }
+
+            return true;
+        }
+
+        private static bool TryGetWallRendererBounds(
+            Transform sceneRoot,
+            string wallName,
+            out Bounds bounds)
+        {
+            bounds = default;
+            Transform wall = sceneRoot.Find(wallName);
+            if (wall == null)
+            {
+                return false;
+            }
+
+            SpriteRenderer renderer = wall.GetComponentInChildren<SpriteRenderer>();
+            if (renderer == null || !renderer.enabled)
+            {
+                return false;
+            }
+
+            bounds = renderer.bounds;
+            return true;
         }
 
         private static void AddAabb(

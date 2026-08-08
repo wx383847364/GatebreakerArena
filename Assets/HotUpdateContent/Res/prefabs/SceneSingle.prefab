@@ -133,7 +133,7 @@ BoxCollider2D:
     drawMode: 2
     adaptiveTiling: 1
   m_AutoTiling: 0
-  m_Size: {x: 10, y: 0.3}
+  m_Size: {x: 10, y: 1}
   m_EdgeRadius: 0
 --- !u!1 &1020867066091288399
 GameObject:
@@ -334,7 +334,7 @@ BoxCollider2D:
     drawMode: 2
     adaptiveTiling: 1
   m_AutoTiling: 0
-  m_Size: {x: 10, y: 0.3}
+  m_Size: {x: 10, y: 1}
   m_EdgeRadius: 0
 --- !u!1 &5264874653172622688
 GameObject:
@@ -5336,7 +5336,7 @@ BoxCollider2D:
     drawMode: 2
     adaptiveTiling: 1
   m_AutoTiling: 0
-  m_Size: {x: 10, y: 0.3}
+  m_Size: {x: 15, y: 1}
   m_EdgeRadius: 0
 --- !u!1 &6463045249596646239
 GameObject:
@@ -5471,7 +5471,7 @@ BoxCollider2D:
     drawMode: 2
     adaptiveTiling: 1
   m_AutoTiling: 0
-  m_Size: {x: 10, y: 0.3}
+  m_Size: {x: 15, y: 1}
   m_EdgeRadius: 0
 --- !u!1 &6549346503003362588
 GameObject:

@@ -125,6 +125,8 @@ def run_git(doc_root: Path, args, timeout: int = 20):
             command,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             check=False,
             timeout=timeout,
             env=env,

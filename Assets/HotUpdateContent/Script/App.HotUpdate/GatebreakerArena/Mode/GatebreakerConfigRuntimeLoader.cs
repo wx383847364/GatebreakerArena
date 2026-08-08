@@ -84,6 +84,15 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 IEnumerable<BrickDuelRuleDefinition> brickDuelRules = version >= 3
                     ? ReadArray(root, "DT_BrickDuelRule", ReadBrickDuelRule)
                     : Array.Empty<BrickDuelRuleDefinition>();
+                BrickDuelItemDropDefinition[] itemDrops = version >= 3
+                    ? (ReadOptionalArray(root, "DT_BrickDuelItemDrop", ReadBrickDuelItemDrop)
+                        ?? Array.Empty<BrickDuelItemDropDefinition>()).ToArray()
+                    : Array.Empty<BrickDuelItemDropDefinition>();
+                if (itemDrops.Length > 0)
+                {
+                    AttachItemDrops(brickDuelRules, itemDrops);
+                }
+
                 var catalog = new GatebreakerModeCatalog(
                     ReadArray(root, "DT_ModeRule", ReadMode),
                     ReadArray(root, "DT_BallRule", ReadBall),
@@ -192,12 +201,39 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 throw new FormatException("BRICK_DUEL_V0 must use the documented reset and pressure timing.");
             }
 
-            float weightTotal = rule.GreenWeight + rule.RedWeight + rule.YellowWeight + rule.MysteryWeight;
-            if (rule.GreenWeight <= 0f || rule.RedWeight <= 0f ||
-                rule.YellowWeight <= 0f || rule.MysteryWeight <= 0f ||
-                Math.Abs(weightTotal - 1f) > 0.0001f)
+            if (Math.Abs(rule.BrickCompositionIntervalSeconds - 30f) > 0.0001f)
             {
-                throw new FormatException("BRICK_DUEL_V0 brick weights must be positive and total 1.");
+                throw new FormatException("BRICK_DUEL_V0 BrickCompositionIntervalSeconds must be 30.");
+            }
+
+            ValidateBrickCompositionWeights(
+                rule.GreenWeight,
+                rule.RedWeight,
+                rule.YellowWeight,
+                rule.MysteryWeight,
+                "BRICK_DUEL_V0 top-level");
+
+            IReadOnlyList<BrickDuelCompositionStageDefinition> stages =
+                rule.BrickCompositionStages ?? Array.Empty<BrickDuelCompositionStageDefinition>();
+            if (stages.Count != 6)
+            {
+                throw new FormatException("BRICK_DUEL_V0 BrickCompositionStages must contain exactly 6 stages.");
+            }
+
+            for (int stageIndex = 0; stageIndex < stages.Count; stageIndex++)
+            {
+                BrickDuelCompositionStageDefinition stage = stages[stageIndex];
+                if (stage == null)
+                {
+                    throw new FormatException($"BRICK_DUEL_V0 BrickCompositionStages[{stageIndex}] is required.");
+                }
+
+                ValidateBrickCompositionWeights(
+                    stage.GreenWeight,
+                    stage.RedWeight,
+                    stage.YellowWeight,
+                    stage.MysteryWeight,
+                    $"BRICK_DUEL_V0 BrickCompositionStages[{stageIndex}]");
             }
 
             string[] patterns = (rule.InitialRowPatterns ?? Array.Empty<string>()).ToArray();
@@ -440,6 +476,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 RedWeight = ReadFloat(item, "RedWeight"),
                 YellowWeight = ReadFloat(item, "YellowWeight"),
                 MysteryWeight = ReadFloat(item, "MysteryWeight"),
+                BrickCompositionIntervalSeconds = ReadFloat(item, "BrickCompositionIntervalSeconds"),
+                BrickCompositionStages = ReadOptionalArray(item, "BrickCompositionStages", ReadBrickCompositionStage),
                 RandomSeed = ReadInt(item, "RandomSeed"),
                 AiLevelId = ReadString(item, "AiLevelId"),
                 InitialRowPatterns = ReadOptionalStringList(item, "InitialRowPatterns"),
@@ -452,6 +490,71 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 YellowBrickPrefabLocation = ReadString(item, "YellowBrickPrefabLocation"),
                 MysteryBrickPrefabLocation = ReadString(item, "MysteryBrickPrefabLocation"),
             };
+        }
+
+        private static BrickDuelItemDropDefinition ReadBrickDuelItemDrop(Dictionary<string, object> item)
+        {
+            return new BrickDuelItemDropDefinition
+            {
+                DropTableId = ReadString(item, "DropTableId"),
+                SortOrder = ReadInt(item, "SortOrder"),
+                ItemId = ReadString(item, "ItemId"),
+                ItemName = ReadString(item, "ItemName"),
+                DropWeight = ReadFloat(item, "DropWeight"),
+                BagCopies = ReadInt(item, "BagCopies"),
+                Enabled = item.ContainsKey("Enabled") ? ReadBool(item, "Enabled") : true,
+                IconLocation = ReadOptionalString(item, "IconLocation"),
+            };
+        }
+
+        private static void AttachItemDrops(
+            IEnumerable<BrickDuelRuleDefinition> brickDuelRules,
+            IReadOnlyList<BrickDuelItemDropDefinition> itemDrops)
+        {
+            BrickDuelItemDropDefinition[] ordered = itemDrops
+                .OrderBy(item => item.SortOrder)
+                .ThenBy(item => item.ItemId, StringComparer.Ordinal)
+                .ToArray();
+            foreach (BrickDuelRuleDefinition rule in brickDuelRules)
+            {
+                rule.ItemDrops = ordered;
+            }
+        }
+
+        private static BrickDuelCompositionStageDefinition ReadBrickCompositionStage(
+            Dictionary<string, object> item)
+        {
+            return new BrickDuelCompositionStageDefinition
+            {
+                GreenWeight = ReadFloat(item, "GreenWeight"),
+                RedWeight = ReadFloat(item, "RedWeight"),
+                YellowWeight = ReadFloat(item, "YellowWeight"),
+                MysteryWeight = ReadFloat(item, "MysteryWeight"),
+            };
+        }
+
+        private static void ValidateBrickCompositionWeights(
+            float greenWeight,
+            float redWeight,
+            float yellowWeight,
+            float mysteryWeight,
+            string context)
+        {
+            if (greenWeight < 0f || redWeight < 0f || yellowWeight < 0f || mysteryWeight < 0f)
+            {
+                throw new FormatException($"{context} brick weights must be non-negative.");
+            }
+
+            float weightTotal = greenWeight + redWeight + yellowWeight + mysteryWeight;
+            if (Math.Abs(weightTotal - 1f) > 0.0001f)
+            {
+                throw new FormatException($"{context} brick weights must total 1.");
+            }
+
+            if (greenWeight <= 0f && redWeight <= 0f && yellowWeight <= 0f && mysteryWeight <= 0f)
+            {
+                throw new FormatException($"{context} must include at least one positive brick weight.");
+            }
         }
 
         private static UniversalChipDefinition ReadUniversalChip(Dictionary<string, object> item)

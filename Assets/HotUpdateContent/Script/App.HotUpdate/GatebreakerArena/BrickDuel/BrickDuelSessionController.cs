@@ -15,9 +15,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private const float DebugOverlayDepth = -0.08f;
         private readonly BrickDuelVisualAssetService _assetService;
         private readonly Dictionary<int, BrickView> _brickViews = new Dictionary<int, BrickView>();
+        private readonly Dictionary<int, CapsuleView> _capsuleViews = new Dictionary<int, CapsuleView>();
         private readonly Dictionary<BrickDuelBrickType, Stack<GameObject>> _brickPools =
             new Dictionary<BrickDuelBrickType, Stack<GameObject>>();
         private readonly HashSet<int> _liveBrickIds = new HashSet<int>();
+        private readonly HashSet<int> _liveCapsuleIds = new HashSet<int>();
         private readonly List<SpecialFeedbackView> _specialFeedbackViews =
             new List<SpecialFeedbackView>();
         private readonly List<LineRenderer> _debugCollisionLines = new List<LineRenderer>();
@@ -28,8 +30,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private GameObject _topPaddle;
         private GameObject _bottomBall;
         private GameObject _topBall;
+        private Vector3 _bottomPaddleBaseScale = Vector3.one;
+        private Vector3 _topPaddleBaseScale = Vector3.one;
+        private Vector3 _bottomBallBaseScale = Vector3.one;
+        private Vector3 _topBallBaseScale = Vector3.one;
         private Transform _debugCollisionOverlayRoot;
         private Material _debugOverlayMaterial;
+        private BrickDuelWallOverlayBounds? _sceneWallInnerBounds;
         private float _frameAccumulator;
         private int _operationVersion;
         private bool _disposed;
@@ -88,11 +95,32 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     Quaternion.identity,
                     _root.transform);
                 _scene.name = "SceneSingle_Runtime";
+                if (BrickDuelCollisionOverlayGeometry.TryResolveWallInnerBounds(
+                        _scene.transform,
+                        out BrickDuelWallOverlayBounds wallBounds) &&
+                    BrickDuelCollisionOverlayGeometry.TryApplyWallInnerBoundsToRule(
+                        rule,
+                        wallBounds))
+                {
+                    _sceneWallInnerBounds = new BrickDuelWallOverlayBounds(
+                        -rule.ArenaHalfWidth,
+                        rule.ArenaHalfWidth,
+                        -rule.CoreLineY,
+                        rule.CoreLineY);
+                }
+                else
+                {
+                    _sceneWallInnerBounds = null;
+                }
                 _bottomPaddle = InstantiateRuntimeObject(_assets.Paddle.Prefab, "BottomPaddle");
                 _topPaddle = InstantiateRuntimeObject(_assets.Paddle.Prefab, "TopPaddle");
                 _topPaddle.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
                 _bottomBall = InstantiateRuntimeObject(_assets.PlayerBall.Prefab, "BottomBall");
                 _topBall = InstantiateRuntimeObject(_assets.AiBall.Prefab, "TopBall");
+                _bottomPaddleBaseScale = _bottomPaddle.transform.localScale;
+                _topPaddleBaseScale = _topPaddle.transform.localScale;
+                _bottomBallBaseScale = _bottomBall.transform.localScale;
+                _topBallBaseScale = _topBall.transform.localScale;
                 Runtime.BeginCountdown();
                 SyncViews(Runtime.CreateSnapshot());
                 return true;
@@ -151,8 +179,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Runtime = null;
             _frameAccumulator = 0f;
             _brickViews.Clear();
+            _capsuleViews.Clear();
             _brickPools.Clear();
             _liveBrickIds.Clear();
+            _liveCapsuleIds.Clear();
             _specialFeedbackViews.Clear();
             ClearDebugCollisionOverlay();
             if (_root != null)
@@ -162,6 +192,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
             _root = null;
             _scene = null;
+            _sceneWallInnerBounds = null;
             _bottomPaddle = null;
             _topPaddle = null;
             _bottomBall = null;
@@ -210,8 +241,38 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             SetPosition(_topBall, snapshot.TopBall.Position);
             SetActive(_bottomBall, snapshot.BottomBall.IsActive);
             SetActive(_topBall, snapshot.TopBall.IsActive);
+            ApplyPaddleScale(_bottomPaddle, _bottomPaddleBaseScale, snapshot.BottomPaddleHalfWidth);
+            ApplyPaddleScale(_topPaddle, _topPaddleBaseScale, snapshot.TopPaddleHalfWidth);
+            ApplyBallScale(_bottomBall, _bottomBallBaseScale, snapshot.BottomBallRadius);
+            ApplyBallScale(_topBall, _topBallBaseScale, snapshot.TopBallRadius);
             SyncBrickViews(snapshot.Bricks);
+            SyncCapsuleViews(snapshot.Capsules);
             SyncDebugCollisionOverlay(snapshot);
+        }
+
+        private void ApplyPaddleScale(GameObject paddle, Vector3 baseScale, float halfWidth)
+        {
+            if (paddle == null || Runtime?.Rule == null)
+            {
+                return;
+            }
+
+            float multiplier = halfWidth / Mathf.Max(0.0001f, Runtime.Rule.PaddleHalfWidth);
+            paddle.transform.localScale = new Vector3(
+                baseScale.x * multiplier,
+                baseScale.y,
+                baseScale.z);
+        }
+
+        private void ApplyBallScale(GameObject ball, Vector3 baseScale, float radius)
+        {
+            if (ball == null || Runtime?.Rule == null)
+            {
+                return;
+            }
+
+            float multiplier = radius / Mathf.Max(0.0001f, Runtime.Rule.BallRadius);
+            ball.transform.localScale = baseScale * multiplier;
         }
 
         private void SyncBrickViews(IReadOnlyList<BrickDuelBrickState> bricks)
@@ -253,6 +314,124 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 _brickViews.Remove(staleIds[i]);
                 view.GameObject.SetActive(false);
                 GetPool(view.InitialType).Push(view.GameObject);
+            }
+        }
+
+        private void SyncCapsuleViews(IReadOnlyList<BrickDuelItemCapsuleState> capsules)
+        {
+            _liveCapsuleIds.Clear();
+            if (capsules == null)
+            {
+                ReleaseStaleCapsuleViews();
+                return;
+            }
+
+            for (int i = 0; i < capsules.Count; i++)
+            {
+                BrickDuelItemCapsuleState capsule = capsules[i];
+                _liveCapsuleIds.Add(capsule.CapsuleId);
+                if (!_capsuleViews.TryGetValue(capsule.CapsuleId, out CapsuleView view))
+                {
+                    view = CreateCapsuleView(capsule.ItemId);
+                    _capsuleViews[capsule.CapsuleId] = view;
+                }
+
+                view.GameObject.transform.position = new Vector3(
+                    capsule.Position.x,
+                    capsule.Position.y,
+                    view.GameObject.transform.position.z);
+            }
+
+            ReleaseStaleCapsuleViews();
+        }
+
+        private void ReleaseStaleCapsuleViews()
+        {
+            if (_capsuleViews.Count == _liveCapsuleIds.Count)
+            {
+                return;
+            }
+
+            var staleIds = new List<int>();
+            foreach (KeyValuePair<int, CapsuleView> pair in _capsuleViews)
+            {
+                if (!_liveCapsuleIds.Contains(pair.Key))
+                {
+                    staleIds.Add(pair.Key);
+                }
+            }
+
+            for (int i = 0; i < staleIds.Count; i++)
+            {
+                CapsuleView view = _capsuleViews[staleIds[i]];
+                _capsuleViews.Remove(staleIds[i]);
+                UnityEngine.Object.Destroy(view.GameObject);
+            }
+        }
+
+        private CapsuleView CreateCapsuleView(string itemId)
+        {
+            var gameObject = new GameObject($"ItemCapsule_{itemId}");
+            gameObject.transform.SetParent(_root.transform, false);
+            gameObject.transform.localScale = Vector3.one * 0.45f;
+            SpriteRenderer renderer = gameObject.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 40;
+            Sprite sprite = _assets != null ? _assets.GetItemSprite(itemId) : null;
+            if (sprite != null)
+            {
+                renderer.sprite = sprite;
+            }
+            else
+            {
+                renderer.sprite = CreateFallbackCapsuleSprite();
+                renderer.color = ResolveItemColor(itemId);
+            }
+
+            return new CapsuleView(gameObject, renderer);
+        }
+
+        private static Sprite _fallbackCapsuleSprite;
+
+        private static Sprite CreateFallbackCapsuleSprite()
+        {
+            if (_fallbackCapsuleSprite != null)
+            {
+                return _fallbackCapsuleSprite;
+            }
+
+            var texture = new Texture2D(8, 8, TextureFormat.RGBA32, false);
+            Color32[] pixels = new Color32[64];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Color.white;
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            _fallbackCapsuleSprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, 8f, 8f),
+                new Vector2(0.5f, 0.5f),
+                8f);
+            return _fallbackCapsuleSprite;
+        }
+
+        private static Color ResolveItemColor(string itemId)
+        {
+            switch (itemId)
+            {
+                case BrickDuelItemIds.WidePaddle:
+                    return new Color(0.2f, 0.9f, 0.95f, 1f);
+                case BrickDuelItemIds.LargeBall:
+                    return new Color(0.85f, 0.92f, 1f, 1f);
+                case BrickDuelItemIds.PhaseDrill:
+                    return new Color(0.72f, 0.35f, 1f, 1f);
+                case BrickDuelItemIds.DampingPulse:
+                    return new Color(0.45f, 0.8f, 1f, 1f);
+                case BrickDuelItemIds.CoreBuffer:
+                    return new Color(1f, 0.84f, 0.25f, 1f);
+                default:
+                    return Color.white;
             }
         }
 
@@ -382,7 +561,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
             EnsureDebugCollisionOverlayRoot();
             IReadOnlyList<BrickDuelCollisionOverlayLine> lines =
-                BrickDuelCollisionOverlayGeometry.BuildLines(Runtime.Rule, snapshot);
+                BrickDuelCollisionOverlayGeometry.BuildLines(
+                    Runtime.Rule,
+                    snapshot,
+                    _sceneWallInnerBounds);
             for (int i = 0; i < lines.Count; i++)
             {
                 BrickDuelCollisionOverlayLine source = lines[i];
@@ -521,6 +703,18 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             public BrickDuelBrickType InitialType { get; }
+            public GameObject GameObject { get; }
+            public SpriteRenderer Renderer { get; }
+        }
+
+        private sealed class CapsuleView
+        {
+            public CapsuleView(GameObject gameObject, SpriteRenderer renderer)
+            {
+                GameObject = gameObject;
+                Renderer = renderer;
+            }
+
             public GameObject GameObject { get; }
             public SpriteRenderer Renderer { get; }
         }

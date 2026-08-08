@@ -1944,10 +1944,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
 
         private static string FormatCoreHealth(int health)
         {
-            int safeHealth = Mathf.Max(0, health);
-            return safeHealth > 0
-                ? new string('\u2665', safeHealth)
-                : "0";
+            return Mathf.Max(0, health).ToString();
         }
 
         private static Color ResolvePressureColor(int pressureLevel)
