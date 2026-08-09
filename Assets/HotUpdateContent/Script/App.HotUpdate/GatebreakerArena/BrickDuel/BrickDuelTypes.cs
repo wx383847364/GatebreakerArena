@@ -53,10 +53,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
     public sealed class BrickDuelBallState
     {
+        public int BallId { get; internal set; }
         public BrickDuelSide Side { get; internal set; }
         public Vector2 Position { get; internal set; }
         public Vector2 Velocity { get; internal set; }
         public bool IsActive { get; internal set; }
+        public bool IsSplit { get; internal set; }
+        public int RemainingBrickHits { get; internal set; }
         public int ResetFramesRemaining { get; internal set; }
         public int StuckFrames { get; internal set; }
     }
@@ -265,5 +268,6 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public BrickDuelSideItemEffects TopEffects { get; set; }
         public IReadOnlyList<BrickDuelBrickState> Bricks { get; set; }
         public IReadOnlyList<BrickDuelItemCapsuleState> Capsules { get; set; }
+        public IReadOnlyList<BrickDuelBallState> SplitBalls { get; set; }
     }
 }

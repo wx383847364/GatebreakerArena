@@ -247,6 +247,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int BagCopies { get; set; }
         public bool Enabled { get; set; }
         public string IconLocation { get; set; }
+        public string PrefabLocation { get; set; }
     }
 
     // --- Chip modifier structs ---

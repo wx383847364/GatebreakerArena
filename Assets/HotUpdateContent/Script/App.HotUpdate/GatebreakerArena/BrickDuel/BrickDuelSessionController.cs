@@ -16,10 +16,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private readonly BrickDuelVisualAssetService _assetService;
         private readonly Dictionary<int, BrickView> _brickViews = new Dictionary<int, BrickView>();
         private readonly Dictionary<int, CapsuleView> _capsuleViews = new Dictionary<int, CapsuleView>();
+        private readonly Dictionary<int, SplitBallView> _splitBallViews =
+            new Dictionary<int, SplitBallView>();
         private readonly Dictionary<BrickDuelBrickType, Stack<GameObject>> _brickPools =
             new Dictionary<BrickDuelBrickType, Stack<GameObject>>();
         private readonly HashSet<int> _liveBrickIds = new HashSet<int>();
         private readonly HashSet<int> _liveCapsuleIds = new HashSet<int>();
+        private readonly HashSet<int> _liveSplitBallIds = new HashSet<int>();
         private readonly List<SpecialFeedbackView> _specialFeedbackViews =
             new List<SpecialFeedbackView>();
         private readonly List<LineRenderer> _debugCollisionLines = new List<LineRenderer>();
@@ -180,9 +183,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             _frameAccumulator = 0f;
             _brickViews.Clear();
             _capsuleViews.Clear();
+            _splitBallViews.Clear();
             _brickPools.Clear();
             _liveBrickIds.Clear();
             _liveCapsuleIds.Clear();
+            _liveSplitBallIds.Clear();
             _specialFeedbackViews.Clear();
             ClearDebugCollisionOverlay();
             if (_root != null)
@@ -247,6 +252,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             ApplyBallScale(_topBall, _topBallBaseScale, snapshot.TopBallRadius);
             SyncBrickViews(snapshot.Bricks);
             SyncCapsuleViews(snapshot.Capsules);
+            SyncSplitBallViews(snapshot.SplitBalls);
             SyncDebugCollisionOverlay(snapshot);
         }
 
@@ -369,8 +375,90 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
         }
 
+        private void SyncSplitBallViews(IReadOnlyList<BrickDuelBallState> splitBalls)
+        {
+            _liveSplitBallIds.Clear();
+            if (splitBalls == null)
+            {
+                ReleaseStaleSplitBallViews();
+                return;
+            }
+
+            for (int i = 0; i < splitBalls.Count; i++)
+            {
+                BrickDuelBallState ball = splitBalls[i];
+                if (!ball.IsActive)
+                {
+                    continue;
+                }
+
+                _liveSplitBallIds.Add(ball.BallId);
+                if (!_splitBallViews.TryGetValue(ball.BallId, out SplitBallView view))
+                {
+                    view = CreateSplitBallView(ball.Side);
+                    _splitBallViews[ball.BallId] = view;
+                }
+
+                view.GameObject.transform.position = new Vector3(
+                    ball.Position.x,
+                    ball.Position.y,
+                    view.GameObject.transform.position.z);
+                SetActive(view.GameObject, true);
+                ApplyBallScale(view.GameObject, view.BaseScale, Runtime.Rule.BallRadius);
+            }
+
+            ReleaseStaleSplitBallViews();
+        }
+
+        private void ReleaseStaleSplitBallViews()
+        {
+            if (_splitBallViews.Count == _liveSplitBallIds.Count)
+            {
+                return;
+            }
+
+            var staleIds = new List<int>();
+            foreach (KeyValuePair<int, SplitBallView> pair in _splitBallViews)
+            {
+                if (!_liveSplitBallIds.Contains(pair.Key))
+                {
+                    staleIds.Add(pair.Key);
+                }
+            }
+
+            for (int i = 0; i < staleIds.Count; i++)
+            {
+                SplitBallView view = _splitBallViews[staleIds[i]];
+                _splitBallViews.Remove(staleIds[i]);
+                UnityEngine.Object.Destroy(view.GameObject);
+            }
+        }
+
+        private SplitBallView CreateSplitBallView(BrickDuelSide side)
+        {
+            GameObject prefab = side == BrickDuelSide.Bottom
+                ? _assets.PlayerBall.Prefab
+                : _assets.AiBall.Prefab;
+            GameObject gameObject = InstantiateRuntimeObject(prefab, $"SplitBall_{side}");
+            gameObject.transform.localScale *= 0.85f;
+            return new SplitBallView(gameObject, gameObject.transform.localScale);
+        }
+
         private CapsuleView CreateCapsuleView(string itemId)
         {
+            GameObject prefab = _assets != null ? _assets.GetItemPrefab(itemId) : null;
+            if (prefab != null)
+            {
+                GameObject instance = InstantiateRuntimeObject(prefab, $"ItemCapsule_{itemId}");
+                SpriteRenderer prefabRenderer = instance.GetComponentInChildren<SpriteRenderer>();
+                if (prefabRenderer != null)
+                {
+                    prefabRenderer.sortingOrder = Mathf.Max(40, prefabRenderer.sortingOrder);
+                }
+
+                return new CapsuleView(instance, prefabRenderer);
+            }
+
             var gameObject = new GameObject($"ItemCapsule_{itemId}");
             gameObject.transform.SetParent(_root.transform, false);
             gameObject.transform.localScale = Vector3.one * 0.45f;
@@ -426,6 +514,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     return new Color(0.85f, 0.92f, 1f, 1f);
                 case BrickDuelItemIds.PhaseDrill:
                     return new Color(0.72f, 0.35f, 1f, 1f);
+                case BrickDuelItemIds.SplitBall:
+                    return new Color(1f, 0.72f, 0.2f, 1f);
                 case BrickDuelItemIds.DampingPulse:
                     return new Color(0.45f, 0.8f, 1f, 1f);
                 case BrickDuelItemIds.CoreBuffer:
@@ -717,6 +807,18 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
             public GameObject GameObject { get; }
             public SpriteRenderer Renderer { get; }
+        }
+
+        private sealed class SplitBallView
+        {
+            public SplitBallView(GameObject gameObject, Vector3 baseScale)
+            {
+                GameObject = gameObject;
+                BaseScale = baseScale;
+            }
+
+            public GameObject GameObject { get; }
+            public Vector3 BaseScale { get; }
         }
 
         private sealed class SpecialFeedbackView

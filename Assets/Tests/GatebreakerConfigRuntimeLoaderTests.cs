@@ -35,7 +35,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(0.20f, rule.BrickCompositionStages[5].GreenWeight, 0.0001f);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab", rule.ScenePrefabLocation);
             Assert.IsNotNull(rule.ItemDrops);
-            Assert.AreEqual(5, rule.ItemDrops.Count);
+            Assert.AreEqual(6, rule.ItemDrops.Count);
             Assert.AreEqual("DUEL_ITEM_WIDE_PADDLE", rule.ItemDrops[0].ItemId);
         }
 

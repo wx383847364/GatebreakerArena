@@ -40,6 +40,7 @@
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
       "ItemId": "DUEL_ITEM_WIDE_PADDLE",
       "ItemName": "宽幅组件",
+      "PrefabLocation": "",
       "SortOrder": 1
     },
     {
@@ -50,17 +51,30 @@
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
       "ItemId": "DUEL_ITEM_LARGE_BALL",
       "ItemName": "扩容球体",
+      "PrefabLocation": "",
       "SortOrder": 2
     },
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 1.0,
+      "DropWeight": 0.5,
       "Enabled": true,
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
       "ItemId": "DUEL_ITEM_PHASE_DRILL",
       "ItemName": "相位钻头",
+      "PrefabLocation": "",
       "SortOrder": 3
+    },
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 0.5,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+      "ItemId": "DUEL_ITEM_SPLIT_BALL",
+      "ItemName": "裂变球体",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item02.prefab",
+      "SortOrder": 4
     },
     {
       "BagCopies": 2,
@@ -70,7 +84,8 @@
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
       "ItemId": "DUEL_ITEM_DAMPING_PULSE",
       "ItemName": "阻尼脉冲",
-      "SortOrder": 4
+      "PrefabLocation": "",
+      "SortOrder": 5
     },
     {
       "BagCopies": 2,
@@ -80,7 +95,8 @@
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
       "ItemId": "DUEL_ITEM_CORE_BUFFER",
       "ItemName": "核心缓冲",
-      "SortOrder": 5
+      "PrefabLocation": "",
+      "SortOrder": 6
     }
   ],
   "DT_BrickDuelRule": [
@@ -1408,8 +1424,9 @@
     },
     "DT_BrickDuelItemDrop": {
       "BagCopies": "每袋该道具的份数；默认每种 2 份组成 10 件洗牌袋。",
-      "IconLocation": "道具舱图标资源路径。",
-      "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。"
+      "IconLocation": "道具舱图标资源路径；无 Prefab 时用作 Sprite 回退。",
+      "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。",
+      "PrefabLocation": "道具舱 Prefab 路径；非空时优先实例化该 Prefab。"
     },
     "DT_BrickDuelRule": {
       "BallSpeed": "按 SceneSingle 标定后的固定球速；V0 不随压力等级变化。",

@@ -25,17 +25,22 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private readonly BrickDuelCollisionSolver _collisionSolver;
         private readonly BrickDuelAiController _aiController;
         private readonly List<BrickDuelBrickState> _bricks = new List<BrickDuelBrickState>();
+        private readonly List<BrickDuelBallState> _splitBalls = new List<BrickDuelBallState>();
         private readonly List<BrickDuelItemCapsuleState> _capsules = new List<BrickDuelItemCapsuleState>();
         private readonly Dictionary<int, LogicalRow> _logicalRows = new Dictionary<int, LogicalRow>();
         private readonly HashSet<int> _bottomHitBrickIds = new HashSet<int>();
         private readonly HashSet<int> _topHitBrickIds = new HashSet<int>();
+        private readonly HashSet<int> _splitHitBrickIds = new HashSet<int>();
         private readonly HashSet<int> _bottomIgnoredBrickIds = new HashSet<int>();
         private readonly HashSet<int> _topIgnoredBrickIds = new HashSet<int>();
+        private readonly Dictionary<int, HashSet<int>> _splitIgnoredBrickIds =
+            new Dictionary<int, HashSet<int>>();
         private readonly BrickDuelSideItemEffects _bottomEffects = new BrickDuelSideItemEffects();
         private readonly BrickDuelSideItemEffects _topEffects = new BrickDuelSideItemEffects();
         private GatebreakerDeterministicPrng _rowRandom;
         private BrickDuelItemDropBag _itemBag;
         private int _nextBrickId;
+        private int _nextBallId;
         private int _nextCapsuleId;
         private int _nextLogicalRowId;
         private int _bottomNextRowId;
@@ -58,8 +63,18 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 unchecked((uint)rule.RandomSeed) ^ 0xA17E91u);
             BottomPaddle = new BrickDuelPaddleState { Side = BrickDuelSide.Bottom };
             TopPaddle = new BrickDuelPaddleState { Side = BrickDuelSide.Top };
-            BottomBall = new BrickDuelBallState { Side = BrickDuelSide.Bottom };
-            TopBall = new BrickDuelBallState { Side = BrickDuelSide.Top };
+            BottomBall = new BrickDuelBallState
+            {
+                BallId = 1,
+                Side = BrickDuelSide.Bottom,
+                IsSplit = false,
+            };
+            TopBall = new BrickDuelBallState
+            {
+                BallId = 2,
+                Side = BrickDuelSide.Top,
+                IsSplit = false,
+            };
             LastFrameEvents = new BrickDuelFrameEvents();
             ResetToWaiting();
         }
@@ -80,6 +95,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public BrickDuelSideItemEffects BottomEffects => _bottomEffects;
         public BrickDuelSideItemEffects TopEffects => _topEffects;
         public IReadOnlyList<BrickDuelBrickState> Bricks => _bricks;
+        public IReadOnlyList<BrickDuelBallState> SplitBalls => _splitBalls;
         public IReadOnlyList<BrickDuelItemCapsuleState> Capsules => _capsules;
         public BrickDuelFrameEvents LastFrameEvents { get; }
         public float FrameDelta => 1f / Mathf.Max(1, _rule.SimulationFps);
@@ -119,6 +135,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             TopCoreHealth = _rule.InitialCoreHealth;
             CountdownFramesRemaining = _rule.CountdownSeconds * _rule.SimulationFps;
             _nextBrickId = 1;
+            _nextBallId = 3;
             _nextCapsuleId = 1;
             _nextLogicalRowId = 0;
             _bottomNextRowId = 0;
@@ -131,10 +148,12 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 unchecked((uint)_rule.RandomSeed) ^ 0x17E401u);
             _aiController.Reset();
             _bricks.Clear();
+            _splitBalls.Clear();
             _capsules.Clear();
             _logicalRows.Clear();
             _bottomIgnoredBrickIds.Clear();
             _topIgnoredBrickIds.Clear();
+            _splitIgnoredBrickIds.Clear();
             _bottomEffects.Clear();
             _topEffects.Clear();
             SpawnInitialRows();
@@ -163,10 +182,12 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             BottomCoreHealth = _rule.InitialCoreHealth;
             TopCoreHealth = _rule.InitialCoreHealth;
             _bricks.Clear();
+            _splitBalls.Clear();
             _capsules.Clear();
             _logicalRows.Clear();
             _bottomIgnoredBrickIds.Clear();
             _topIgnoredBrickIds.Clear();
+            _splitIgnoredBrickIds.Clear();
             _bottomEffects.Clear();
             _topEffects.Clear();
             ResetPaddles();
@@ -271,6 +292,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
             ApplyBrickHits(BrickDuelSide.Bottom, _bottomHitBrickIds);
             ApplyBrickHits(BrickDuelSide.Top, _topHitBrickIds);
+            StepSplitBalls(
+                bottomPaddleStart,
+                topPaddleStart,
+                bottomPaddleVelocity,
+                topPaddleVelocity,
+                bottomTideSpeed,
+                topTideSpeed);
 
             AdvanceBrickTide(BrickDuelSide.Bottom, bottomTideSpeed);
             AdvanceBrickTide(BrickDuelSide.Top, topTideSpeed);
@@ -315,6 +343,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     .OrderBy(capsule => capsule.CapsuleId)
                     .Select(CloneCapsule)
                     .ToArray(),
+                SplitBalls = _splitBalls
+                    .OrderBy(ball => ball.BallId)
+                    .Select(CloneBall)
+                    .ToArray(),
             };
         }
 
@@ -332,6 +364,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Hash(ref hash, BottomCoreHealth, prime);
             Hash(ref hash, TopCoreHealth, prime);
             Hash(ref hash, _nextBrickId, prime);
+            Hash(ref hash, _nextBallId, prime);
             Hash(ref hash, _nextCapsuleId, prime);
             Hash(ref hash, _nextLogicalRowId, prime);
             Hash(ref hash, _bottomNextRowId, prime);
@@ -345,6 +378,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Hash(ref hash, Quantize(_aiController.TargetX), prime);
             HashBall(ref hash, BottomBall, prime);
             HashBall(ref hash, TopBall, prime);
+            foreach (BrickDuelBallState splitBall in _splitBalls.OrderBy(item => item.BallId))
+            {
+                HashBall(ref hash, splitBall, prime);
+            }
             Hash(ref hash, Quantize(BottomPaddle.Position.x), prime);
             Hash(ref hash, Quantize(TopPaddle.Position.x), prime);
             HashEffects(ref hash, _bottomEffects, prime);
@@ -456,6 +493,176 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             if (ball.StuckFrames >= stuckFrameLimit)
             {
                 BeginBallReset(ball, ballRadius);
+            }
+        }
+
+        private void StepSplitBalls(
+            Vector2 bottomPaddleStart,
+            Vector2 topPaddleStart,
+            Vector2 bottomPaddleVelocity,
+            Vector2 topPaddleVelocity,
+            float bottomTideSpeed,
+            float topTideSpeed)
+        {
+            if (_splitBalls.Count == 0)
+            {
+                return;
+            }
+
+            float ballRadius = _rule.BallRadius;
+            int stuckFrameLimit = Mathf.Max(
+                1,
+                Mathf.RoundToInt(_rule.StuckTimeoutSeconds * _rule.SimulationFps));
+            var expiredBallIds = new List<int>();
+            for (int i = 0; i < _splitBalls.Count; i++)
+            {
+                BrickDuelBallState ball = _splitBalls[i];
+                if (!ball.IsActive)
+                {
+                    expiredBallIds.Add(ball.BallId);
+                    continue;
+                }
+
+                if (!_splitIgnoredBrickIds.TryGetValue(ball.BallId, out HashSet<int> ignoredBrickIds))
+                {
+                    ignoredBrickIds = new HashSet<int>();
+                    _splitIgnoredBrickIds[ball.BallId] = ignoredBrickIds;
+                }
+
+                _splitHitBrickIds.Clear();
+                int pierceCharges = 0;
+                bool isBottom = ball.Side == BrickDuelSide.Bottom;
+                Vector2 previous = ball.Position;
+                BrickDuelCollisionSolver.RefreshIgnoredBrickContacts(
+                    ball,
+                    _bricks,
+                    _rule,
+                    ballRadius,
+                    ignoredBrickIds);
+                _collisionSolver.StepBall(
+                    ball,
+                    isBottom ? BottomPaddle : TopPaddle,
+                    isBottom ? bottomPaddleStart : topPaddleStart,
+                    isBottom ? bottomPaddleVelocity : topPaddleVelocity,
+                    _bricks,
+                    _rule,
+                    FrameDelta,
+                    isBottom ? bottomTideSpeed : topTideSpeed,
+                    isBottom ? BottomPaddleHalfWidth : TopPaddleHalfWidth,
+                    ballRadius,
+                    ref pierceCharges,
+                    ignoredBrickIds,
+                    _splitHitBrickIds);
+
+                Vector2 displacement = ball.Position - previous;
+                if (displacement.sqrMagnitude <
+                    _rule.StuckMovementEpsilon * _rule.StuckMovementEpsilon * FrameDelta * FrameDelta)
+                {
+                    ball.StuckFrames++;
+                }
+                else
+                {
+                    ball.StuckFrames = 0;
+                }
+
+                if (_splitHitBrickIds.Count > 0)
+                {
+                    ApplyBrickHits(ball.Side, _splitHitBrickIds);
+                    ball.RemainingBrickHits -= _splitHitBrickIds.Count;
+                }
+
+                if (ball.RemainingBrickHits <= 0 || ball.StuckFrames >= stuckFrameLimit)
+                {
+                    expiredBallIds.Add(ball.BallId);
+                }
+            }
+
+            for (int i = 0; i < expiredBallIds.Count; i++)
+            {
+                RemoveSplitBall(expiredBallIds[i]);
+            }
+        }
+
+        private void SpawnSplitBallsFromSide(BrickDuelSide side)
+        {
+            var sources = new List<(BrickDuelBallState Ball, float Radius)>();
+            BrickDuelBallState mother = side == BrickDuelSide.Bottom ? BottomBall : TopBall;
+            if (mother.IsActive)
+            {
+                sources.Add((
+                    mother,
+                    side == BrickDuelSide.Bottom ? BottomBallRadius : TopBallRadius));
+            }
+
+            for (int i = 0; i < _splitBalls.Count; i++)
+            {
+                BrickDuelBallState existing = _splitBalls[i];
+                if (existing.Side == side && existing.IsActive)
+                {
+                    sources.Add((existing, _rule.BallRadius));
+                }
+            }
+
+            float newRadius = _rule.BallRadius;
+            float angleRadians =
+                BrickDuelItemConstants.SplitBallSpawnAngleDegrees * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(angleRadians);
+            float sin = Mathf.Sin(angleRadians);
+            for (int i = 0; i < sources.Count; i++)
+            {
+                BrickDuelBallState source = sources[i].Ball;
+                float sourceRadius = sources[i].Radius;
+                Vector2 sourceDirection = source.Velocity.sqrMagnitude > 0.0001f
+                    ? source.Velocity.normalized
+                    : new Vector2(0f, side == BrickDuelSide.Bottom ? 1f : -1f);
+                Vector2 spawnDirection = new Vector2(
+                    sourceDirection.x * cos - sourceDirection.y * sin,
+                    sourceDirection.x * sin + sourceDirection.y * cos);
+                if (spawnDirection.sqrMagnitude <= 0.0001f)
+                {
+                    spawnDirection = sourceDirection;
+                }
+                else
+                {
+                    spawnDirection = spawnDirection.normalized;
+                }
+
+                float separation =
+                    sourceRadius +
+                    newRadius +
+                    BrickDuelItemConstants.SplitBallSpawnSeparation;
+                var splitBall = new BrickDuelBallState
+                {
+                    BallId = _nextBallId++,
+                    Side = side,
+                    Position = source.Position + spawnDirection * separation,
+                    Velocity = spawnDirection * _rule.BallSpeed,
+                    IsActive = true,
+                    IsSplit = true,
+                    RemainingBrickHits = BrickDuelItemConstants.SplitBallBrickHits,
+                };
+                BrickDuelCollisionSolver.SeparateBallFromBricksAndWalls(
+                    splitBall,
+                    _bricks,
+                    _rule,
+                    newRadius);
+                _splitBalls.Add(splitBall);
+                _splitIgnoredBrickIds[splitBall.BallId] = new HashSet<int>();
+            }
+        }
+
+        private void RemoveSplitBall(int ballId)
+        {
+            for (int i = 0; i < _splitBalls.Count; i++)
+            {
+                if (_splitBalls[i].BallId != ballId)
+                {
+                    continue;
+                }
+
+                _splitBalls.RemoveAt(i);
+                _splitIgnoredBrickIds.Remove(ballId);
+                return;
             }
         }
 
@@ -642,6 +849,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     effects.PhaseDrillFramesRemaining = SecondsToFrames(
                         BrickDuelItemConstants.PhaseDrillDurationSeconds);
                     break;
+                case BrickDuelItemIds.SplitBall:
+                    SpawnSplitBallsFromSide(capsule.Side);
+                    break;
                 case BrickDuelItemIds.DampingPulse:
                     effects.DampingFramesRemaining = SecondsToFrames(
                         BrickDuelItemConstants.DampingDurationSeconds);
@@ -826,6 +1036,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             IsPaused = false;
             BottomBall.IsActive = false;
             TopBall.IsActive = false;
+            _splitBalls.Clear();
+            _splitIgnoredBrickIds.Clear();
             _capsules.Clear();
             _bottomEffects.Clear();
             _topEffects.Clear();
@@ -1126,10 +1338,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         {
             return new BrickDuelBallState
             {
+                BallId = source.BallId,
                 Side = source.Side,
                 Position = source.Position,
                 Velocity = source.Velocity,
                 IsActive = source.IsActive,
+                IsSplit = source.IsSplit,
+                RemainingBrickHits = source.RemainingBrickHits,
                 ResetFramesRemaining = source.ResetFramesRemaining,
                 StuckFrames = source.StuckFrames,
             };
@@ -1164,12 +1379,15 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
         private static void HashBall(ref ulong hash, BrickDuelBallState ball, ulong prime)
         {
+            Hash(ref hash, ball.BallId, prime);
             Hash(ref hash, (int)ball.Side, prime);
             Hash(ref hash, Quantize(ball.Position.x), prime);
             Hash(ref hash, Quantize(ball.Position.y), prime);
             Hash(ref hash, Quantize(ball.Velocity.x), prime);
             Hash(ref hash, Quantize(ball.Velocity.y), prime);
             Hash(ref hash, ball.IsActive ? 1 : 0, prime);
+            Hash(ref hash, ball.IsSplit ? 1 : 0, prime);
+            Hash(ref hash, ball.RemainingBrickHits, prime);
             Hash(ref hash, ball.ResetFramesRemaining, prime);
             Hash(ref hash, ball.StuckFrames, prime);
         }

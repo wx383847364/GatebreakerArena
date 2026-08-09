@@ -158,7 +158,7 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         ),
         "DT_BrickDuelItemDrop": (
             "DropTableId", "SortOrder", "ItemId", "ItemName", "DropWeight",
-            "BagCopies", "Enabled", "IconLocation",
+            "BagCopies", "Enabled", "IconLocation", "PrefabLocation",
         ),
         "DT_Hero": ("HeroId", "DisplayName", "ActiveAbilityId", "ActiveAbilityCooldownSeconds", "PathIds"),
         "DT_HeroPath": ("PathId", "HeroId", "DisplayName", "ResonanceCategories", "MilestoneEffects"),
@@ -233,6 +233,11 @@ def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list
     icon = row.get("IconLocation")
     if not isinstance(icon, str) or not icon.strip():
         errors.append(f"{prefix}: IconLocation must be a non-empty string.")
+    prefab = row.get("PrefabLocation")
+    if prefab is None:
+        row["PrefabLocation"] = ""
+    elif not isinstance(prefab, str):
+        errors.append(f"{prefix}: PrefabLocation must be a string.")
 
 
 def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: list[str]) -> None:
@@ -240,13 +245,14 @@ def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: lis
         "DUEL_ITEM_WIDE_PADDLE",
         "DUEL_ITEM_LARGE_BALL",
         "DUEL_ITEM_PHASE_DRILL",
+        "DUEL_ITEM_SPLIT_BALL",
         "DUEL_ITEM_DAMPING_PULSE",
         "DUEL_ITEM_CORE_BUFFER",
     }
     item_ids = {row.get("ItemId") for row in rows}
     if item_ids != expected:
         errors.append(
-            "DT_BrickDuelItemDrop: must contain exactly the five V0 duel item ids."
+            "DT_BrickDuelItemDrop: must contain exactly the six V0 duel item ids."
         )
     weight_total = sum(float(row.get("DropWeight") or 0.0) for row in rows if row.get("Enabled", True))
     if abs(weight_total - 1.0) > 0.0001:
@@ -1096,7 +1102,8 @@ def _field_comments() -> dict[str, dict[str, str]]:
         "DT_BrickDuelItemDrop": {
             "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。",
             "BagCopies": "每袋该道具的份数；默认每种 2 份组成 10 件洗牌袋。",
-            "IconLocation": "道具舱图标资源路径。",
+            "IconLocation": "道具舱图标资源路径；无 Prefab 时用作 Sprite 回退。",
+            "PrefabLocation": "道具舱 Prefab 路径；非空时优先实例化该 Prefab。",
         },
         "DT_Hero": {
             "PathIds": "V1 每名英雄固定关联两条共鸣路径；对局开始时仅使用这里定义的路径。",

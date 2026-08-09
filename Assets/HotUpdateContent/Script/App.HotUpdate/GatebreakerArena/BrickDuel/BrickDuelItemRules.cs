@@ -10,6 +10,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public const string WidePaddle = "DUEL_ITEM_WIDE_PADDLE";
         public const string LargeBall = "DUEL_ITEM_LARGE_BALL";
         public const string PhaseDrill = "DUEL_ITEM_PHASE_DRILL";
+        public const string SplitBall = "DUEL_ITEM_SPLIT_BALL";
         public const string DampingPulse = "DUEL_ITEM_DAMPING_PULSE";
         public const string CoreBuffer = "DUEL_ITEM_CORE_BUFFER";
     }
@@ -21,6 +22,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public int BagCopies { get; set; }
         public float DropWeight { get; set; }
         public string IconLocation { get; set; }
+        public string PrefabLocation { get; set; }
         public bool Enabled { get; set; } = true;
     }
 
@@ -55,6 +57,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
         public const float CoreBufferDurationSeconds = 15f;
         public const int CoreBufferMaxLayers = 1;
+
+        public const int SplitBallBrickHits = 3;
+        public const float SplitBallSpawnAngleDegrees = 30f;
+        public const float SplitBallSpawnSeparation = 0.02f;
     }
 
     public sealed class BrickDuelItemDropBag
@@ -124,7 +130,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.WidePaddle,
                     ItemName = "宽幅组件",
                     BagCopies = 2,
-                    DropWeight = 0.2f,
+                    DropWeight = 1f / 6f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
                 },
@@ -133,7 +139,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.LargeBall,
                     ItemName = "扩容球体",
                     BagCopies = 2,
-                    DropWeight = 0.2f,
+                    DropWeight = 1f / 6f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
                 },
@@ -142,16 +148,27 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.PhaseDrill,
                     ItemName = "相位钻头",
                     BagCopies = 2,
-                    DropWeight = 0.2f,
+                    DropWeight = 1f / 6f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+                },
+                new BrickDuelItemDefinition
+                {
+                    ItemId = BrickDuelItemIds.SplitBall,
+                    ItemName = "裂变球体",
+                    BagCopies = 2,
+                    DropWeight = 1f / 6f,
+                    IconLocation =
+                        "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+                    PrefabLocation =
+                        "Assets/HotUpdateContent/Res/prefabs/Item02.prefab",
                 },
                 new BrickDuelItemDefinition
                 {
                     ItemId = BrickDuelItemIds.DampingPulse,
                     ItemName = "阻尼脉冲",
                     BagCopies = 2,
-                    DropWeight = 0.2f,
+                    DropWeight = 1f / 6f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
                 },
@@ -160,7 +177,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.CoreBuffer,
                     ItemName = "核心缓冲",
                     BagCopies = 2,
-                    DropWeight = 0.2f,
+                    DropWeight = 1f / 6f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
                 },
@@ -191,6 +208,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     BagCopies = Math.Max(1, row.BagCopies),
                     DropWeight = row.DropWeight,
                     IconLocation = row.IconLocation,
+                    PrefabLocation = row.PrefabLocation,
                     Enabled = row.Enabled,
                 });
             }

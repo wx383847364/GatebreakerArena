@@ -47,11 +47,25 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
                 if (rule.ItemDrops != null && rule.ItemDrops.Count > 0)
                 {
-                    IReadOnlyList<BrickDuelItemDefinition> itemDefinitions =
-                        BrickDuelItemDropBag.ResolveDefinitions(rule.ItemDrops);
-                    for (int i = 0; i < itemDefinitions.Count; i++)
+                    for (int i = 0; i < rule.ItemDrops.Count; i++)
                     {
-                        BrickDuelItemDefinition item = itemDefinitions[i];
+                        BrickDuelItemDropDefinition item = rule.ItemDrops[i];
+                        if (item == null || string.IsNullOrWhiteSpace(item.ItemId))
+                        {
+                            continue;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(item.PrefabLocation))
+                        {
+                            BrickDuelLoadedPrefab prefab = await LoadOptionalPrefabAsync(
+                                item.PrefabLocation,
+                                item.ItemId);
+                            if (prefab != null)
+                            {
+                                assets.SetItemPrefab(item.ItemId, prefab);
+                            }
+                        }
+
                         BrickDuelLoadedSprite loaded = await LoadOptionalSpriteAsync(
                             item.IconLocation,
                             item.ItemId);
@@ -98,6 +112,40 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             {
                 handle?.Release();
                 throw;
+            }
+        }
+
+        private async Task<BrickDuelLoadedPrefab> LoadOptionalPrefabAsync(string location, string itemId)
+        {
+            if (_assetsRuntime == null || string.IsNullOrWhiteSpace(location))
+            {
+                return null;
+            }
+
+            IAssetHandle handle = null;
+            try
+            {
+                handle = await _assetsRuntime.LoadAssetAsync(location);
+                if (!(handle?.AssetObject is GameObject prefab))
+                {
+                    handle?.Release();
+                    _logger?.LogWarning(
+                        "BrickDuel item prefab '{0}' is not a GameObject: {1}",
+                        itemId,
+                        location);
+                    return null;
+                }
+
+                return new BrickDuelLoadedPrefab(location, prefab, handle);
+            }
+            catch (Exception ex)
+            {
+                handle?.Release();
+                _logger?.LogWarning(
+                    "BrickDuel item prefab load failed for '{0}': {1}",
+                    itemId,
+                    ex.Message);
+                return null;
             }
         }
 
@@ -157,6 +205,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             new Dictionary<BrickDuelBrickType, BrickDuelLoadedPrefab>();
         private readonly Dictionary<string, BrickDuelLoadedSprite> _itemSprites =
             new Dictionary<string, BrickDuelLoadedSprite>(StringComparer.Ordinal);
+        private readonly Dictionary<string, BrickDuelLoadedPrefab> _itemPrefabs =
+            new Dictionary<string, BrickDuelLoadedPrefab>(StringComparer.Ordinal);
 
         public BrickDuelLoadedPrefab Scene { get; internal set; }
         public BrickDuelLoadedPrefab Paddle { get; internal set; }
@@ -182,6 +232,14 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 : null;
         }
 
+        public GameObject GetItemPrefab(string itemId)
+        {
+            return !string.IsNullOrEmpty(itemId) &&
+                   _itemPrefabs.TryGetValue(itemId, out BrickDuelLoadedPrefab loaded)
+                ? loaded.Prefab
+                : null;
+        }
+
         internal void SetBrick(BrickDuelBrickType type, BrickDuelLoadedPrefab prefab)
         {
             _bricks[type] = prefab;
@@ -195,6 +253,16 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             _itemSprites[itemId] = sprite;
+        }
+
+        internal void SetItemPrefab(string itemId, BrickDuelLoadedPrefab prefab)
+        {
+            if (string.IsNullOrEmpty(itemId) || prefab == null)
+            {
+                return;
+            }
+
+            _itemPrefabs[itemId] = prefab;
         }
 
         public void Dispose()
@@ -217,6 +285,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 sprite?.Dispose();
             }
             _itemSprites.Clear();
+            foreach (BrickDuelLoadedPrefab prefab in _itemPrefabs.Values)
+            {
+                prefab?.Dispose();
+            }
+            _itemPrefabs.Clear();
         }
     }
 

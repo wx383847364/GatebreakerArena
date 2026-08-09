@@ -504,6 +504,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 BagCopies = ReadInt(item, "BagCopies"),
                 Enabled = item.ContainsKey("Enabled") ? ReadBool(item, "Enabled") : true,
                 IconLocation = ReadOptionalString(item, "IconLocation"),
+                PrefabLocation = ReadOptionalString(item, "PrefabLocation"),
             };
         }
 

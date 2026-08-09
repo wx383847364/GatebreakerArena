@@ -7,7 +7,8 @@
     "DropWeight": 0.0,
     "BagCopies": 2,
     "Enabled": false,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png"
+    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
+    "PrefabLocation": ""
   },
   {
     "DropTableId": "BRICK_DUEL_ITEM_V0",
@@ -17,36 +18,51 @@
     "DropWeight": 0.0,
     "BagCopies": 2,
     "Enabled": false,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png"
+    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
+    "PrefabLocation": ""
   },
   {
     "DropTableId": "BRICK_DUEL_ITEM_V0",
     "SortOrder": 3,
     "ItemId": "DUEL_ITEM_PHASE_DRILL",
     "ItemName": "相位钻头",
-    "DropWeight": 1.0,
+    "DropWeight": 0.5,
     "BagCopies": 2,
     "Enabled": true,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png"
+    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+    "PrefabLocation": ""
   },
   {
     "DropTableId": "BRICK_DUEL_ITEM_V0",
     "SortOrder": 4,
+    "ItemId": "DUEL_ITEM_SPLIT_BALL",
+    "ItemName": "裂变球体",
+    "DropWeight": 0.5,
+    "BagCopies": 2,
+    "Enabled": true,
+    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+    "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item02.prefab"
+  },
+  {
+    "DropTableId": "BRICK_DUEL_ITEM_V0",
+    "SortOrder": 5,
     "ItemId": "DUEL_ITEM_DAMPING_PULSE",
     "ItemName": "阻尼脉冲",
     "DropWeight": 0.0,
     "BagCopies": 2,
     "Enabled": false,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png"
+    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
+    "PrefabLocation": ""
   },
   {
     "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 5,
+    "SortOrder": 6,
     "ItemId": "DUEL_ITEM_CORE_BUFFER",
     "ItemName": "核心缓冲",
     "DropWeight": 0.0,
     "BagCopies": 2,
     "Enabled": false,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png"
+    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
+    "PrefabLocation": ""
   }
 ]

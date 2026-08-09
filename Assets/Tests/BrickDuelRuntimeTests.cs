@@ -1039,6 +1039,166 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void SplitBall_SpawnsOnePerActiveBall_AndPreservesSources()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            runtime.BottomBall.Position = new Vector2(0.2f, -0.8f);
+            runtime.BottomBall.Velocity = new Vector2(0.3f, runtime.Rule.BallSpeed).normalized *
+                                         runtime.Rule.BallSpeed;
+            runtime.BottomBall.IsActive = true;
+            Vector2 motherPosition = runtime.BottomBall.Position;
+            Vector2 motherVelocity = runtime.BottomBall.Velocity;
+
+            MethodInfo spawn = typeof(BrickDuelRuntime).GetMethod(
+                "SpawnSplitBallsFromSide",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(spawn);
+            spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom });
+
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
+            Assert.AreEqual(motherPosition, runtime.BottomBall.Position);
+            Assert.AreEqual(motherVelocity, runtime.BottomBall.Velocity);
+            Assert.AreEqual(
+                BrickDuelItemConstants.SplitBallBrickHits,
+                runtime.SplitBalls[0].RemainingBrickHits);
+            Assert.IsTrue(runtime.SplitBalls[0].IsSplit);
+            Assert.AreEqual(BrickDuelSide.Bottom, runtime.SplitBalls[0].Side);
+
+            BrickDuelBallState firstSplit = runtime.SplitBalls[0];
+            Vector2 firstSplitPosition = firstSplit.Position;
+            Vector2 firstSplitVelocity = firstSplit.Velocity;
+            int firstSplitHits = firstSplit.RemainingBrickHits;
+            typeof(BrickDuelBallState)
+                .GetProperty("RemainingBrickHits")
+                .SetValue(firstSplit, 2, null);
+
+            spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom });
+
+            Assert.AreEqual(3, runtime.SplitBalls.Count);
+            Assert.AreEqual(motherPosition, runtime.BottomBall.Position);
+            Assert.AreEqual(motherVelocity, runtime.BottomBall.Velocity);
+            Assert.AreEqual(firstSplitPosition, firstSplit.Position);
+            Assert.AreEqual(firstSplitVelocity, firstSplit.Velocity);
+            Assert.AreEqual(2, firstSplit.RemainingBrickHits);
+            Assert.AreEqual(
+                2,
+                runtime.SplitBalls.Count(ball =>
+                    ball.BallId != firstSplit.BallId &&
+                    ball.RemainingBrickHits == BrickDuelItemConstants.SplitBallBrickHits));
+        }
+
+        [Test]
+        public void SplitBall_PickupFromCapsule_SpawnsSplitBall()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            runtime.BottomBall.IsActive = true;
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.SplitBall);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
+            Assert.AreEqual(
+                BrickDuelItemConstants.SplitBallBrickHits,
+                runtime.SplitBalls[0].RemainingBrickHits);
+            Assert.IsTrue(runtime.BottomBall.IsActive);
+        }
+
+        [Test]
+        public void SplitBall_ConsumesBrickHitsAndDespawns()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            runtime.BottomBall.Position = new Vector2(0f, -0.8f);
+            runtime.BottomBall.Velocity = new Vector2(0f, runtime.Rule.BallSpeed);
+            runtime.BottomBall.IsActive = true;
+
+            MethodInfo spawn = typeof(BrickDuelRuntime).GetMethod(
+                "SpawnSplitBallsFromSide",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom });
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
+
+            BrickDuelBallState split = runtime.SplitBalls[0];
+            typeof(BrickDuelBallState)
+                .GetProperty("RemainingBrickHits")
+                .SetValue(split, 0, null);
+
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.AreEqual(0, runtime.SplitBalls.Count);
+            Assert.IsTrue(runtime.BottomBall.IsActive);
+        }
+
+        [Test]
+        public void SplitBall_BrickHitDecrementsRemainingHits()
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            rule.BaseTideSpeed = 0f;
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            runtime.BottomBall.Position = new Vector2(-5f, -5f);
+            runtime.BottomBall.Velocity = new Vector2(0f, rule.BallSpeed);
+            runtime.BottomBall.IsActive = true;
+
+            MethodInfo spawn = typeof(BrickDuelRuntime).GetMethod(
+                "SpawnSplitBallsFromSide",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom });
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
+
+            BrickDuelBallState split = runtime.SplitBalls[0];
+            typeof(BrickDuelBallState)
+                .GetProperty("Position")
+                .SetValue(split, new Vector2(0f, -1f), null);
+            typeof(BrickDuelBallState)
+                .GetProperty("Velocity")
+                .SetValue(split, new Vector2(0f, rule.BallSpeed), null);
+
+            FieldInfo bricksField = typeof(BrickDuelRuntime).GetField(
+                "_bricks",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var bricks = (List<BrickDuelBrickState>)bricksField.GetValue(runtime);
+            bricks.Clear();
+            var brick = new BrickDuelBrickState();
+            typeof(BrickDuelBrickState).GetProperty("BrickId").SetValue(brick, 7001, null);
+            typeof(BrickDuelBrickState).GetProperty("Side").SetValue(brick, BrickDuelSide.Bottom, null);
+            typeof(BrickDuelBrickState)
+                .GetProperty("InitialType")
+                .SetValue(brick, BrickDuelBrickType.Green, null);
+            typeof(BrickDuelBrickState).GetProperty("Health").SetValue(brick, 3, null);
+            typeof(BrickDuelBrickState).GetProperty("Position").SetValue(
+                brick,
+                new Vector2(0f, -1f + rule.BallRadius + rule.BrickHeight * 0.5f + 0.05f),
+                null);
+            typeof(BrickDuelBrickState).GetProperty("ColumnId").SetValue(brick, 0, null);
+            bricks.Add(brick);
+
+            int hitsBefore = split.RemainingBrickHits;
+            bool hit = false;
+            for (int i = 0; i < rule.SimulationFps * 2 && !hit; i++)
+            {
+                runtime.StepFrame(new BrickDuelFrameInput(0f));
+                hit = runtime.SplitBalls.Count == 0 ||
+                      (runtime.SplitBalls.Count > 0 &&
+                       runtime.SplitBalls[0].RemainingBrickHits < hitsBefore);
+            }
+
+            Assert.IsTrue(hit);
+            Assert.Less(brick.Health, 3);
+        }
+
+        [Test]
         public void DampingPulse_AppliesTideMultiplierOnlyToCollector()
         {
             BrickDuelRuntime runtime = CreateRuntime();
