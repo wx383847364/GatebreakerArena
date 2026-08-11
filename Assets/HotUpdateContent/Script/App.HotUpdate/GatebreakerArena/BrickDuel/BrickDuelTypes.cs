@@ -109,6 +109,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public int LargeBallFramesRemaining { get; internal set; }
         public int PhaseDrillFramesRemaining { get; internal set; }
         public int PhaseDrillCharges { get; internal set; }
+        public int SpeedBallFramesRemaining { get; internal set; }
+        public float SpeedBallDurationAddSeconds { get; internal set; }
+        public float SpeedBallDurationMultiplier { get; internal set; } = 1f;
         public int DampingFramesRemaining { get; internal set; }
         public int CoreBufferFramesRemaining { get; internal set; }
         public bool HasCoreBuffer { get; internal set; }
@@ -116,6 +119,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public bool HasWidePaddle => WidePaddleFramesRemaining > 0;
         public bool HasLargeBall => LargeBallFramesRemaining > 0;
         public bool HasPhaseDrill => PhaseDrillCharges > 0 && PhaseDrillFramesRemaining > 0;
+        public bool HasSpeedBall => SpeedBallFramesRemaining > 0;
         public bool HasDamping => DampingFramesRemaining > 0;
 
         internal void Clear()
@@ -124,6 +128,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             LargeBallFramesRemaining = 0;
             PhaseDrillFramesRemaining = 0;
             PhaseDrillCharges = 0;
+            SpeedBallFramesRemaining = 0;
             DampingFramesRemaining = 0;
             CoreBufferFramesRemaining = 0;
             HasCoreBuffer = false;
@@ -137,6 +142,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 LargeBallFramesRemaining = LargeBallFramesRemaining,
                 PhaseDrillFramesRemaining = PhaseDrillFramesRemaining,
                 PhaseDrillCharges = PhaseDrillCharges,
+                SpeedBallFramesRemaining = SpeedBallFramesRemaining,
+                SpeedBallDurationAddSeconds = SpeedBallDurationAddSeconds,
+                SpeedBallDurationMultiplier = SpeedBallDurationMultiplier,
                 DampingFramesRemaining = DampingFramesRemaining,
                 CoreBufferFramesRemaining = CoreBufferFramesRemaining,
                 HasCoreBuffer = HasCoreBuffer,

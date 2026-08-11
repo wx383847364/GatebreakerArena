@@ -516,6 +516,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     return new Color(0.72f, 0.35f, 1f, 1f);
                 case BrickDuelItemIds.SplitBall:
                     return new Color(1f, 0.72f, 0.2f, 1f);
+                case BrickDuelItemIds.SpeedBall:
+                    return new Color(1f, 0.46f, 0.08f, 1f);
                 case BrickDuelItemIds.DampingPulse:
                     return new Color(0.45f, 0.8f, 1f, 1f);
                 case BrickDuelItemIds.CoreBuffer:

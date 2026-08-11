@@ -1109,6 +1109,102 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void SpeedBall_AcceleratesAllOwnedBallsOnly()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            runtime.BottomBall.IsActive = true;
+            MethodInfo spawn = typeof(BrickDuelRuntime).GetMethod(
+                "SpawnSplitBallsFromSide",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(spawn);
+            spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom });
+
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.SpeedBall);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            float acceleratedSpeed =
+                runtime.Rule.BallSpeed * BrickDuelItemConstants.SpeedBallSpeedMultiplier;
+            Assert.IsTrue(runtime.BottomEffects.HasSpeedBall);
+            Assert.AreEqual(
+                BrickDuelItemConstants.SpeedBallSpeedMultiplier,
+                runtime.BottomBallSpeedMultiplier,
+                0.0001f);
+            Assert.AreEqual(1f, runtime.TopBallSpeedMultiplier, 0.0001f);
+            Assert.AreEqual(acceleratedSpeed, runtime.BottomBall.Velocity.magnitude, 0.0001f);
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
+            Assert.AreEqual(acceleratedSpeed, runtime.SplitBalls[0].Velocity.magnitude, 0.0001f);
+            Assert.AreEqual(runtime.Rule.BallSpeed, runtime.TopBall.Velocity.magnitude, 0.0001f);
+        }
+
+        [Test]
+        public void SpeedBall_NewSplitBallsInheritAcceleratedSpeed()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.SpeedBall);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.SplitBall);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
+            Assert.AreEqual(
+                runtime.Rule.BallSpeed * BrickDuelItemConstants.SpeedBallSpeedMultiplier,
+                runtime.SplitBalls[0].Velocity.magnitude,
+                0.0001f);
+        }
+
+        [Test]
+        public void SpeedBall_DurationModifierIsResolvedWhenPickedUp()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.ConfigureSpeedBallDurationModifier(
+                BrickDuelSide.Bottom,
+                additiveSeconds: 1f,
+                multiplier: 1.5f);
+            Assert.AreEqual(
+                9f,
+                runtime.GetResolvedSpeedBallDurationSeconds(BrickDuelSide.Bottom),
+                0.0001f);
+
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.SpeedBall);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.AreEqual(
+                9 * runtime.Rule.SimulationFps - 1,
+                runtime.BottomEffects.SpeedBallFramesRemaining);
+        }
+
+        [Test]
+        public void SpeedBall_ExpiryRestoresAllOwnedBallsToBaseSpeed()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.SpeedBall);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.SplitBall);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+            typeof(BrickDuelSideItemEffects)
+                .GetProperty("SpeedBallFramesRemaining")
+                .SetValue(runtime.BottomEffects, 1, null);
+
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.IsFalse(runtime.BottomEffects.HasSpeedBall);
+            Assert.AreEqual(runtime.Rule.BallSpeed, runtime.BottomBall.Velocity.magnitude, 0.0001f);
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
+            Assert.AreEqual(runtime.Rule.BallSpeed, runtime.SplitBalls[0].Velocity.magnitude, 0.0001f);
+        }
+
+        [Test]
         public void SplitBall_ConsumesBrickHitsAndDespawns()
         {
             BrickDuelRuntime runtime = CreateRuntime();

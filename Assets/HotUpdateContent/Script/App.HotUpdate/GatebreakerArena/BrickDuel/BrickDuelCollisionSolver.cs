@@ -22,14 +22,21 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             float ballRadius,
             ref int pierceCharges,
             ISet<int> ignoredBrickIds,
-            ISet<int> hitBrickIds)
+            ISet<int> hitBrickIds,
+            float targetBallSpeed = -1f)
         {
             if (ball == null || !ball.IsActive || deltaTime <= 0f)
             {
                 return;
             }
 
-            RecoverBallInsideArena(ball, rule, ballRadius);
+            float resolvedBallSpeed = targetBallSpeed > 0f ? targetBallSpeed : rule.BallSpeed;
+            if (ball.Velocity.sqrMagnitude > 0.0001f)
+            {
+                ball.Velocity = ball.Velocity.normalized * resolvedBallSpeed;
+            }
+
+            RecoverBallInsideArena(ball, rule, ballRadius, resolvedBallSpeed);
             float remaining = deltaTime;
             float elapsed = 0f;
             for (int impactIndex = 0; impactIndex < MaxImpactsPerFrame && remaining > 0.000001f; impactIndex++)
@@ -97,7 +104,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 Vector2 direction = reflected.sqrMagnitude > 0.0001f
                     ? reflected.normalized
                     : candidate.Normal;
-                ball.Velocity = direction * rule.BallSpeed;
+                ball.Velocity = direction * resolvedBallSpeed;
                 ball.Position += candidate.Normal *
                                  (candidate.SeparationDistance + SeparationEpsilon);
                 float bounceSeparationTime =
@@ -106,7 +113,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 elapsed = Mathf.Min(deltaTime, elapsed + bounceSeparationTime);
             }
 
-            RecoverBallInsideArena(ball, rule, ballRadius);
+            RecoverBallInsideArena(ball, rule, ballRadius, resolvedBallSpeed);
         }
 
         public static void RefreshIgnoredBrickContacts(
@@ -160,14 +167,16 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             BrickDuelBallState ball,
             IList<BrickDuelBrickState> bricks,
             BrickDuelRuleDefinition rule,
-            float ballRadius)
+            float ballRadius,
+            float targetBallSpeed = -1f)
         {
             if (ball == null)
             {
                 return;
             }
 
-            RecoverBallInsideArena(ball, rule, ballRadius);
+            float resolvedBallSpeed = targetBallSpeed > 0f ? targetBallSpeed : rule.BallSpeed;
+            RecoverBallInsideArena(ball, rule, ballRadius, resolvedBallSpeed);
             Vector2 extents = new Vector2(
                 rule.BrickWidth * 0.5f + ballRadius,
                 rule.BrickHeight * 0.5f + ballRadius);
@@ -204,7 +213,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     moved = true;
                 }
 
-                RecoverBallInsideArena(ball, rule, ballRadius);
+                RecoverBallInsideArena(ball, rule, ballRadius, resolvedBallSpeed);
                 if (!moved)
                 {
                     break;
@@ -384,7 +393,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private static void RecoverBallInsideArena(
             BrickDuelBallState ball,
             BrickDuelRuleDefinition rule,
-            float ballRadius)
+            float ballRadius,
+            float ballSpeed)
         {
             float minimumX = -rule.ArenaHalfWidth + ballRadius;
             float maximumX = rule.ArenaHalfWidth - ballRadius;
@@ -444,7 +454,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             ball.Position = position;
             if (velocity.sqrMagnitude > 0.0001f)
             {
-                ball.Velocity = velocity.normalized * rule.BallSpeed;
+                ball.Velocity = velocity.normalized * ballSpeed;
             }
         }
 

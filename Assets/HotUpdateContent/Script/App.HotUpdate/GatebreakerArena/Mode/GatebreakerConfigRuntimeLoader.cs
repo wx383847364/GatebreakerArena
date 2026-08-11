@@ -505,6 +505,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Enabled = item.ContainsKey("Enabled") ? ReadBool(item, "Enabled") : true,
                 IconLocation = ReadOptionalString(item, "IconLocation"),
                 PrefabLocation = ReadOptionalString(item, "PrefabLocation"),
+                EffectDurationSeconds = ReadOptionalFloat(item, "EffectDurationSeconds") ?? 0f,
+                EffectMagnitude = ReadOptionalFloat(item, "EffectMagnitude") ?? 0f,
+                DurationModifierKey = ReadOptionalString(item, "DurationModifierKey"),
             };
         }
 

@@ -57,7 +57,7 @@
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.5,
+      "DropWeight": 0.33333333,
       "Enabled": true,
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
       "ItemId": "DUEL_ITEM_PHASE_DRILL",
@@ -68,13 +68,27 @@
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.5,
+      "DropWeight": 0.33333333,
       "Enabled": true,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_split_ball.png",
       "ItemId": "DUEL_ITEM_SPLIT_BALL",
       "ItemName": "裂变球体",
-      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item02.prefab",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
       "SortOrder": 4
+    },
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 0.33333334,
+      "DurationModifierKey": "DUEL_ITEM_SPEED_BALL_DURATION",
+      "EffectDurationSeconds": 5.0,
+      "EffectMagnitude": 1.3,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_speed_ball.png",
+      "ItemId": "DUEL_ITEM_SPEED_BALL",
+      "ItemName": "弹球加速",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
+      "SortOrder": 5
     },
     {
       "BagCopies": 2,
@@ -85,7 +99,7 @@
       "ItemId": "DUEL_ITEM_DAMPING_PULSE",
       "ItemName": "阻尼脉冲",
       "PrefabLocation": "",
-      "SortOrder": 5
+      "SortOrder": 6
     },
     {
       "BagCopies": 2,
@@ -96,7 +110,7 @@
       "ItemId": "DUEL_ITEM_CORE_BUFFER",
       "ItemName": "核心缓冲",
       "PrefabLocation": "",
-      "SortOrder": 6
+      "SortOrder": 7
     }
   ],
   "DT_BrickDuelRule": [
@@ -1423,7 +1437,10 @@
       "BallContactRadius": "球体碰撞半径，单位为场景距离；用于球与边界、球门和挡板碰撞判定。"
     },
     "DT_BrickDuelItemDrop": {
-      "BagCopies": "每袋该道具的份数；默认每种 2 份组成 10 件洗牌袋。",
+      "BagCopies": "每袋该道具的份数；启用项按份数共同组成确定性洗牌袋。",
+      "DurationModifierKey": "持续时间修正键；用于接入其他确定性规则修正。",
+      "EffectDurationSeconds": "限时效果的基础持续秒数；可由运行时修正器计算最终时长。",
+      "EffectMagnitude": "效果基础倍率；弹球加速道具填写目标球速倍率。",
       "IconLocation": "道具舱图标资源路径；无 Prefab 时用作 Sprite 回退。",
       "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。",
       "PrefabLocation": "道具舱 Prefab 路径；非空时优先实例化该 Prefab。"

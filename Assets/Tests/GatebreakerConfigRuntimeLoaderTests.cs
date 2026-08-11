@@ -35,8 +35,20 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(0.20f, rule.BrickCompositionStages[5].GreenWeight, 0.0001f);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab", rule.ScenePrefabLocation);
             Assert.IsNotNull(rule.ItemDrops);
-            Assert.AreEqual(6, rule.ItemDrops.Count);
+            Assert.AreEqual(7, rule.ItemDrops.Count);
             Assert.AreEqual("DUEL_ITEM_WIDE_PADDLE", rule.ItemDrops[0].ItemId);
+            Assert.AreEqual(
+                "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
+                rule.ItemDrops[3].PrefabLocation);
+            Assert.AreEqual("DUEL_ITEM_SPEED_BALL", rule.ItemDrops[4].ItemId);
+            Assert.AreEqual(
+                "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
+                rule.ItemDrops[4].PrefabLocation);
+            Assert.AreEqual(5f, rule.ItemDrops[4].EffectDurationSeconds, 0.0001f);
+            Assert.AreEqual(1.3f, rule.ItemDrops[4].EffectMagnitude, 0.0001f);
+            Assert.AreEqual(
+                "DUEL_ITEM_SPEED_BALL_DURATION",
+                rule.ItemDrops[4].DurationModifierKey);
         }
 
         [Test]

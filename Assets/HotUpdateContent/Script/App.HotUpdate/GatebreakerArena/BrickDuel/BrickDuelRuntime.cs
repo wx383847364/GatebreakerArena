@@ -124,6 +124,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public float TopBallRadius => GetBallRadius(_topEffects);
         public float BottomTideSpeedMultiplier => GetTideSpeedMultiplier(_bottomEffects);
         public float TopTideSpeedMultiplier => GetTideSpeedMultiplier(_topEffects);
+        public float BottomBallSpeedMultiplier => GetBallSpeedMultiplier(_bottomEffects);
+        public float TopBallSpeedMultiplier => GetBallSpeedMultiplier(_topEffects);
 
         public void BeginCountdown()
         {
@@ -169,6 +171,54 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public void SetPaused(bool paused)
         {
             IsPaused = Phase == BrickDuelPhase.Playing && paused;
+        }
+
+        /// <summary>
+        /// Configures the aggregate duration correction applied when the speed-ball item is picked up.
+        /// The resolved duration is (base seconds + additive seconds) * multiplier, then clamped.
+        /// Callers are responsible for synchronizing modifier changes in networked matches.
+        /// </summary>
+        public void ConfigureSpeedBallDurationModifier(
+            BrickDuelSide side,
+            float additiveSeconds,
+            float multiplier)
+        {
+            BrickDuelSideItemEffects effects = side == BrickDuelSide.Bottom
+                ? _bottomEffects
+                : _topEffects;
+            float safeAdditive = float.IsNaN(additiveSeconds) || float.IsInfinity(additiveSeconds)
+                ? 0f
+                : additiveSeconds;
+            float safeMultiplier = float.IsNaN(multiplier) || float.IsInfinity(multiplier)
+                ? 1f
+                : multiplier;
+            effects.SpeedBallDurationAddSeconds = Mathf.Clamp(
+                safeAdditive,
+                -GetSpeedBallBaseDurationSeconds() +
+                BrickDuelItemConstants.SpeedBallDurationSecondsMin,
+                BrickDuelItemConstants.SpeedBallDurationSecondsMax);
+            effects.SpeedBallDurationMultiplier = Mathf.Clamp(
+                safeMultiplier,
+                BrickDuelItemConstants.SpeedBallDurationMultiplierMin,
+                BrickDuelItemConstants.SpeedBallDurationMultiplierMax);
+        }
+
+        public float GetResolvedSpeedBallDurationSeconds(BrickDuelSide side)
+        {
+            BrickDuelSideItemEffects effects = side == BrickDuelSide.Bottom
+                ? _bottomEffects
+                : _topEffects;
+            float resolved =
+                (GetSpeedBallBaseDurationSeconds() +
+                 effects.SpeedBallDurationAddSeconds) *
+                Mathf.Clamp(
+                    effects.SpeedBallDurationMultiplier,
+                    BrickDuelItemConstants.SpeedBallDurationMultiplierMin,
+                    BrickDuelItemConstants.SpeedBallDurationMultiplierMax);
+            return Mathf.Clamp(
+                resolved,
+                BrickDuelItemConstants.SpeedBallDurationSecondsMin,
+                BrickDuelItemConstants.SpeedBallDurationSecondsMax);
         }
 
         public void ResetToWaiting()
@@ -475,7 +525,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 ballRadius,
                 ref pierceCharges,
                 ignoredBrickIds,
-                hitBrickIds);
+                hitBrickIds,
+                GetBallSpeed(ball.Side));
             Vector2 displacement = ball.Position - previous;
             if (displacement.sqrMagnitude <
                 _rule.StuckMovementEpsilon * _rule.StuckMovementEpsilon * FrameDelta * FrameDelta)
@@ -552,7 +603,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ballRadius,
                     ref pierceCharges,
                     ignoredBrickIds,
-                    _splitHitBrickIds);
+                    _splitHitBrickIds,
+                    GetBallSpeed(ball.Side));
 
                 Vector2 displacement = ball.Position - previous;
                 if (displacement.sqrMagnitude <
@@ -636,7 +688,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     BallId = _nextBallId++,
                     Side = side,
                     Position = source.Position + spawnDirection * separation,
-                    Velocity = spawnDirection * _rule.BallSpeed,
+                    Velocity = spawnDirection * GetBallSpeed(side),
                     IsActive = true,
                     IsSplit = true,
                     RemainingBrickHits = BrickDuelItemConstants.SplitBallBrickHits,
@@ -645,7 +697,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     splitBall,
                     _bricks,
                     _rule,
-                    newRadius);
+                    newRadius,
+                    GetBallSpeed(side));
                 _splitBalls.Add(splitBall);
                 _splitIgnoredBrickIds[splitBall.BallId] = new HashSet<int>();
             }
@@ -694,7 +747,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 : _rule.PaddleSpawnY;
             float offset = _rule.PaddleHalfHeight + ballRadius + 0.02f;
             ball.Position = new Vector2(0f, paddleY + direction * offset);
-            ball.Velocity = new Vector2(0f, direction * _rule.BallSpeed);
+            ball.Velocity = new Vector2(0f, direction * GetBallSpeed(ball.Side));
             ball.ResetFramesRemaining = 0;
             ball.StuckFrames = 0;
         }
@@ -839,7 +892,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                             ball,
                             _bricks,
                             _rule,
-                            GetBallRadius(effects));
+                            GetBallRadius(effects),
+                            GetBallSpeed(capsule.Side));
                     }
                     break;
                 case BrickDuelItemIds.PhaseDrill:
@@ -851,6 +905,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     break;
                 case BrickDuelItemIds.SplitBall:
                     SpawnSplitBallsFromSide(capsule.Side);
+                    break;
+                case BrickDuelItemIds.SpeedBall:
+                    effects.SpeedBallFramesRemaining = SecondsToFrames(
+                        GetResolvedSpeedBallDurationSeconds(capsule.Side));
+                    NormalizeBallSpeeds(capsule.Side, GetBallSpeed(capsule.Side));
                     break;
                 case BrickDuelItemIds.DampingPulse:
                     effects.DampingFramesRemaining = SecondsToFrames(
@@ -874,6 +933,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         {
             bool hadWide = effects.HasWidePaddle;
             bool hadLarge = effects.HasLargeBall;
+            bool hadSpeedBall = effects.HasSpeedBall;
             if (effects.WidePaddleFramesRemaining > 0)
             {
                 effects.WidePaddleFramesRemaining--;
@@ -891,6 +951,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 {
                     effects.PhaseDrillCharges = 0;
                 }
+            }
+
+            if (effects.SpeedBallFramesRemaining > 0)
+            {
+                effects.SpeedBallFramesRemaining--;
             }
 
             if (effects.DampingFramesRemaining > 0)
@@ -920,7 +985,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ball,
                     _bricks,
                     _rule,
-                    GetBallRadius(effects));
+                    GetBallRadius(effects),
+                    GetBallSpeed(side));
+            }
+
+            if (hadSpeedBall && !effects.HasSpeedBall)
+            {
+                NormalizeBallSpeeds(side, GetBallSpeed(side));
             }
         }
 
@@ -1311,6 +1382,85 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 BrickDuelItemConstants.TideSpeedMultiplierMax);
         }
 
+        private float GetBallSpeedMultiplier(BrickDuelSideItemEffects effects)
+        {
+            float multiplier = effects.HasSpeedBall
+                ? GetSpeedBallConfiguredMultiplier()
+                : 1f;
+            return Mathf.Clamp(
+                multiplier,
+                BrickDuelItemConstants.BallSpeedMultiplierMin,
+                BrickDuelItemConstants.BallSpeedMultiplierMax);
+        }
+
+        private float GetBallSpeed(BrickDuelSide side)
+        {
+            BrickDuelSideItemEffects effects = side == BrickDuelSide.Bottom
+                ? _bottomEffects
+                : _topEffects;
+            return _rule.BallSpeed * GetBallSpeedMultiplier(effects);
+        }
+
+        private float GetSpeedBallBaseDurationSeconds()
+        {
+            BrickDuelItemDropDefinition definition = GetItemDropDefinition(BrickDuelItemIds.SpeedBall);
+            return definition != null && definition.EffectDurationSeconds > 0f
+                ? definition.EffectDurationSeconds
+                : BrickDuelItemConstants.SpeedBallBaseDurationSeconds;
+        }
+
+        private float GetSpeedBallConfiguredMultiplier()
+        {
+            BrickDuelItemDropDefinition definition = GetItemDropDefinition(BrickDuelItemIds.SpeedBall);
+            return definition != null && definition.EffectMagnitude > 0f
+                ? definition.EffectMagnitude
+                : BrickDuelItemConstants.SpeedBallSpeedMultiplier;
+        }
+
+        private BrickDuelItemDropDefinition GetItemDropDefinition(string itemId)
+        {
+            if (_rule.ItemDrops == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _rule.ItemDrops.Count; i++)
+            {
+                BrickDuelItemDropDefinition definition = _rule.ItemDrops[i];
+                if (definition != null && string.Equals(
+                        definition.ItemId,
+                        itemId,
+                        StringComparison.Ordinal))
+                {
+                    return definition;
+                }
+            }
+
+            return null;
+        }
+
+        private void NormalizeBallSpeeds(BrickDuelSide side, float speed)
+        {
+            BrickDuelBallState mother = side == BrickDuelSide.Bottom ? BottomBall : TopBall;
+            NormalizeBallSpeed(mother, speed);
+            for (int i = 0; i < _splitBalls.Count; i++)
+            {
+                BrickDuelBallState split = _splitBalls[i];
+                if (split.Side == side)
+                {
+                    NormalizeBallSpeed(split, speed);
+                }
+            }
+        }
+
+        private static void NormalizeBallSpeed(BrickDuelBallState ball, float speed)
+        {
+            if (ball != null && ball.Velocity.sqrMagnitude > 0.0001f)
+            {
+                ball.Velocity = ball.Velocity.normalized * speed;
+            }
+        }
+
         private void ClampPaddleInsideArena(BrickDuelPaddleState paddle, float paddleHalfWidth)
         {
             float limit = Mathf.Max(0f, _rule.ArenaHalfWidth - paddleHalfWidth);
@@ -1401,6 +1551,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Hash(ref hash, effects.LargeBallFramesRemaining, prime);
             Hash(ref hash, effects.PhaseDrillFramesRemaining, prime);
             Hash(ref hash, effects.PhaseDrillCharges, prime);
+            Hash(ref hash, effects.SpeedBallFramesRemaining, prime);
+            Hash(ref hash, Quantize(effects.SpeedBallDurationAddSeconds), prime);
+            Hash(ref hash, Quantize(effects.SpeedBallDurationMultiplier), prime);
             Hash(ref hash, effects.DampingFramesRemaining, prime);
             Hash(ref hash, effects.CoreBufferFramesRemaining, prime);
             Hash(ref hash, effects.HasCoreBuffer ? 1 : 0, prime);

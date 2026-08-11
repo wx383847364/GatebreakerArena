@@ -238,6 +238,16 @@ def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list
         row["PrefabLocation"] = ""
     elif not isinstance(prefab, str):
         errors.append(f"{prefix}: PrefabLocation must be a string.")
+    if row.get("ItemId") == "DUEL_ITEM_SPEED_BALL":
+        _validate_positive_number(
+            row, "EffectDurationSeconds", "DT_BrickDuelItemDrop", index, errors
+        )
+        _validate_positive_number(
+            row, "EffectMagnitude", "DT_BrickDuelItemDrop", index, errors
+        )
+        modifier_key = row.get("DurationModifierKey")
+        if not isinstance(modifier_key, str) or not modifier_key.strip():
+            errors.append(f"{prefix}: DurationModifierKey must be a non-empty string.")
 
 
 def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: list[str]) -> None:
@@ -246,13 +256,14 @@ def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: lis
         "DUEL_ITEM_LARGE_BALL",
         "DUEL_ITEM_PHASE_DRILL",
         "DUEL_ITEM_SPLIT_BALL",
+        "DUEL_ITEM_SPEED_BALL",
         "DUEL_ITEM_DAMPING_PULSE",
         "DUEL_ITEM_CORE_BUFFER",
     }
     item_ids = {row.get("ItemId") for row in rows}
     if item_ids != expected:
         errors.append(
-            "DT_BrickDuelItemDrop: must contain exactly the six V0 duel item ids."
+            "DT_BrickDuelItemDrop: must contain exactly the seven V0 duel item ids."
         )
     weight_total = sum(float(row.get("DropWeight") or 0.0) for row in rows if row.get("Enabled", True))
     if abs(weight_total - 1.0) > 0.0001:
@@ -1101,9 +1112,12 @@ def _field_comments() -> dict[str, dict[str, str]]:
         },
         "DT_BrickDuelItemDrop": {
             "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。",
-            "BagCopies": "每袋该道具的份数；默认每种 2 份组成 10 件洗牌袋。",
+            "BagCopies": "每袋该道具的份数；启用项按份数共同组成确定性洗牌袋。",
             "IconLocation": "道具舱图标资源路径；无 Prefab 时用作 Sprite 回退。",
             "PrefabLocation": "道具舱 Prefab 路径；非空时优先实例化该 Prefab。",
+            "EffectDurationSeconds": "限时效果的基础持续秒数；可由运行时修正器计算最终时长。",
+            "EffectMagnitude": "效果基础倍率；弹球加速道具填写目标球速倍率。",
+            "DurationModifierKey": "持续时间修正键；用于接入其他确定性规则修正。",
         },
         "DT_Hero": {
             "PathIds": "V1 每名英雄固定关联两条共鸣路径；对局开始时仅使用这里定义的路径。",

@@ -248,6 +248,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public bool Enabled { get; set; }
         public string IconLocation { get; set; }
         public string PrefabLocation { get; set; }
+        public float EffectDurationSeconds { get; set; }
+        public float EffectMagnitude { get; set; }
+        public string DurationModifierKey { get; set; }
     }
 
     // --- Chip modifier structs ---
