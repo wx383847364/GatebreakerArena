@@ -56,7 +56,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
         public async Task<bool> StartAsync(
             BrickDuelRuleDefinition rule,
-            AiRuleDefinition aiRule,
+            BrickDuelAiRuleDefinition aiRule,
             Transform parent = null)
         {
             if (_disposed)

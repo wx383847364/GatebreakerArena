@@ -16,6 +16,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         private readonly Dictionary<string, HeroDefinition> _heroes;
         private readonly Dictionary<string, HeroPathDefinition> _heroPaths;
         private readonly Dictionary<string, BrickDuelRuleDefinition> _brickDuelRules;
+        private readonly Dictionary<string, BrickDuelAiRuleDefinition> _brickDuelAiRules;
 
         public GatebreakerModeCatalog(
             IEnumerable<ModeRuleDefinition> modes,
@@ -50,7 +51,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 signatureChips,
                 heroes,
                 heroPaths,
-                Array.Empty<BrickDuelRuleDefinition>())
+                Array.Empty<BrickDuelRuleDefinition>(),
+                Array.Empty<BrickDuelAiRuleDefinition>())
         {
         }
 
@@ -65,6 +67,33 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             IEnumerable<HeroDefinition> heroes,
             IEnumerable<HeroPathDefinition> heroPaths,
             IEnumerable<BrickDuelRuleDefinition> brickDuelRules)
+            : this(
+                modes,
+                balls,
+                aiRules,
+                maps,
+                playerColors,
+                universalChips,
+                signatureChips,
+                heroes,
+                heroPaths,
+                brickDuelRules,
+                Array.Empty<BrickDuelAiRuleDefinition>())
+        {
+        }
+
+        public GatebreakerModeCatalog(
+            IEnumerable<ModeRuleDefinition> modes,
+            IEnumerable<BallRuleDefinition> balls,
+            IEnumerable<AiRuleDefinition> aiRules,
+            IEnumerable<MapRuleDefinition> maps,
+            IEnumerable<PlayerColorRuleDefinition> playerColors,
+            IEnumerable<UniversalChipDefinition> universalChips,
+            IEnumerable<SignatureChipDefinition> signatureChips,
+            IEnumerable<HeroDefinition> heroes,
+            IEnumerable<HeroPathDefinition> heroPaths,
+            IEnumerable<BrickDuelRuleDefinition> brickDuelRules,
+            IEnumerable<BrickDuelAiRuleDefinition> brickDuelAiRules)
         {
             _modes = IndexBy(modes, item => item.ModeId);
             _balls = IndexBy(balls, item => item.BallTypeId);
@@ -77,6 +106,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             _heroPaths = IndexBy(heroPaths ?? Array.Empty<HeroPathDefinition>(), item => item.PathId);
             _brickDuelRules = IndexBy(
                 brickDuelRules ?? Array.Empty<BrickDuelRuleDefinition>(),
+                item => item.RuleId);
+            _brickDuelAiRules = IndexBy(
+                brickDuelAiRules ?? Array.Empty<BrickDuelAiRuleDefinition>(),
                 item => item.RuleId);
         }
 
@@ -253,6 +285,18 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             return TryGetBrickDuelRule(ruleId, out BrickDuelRuleDefinition rule)
                 ? rule
                 : throw new KeyNotFoundException($"Unknown BrickDuel rule: {ruleId}");
+        }
+
+        public bool TryGetBrickDuelAiRule(string ruleId, out BrickDuelAiRuleDefinition rule)
+        {
+            return _brickDuelAiRules.TryGetValue(ruleId, out rule);
+        }
+
+        public BrickDuelAiRuleDefinition GetBrickDuelAiRule(string ruleId)
+        {
+            return TryGetBrickDuelAiRule(ruleId, out BrickDuelAiRuleDefinition rule)
+                ? rule
+                : throw new KeyNotFoundException($"Unknown BrickDuel AI rule: {ruleId}");
         }
 
         public IReadOnlyDictionary<string, UniversalChipDefinition> AllUniversalChips => _universalChips;

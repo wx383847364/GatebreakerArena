@@ -13,6 +13,7 @@ SOURCE_FILES = {
     "DT_MapRule": "DT_MapRule.json",
     "DT_PlayerColorRule": "DT_PlayerColorRule.json",
     "DT_BrickDuelRule": "DT_BrickDuelRule.json",
+    "DT_BrickDuelAiRule": "DT_BrickDuelAiRule.json",
     "DT_BrickDuelItemDrop": "DT_BrickDuelItemDrop.json",
     "DT_Hero": "DT_Hero.json",
     "DT_HeroPath": "DT_HeroPath.json",
@@ -21,6 +22,7 @@ SOURCE_FILES = {
 }
 V1_REQUIRED_TABLES = {
     "DT_BrickDuelRule",
+    "DT_BrickDuelAiRule",
     "DT_Hero",
     "DT_HeroPath",
     "DT_UniversalChip",
@@ -150,11 +152,14 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             "GreenHealth", "RedHealth", "YellowHealth", "MysteryHealth",
             "BrickCoreDamage", "GreenWeight", "RedWeight", "YellowWeight",
             "MysteryWeight", "BrickCompositionIntervalSeconds", "BrickCompositionStages",
-            "RandomSeed", "AiLevelId", "InitialRowPatterns",
+            "RandomSeed", "BrickDuelAiRuleId", "InitialRowPatterns",
             "ScenePrefabLocation", "PaddlePrefabLocation", "PlayerBallPrefabLocation",
             "AiBallPrefabLocation", "GreenBrickPrefabLocation",
             "RedBrickPrefabLocation", "YellowBrickPrefabLocation",
             "MysteryBrickPrefabLocation",
+        ),
+        "DT_BrickDuelAiRule": (
+            "RuleId", "DecisionIntervalFrames", "EmergencyDistance", "MoveDeadZone",
         ),
         "DT_BrickDuelItemDrop": (
             "DropTableId", "SortOrder", "ItemId", "ItemName", "DropWeight",
@@ -184,6 +189,8 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             _validate_collision_layouts(row, index, errors)
         if table_name == "DT_BrickDuelRule":
             _validate_brick_duel(row, index, errors)
+        if table_name == "DT_BrickDuelAiRule":
+            _validate_brick_duel_ai(row, index, errors)
         if table_name == "DT_BrickDuelItemDrop":
             _validate_brick_duel_item_drop(row, index, errors)
         if table_name == "DT_Hero":
@@ -209,6 +216,12 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         _validate_unique_ids(rows, "RuleId", table_name, errors)
         if len(rows) != 1 or rows[0].get("RuleId") != "BRICK_DUEL_V0":
             errors.append("DT_BrickDuelRule: Version 3 requires exactly BRICK_DUEL_V0.")
+    elif table_name == "DT_BrickDuelAiRule":
+        _validate_unique_ids(rows, "RuleId", table_name, errors)
+        if len(rows) != 1 or rows[0].get("RuleId") != "BRICK_DUEL_AI_TACTICAL":
+            errors.append(
+                "DT_BrickDuelAiRule: Version 3 requires exactly BRICK_DUEL_AI_TACTICAL."
+            )
     elif table_name == "DT_BrickDuelItemDrop":
         _validate_brick_duel_item_drop_table(rows, errors)
 
@@ -315,7 +328,6 @@ def _validate_brick_duel(row: dict[str, Any], index: int, errors: list[str]) -> 
                     f"{prefix}.InitialRowPatterns[{pattern_index}]: "
                     f"expected {columns} Green/Red/Yellow/Mystery cells."
                 )
-
     weights = [
         row.get("GreenWeight"),
         row.get("RedWeight"),
@@ -377,6 +389,17 @@ def _validate_brick_duel(row: dict[str, Any], index: int, errors: list[str]) -> 
     for field in asset_fields:
         if not isinstance(row.get(field), str) or not row[field].strip():
             errors.append(f"{prefix}: {field} must be a non-empty asset location.")
+
+
+def _validate_brick_duel_ai(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_BrickDuelAiRule[{index}]"
+    decision_frames = _normalize_int(row.get("DecisionIntervalFrames"))
+    if decision_frames is None or decision_frames <= 0:
+        errors.append(f"{prefix}: DecisionIntervalFrames must be a positive integer.")
+    _validate_positive_number(row, "EmergencyDistance", "DT_BrickDuelAiRule", index, errors)
+    move_dead_zone = _normalize_float(row.get("MoveDeadZone"))
+    if move_dead_zone is None or move_dead_zone < 0:
+        errors.append(f"{prefix}: MoveDeadZone must be a non-negative number.")
 
 
 def _validate_brick_composition_weights(
@@ -705,6 +728,47 @@ def _validate_signature_chip(row: dict[str, Any], index: int, errors: list[str])
 
 
 def _validate_v1_relations(payload: dict[str, Any], errors: list[str]) -> None:
+    brick_duel_ai_rows = {
+        row.get("RuleId"): row
+        for row in payload.get("DT_BrickDuelAiRule", [])
+        if isinstance(row, dict)
+    }
+    brick_duel_ai_ids = {
+        rule_id for rule_id in brick_duel_ai_rows
+    }
+    for rule in payload.get("DT_BrickDuelRule", []):
+        if not isinstance(rule, dict):
+            continue
+        ai_rule_id = rule.get("BrickDuelAiRuleId")
+        if ai_rule_id not in brick_duel_ai_ids:
+            errors.append(
+                f"DT_BrickDuelRule: {rule.get('RuleId')} references unknown tactical AI {ai_rule_id}."
+            )
+            continue
+        ai_rule = brick_duel_ai_rows[ai_rule_id]
+        emergency_distance = _normalize_float(ai_rule.get("EmergencyDistance"))
+        core_line_y = _normalize_float(rule.get("CoreLineY"))
+        if (
+            emergency_distance is not None
+            and core_line_y is not None
+            and emergency_distance > core_line_y
+        ):
+            errors.append(
+                f"DT_BrickDuelAiRule: {ai_rule_id} EmergencyDistance must not exceed "
+                f"{rule.get('RuleId')} CoreLineY."
+            )
+        move_dead_zone = _normalize_float(ai_rule.get("MoveDeadZone"))
+        arena_half_width = _normalize_float(rule.get("ArenaHalfWidth"))
+        if (
+            move_dead_zone is not None
+            and arena_half_width is not None
+            and move_dead_zone > arena_half_width
+        ):
+            errors.append(
+                f"DT_BrickDuelAiRule: {ai_rule_id} MoveDeadZone must not exceed "
+                f"{rule.get('RuleId')} ArenaHalfWidth."
+            )
+
     heroes = {row.get("HeroId"): row for row in payload.get("DT_Hero", []) if isinstance(row, dict)}
     paths = {row.get("PathId"): row for row in payload.get("DT_HeroPath", []) if isinstance(row, dict)}
     variants: dict[str, list[dict[str, Any]]] = {}
@@ -1109,6 +1173,12 @@ def _field_comments() -> dict[str, dict[str, str]]:
             "BrickCompositionStages": "按时间推进的绿/红/黄/？权重表；仅影响新补行，不改写已有砖。",
             "InitialRowPatterns": "三行九列的权威开局序列；上下半场使用镜像位置。",
             "RandomSeed": "后续砖行的确定性随机种子；双方共用同一权威行。",
+            "BrickDuelAiRuleId": "砖潮专属战术 AI 配置 ID；不复用通用 DT_AIRule。",
+        },
+        "DT_BrickDuelAiRule": {
+            "DecisionIntervalFrames": "战术目标重选的固定帧间隔；V0 使用每帧决策。",
+            "EmergencyDistance": "砖块外沿进入该距离后切换为生存优先。",
+            "MoveDeadZone": "挡板距离目标 X 小于该值时停止移动，避免抖动。",
         },
         "DT_BrickDuelItemDrop": {
             "ItemId": "双向砖潮道具 ID；击碎？砖时按洗牌袋确定性分配。",

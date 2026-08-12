@@ -26,7 +26,13 @@ namespace Gatebreaker.Tests
             Assert.IsTrue(result.Catalog.TryGetBrickDuelRule(
                 "BRICK_DUEL_V0",
                 out BrickDuelRuleDefinition rule));
+            BrickDuelAiRuleDefinition aiRule = result.Catalog.GetBrickDuelAiRule(
+                rule.BrickDuelAiRuleId);
             Assert.AreEqual(30, rule.SimulationFps);
+            Assert.AreEqual("BRICK_DUEL_AI_TACTICAL", aiRule.RuleId);
+            Assert.AreEqual(1, aiRule.DecisionIntervalFrames);
+            Assert.AreEqual(0.92f, aiRule.EmergencyDistance, 0.0001f);
+            Assert.AreEqual(0.04f, aiRule.MoveDeadZone, 0.0001f);
             Assert.AreEqual(3, rule.InitialRowPatterns.Count);
             Assert.AreEqual(30f, rule.BrickCompositionIntervalSeconds, 0.0001f);
             Assert.AreEqual(6, rule.BrickCompositionStages.Count);
@@ -78,6 +84,53 @@ namespace Gatebreaker.Tests
             StringAssert.Contains("DT_BrickDuelRule", missingResult.Message);
             Assert.IsFalse(invalidResult.Succeeded);
             StringAssert.Contains("weights", invalidResult.Message);
+        }
+
+        [Test]
+        public void ParseJson_VersionThreeRejectsMissingOrInvalidTacticalAiRule()
+        {
+            string canonical = File.ReadAllText(
+                Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
+            string missing = canonical.Replace(
+                "\"DT_BrickDuelAiRule\": [",
+                "\"MissingBrickDuelAiRule\": [");
+            string invalid = canonical.Replace(
+                "\"DecisionIntervalFrames\": 1",
+                "\"DecisionIntervalFrames\": 0");
+            string oversizedEmergency = canonical.Replace(
+                "\"EmergencyDistance\": 0.92",
+                "\"EmergencyDistance\": 99.0");
+            string oversizedDeadZone = canonical.Replace(
+                "\"MoveDeadZone\": 0.04",
+                "\"MoveDeadZone\": 99.0");
+            string duplicate = canonical.Replace(
+                "\"DT_BrickDuelAiRule\": [",
+                "\"DT_BrickDuelAiRule\": [" +
+                "{\"RuleId\":\"BRICK_DUEL_AI_TACTICAL\"," +
+                "\"DecisionIntervalFrames\":1,\"EmergencyDistance\":0.92," +
+                "\"MoveDeadZone\":0.04},");
+
+            GatebreakerConfigLoadResult missingResult =
+                GatebreakerConfigRuntimeLoader.ParseJson(missing);
+            GatebreakerConfigLoadResult invalidResult =
+                GatebreakerConfigRuntimeLoader.ParseJson(invalid);
+            GatebreakerConfigLoadResult duplicateResult =
+                GatebreakerConfigRuntimeLoader.ParseJson(duplicate);
+            GatebreakerConfigLoadResult oversizedEmergencyResult =
+                GatebreakerConfigRuntimeLoader.ParseJson(oversizedEmergency);
+            GatebreakerConfigLoadResult oversizedDeadZoneResult =
+                GatebreakerConfigRuntimeLoader.ParseJson(oversizedDeadZone);
+
+            Assert.IsFalse(missingResult.Succeeded);
+            StringAssert.Contains("DT_BrickDuelAiRule", missingResult.Message);
+            Assert.IsFalse(invalidResult.Succeeded);
+            StringAssert.Contains("tactical AI", invalidResult.Message);
+            Assert.IsFalse(duplicateResult.Succeeded);
+            StringAssert.Contains("duplicate", duplicateResult.Message);
+            Assert.IsFalse(oversizedEmergencyResult.Succeeded);
+            StringAssert.Contains("tactical AI", oversizedEmergencyResult.Message);
+            Assert.IsFalse(oversizedDeadZoneResult.Succeeded);
+            StringAssert.Contains("tactical AI", oversizedDeadZoneResult.Message);
         }
 
         [Test]
@@ -522,6 +575,7 @@ namespace Gatebreaker.Tests
                 "DT_Hero",
                 "DT_HeroPath",
                 "DT_BrickDuelRule",
+                "DT_BrickDuelAiRule",
             };
             int insertAt = json.LastIndexOf('}');
             for (int i = 0; i < requiredTables.Length; i++)

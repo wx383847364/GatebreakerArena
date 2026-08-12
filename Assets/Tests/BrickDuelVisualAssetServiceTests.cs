@@ -84,11 +84,12 @@ namespace Gatebreaker.Tests
 
             Task<bool> task = session.StartAsync(
                 CreateRule(),
-                new AiRuleDefinition
+                new BrickDuelAiRuleDefinition
                 {
-                    AILevelId = "AI_NORMAL",
-                    ReactionDelay = 0.18f,
-                    PredictError = 0.25f,
+                    RuleId = "BRICK_DUEL_AI_TACTICAL",
+                    DecisionIntervalFrames = 1,
+                    EmergencyDistance = 0.92f,
+                    MoveDeadZone = 0.04f,
                 });
             Assert.IsFalse(task.IsCompleted);
 

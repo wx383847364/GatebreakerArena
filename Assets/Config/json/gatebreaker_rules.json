@@ -31,6 +31,14 @@
       "WallBounceFactor": 1.0
     }
   ],
+  "DT_BrickDuelAiRule": [
+    {
+      "DecisionIntervalFrames": 1,
+      "EmergencyDistance": 0.92,
+      "MoveDeadZone": 0.04,
+      "RuleId": "BRICK_DUEL_AI_TACTICAL"
+    }
+  ],
   "DT_BrickDuelItemDrop": [
     {
       "BagCopies": 2,
@@ -116,7 +124,6 @@
   "DT_BrickDuelRule": [
     {
       "AiBallPrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Ball02.prefab",
-      "AiLevelId": "AI_NORMAL",
       "ArenaHalfWidth": 3.0,
       "BallRadius": 0.1,
       "BallResetSeconds": 0.5,
@@ -162,6 +169,7 @@
         }
       ],
       "BrickCoreDamage": 1,
+      "BrickDuelAiRuleId": "BRICK_DUEL_AI_TACTICAL",
       "BrickHeight": 0.46,
       "BrickWidth": 0.66,
       "Columns": 9,
@@ -1436,6 +1444,11 @@
     "DT_BallRule": {
       "BallContactRadius": "球体碰撞半径，单位为场景距离；用于球与边界、球门和挡板碰撞判定。"
     },
+    "DT_BrickDuelAiRule": {
+      "DecisionIntervalFrames": "战术目标重选的固定帧间隔；V0 使用每帧决策。",
+      "EmergencyDistance": "砖块外沿进入该距离后切换为生存优先。",
+      "MoveDeadZone": "挡板距离目标 X 小于该值时停止移动，避免抖动。"
+    },
     "DT_BrickDuelItemDrop": {
       "BagCopies": "每袋该道具的份数；启用项按份数共同组成确定性洗牌袋。",
       "DurationModifierKey": "持续时间修正键；用于接入其他确定性规则修正。",
@@ -1450,6 +1463,7 @@
       "BaseTideSpeed": "砖潮基础速度 V0；运行时乘以 1 + 0.25 × floor(t / 30)。",
       "BrickCompositionIntervalSeconds": "砖块配比阶段间隔，单位秒；C(t)=min(floor(t/间隔), 阶段数-1)。",
       "BrickCompositionStages": "按时间推进的绿/红/黄/？权重表；仅影响新补行，不改写已有砖。",
+      "BrickDuelAiRuleId": "砖潮专属战术 AI 配置 ID；不复用通用 DT_AIRule。",
       "InitialRowPatterns": "三行九列的权威开局序列；上下半场使用镜像位置。",
       "RandomSeed": "后续砖行的确定性随机种子；双方共用同一权威行。"
     },

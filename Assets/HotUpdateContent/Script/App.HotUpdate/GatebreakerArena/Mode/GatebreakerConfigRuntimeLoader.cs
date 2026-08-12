@@ -84,6 +84,15 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 IEnumerable<BrickDuelRuleDefinition> brickDuelRules = version >= 3
                     ? ReadArray(root, "DT_BrickDuelRule", ReadBrickDuelRule)
                     : Array.Empty<BrickDuelRuleDefinition>();
+                BrickDuelAiRuleDefinition[] brickDuelAiRules = version >= 3
+                    ? ReadArray(root, "DT_BrickDuelAiRule", ReadBrickDuelAiRule).ToArray()
+                    : Array.Empty<BrickDuelAiRuleDefinition>();
+                if (brickDuelAiRules
+                    .GroupBy(item => item.RuleId, StringComparer.Ordinal)
+                    .Any(group => group.Count() > 1))
+                {
+                    throw new FormatException("DT_BrickDuelAiRule contains duplicate RuleId values.");
+                }
                 BrickDuelItemDropDefinition[] itemDrops = version >= 3
                     ? (ReadOptionalArray(root, "DT_BrickDuelItemDrop", ReadBrickDuelItemDrop)
                         ?? Array.Empty<BrickDuelItemDropDefinition>()).ToArray()
@@ -103,7 +112,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     ReadArray(root, "DT_SignatureChip", ReadSignatureChip),
                     ReadArray(root, "DT_Hero", ReadHero),
                     ReadArray(root, "DT_HeroPath", ReadHeroPath),
-                    brickDuelRules);
+                    brickDuelRules,
+                    brickDuelAiRules);
 
                 ValidateV1Catalog(catalog);
                 if (version >= 3)
@@ -267,11 +277,20 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     "BRICK_DUEL_V0 grid, ball and danger geometry must fit inside the configured half-field.");
             }
 
-            if (string.IsNullOrWhiteSpace(rule.AiLevelId))
+            if (string.IsNullOrWhiteSpace(rule.BrickDuelAiRuleId))
             {
-                throw new FormatException("BRICK_DUEL_V0 AiLevelId is required.");
+                throw new FormatException("BRICK_DUEL_V0 BrickDuelAiRuleId is required.");
             }
-            catalog.GetAi(rule.AiLevelId);
+            BrickDuelAiRuleDefinition aiRule = catalog.GetBrickDuelAiRule(rule.BrickDuelAiRuleId);
+            if (aiRule.DecisionIntervalFrames <= 0 ||
+                aiRule.EmergencyDistance <= 0f ||
+                aiRule.EmergencyDistance > rule.CoreLineY ||
+                aiRule.MoveDeadZone < 0f ||
+                aiRule.MoveDeadZone > rule.ArenaHalfWidth)
+            {
+                throw new FormatException(
+                    "BRICK_DUEL_V0 tactical AI timing and distance values are invalid.");
+            }
 
             string[] assetLocations =
             {
@@ -479,7 +498,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 BrickCompositionIntervalSeconds = ReadFloat(item, "BrickCompositionIntervalSeconds"),
                 BrickCompositionStages = ReadOptionalArray(item, "BrickCompositionStages", ReadBrickCompositionStage),
                 RandomSeed = ReadInt(item, "RandomSeed"),
-                AiLevelId = ReadString(item, "AiLevelId"),
+                BrickDuelAiRuleId = ReadString(item, "BrickDuelAiRuleId"),
                 InitialRowPatterns = ReadOptionalStringList(item, "InitialRowPatterns"),
                 ScenePrefabLocation = ReadString(item, "ScenePrefabLocation"),
                 PaddlePrefabLocation = ReadString(item, "PaddlePrefabLocation"),
@@ -489,6 +508,18 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 RedBrickPrefabLocation = ReadString(item, "RedBrickPrefabLocation"),
                 YellowBrickPrefabLocation = ReadString(item, "YellowBrickPrefabLocation"),
                 MysteryBrickPrefabLocation = ReadString(item, "MysteryBrickPrefabLocation"),
+            };
+        }
+
+        private static BrickDuelAiRuleDefinition ReadBrickDuelAiRule(
+            Dictionary<string, object> item)
+        {
+            return new BrickDuelAiRuleDefinition
+            {
+                RuleId = ReadString(item, "RuleId"),
+                DecisionIntervalFrames = ReadInt(item, "DecisionIntervalFrames"),
+                EmergencyDistance = ReadFloat(item, "EmergencyDistance"),
+                MoveDeadZone = ReadFloat(item, "MoveDeadZone"),
             };
         }
 

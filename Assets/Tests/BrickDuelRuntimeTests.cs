@@ -79,7 +79,7 @@ namespace Gatebreaker.Tests
                     MysteryWeight = 0f,
                 },
             };
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
 
             Assert.AreEqual(54, runtime.Bricks.Count);
@@ -114,10 +114,15 @@ namespace Gatebreaker.Tests
         {
             BrickDuelRuleDefinition rule = CreateRule();
             rule.BaseTideSpeed = rule.BrickHeight;
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
 
-            Step(runtime, rule.CountdownSeconds * rule.SimulationFps + rule.SimulationFps - 1);
+            Step(runtime, rule.CountdownSeconds * rule.SimulationFps);
+            SetState(runtime.BottomBall, nameof(BrickDuelBallState.IsActive), false);
+            SetState(runtime.TopBall, nameof(BrickDuelBallState.IsActive), false);
+            SetState(runtime.BottomBall, nameof(BrickDuelBallState.ResetFramesRemaining), 10000);
+            SetState(runtime.TopBall, nameof(BrickDuelBallState.ResetFramesRemaining), 10000);
+            Step(runtime, rule.SimulationFps - 1);
 
             Assert.AreEqual(72, runtime.Bricks.Count);
             int newestStartId = runtime.Bricks.Max(item => item.BrickId) - rule.Columns * 2 + 1;
@@ -146,14 +151,17 @@ namespace Gatebreaker.Tests
         {
             BrickDuelRuleDefinition rule = CreateRule();
             rule.BallSpeed = 120f;
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
+            int initialCount = runtime.Bricks.Count(item => item.Side == BrickDuelSide.Bottom);
 
             Step(runtime, rule.CountdownSeconds * rule.SimulationFps);
 
-            Assert.IsTrue(runtime.Bricks.Any(item =>
+            int remainingCount = runtime.Bricks.Count(item => item.Side == BrickDuelSide.Bottom);
+            bool damaged = runtime.Bricks.Any(item =>
                 item.Side == BrickDuelSide.Bottom &&
-                item.Health < InitialHealth(rule, item.InitialType)));
+                item.Health < InitialHealth(rule, item.InitialType));
+            Assert.IsTrue(damaged || remainingCount < initialCount);
         }
 
         [TestCase(BrickDuelSide.Bottom, 0f, -5f, 0f, -1f, 0f, 1f)]
@@ -557,7 +565,7 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(2.75f, rule.ArenaHalfWidth, 0.0001f);
             Assert.AreEqual(4.55f, rule.CoreLineY, 0.0001f);
 
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
             BrickDuelSnapshot snapshot = runtime.CreateSnapshot();
             IReadOnlyList<BrickDuelCollisionOverlayLine> lines =
@@ -691,7 +699,7 @@ namespace Gatebreaker.Tests
             BrickDuelRuleDefinition rule = CreateRule();
             rule.StuckMovementEpsilon = 1000f;
             rule.StuckTimeoutSeconds = 1f / rule.SimulationFps;
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
             Step(runtime, rule.CountdownSeconds * rule.SimulationFps);
 
@@ -795,7 +803,7 @@ namespace Gatebreaker.Tests
             rule.CoreLineY = 0.5f;
             rule.PaddleSpawnY = 0.4f;
             rule.InitialCoreHealth = 5;
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
 
             Step(runtime, rule.CountdownSeconds * rule.SimulationFps);
@@ -817,11 +825,19 @@ namespace Gatebreaker.Tests
         {
             BrickDuelRuntime runtime = CreateRuntime();
             runtime.BeginCountdown();
-            BrickDuelBrickState target = runtime.Bricks.Single(item =>
-                item.Side == BrickDuelSide.Bottom &&
-                item.InitialType == BrickDuelBrickType.Yellow &&
-                item.Position.x == 0f &&
-                item.Position.y < -1f);
+            FieldInfo bricksField = typeof(BrickDuelRuntime).GetField(
+                "_bricks",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var bricks = (List<BrickDuelBrickState>)bricksField.GetValue(runtime);
+            bricks.RemoveAll(item => item.Side == BrickDuelSide.Bottom);
+            var target = new BrickDuelBrickState();
+            SetState(target, nameof(BrickDuelBrickState.BrickId), 9001);
+            SetState(target, nameof(BrickDuelBrickState.Side), BrickDuelSide.Bottom);
+            SetState(target, nameof(BrickDuelBrickState.InitialType), BrickDuelBrickType.Yellow);
+            SetState(target, nameof(BrickDuelBrickState.Health), 3);
+            SetState(target, nameof(BrickDuelBrickState.Position), new Vector2(0f, -1.15f));
+            SetState(target, nameof(BrickDuelBrickState.ColumnId), 4);
+            bricks.Add(target);
             int targetId = target.BrickId;
             Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
 
@@ -834,6 +850,45 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(2, after.Health);
             Assert.AreEqual(BrickDuelBrickType.Red, after.VisualType);
+        }
+
+        [Test]
+        public void RedAndYellowBricks_AreRemovedOnlyAfterConfiguredHitCount()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            FieldInfo bricksField = typeof(BrickDuelRuntime).GetField(
+                "_bricks",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var bricks = (List<BrickDuelBrickState>)bricksField.GetValue(runtime);
+            bricks.Clear();
+            BrickDuelBrickState red = CreateBrickForHitCount(
+                9101,
+                BrickDuelBrickType.Red,
+                2,
+                -0.5f);
+            BrickDuelBrickState yellow = CreateBrickForHitCount(
+                9102,
+                BrickDuelBrickType.Yellow,
+                3,
+                0.5f);
+            bricks.Add(red);
+            bricks.Add(yellow);
+
+            ApplyBrickHit(runtime, red.BrickId);
+            ApplyBrickHit(runtime, yellow.BrickId);
+            Assert.AreEqual(1, red.Health);
+            Assert.AreEqual(2, yellow.Health);
+            Assert.IsTrue(bricks.Contains(red));
+            Assert.IsTrue(bricks.Contains(yellow));
+
+            ApplyBrickHit(runtime, red.BrickId);
+            ApplyBrickHit(runtime, yellow.BrickId);
+            Assert.IsFalse(bricks.Contains(red));
+            Assert.AreEqual(1, yellow.Health);
+            Assert.IsTrue(bricks.Contains(yellow));
+
+            ApplyBrickHit(runtime, yellow.BrickId);
+            Assert.IsFalse(bricks.Contains(yellow));
         }
 
         [Test]
@@ -872,6 +927,8 @@ namespace Gatebreaker.Tests
         {
             BrickDuelRuleDefinition rule = CreateRule();
             rule.BaseTideSpeed = rule.BrickHeight;
+            rule.CoreLineY = 100f;
+            rule.InitialCoreHealth = 1000000;
             rule.BrickCompositionStages = new[]
             {
                 new BrickDuelCompositionStageDefinition
@@ -918,24 +975,33 @@ namespace Gatebreaker.Tests
                 },
             };
 
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
             Step(runtime, rule.CountdownSeconds * rule.SimulationFps);
-            int beforeCount = runtime.Bricks.Count;
+            SetState(runtime.BottomBall, nameof(BrickDuelBallState.IsActive), false);
+            SetState(runtime.TopBall, nameof(BrickDuelBallState.IsActive), false);
+            SetState(runtime.BottomBall, nameof(BrickDuelBallState.ResetFramesRemaining), 10000);
+            SetState(runtime.TopBall, nameof(BrickDuelBallState.ResetFramesRemaining), 10000);
+            int beforeMaxId = runtime.Bricks.Max(item => item.BrickId);
 
-            Step(runtime, rule.SimulationFps);
-            BrickDuelBrickState[] firstWave = runtime.Bricks.Skip(beforeCount).ToArray();
+            Step(runtime, rule.SimulationFps - runtime.ElapsedFrames);
+            BrickDuelBrickState[] firstWave = runtime.Bricks
+                .Where(item => item.BrickId > beforeMaxId)
+                .ToArray();
             Assert.Greater(firstWave.Length, 0);
             Assert.IsTrue(firstWave.All(brick => brick.InitialType == BrickDuelBrickType.Green));
 
-            Step(runtime, 28 * rule.SimulationFps);
+            int stageBoundaryFrame = rule.SimulationFps * 30;
+            Step(runtime, stageBoundaryFrame - runtime.ElapsedFrames - 1);
             Assert.AreEqual(0, rule.ResolveBrickCompositionStageIndex(
                 runtime.ElapsedFrames / (float)rule.SimulationFps));
-            beforeCount = runtime.Bricks.Count;
-            Step(runtime, 2 * rule.SimulationFps);
+            beforeMaxId = runtime.Bricks.Max(item => item.BrickId);
+            Step(runtime, 1);
             Assert.AreEqual(1, rule.ResolveBrickCompositionStageIndex(
                 runtime.ElapsedFrames / (float)rule.SimulationFps));
-            BrickDuelBrickState[] laterWave = runtime.Bricks.Skip(beforeCount).ToArray();
+            BrickDuelBrickState[] laterWave = runtime.Bricks
+                .Where(item => item.BrickId > beforeMaxId)
+                .ToArray();
             Assert.Greater(laterWave.Length, 0);
             Assert.IsTrue(laterWave.All(brick => brick.InitialType == BrickDuelBrickType.Red));
         }
@@ -945,7 +1011,7 @@ namespace Gatebreaker.Tests
         {
             BrickDuelRuleDefinition rule = CreateRule();
             rule.BrickCompositionStages = CreateAllMysteryStages();
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
 
             BrickDuelBrickState[] bottoms = runtime.Bricks
@@ -972,7 +1038,7 @@ namespace Gatebreaker.Tests
         {
             BrickDuelRuleDefinition rule = CreateRule();
             rule.BrickCompositionStages = CreateAllMysteryStages();
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
 
             BrickDuelBrickState target = runtime.Bricks
@@ -1239,7 +1305,7 @@ namespace Gatebreaker.Tests
             rule.ArenaHalfWidth = 10f;
             rule.CoreLineY = 10f;
             rule.BaseTideSpeed = 0f;
-            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateAiRule());
+            BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
             Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
 
@@ -1448,7 +1514,7 @@ namespace Gatebreaker.Tests
 
         private static BrickDuelRuntime CreateRuntime()
         {
-            return new BrickDuelRuntime(CreateRule(), CreateAiRule());
+            return new BrickDuelRuntime(CreateRule(), CreateTacticalAiRule());
         }
 
         private static void Step(BrickDuelRuntime runtime, int frames)
@@ -1457,6 +1523,37 @@ namespace Gatebreaker.Tests
             {
                 runtime.StepFrame(new BrickDuelFrameInput(0f));
             }
+        }
+
+        private static BrickDuelBrickState CreateBrickForHitCount(
+            int brickId,
+            BrickDuelBrickType type,
+            int health,
+            float x)
+        {
+            var brick = new BrickDuelBrickState();
+            SetState(brick, nameof(BrickDuelBrickState.BrickId), brickId);
+            SetState(brick, nameof(BrickDuelBrickState.Side), BrickDuelSide.Bottom);
+            SetState(brick, nameof(BrickDuelBrickState.InitialType), type);
+            SetState(brick, nameof(BrickDuelBrickState.Health), health);
+            SetState(brick, nameof(BrickDuelBrickState.ColumnId), brickId);
+            SetState(brick, nameof(BrickDuelBrickState.Position), new Vector2(x, -2f));
+            return brick;
+        }
+
+        private static void ApplyBrickHit(BrickDuelRuntime runtime, int brickId)
+        {
+            MethodInfo apply = typeof(BrickDuelRuntime).GetMethod(
+                "ApplyBrickHits",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(apply);
+            apply.Invoke(
+                runtime,
+                new object[]
+                {
+                    BrickDuelSide.Bottom,
+                    new HashSet<int> { brickId },
+                });
         }
 
         private static BrickDuelRuleDefinition CreateRule()
@@ -1498,7 +1595,7 @@ namespace Gatebreaker.Tests
                 BrickCompositionIntervalSeconds = 30f,
                 BrickCompositionStages = CreateDefaultCompositionStages(),
                 RandomSeed = 1,
-                AiLevelId = "AI_NORMAL",
+                BrickDuelAiRuleId = "BRICK_DUEL_AI_TACTICAL",
                 InitialRowPatterns = new[]
                 {
                     "Green,Red,Yellow,Mystery,Green,Red,Yellow,Mystery,Green",
@@ -1557,13 +1654,14 @@ namespace Gatebreaker.Tests
             };
         }
 
-        private static AiRuleDefinition CreateAiRule()
+        private static BrickDuelAiRuleDefinition CreateTacticalAiRule()
         {
-            return new AiRuleDefinition
+            return new BrickDuelAiRuleDefinition
             {
-                AILevelId = "AI_NORMAL",
-                ReactionDelay = 0.18f,
-                PredictError = 0.25f,
+                RuleId = "BRICK_DUEL_AI_TACTICAL",
+                DecisionIntervalFrames = 1,
+                EmergencyDistance = 0.92f,
+                MoveDeadZone = 0.04f,
             };
         }
 

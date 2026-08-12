@@ -3003,7 +3003,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _sceneBindingService?.ShowStartCountdown("资源加载中");
             try
             {
-                AiRuleDefinition aiRule = _modeCatalog.GetAi(_brickDuelRule.AiLevelId);
+                BrickDuelAiRuleDefinition aiRule =
+                    _modeCatalog.GetBrickDuelAiRule(_brickDuelRule.BrickDuelAiRuleId);
                 bool started = await _brickDuelSession.StartAsync(_brickDuelRule, aiRule);
                 if (!started)
                 {
@@ -3098,7 +3099,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _sceneBindingService?.ShowStartCountdown("资源重新加载中");
             try
             {
-                AiRuleDefinition aiRule = _modeCatalog.GetAi(_brickDuelRule.AiLevelId);
+                BrickDuelAiRuleDefinition aiRule =
+                    _modeCatalog.GetBrickDuelAiRule(_brickDuelRule.BrickDuelAiRuleId);
                 bool started = await _brickDuelSession.StartAsync(_brickDuelRule, aiRule);
                 if (!started)
                 {

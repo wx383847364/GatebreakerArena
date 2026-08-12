@@ -72,7 +72,7 @@
       }
     ],
     "RandomSeed": 1,
-    "AiLevelId": "AI_NORMAL",
+    "BrickDuelAiRuleId": "BRICK_DUEL_AI_TACTICAL",
     "InitialRowPatterns": [
       "Green,Red,Yellow,Mystery,Green,Red,Yellow,Mystery,Green",
       "Red,Yellow,Mystery,Green,Red,Yellow,Mystery,Green,Red",

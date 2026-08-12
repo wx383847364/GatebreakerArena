@@ -1,0 +1,8 @@
+[
+  {
+    "RuleId": "BRICK_DUEL_AI_TACTICAL",
+    "DecisionIntervalFrames": 1,
+    "EmergencyDistance": 0.92,
+    "MoveDeadZone": 0.04
+  }
+]

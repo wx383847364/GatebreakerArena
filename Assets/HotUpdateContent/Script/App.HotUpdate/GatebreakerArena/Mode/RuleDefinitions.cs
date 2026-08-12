@@ -183,7 +183,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public float BrickCompositionIntervalSeconds { get; set; }
         public IReadOnlyList<BrickDuelCompositionStageDefinition> BrickCompositionStages { get; set; }
         public int RandomSeed { get; set; }
-        public string AiLevelId { get; set; }
+        public string BrickDuelAiRuleId { get; set; }
         public IReadOnlyList<string> InitialRowPatterns { get; set; }
         public string ScenePrefabLocation { get; set; }
         public string PaddlePrefabLocation { get; set; }
@@ -227,6 +227,14 @@ namespace App.HotUpdate.GatebreakerArena.Mode
 
             return BrickCompositionStages[ResolveBrickCompositionStageIndex(elapsedSeconds)];
         }
+    }
+
+    public sealed class BrickDuelAiRuleDefinition
+    {
+        public string RuleId { get; set; }
+        public int DecisionIntervalFrames { get; set; }
+        public float EmergencyDistance { get; set; }
+        public float MoveDeadZone { get; set; }
     }
 
     public sealed class BrickDuelCompositionStageDefinition

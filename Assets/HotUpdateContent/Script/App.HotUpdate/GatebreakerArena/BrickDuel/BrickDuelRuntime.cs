@@ -23,7 +23,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
         private readonly BrickDuelRuleDefinition _rule;
         private readonly BrickDuelCollisionSolver _collisionSolver;
-        private readonly BrickDuelAiController _aiController;
+        private readonly BrickDuelTacticalAiController _aiController;
         private readonly List<BrickDuelBrickState> _bricks = new List<BrickDuelBrickState>();
         private readonly List<BrickDuelBallState> _splitBalls = new List<BrickDuelBallState>();
         private readonly List<BrickDuelItemCapsuleState> _capsules = new List<BrickDuelItemCapsuleState>();
@@ -48,7 +48,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private float _bottomRowTravelSinceSpawn;
         private float _topRowTravelSinceSpawn;
 
-        public BrickDuelRuntime(BrickDuelRuleDefinition rule, AiRuleDefinition aiRule)
+        public BrickDuelRuntime(
+            BrickDuelRuleDefinition rule,
+            BrickDuelAiRuleDefinition aiRule)
         {
             _rule = rule ?? throw new ArgumentNullException(nameof(rule));
             if (aiRule == null)
@@ -57,10 +59,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             _collisionSolver = new BrickDuelCollisionSolver();
-            _aiController = new BrickDuelAiController(
+            _aiController = new BrickDuelTacticalAiController(
+                rule,
                 aiRule,
-                rule.SimulationFps,
-                unchecked((uint)rule.RandomSeed) ^ 0xA17E91u);
+                BrickDuelSide.Top);
             BottomPaddle = new BrickDuelPaddleState { Side = BrickDuelSide.Bottom };
             TopPaddle = new BrickDuelPaddleState { Side = BrickDuelSide.Top };
             BottomBall = new BrickDuelBallState
@@ -279,9 +281,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             MovePaddle(BottomPaddle, input.PlayerMoveAxis, BottomPaddleHalfWidth);
             float aiMoveAxis = _aiController.Step(
                 TopBall,
+                _splitBalls,
                 TopPaddle,
-                _rule.PaddleSpawnY,
-                _rule.ArenaHalfWidth - TopPaddleHalfWidth);
+                _bricks,
+                _capsules,
+                _rule.BaseTideSpeed * PressureMultiplier * TopTideSpeedMultiplier,
+                TopPaddleHalfWidth,
+                TopBallRadius);
             MovePaddle(TopPaddle, aiMoveAxis, TopPaddleHalfWidth);
 
             ResolveItemCapsulePickupsAndMisses();
@@ -423,9 +429,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Hash(ref hash, Quantize(_topRowTravelSinceSpawn), prime);
             Hash(ref hash, unchecked((int)_rowRandom.State), prime);
             Hash(ref hash, unchecked((int)(_itemBag?.RandomState ?? 0u)), prime);
-            Hash(ref hash, unchecked((int)_aiController.RandomState), prime);
-            Hash(ref hash, _aiController.FramesUntilReaction, prime);
+            Hash(ref hash, _aiController.FramesUntilDecision, prime);
+            Hash(ref hash, _aiController.CurrentTargetBrickId, prime);
+            Hash(ref hash, _aiController.CurrentTargetTier, prime);
+            Hash(ref hash, _aiController.PlannedBallId, prime);
+            Hash(ref hash, (int)_aiController.CurrentBehavior, prime);
             Hash(ref hash, Quantize(_aiController.TargetX), prime);
+            Hash(ref hash, _aiController.PlannedWallBounces, prime);
             HashBall(ref hash, BottomBall, prime);
             HashBall(ref hash, TopBall, prime);
             foreach (BrickDuelBallState splitBall in _splitBalls.OrderBy(item => item.BallId))
