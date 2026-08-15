@@ -434,6 +434,46 @@ namespace Gatebreaker.Tests
             }
         }
 
+        [TestCase(BrickDuelSide.Bottom, -2f, -1.3f, -1f, 2f, -0.5f, 1f, 1f)]
+        [TestCase(BrickDuelSide.Top, 2f, 1.3f, 1f, -2f, 0.5f, -1f, -1f)]
+        public void ContinuousCollision_AimedReboundUsesProvidedBrickTarget(
+            BrickDuelSide side,
+            float paddleY,
+            float ballY,
+            float incomingY,
+            float targetX,
+            float targetY,
+            float expectedXSign,
+            float expectedYSign)
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), side);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0f, ballY));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.up * incomingY * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), side);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, paddleY));
+
+            StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.2f,
+                0f,
+                new HashSet<int>(),
+                paddleBounceTarget: new Vector2(targetX, targetY));
+
+            Assert.Greater(ball.Velocity.x * expectedXSign, 0f);
+            Assert.Greater(ball.Velocity.y * expectedYSign, 0f);
+        }
+
         [Test]
         public void OuterWallReturn_PassesThroughPaddleWithoutResetOrCoreDamage()
         {
@@ -907,11 +947,13 @@ namespace Gatebreaker.Tests
             BrickDuelCompositionStageDefinition stage5 = rule.ResolveBrickCompositionWeights(150f);
             Assert.AreEqual(0.90f, stage0.GreenWeight, 0.0001f);
             Assert.AreEqual(0.00f, stage0.YellowWeight, 0.0001f);
-            Assert.AreEqual(0.75f, stage1.GreenWeight, 0.0001f);
+            Assert.AreEqual(0.725f, stage1.GreenWeight, 0.0001f);
             Assert.AreEqual(0.15f, stage1.RedWeight, 0.0001f);
-            Assert.AreEqual(0.20f, stage5.GreenWeight, 0.0001f);
+            Assert.AreEqual(0.075f, stage1.MysteryWeight, 0.0001f);
+            Assert.AreEqual(0.10f, stage5.GreenWeight, 0.0001f);
             Assert.AreEqual(0.50f, stage5.RedWeight, 0.0001f);
             Assert.AreEqual(0.25f, stage5.YellowWeight, 0.0001f);
+            Assert.AreEqual(0.15f, stage5.MysteryWeight, 0.0001f);
             Assert.AreEqual(
                 1f,
                 stage0.GreenWeight + stage0.RedWeight + stage0.YellowWeight + stage0.MysteryWeight,
@@ -1072,6 +1114,7 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(0, runtime.Capsules.Count);
             Assert.IsTrue(runtime.BottomEffects.HasWidePaddle);
+            Assert.AreEqual(1.50f, BrickDuelItemConstants.WidePaddleWidthMultiplier, 0.0001f);
             Assert.AreEqual(
                 runtime.Rule.PaddleHalfWidth * BrickDuelItemConstants.WidePaddleWidthMultiplier,
                 runtime.BottomPaddleHalfWidth,
@@ -1085,6 +1128,39 @@ namespace Gatebreaker.Tests
                 runtime.Rule.PaddleHalfWidth * BrickDuelItemConstants.WidePaddleWidthMultiplier,
                 runtime.BottomPaddleHalfWidth,
                 0.0001f);
+        }
+
+        [Test]
+        public void WidePaddle_ExtendsTheActualBallCollisionRegionByFiftyPercent()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.WidePaddle);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), BrickDuelSide.Bottom);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0.70f, -1.3f));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.down * runtime.Rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), BrickDuelSide.Bottom);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, -2f));
+
+            StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                runtime.Rule,
+                0.2f,
+                0f,
+                new HashSet<int>(),
+                paddleHalfWidth: runtime.BottomPaddleHalfWidth);
+
+            Assert.Greater(ball.Velocity.y, 0f);
         }
 
         [Test]
@@ -1128,18 +1204,19 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(motherPosition, runtime.BottomBall.Position);
             Assert.AreEqual(motherVelocity, runtime.BottomBall.Velocity);
             Assert.AreEqual(
-                BrickDuelItemConstants.SplitBallBrickHits,
-                runtime.SplitBalls[0].RemainingBrickHits);
+                Mathf.RoundToInt(
+                    BrickDuelItemConstants.SplitBallLifetimeSeconds * runtime.Rule.SimulationFps),
+                runtime.SplitBalls[0].RemainingLifetimeFrames);
             Assert.IsTrue(runtime.SplitBalls[0].IsSplit);
             Assert.AreEqual(BrickDuelSide.Bottom, runtime.SplitBalls[0].Side);
 
             BrickDuelBallState firstSplit = runtime.SplitBalls[0];
             Vector2 firstSplitPosition = firstSplit.Position;
             Vector2 firstSplitVelocity = firstSplit.Velocity;
-            int firstSplitHits = firstSplit.RemainingBrickHits;
+            int firstSplitLifetime = firstSplit.RemainingLifetimeFrames;
             typeof(BrickDuelBallState)
-                .GetProperty("RemainingBrickHits")
-                .SetValue(firstSplit, 2, null);
+                .GetProperty("RemainingLifetimeFrames")
+                .SetValue(firstSplit, firstSplitLifetime - 1, null);
 
             spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom });
 
@@ -1148,12 +1225,15 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(motherVelocity, runtime.BottomBall.Velocity);
             Assert.AreEqual(firstSplitPosition, firstSplit.Position);
             Assert.AreEqual(firstSplitVelocity, firstSplit.Velocity);
-            Assert.AreEqual(2, firstSplit.RemainingBrickHits);
+            Assert.AreEqual(firstSplitLifetime - 1, firstSplit.RemainingLifetimeFrames);
             Assert.AreEqual(
                 2,
                 runtime.SplitBalls.Count(ball =>
                     ball.BallId != firstSplit.BallId &&
-                    ball.RemainingBrickHits == BrickDuelItemConstants.SplitBallBrickHits));
+                    ball.RemainingLifetimeFrames ==
+                    Mathf.RoundToInt(
+                        BrickDuelItemConstants.SplitBallLifetimeSeconds *
+                        runtime.Rule.SimulationFps)));
         }
 
         [Test]
@@ -1169,8 +1249,9 @@ namespace Gatebreaker.Tests
 
             Assert.AreEqual(1, runtime.SplitBalls.Count);
             Assert.AreEqual(
-                BrickDuelItemConstants.SplitBallBrickHits,
-                runtime.SplitBalls[0].RemainingBrickHits);
+                Mathf.RoundToInt(
+                    BrickDuelItemConstants.SplitBallLifetimeSeconds * runtime.Rule.SimulationFps),
+                runtime.SplitBalls[0].RemainingLifetimeFrames);
             Assert.IsTrue(runtime.BottomBall.IsActive);
         }
 
@@ -1271,7 +1352,61 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void SplitBall_ConsumesBrickHitsAndDespawns()
+        public void AimedRebound_PickupActivatesCollectorForFiveSeconds()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.AimedRebound);
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.IsTrue(runtime.BottomEffects.HasAimedRebound);
+            Assert.IsFalse(runtime.TopEffects.HasAimedRebound);
+            Assert.AreEqual(
+                BrickDuelItemConstants.AimedReboundDurationSeconds *
+                runtime.Rule.SimulationFps - 1,
+                runtime.BottomEffects.AimedReboundFramesRemaining,
+                0.0001f);
+        }
+
+        [Test]
+        public void AimedRebound_SelectsLowestBottomAndHighestTopBrick()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.AimedRebound);
+            SpawnCapsuleAt(
+                runtime,
+                BrickDuelSide.Top,
+                BrickDuelItemIds.AimedRebound,
+                runtime.TopPaddle.Position + new Vector2(0f, -0.05f));
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            MethodInfo getTarget = typeof(BrickDuelRuntime).GetMethod(
+                "GetAimedReboundTarget",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(getTarget);
+            Vector2 bottomTarget = (Vector2)getTarget.Invoke(
+                runtime,
+                new object[] { BrickDuelSide.Bottom });
+            Vector2 topTarget = (Vector2)getTarget.Invoke(
+                runtime,
+                new object[] { BrickDuelSide.Top });
+
+            float lowestBottomY = runtime.Bricks
+                .Where(brick => brick.Side == BrickDuelSide.Bottom && brick.Health > 0)
+                .Min(brick => brick.Position.y);
+            float highestTopY = runtime.Bricks
+                .Where(brick => brick.Side == BrickDuelSide.Top && brick.Health > 0)
+                .Max(brick => brick.Position.y);
+            Assert.AreEqual(lowestBottomY, bottomTarget.y, 0.0001f);
+            Assert.AreEqual(highestTopY, topTarget.y, 0.0001f);
+        }
+
+        [Test]
+        public void SplitBall_ExpiresAfterFourSeconds()
         {
             BrickDuelRuntime runtime = CreateRuntime();
             runtime.BeginCountdown();
@@ -1288,10 +1423,12 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(1, runtime.SplitBalls.Count);
 
             BrickDuelBallState split = runtime.SplitBalls[0];
-            typeof(BrickDuelBallState)
-                .GetProperty("RemainingBrickHits")
-                .SetValue(split, 0, null);
+            int lifetimeFrames = Mathf.RoundToInt(
+                BrickDuelItemConstants.SplitBallLifetimeSeconds * runtime.Rule.SimulationFps);
+            Assert.AreEqual(lifetimeFrames, split.RemainingLifetimeFrames);
 
+            Step(runtime, lifetimeFrames - 1);
+            Assert.AreEqual(1, runtime.SplitBalls.Count);
             runtime.StepFrame(new BrickDuelFrameInput(0f));
 
             Assert.AreEqual(0, runtime.SplitBalls.Count);
@@ -1299,7 +1436,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void SplitBall_BrickHitDecrementsRemainingHits()
+        public void SplitBall_BrickHitDoesNotDecrementLifetime()
         {
             BrickDuelRuleDefinition rule = CreateRule();
             rule.ArenaHalfWidth = 10f;
@@ -1346,18 +1483,23 @@ namespace Gatebreaker.Tests
             typeof(BrickDuelBrickState).GetProperty("ColumnId").SetValue(brick, 0, null);
             bricks.Add(brick);
 
-            int hitsBefore = split.RemainingBrickHits;
+            int lifetimeBefore = split.RemainingLifetimeFrames;
             bool hit = false;
+            int framesStepped = 0;
             for (int i = 0; i < rule.SimulationFps * 2 && !hit; i++)
             {
                 runtime.StepFrame(new BrickDuelFrameInput(0f));
+                framesStepped++;
                 hit = runtime.SplitBalls.Count == 0 ||
                       (runtime.SplitBalls.Count > 0 &&
-                       runtime.SplitBalls[0].RemainingBrickHits < hitsBefore);
+                       brick.Health < 3);
             }
 
             Assert.IsTrue(hit);
             Assert.Less(brick.Health, 3);
+            Assert.AreEqual(
+                lifetimeBefore - framesStepped,
+                runtime.SplitBalls[0].RemainingLifetimeFrames);
         }
 
         [Test]
@@ -1618,38 +1760,38 @@ namespace Gatebreaker.Tests
                 },
                 new BrickDuelCompositionStageDefinition
                 {
-                    GreenWeight = 0.75f,
+                    GreenWeight = 0.725f,
                     RedWeight = 0.15f,
                     YellowWeight = 0.05f,
-                    MysteryWeight = 0.05f,
+                    MysteryWeight = 0.075f,
                 },
                 new BrickDuelCompositionStageDefinition
                 {
-                    GreenWeight = 0.60f,
+                    GreenWeight = 0.55f,
                     RedWeight = 0.25f,
                     YellowWeight = 0.10f,
-                    MysteryWeight = 0.05f,
+                    MysteryWeight = 0.10f,
                 },
                 new BrickDuelCompositionStageDefinition
                 {
-                    GreenWeight = 0.45f,
+                    GreenWeight = 0.375f,
                     RedWeight = 0.35f,
                     YellowWeight = 0.15f,
-                    MysteryWeight = 0.05f,
-                },
-                new BrickDuelCompositionStageDefinition
-                {
-                    GreenWeight = 0.30f,
-                    RedWeight = 0.45f,
-                    YellowWeight = 0.20f,
-                    MysteryWeight = 0.05f,
+                    MysteryWeight = 0.125f,
                 },
                 new BrickDuelCompositionStageDefinition
                 {
                     GreenWeight = 0.20f,
+                    RedWeight = 0.45f,
+                    YellowWeight = 0.20f,
+                    MysteryWeight = 0.15f,
+                },
+                new BrickDuelCompositionStageDefinition
+                {
+                    GreenWeight = 0.10f,
                     RedWeight = 0.50f,
                     YellowWeight = 0.25f,
-                    MysteryWeight = 0.05f,
+                    MysteryWeight = 0.15f,
                 },
             };
         }
@@ -1703,7 +1845,8 @@ namespace Gatebreaker.Tests
             ISet<int> hitBrickIds,
             float? paddleHalfWidth = null,
             float? ballRadius = null,
-            int pierceCharges = 0)
+            int pierceCharges = 0,
+            Vector2? paddleBounceTarget = null)
         {
             var ignoredBrickIds = new HashSet<int>();
             new BrickDuelCollisionSolver().StepBall(
@@ -1719,7 +1862,8 @@ namespace Gatebreaker.Tests
                 ballRadius ?? rule.BallRadius,
                 ref pierceCharges,
                 ignoredBrickIds,
-                hitBrickIds);
+                hitBrickIds,
+                paddleBounceTarget: paddleBounceTarget);
         }
 
         private static bool HasOverlayLine(

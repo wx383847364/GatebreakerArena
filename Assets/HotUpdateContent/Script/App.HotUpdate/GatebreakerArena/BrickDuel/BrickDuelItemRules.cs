@@ -12,6 +12,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public const string PhaseDrill = "DUEL_ITEM_PHASE_DRILL";
         public const string SplitBall = "DUEL_ITEM_SPLIT_BALL";
         public const string SpeedBall = "DUEL_ITEM_SPEED_BALL";
+        public const string AimedRebound = "DUEL_ITEM_AIMED_REBOUND";
         public const string DampingPulse = "DUEL_ITEM_DAMPING_PULSE";
         public const string CoreBuffer = "DUEL_ITEM_CORE_BUFFER";
     }
@@ -40,7 +41,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public const float CapsuleHalfWidth = 0.18f;
         public const float CapsuleHalfHeight = 0.18f;
 
-        public const float WidePaddleWidthMultiplier = 1.25f;
+        public const float WidePaddleWidthMultiplier = 1.50f;
         public const float WidePaddleDurationSeconds = 8f;
         public const float PaddleWidthMultiplierMin = 0.75f;
         public const float PaddleWidthMultiplierMax = 1.50f;
@@ -62,7 +63,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public const float CoreBufferDurationSeconds = 15f;
         public const int CoreBufferMaxLayers = 1;
 
-        public const int SplitBallBrickHits = 3;
+        public const float SplitBallLifetimeSeconds = 4f;
         public const float SplitBallSpawnAngleDegrees = 30f;
         public const float SplitBallSpawnSeparation = 0.02f;
 
@@ -74,6 +75,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public const float SpeedBallDurationSecondsMax = 60f;
         public const float BallSpeedMultiplierMin = 0.50f;
         public const float BallSpeedMultiplierMax = 2f;
+
+        public const float AimedReboundDurationSeconds = 5f;
     }
 
     public sealed class BrickDuelItemDropBag
@@ -143,16 +146,20 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.WidePaddle,
                     ItemName = "宽幅组件",
                     BagCopies = 2,
-                    DropWeight = 1f / 7f,
+                    DropWeight = 1f / 8f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
+                    PrefabLocation =
+                        "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
+                    EffectDurationSeconds = BrickDuelItemConstants.WidePaddleDurationSeconds,
+                    EffectMagnitude = BrickDuelItemConstants.WidePaddleWidthMultiplier,
                 },
                 new BrickDuelItemDefinition
                 {
                     ItemId = BrickDuelItemIds.LargeBall,
                     ItemName = "扩容球体",
                     BagCopies = 2,
-                    DropWeight = 1f / 7f,
+                    DropWeight = 1f / 8f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
                 },
@@ -161,7 +168,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.PhaseDrill,
                     ItemName = "相位钻头",
                     BagCopies = 2,
-                    DropWeight = 1f / 7f,
+                    DropWeight = 1f / 8f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
                 },
@@ -170,7 +177,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.SplitBall,
                     ItemName = "裂变球体",
                     BagCopies = 2,
-                    DropWeight = 1f / 7f,
+                    DropWeight = 1f / 8f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_split_ball.png",
                     PrefabLocation =
@@ -181,7 +188,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.SpeedBall,
                     ItemName = "弹球加速",
                     BagCopies = 2,
-                    DropWeight = 1f / 7f,
+                    DropWeight = 1f / 8f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_speed_ball.png",
                     PrefabLocation =
@@ -192,10 +199,22 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 },
                 new BrickDuelItemDefinition
                 {
+                    ItemId = BrickDuelItemIds.AimedRebound,
+                    ItemName = "定向反弹",
+                    BagCopies = 2,
+                    DropWeight = 1f / 8f,
+                    IconLocation =
+                        "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_aimed_rebound.png",
+                    PrefabLocation =
+                        "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
+                    EffectDurationSeconds = BrickDuelItemConstants.AimedReboundDurationSeconds,
+                },
+                new BrickDuelItemDefinition
+                {
                     ItemId = BrickDuelItemIds.DampingPulse,
                     ItemName = "阻尼脉冲",
                     BagCopies = 2,
-                    DropWeight = 1f / 7f,
+                    DropWeight = 1f / 8f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
                 },
@@ -204,7 +223,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ItemId = BrickDuelItemIds.CoreBuffer,
                     ItemName = "核心缓冲",
                     BagCopies = 2,
-                    DropWeight = 1f / 7f,
+                    DropWeight = 1f / 8f,
                     IconLocation =
                         "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
                 },

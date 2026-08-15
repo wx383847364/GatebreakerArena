@@ -59,7 +59,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public Vector2 Velocity { get; internal set; }
         public bool IsActive { get; internal set; }
         public bool IsSplit { get; internal set; }
-        public int RemainingBrickHits { get; internal set; }
+        public int RemainingLifetimeFrames { get; internal set; }
         public int ResetFramesRemaining { get; internal set; }
         public int StuckFrames { get; internal set; }
     }
@@ -112,6 +112,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public int SpeedBallFramesRemaining { get; internal set; }
         public float SpeedBallDurationAddSeconds { get; internal set; }
         public float SpeedBallDurationMultiplier { get; internal set; } = 1f;
+        public int AimedReboundFramesRemaining { get; internal set; }
         public int DampingFramesRemaining { get; internal set; }
         public int CoreBufferFramesRemaining { get; internal set; }
         public bool HasCoreBuffer { get; internal set; }
@@ -120,6 +121,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public bool HasLargeBall => LargeBallFramesRemaining > 0;
         public bool HasPhaseDrill => PhaseDrillCharges > 0 && PhaseDrillFramesRemaining > 0;
         public bool HasSpeedBall => SpeedBallFramesRemaining > 0;
+        public bool HasAimedRebound => AimedReboundFramesRemaining > 0;
         public bool HasDamping => DampingFramesRemaining > 0;
 
         internal void Clear()
@@ -129,6 +131,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             PhaseDrillFramesRemaining = 0;
             PhaseDrillCharges = 0;
             SpeedBallFramesRemaining = 0;
+            AimedReboundFramesRemaining = 0;
             DampingFramesRemaining = 0;
             CoreBufferFramesRemaining = 0;
             HasCoreBuffer = false;
@@ -145,6 +148,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 SpeedBallFramesRemaining = SpeedBallFramesRemaining,
                 SpeedBallDurationAddSeconds = SpeedBallDurationAddSeconds,
                 SpeedBallDurationMultiplier = SpeedBallDurationMultiplier,
+                AimedReboundFramesRemaining = AimedReboundFramesRemaining,
                 DampingFramesRemaining = DampingFramesRemaining,
                 CoreBufferFramesRemaining = CoreBufferFramesRemaining,
                 HasCoreBuffer = HasCoreBuffer,
