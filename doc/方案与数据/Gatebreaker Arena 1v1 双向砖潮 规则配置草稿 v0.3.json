@@ -1,0 +1,1770 @@
+{
+  "Version": 3,
+  "DT_PhaseHero": [
+    {
+      "HeroId": "HERO_MIRAGE",
+      "DisplayName": "蜃影",
+      "Dimension": "数量",
+      "CoreResource": "Combo",
+      "CoreItem": "ItemSplit",
+      "PhaseLevels": [
+        {
+          "PhaseLevel": "P1",
+          "Nature": "Identity",
+          "PhiToReach": 0,
+          "EffectText": "1 颗主球；连击达 8 时分裂 1 颗持续 4s 的临时球"
+        },
+        {
+          "PhaseLevel": "P2",
+          "Nature": "Scale",
+          "PhiToReach": 30,
+          "EffectText": "连击阈值降至 6"
+        },
+        {
+          "PhaseLevel": "P3",
+          "Nature": "Active",
+          "PhiToReach": 50,
+          "EffectText": "主动「幻潮」：复制场上所有球，最多 +2 颗临时球，持续 6s",
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_MIRAGE_MIRAGE_TIDE",
+            "CooldownSeconds": 12
+          }
+        },
+        {
+          "PhaseLevel": "P4",
+          "Nature": "Protocol",
+          "PhiToReach": 70,
+          "EffectText": "协议二选一（局外配装，P4 自动激活）",
+          "ProtocolOptions": [
+            {
+              "OptionId": "MIRAGE_PROTOCOL_MIRROR",
+              "DisplayName": "镜影协议",
+              "IsDefault": true,
+              "EffectText": "生成 1 颗永久副球，速度为主球 90%"
+            },
+            {
+              "OptionId": "MIRAGE_PROTOCOL_TIDE",
+              "DisplayName": "潮汐协议",
+              "IsDefault": false,
+              "EffectText": "临时球持续时间 +2s；断连时连击清零惩罚翻倍"
+            }
+          ]
+        },
+        {
+          "PhaseLevel": "P5",
+          "Nature": "Climax",
+          "PhiToReach": 100,
+          "EffectText": "连击达 4 时分裂 1 颗临时球；场上每多 1 颗物理球挡板 +4%，上限 +12%"
+        }
+      ],
+      "PhiSources": [
+        {
+          "Source": "PickupItem",
+          "Phi": 2,
+          "Note": "接取道具，纯操作"
+        },
+        {
+          "Source": "BreakMysteryBrick",
+          "Phi": 2,
+          "Note": "击碎道具砖？，稀缺高价值"
+        },
+        {
+          "Source": "BreakRedBrick",
+          "Phi": 0.5,
+          "Note": "稳定低权重"
+        },
+        {
+          "Source": "BreakYellowBrick",
+          "Phi": 1,
+          "Note": "稳定低权重，奖励处理难题"
+        },
+        {
+          "Source": "BreakGreenBrick",
+          "Phi": 0,
+          "Note": "挂机白嫖重灾区，不给"
+        },
+        {
+          "Source": "PerSecondCap",
+          "Phi": 6,
+          "Note": "所有来源每秒上限，硬约束，防滚雪球"
+        }
+      ]
+    },
+    {
+      "HeroId": "HERO_PULSE",
+      "DisplayName": "脉冲",
+      "Dimension": "速度",
+      "CoreResource": "Tempo",
+      "CoreItem": "ItemSpeed",
+      "PhaseLevels": [
+        {
+          "PhaseLevel": "P1",
+          "Nature": "Identity",
+          "PhiToReach": 0,
+          "EffectText": "节拍系统上线：每次挡板有效改向 +1 节拍，每 3s 无改向 -1；每节拍球速 +3%，上限 +12%"
+        },
+        {
+          "PhaseLevel": "P2",
+          "Nature": "Scale",
+          "PhiToReach": 30,
+          "EffectText": "节拍上限提高到 5"
+        },
+        {
+          "PhaseLevel": "P3",
+          "Nature": "Active",
+          "PhiToReach": 50,
+          "EffectText": "主动「爆点」：锁定当前最高节拍 5s，期间速度上限提高至 6.0",
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_PULSE_BURST",
+            "CooldownSeconds": 18
+          }
+        },
+        {
+          "PhaseLevel": "P4",
+          "Nature": "Protocol",
+          "PhiToReach": 70,
+          "EffectText": "协议二选一（局外配装，P4 自动激活）",
+          "ProtocolOptions": [
+            {
+              "OptionId": "PULSE_PROTOCOL_SPRINT",
+              "DisplayName": "疾走协议",
+              "IsDefault": true,
+              "EffectText": "节拍上限提高到 7；节拍清零时速度瞬间 -15%，持续 0.5s"
+            },
+            {
+              "OptionId": "PULSE_PROTOCOL_BRAKE",
+              "DisplayName": "制动协议",
+              "IsDefault": false,
+              "EffectText": "节拍上限保持 5；挡板边缘击球附带 0.3s 减速瞄准，随后加速"
+            }
+          ]
+        },
+        {
+          "PhaseLevel": "P5",
+          "Nature": "Climax",
+          "PhiToReach": 100,
+          "EffectText": "高节拍（≥4）时每第 3 次命中获得 1 次穿透"
+        }
+      ],
+      "PhiSources": [
+        {
+          "Source": "PickupItem",
+          "Phi": 2,
+          "Note": "接取道具，纯操作"
+        },
+        {
+          "Source": "BreakMysteryBrick",
+          "Phi": 2,
+          "Note": "击碎道具砖？，稀缺高价值"
+        },
+        {
+          "Source": "BreakRedBrick",
+          "Phi": 0.5,
+          "Note": "稳定低权重"
+        },
+        {
+          "Source": "BreakYellowBrick",
+          "Phi": 1,
+          "Note": "稳定低权重，奖励处理难题"
+        },
+        {
+          "Source": "BreakGreenBrick",
+          "Phi": 0,
+          "Note": "挂机白嫖重灾区，不给"
+        },
+        {
+          "Source": "PerSecondCap",
+          "Phi": 6,
+          "Note": "所有来源每秒上限，硬约束，防滚雪球"
+        }
+      ]
+    },
+    {
+      "HeroId": "HERO_RIFT",
+      "DisplayName": "裂痕",
+      "Dimension": "穿透",
+      "CoreResource": "Rift",
+      "CoreItem": "ItemPierce",
+      "PhaseLevels": [
+        {
+          "PhaseLevel": "P1",
+          "Nature": "Identity",
+          "PhiToReach": 0,
+          "EffectText": "蓄力满 5 点后主球获得 1 次穿透，最多存 2 次"
+        },
+        {
+          "PhaseLevel": "P2",
+          "Nature": "Scale",
+          "PhiToReach": 30,
+          "EffectText": "穿透储存上限提高到 3"
+        },
+        {
+          "PhaseLevel": "P3",
+          "Nature": "Active",
+          "PhiToReach": 50,
+          "EffectText": "主动「贯裂」：主球立即获得 4 次穿透 + 12% 速度，持续到耗尽或 6s",
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_RIFT_PIERCE",
+            "CooldownSeconds": 20
+          }
+        },
+        {
+          "PhaseLevel": "P4",
+          "Nature": "Protocol",
+          "PhiToReach": 70,
+          "EffectText": "协议二选一（局外配装，P4 自动激活）",
+          "ProtocolOptions": [
+            {
+              "OptionId": "RIFT_PROTOCOL_DEEPDRILL",
+              "DisplayName": "深钻协议",
+              "IsDefault": true,
+              "EffectText": "穿透同一列连穿 2 块返还 1 次穿透，每次技能最多返还 2 次"
+            },
+            {
+              "OptionId": "RIFT_PROTOCOL_SHATTER",
+              "DisplayName": "震裂协议",
+              "IsDefault": false,
+              "EffectText": "穿透结束时对左右相邻砖各造成 1 点伤害"
+            }
+          ]
+        },
+        {
+          "PhaseLevel": "P5",
+          "Nature": "Climax",
+          "PhiToReach": 100,
+          "EffectText": "蓄力阈值降至 4；穿透命中砖块返还 1 点蓄力（每次飞行最多返还 2 点）"
+        }
+      ],
+      "PhiSources": [
+        {
+          "Source": "PickupItem",
+          "Phi": 2,
+          "Note": "接取道具，纯操作"
+        },
+        {
+          "Source": "BreakMysteryBrick",
+          "Phi": 2,
+          "Note": "击碎道具砖？，稀缺高价值"
+        },
+        {
+          "Source": "BreakRedBrick",
+          "Phi": 0.5,
+          "Note": "稳定低权重"
+        },
+        {
+          "Source": "BreakYellowBrick",
+          "Phi": 1,
+          "Note": "稳定低权重，奖励处理难题"
+        },
+        {
+          "Source": "BreakGreenBrick",
+          "Phi": 0,
+          "Note": "挂机白嫖重灾区，不给"
+        },
+        {
+          "Source": "PerSecondCap",
+          "Phi": 6,
+          "Note": "所有来源每秒上限，硬约束，防滚雪球"
+        }
+      ]
+    },
+    {
+      "HeroId": "HERO_REFRACT",
+      "DisplayName": "折光",
+      "Dimension": "弹道",
+      "CoreResource": "RefractMark",
+      "CoreItem": "ItemWide",
+      "PhaseLevels": [
+        {
+          "PhaseLevel": "P1",
+          "Nature": "Identity",
+          "PhiToReach": 0,
+          "EffectText": "完成折射循环后，下一次侧墙反弹速度 +8%，持续 3s"
+        },
+        {
+          "PhaseLevel": "P2",
+          "Nature": "Scale",
+          "PhiToReach": 30,
+          "EffectText": "折射循环速度加成提高到 +12%；标记持续 2.5s 延长到 3s"
+        },
+        {
+          "PhaseLevel": "P3",
+          "Nature": "Active",
+          "PhiToReach": 50,
+          "EffectText": "主动「镜界」：本方半场生成一面 6s 镜面，只与本方弹球碰撞",
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_REFRACT_MIRROR",
+            "CooldownSeconds": 16
+          }
+        },
+        {
+          "PhaseLevel": "P4",
+          "Nature": "Protocol",
+          "PhiToReach": 70,
+          "EffectText": "协议二选一（局外配装，P4 自动激活）",
+          "ProtocolOptions": [
+            {
+              "OptionId": "REFRACT_PROTOCOL_CORRIDOR",
+              "DisplayName": "回廊协议",
+              "IsDefault": true,
+              "EffectText": "镜面期间主球与镜面碰撞 3 次，每次速度 +5%，总计 ≤15%"
+            },
+            {
+              "OptionId": "REFRACT_PROTOCOL_SPLIT",
+              "DisplayName": "分光协议",
+              "IsDefault": false,
+              "EffectText": "主球首次碰镜面生成 1 颗持续 5s 的临时球"
+            }
+          ]
+        },
+        {
+          "PhaseLevel": "P5",
+          "Nature": "Climax",
+          "PhiToReach": 100,
+          "EffectText": "每完成 2 次折射循环，镜界冷却 -3s；所有球经过镜面后获得“墙面命中不降速”"
+        }
+      ],
+      "PhiSources": [
+        {
+          "Source": "PickupItem",
+          "Phi": 2,
+          "Note": "接取道具，纯操作"
+        },
+        {
+          "Source": "BreakMysteryBrick",
+          "Phi": 2,
+          "Note": "击碎道具砖？，稀缺高价值"
+        },
+        {
+          "Source": "BreakRedBrick",
+          "Phi": 0.5,
+          "Note": "稳定低权重"
+        },
+        {
+          "Source": "BreakYellowBrick",
+          "Phi": 1,
+          "Note": "稳定低权重，奖励处理难题"
+        },
+        {
+          "Source": "BreakGreenBrick",
+          "Phi": 0,
+          "Note": "挂机白嫖重灾区，不给"
+        },
+        {
+          "Source": "PerSecondCap",
+          "Phi": 6,
+          "Note": "所有来源每秒上限，硬约束，防滚雪球"
+        }
+      ]
+    }
+  ],
+  "DT_PhaseTech": [
+    {
+      "TechId": "TECH_MIRAGE_P1_BASE",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P1",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P1_SWARM",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "蜂拥",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 50
+        },
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Weaken",
+          "MagnitudePercent": 40
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P1_LONEWOLF",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "孤狼",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 40
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P2_BASE",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P2",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P2_FISSION",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "裂变",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 40
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 45
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P2_FLOOD",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "洪流",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Weaken",
+          "MagnitudePercent": 75
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P3_BASE",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P3",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P3_PROLIFERATE",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "增殖",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 40
+        },
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P3_DEVOUR",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "吞噬",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Enhance",
+          "MagnitudePercent": 30
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 20
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P4_BASE",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P4",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P4_HIVE",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "虫群",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 50
+        },
+        {
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "Op": "Weaken",
+          "MagnitudePercent": 120
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P4_HOMECOMING",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "归巢",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P5_BASE",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P5",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P5_FULLNEST",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "满巢",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Weaken",
+          "MagnitudePercent": 50
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_MIRAGE_P5_STARBURST",
+      "HeroId": "HERO_MIRAGE",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "星爆",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 50
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 40
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P1_BASE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P1",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P1_SPRINT",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "疾走",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Weaken",
+          "MagnitudePercent": 20
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P1_PIERCE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "穿刺",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 40
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 45
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P2_BASE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P2",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P2_OVERCLOCK",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "超频",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Weaken",
+          "MagnitudePercent": 45
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P2_ARMORBREAK",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "破甲",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 40
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P3_BASE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P3",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P3_REDLINE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "红线",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Weaken",
+          "MagnitudePercent": 20
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P3_STASIS",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "凝滞",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Enhance",
+          "MagnitudePercent": 30
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P4_BASE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P4",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P4_MAXSPEED",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "极速",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Weaken",
+          "MagnitudePercent": 45
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P4_BRAKE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "制动",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P5_BASE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P5",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P5_RAMPAGE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "暴走",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Enhance",
+          "MagnitudePercent": 75
+        },
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Weaken",
+          "MagnitudePercent": 40
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_PULSE_P5_CLOUDPIERCE",
+      "HeroId": "HERO_PULSE",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "穿云",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 50
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 60
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P1_BASE",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P1",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P1_DEEPDRILL",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "深钻",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 50
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 40
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P1_STEADY",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "稳盘",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "Op": "Weaken",
+          "MagnitudePercent": 60
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P2_BASE",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P2",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P2_PENETRATE",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "贯穿",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 75
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P2_BREAKARRAY",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "破阵",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 40
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P3_BASE",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P3",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P3_STARPIERCE",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "贯星",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 50
+        },
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Weaken",
+          "MagnitudePercent": 60
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P3_WALLSTAB",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "凝壁",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Enhance",
+          "MagnitudePercent": 30
+        },
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Weaken",
+          "MagnitudePercent": 20
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P4_BASE",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P4",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P4_DRILLDOWN",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "钻地",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 50
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P4_WIDEFIELD",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "广域",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P5_BASE",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P5",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P5_BOUNDLESS",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "无界",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 70
+        },
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Weaken",
+          "MagnitudePercent": 60
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_RIFT_P5_STARCHATTER",
+      "HeroId": "HERO_RIFT",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "碎星",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Enhance",
+          "MagnitudePercent": 50
+        },
+        {
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "Op": "Weaken",
+          "MagnitudePercent": 120
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P1_BASE",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P1",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P1_STEADYMIRROR",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "稳镜",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P1_MAGNETSTAR",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P1",
+      "Kind": "Advanced",
+      "DisplayName": "吸星",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 10
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P2_BASE",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P2",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P2_EXPANDFIELD",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "扩域",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P2_CALIBRATE",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P2",
+      "Kind": "Advanced",
+      "DisplayName": "校准",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "Op": "Enhance",
+          "MagnitudePercent": 90
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P3_BASE",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P3",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P3_CORRIDOR",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "回廊",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 45
+        },
+        {
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "Op": "Weaken",
+          "MagnitudePercent": 20
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P3_SPLITLIGHT",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P3",
+      "Kind": "Advanced",
+      "DisplayName": "分光",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Enhance",
+          "MagnitudePercent": 30
+        },
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P4_BASE",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P4",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P4_INFINITE",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "无限",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 60
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 45
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P4_GRAVITY",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P4",
+      "Kind": "Advanced",
+      "DisplayName": "引力",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "Op": "Enhance",
+          "MagnitudePercent": 120
+        },
+        {
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "Op": "Weaken",
+          "MagnitudePercent": 30
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P5_BASE",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P5",
+      "Kind": "Default",
+      "DisplayName": "基准",
+      "CostCurrency": 0,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 15
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P5_FULLDOMAIN",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "全境",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "Op": "Enhance",
+          "MagnitudePercent": 75
+        },
+        {
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "Op": "Weaken",
+          "MagnitudePercent": 40
+        }
+      ]
+    },
+    {
+      "TechId": "TECH_REFRACT_P5_RETURNFLOW",
+      "HeroId": "HERO_REFRACT",
+      "SlotPhase": "P5",
+      "Kind": "Advanced",
+      "DisplayName": "归流",
+      "CostCurrency": 15,
+      "NetOffset": 30,
+      "Effects": [
+        {
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "Op": "Enhance",
+          "MagnitudePercent": 150
+        },
+        {
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "Op": "Weaken",
+          "MagnitudePercent": 60
+        }
+      ]
+    }
+  ],
+  "DT_PhaseItem": [
+    {
+      "ItemId": "ItemPierce",
+      "ItemName": "裂穿",
+      "ValueWeight": 3,
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "PierceCharges": 2,
+        "DurationSeconds": 0
+      },
+      "Note": "主球获得 2 次穿透；与英雄蓄力穿透共用计数池"
+    },
+    {
+      "ItemId": "ItemSplit",
+      "ItemName": "分形",
+      "ValueWeight": 3,
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "TempBallCount": 1,
+        "TempBallSeconds": 6
+      },
+      "Note": "生成 1 颗持续 6s 临时球；与英雄分裂球同为临时球实体"
+    },
+    {
+      "ItemId": "ItemDamp",
+      "ItemName": "缓滞",
+      "ValueWeight": 3,
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "TideSpeedMultiplier": 0.8,
+        "DurationSeconds": 6
+      },
+      "Note": "本方砖潮推进速度 -20%；只作用本方"
+    },
+    {
+      "ItemId": "ItemSpeed",
+      "ItemName": "疾风",
+      "ValueWeight": 2,
+      "BaseDropWeight": 0.2,
+      "Effect": {
+        "BallSpeedMultiplier": 1.2,
+        "DurationSeconds": 5
+      },
+      "Note": "球速临时 +20%"
+    },
+    {
+      "ItemId": "ItemWide",
+      "ItemName": "广域",
+      "ValueWeight": 2,
+      "BaseDropWeight": 0.2,
+      "Effect": {
+        "PaddleLengthMultiplier": 1.2,
+        "DurationSeconds": 8
+      },
+      "Note": "挡板 +20%"
+    },
+    {
+      "ItemId": "ItemMagnet",
+      "ItemName": "磁吸",
+      "ValueWeight": 1,
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "PullNextItem": true
+      },
+      "Note": "下一个道具自动落向挡板"
+    }
+  ],
+  "DT_PhaseCurve": [
+    {
+      "RuleId": "BRICK_DUEL_PHASE_V0",
+      "CompositionIntervalSeconds": 30.0,
+      "Stages": [
+        {
+          "Stage": "C0",
+          "TimeStart": 0,
+          "GreenWeight": 0.8,
+          "YellowWeight": 0.1,
+          "RedWeight": 0.05,
+          "MysteryWeight": 0.05
+        },
+        {
+          "Stage": "C1",
+          "TimeStart": 30,
+          "GreenWeight": 0.65,
+          "YellowWeight": 0.18,
+          "RedWeight": 0.1,
+          "MysteryWeight": 0.07
+        },
+        {
+          "Stage": "C2",
+          "TimeStart": 60,
+          "GreenWeight": 0.5,
+          "YellowWeight": 0.25,
+          "RedWeight": 0.18,
+          "MysteryWeight": 0.07
+        },
+        {
+          "Stage": "C3",
+          "TimeStart": 90,
+          "GreenWeight": 0.35,
+          "YellowWeight": 0.32,
+          "RedWeight": 0.26,
+          "MysteryWeight": 0.07
+        },
+        {
+          "Stage": "C4",
+          "TimeStart": 120,
+          "GreenWeight": 0.22,
+          "YellowWeight": 0.38,
+          "RedWeight": 0.33,
+          "MysteryWeight": 0.07
+        },
+        {
+          "Stage": "C5",
+          "TimeStart": 150,
+          "GreenWeight": 0.12,
+          "YellowWeight": 0.42,
+          "RedWeight": 0.39,
+          "MysteryWeight": 0.07
+        }
+      ],
+      "BreakCounterThreshold": 20,
+      "BreakCounterWarnSeconds": 1.0,
+      "Note": "替换现有 DT_BrickDuelRule.BrickCompositionStages；?砖占比 5%~7% 恒定，道具经济不被压缩"
+    }
+  ],
+  "DT_PhaseMeta": [
+    {
+      "MetaId": "PHASE_META_V0",
+      "CurrencyWin": 12,
+      "CurrencyLoss": 4,
+      "TechUnlockCost": 15,
+      "NetOffsetBudget": 30,
+      "DropOffsetCap": 10,
+      "PhiPerSecondCap": 6,
+      "ScissorDiffTargetSeconds": 40,
+      "Note": "经济与全局平衡常数；全部为 §6 tuning 拍板值"
+    }
+  ],
+  "_DraftMeta": {
+    "Source": "Gatebreaker Arena 1v1 双向砖潮相位成长与英雄科技设计 v0.3.md",
+    "GeneratedBy": "tools/gen_phase_rules_draft.py",
+    "Status": "数值草稿，待 Phase 0 落地；引擎现有 DT_Hero/DT_HeroPath/DT_SignatureChip/DT_UniversalChip 为旧范式需替换",
+    "TechCount": 60,
+    "HeroCount": 4,
+    "ItemCount": 6
+  }
+}

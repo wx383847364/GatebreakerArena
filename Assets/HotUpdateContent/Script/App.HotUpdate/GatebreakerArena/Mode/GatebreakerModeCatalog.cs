@@ -17,6 +17,11 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         private readonly Dictionary<string, HeroPathDefinition> _heroPaths;
         private readonly Dictionary<string, BrickDuelRuleDefinition> _brickDuelRules;
         private readonly Dictionary<string, BrickDuelAiRuleDefinition> _brickDuelAiRules;
+        private readonly Dictionary<string, PhaseHeroDefinition> _phaseHeroes;
+        private readonly Dictionary<string, PhaseTechDefinition> _phaseTechs;
+        private readonly Dictionary<string, PhaseItemDefinition> _phaseItems;
+        private readonly Dictionary<string, PhaseCurveDefinition> _phaseCurves;
+        private readonly Dictionary<string, PhaseMetaDefinition> _phaseMetas;
 
         public GatebreakerModeCatalog(
             IEnumerable<ModeRuleDefinition> modes,
@@ -93,7 +98,12 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             IEnumerable<HeroDefinition> heroes,
             IEnumerable<HeroPathDefinition> heroPaths,
             IEnumerable<BrickDuelRuleDefinition> brickDuelRules,
-            IEnumerable<BrickDuelAiRuleDefinition> brickDuelAiRules)
+            IEnumerable<BrickDuelAiRuleDefinition> brickDuelAiRules,
+            IEnumerable<PhaseHeroDefinition> phaseHeroes = null,
+            IEnumerable<PhaseTechDefinition> phaseTechs = null,
+            IEnumerable<PhaseItemDefinition> phaseItems = null,
+            IEnumerable<PhaseCurveDefinition> phaseCurves = null,
+            IEnumerable<PhaseMetaDefinition> phaseMetas = null)
         {
             _modes = IndexBy(modes, item => item.ModeId);
             _balls = IndexBy(balls, item => item.BallTypeId);
@@ -110,6 +120,11 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             _brickDuelAiRules = IndexBy(
                 brickDuelAiRules ?? Array.Empty<BrickDuelAiRuleDefinition>(),
                 item => item.RuleId);
+            _phaseHeroes = IndexBy(phaseHeroes ?? Array.Empty<PhaseHeroDefinition>(), item => item.HeroId);
+            _phaseTechs = IndexBy(phaseTechs ?? Array.Empty<PhaseTechDefinition>(), item => item.TechId);
+            _phaseItems = IndexBy(phaseItems ?? Array.Empty<PhaseItemDefinition>(), item => item.ItemId);
+            _phaseCurves = IndexBy(phaseCurves ?? Array.Empty<PhaseCurveDefinition>(), item => item.RuleId);
+            _phaseMetas = IndexBy(phaseMetas ?? Array.Empty<PhaseMetaDefinition>(), item => item.MetaId);
         }
 
         public static GatebreakerModeCatalog CreateDefault()
@@ -303,6 +318,46 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public IReadOnlyDictionary<string, SignatureChipDefinition> AllSignatureChips => _signatureChips;
         public IReadOnlyDictionary<string, HeroDefinition> AllHeroes => _heroes;
         public IReadOnlyDictionary<string, HeroPathDefinition> AllHeroPaths => _heroPaths;
+        public IReadOnlyDictionary<string, PhaseHeroDefinition> AllPhaseHeroes => _phaseHeroes;
+        public IReadOnlyDictionary<string, PhaseTechDefinition> AllPhaseTechs => _phaseTechs;
+        public IReadOnlyDictionary<string, PhaseItemDefinition> AllPhaseItems => _phaseItems;
+        public IReadOnlyDictionary<string, PhaseCurveDefinition> AllPhaseCurves => _phaseCurves;
+        public IReadOnlyDictionary<string, PhaseMetaDefinition> AllPhaseMetas => _phaseMetas;
+
+        public PhaseHeroDefinition GetPhaseHero(string heroId)
+        {
+            return _phaseHeroes.TryGetValue(heroId, out PhaseHeroDefinition hero)
+                ? hero
+                : throw new KeyNotFoundException($"Unknown phase hero: {heroId}");
+        }
+
+        public PhaseTechDefinition GetPhaseTech(string techId)
+        {
+            return _phaseTechs.TryGetValue(techId, out PhaseTechDefinition tech)
+                ? tech
+                : throw new KeyNotFoundException($"Unknown phase tech: {techId}");
+        }
+
+        public PhaseItemDefinition GetPhaseItem(string itemId)
+        {
+            return _phaseItems.TryGetValue(itemId, out PhaseItemDefinition item)
+                ? item
+                : throw new KeyNotFoundException($"Unknown phase item: {itemId}");
+        }
+
+        public PhaseCurveDefinition GetPhaseCurve(string ruleId)
+        {
+            return _phaseCurves.TryGetValue(ruleId, out PhaseCurveDefinition curve)
+                ? curve
+                : throw new KeyNotFoundException($"Unknown phase curve: {ruleId}");
+        }
+
+        public PhaseMetaDefinition GetPhaseMeta(string metaId)
+        {
+            return _phaseMetas.TryGetValue(metaId, out PhaseMetaDefinition meta)
+                ? meta
+                : throw new KeyNotFoundException($"Unknown phase meta: {metaId}");
+        }
 
         public EffectiveMatchRule BuildEffectiveRule(string modeId, string mapId)
         {

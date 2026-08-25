@@ -113,7 +113,12 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                     ReadArray(root, "DT_Hero", ReadHero),
                     ReadArray(root, "DT_HeroPath", ReadHeroPath),
                     brickDuelRules,
-                    brickDuelAiRules);
+                    brickDuelAiRules,
+                    ReadOptionalArray(root, "DT_PhaseHero", ReadPhaseHero),
+                    ReadOptionalArray(root, "DT_PhaseTech", ReadPhaseTech),
+                    ReadOptionalArray(root, "DT_PhaseItem", ReadPhaseItem),
+                    ReadOptionalArray(root, "DT_PhaseCurve", ReadPhaseCurve),
+                    ReadOptionalArray(root, "DT_PhaseMeta", ReadPhaseMeta));
 
                 ValidateV1Catalog(catalog);
                 if (version >= 3)
@@ -701,7 +706,173 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             };
         }
 
-        private static IEnumerable<T> ReadArray<T>(
+        private static PhaseHeroDefinition ReadPhaseHero(Dictionary<string, object> item)
+        {
+            return new PhaseHeroDefinition
+            {
+                HeroId = ReadString(item, "HeroId"),
+                DisplayName = ReadString(item, "DisplayName"),
+                Dimension = ReadString(item, "Dimension"),
+                CoreResource = ReadString(item, "CoreResource"),
+                CoreItem = ReadString(item, "CoreItem"),
+                PhaseLevels = ReadArray(item, "PhaseLevels", ReadPhaseHeroLevel),
+                PhiSources = ReadArray(item, "PhiSources", ReadPhaseHeroPhiSource),
+            };
+        }
+
+        private static PhaseHeroLevelDefinition ReadPhaseHeroLevel(Dictionary<string, object> item)
+        {
+            return new PhaseHeroLevelDefinition
+            {
+                PhaseLevel = ReadString(item, "PhaseLevel"),
+                Nature = ReadString(item, "Nature"),
+                PhiToReach = ReadInt(item, "PhiToReach"),
+                EffectText = ReadOptionalString(item, "EffectText"),
+                ActiveAbility = ReadOptionalPhaseHeroActiveAbility(item, "ActiveAbility"),
+                ProtocolOptions = ReadOptionalArray(item, "ProtocolOptions", ReadPhaseHeroProtocolOption),
+            };
+        }
+
+        private static PhaseHeroActiveAbilityDefinition ReadOptionalPhaseHeroActiveAbility(
+            Dictionary<string, object> item,
+            string key)
+        {
+            if (!item.TryGetValue(key, out object value) || value == null)
+            {
+                return null;
+            }
+
+            if (!(value is Dictionary<string, object> ability))
+            {
+                throw new FormatException($"JSON field '{key}' must be an object.");
+            }
+
+            return new PhaseHeroActiveAbilityDefinition
+            {
+                AbilityId = ReadString(ability, "AbilityId"),
+                CooldownSeconds = ReadFloat(ability, "CooldownSeconds"),
+            };
+        }
+
+        private static PhaseHeroProtocolOptionDefinition ReadPhaseHeroProtocolOption(Dictionary<string, object> item)
+        {
+            return new PhaseHeroProtocolOptionDefinition
+            {
+                OptionId = ReadString(item, "OptionId"),
+                DisplayName = ReadString(item, "DisplayName"),
+                IsDefault = item.ContainsKey("IsDefault") ? ReadBool(item, "IsDefault") : false,
+                EffectText = ReadOptionalString(item, "EffectText"),
+            };
+        }
+
+        private static PhaseHeroPhiSourceDefinition ReadPhaseHeroPhiSource(Dictionary<string, object> item)
+        {
+            return new PhaseHeroPhiSourceDefinition
+            {
+                Source = ReadString(item, "Source"),
+                Phi = ReadFloat(item, "Phi"),
+                Note = ReadOptionalString(item, "Note"),
+            };
+        }
+
+        private static PhaseTechDefinition ReadPhaseTech(Dictionary<string, object> item)
+        {
+            return new PhaseTechDefinition
+            {
+                TechId = ReadString(item, "TechId"),
+                HeroId = ReadString(item, "HeroId"),
+                SlotPhase = ReadString(item, "SlotPhase"),
+                Kind = ReadString(item, "Kind"),
+                DisplayName = ReadString(item, "DisplayName"),
+                CostCurrency = ReadInt(item, "CostCurrency"),
+                NetOffset = ReadInt(item, "NetOffset"),
+                Effects = ReadArray(item, "Effects", ReadPhaseTechEffect),
+                MechanicEffect = ReadOptionalString(item, "MechanicEffect"),
+            };
+        }
+
+        private static PhaseTechEffectDefinition ReadPhaseTechEffect(Dictionary<string, object> item)
+        {
+            return new PhaseTechEffectDefinition
+            {
+                ItemId = ReadString(item, "ItemId"),
+                ItemName = ReadString(item, "ItemName"),
+                Op = ReadString(item, "Op"),
+                MagnitudePercent = ReadInt(item, "MagnitudePercent"),
+            };
+        }
+
+        private static PhaseItemDefinition ReadPhaseItem(Dictionary<string, object> item)
+        {
+            return new PhaseItemDefinition
+            {
+                ItemId = ReadString(item, "ItemId"),
+                ItemName = ReadString(item, "ItemName"),
+                ValueWeight = ReadInt(item, "ValueWeight"),
+                BaseDropWeight = ReadFloat(item, "BaseDropWeight"),
+                Effect = ReadObjectMap(item, "Effect"),
+                Note = ReadOptionalString(item, "Note"),
+            };
+        }
+
+        private static PhaseCurveDefinition ReadPhaseCurve(Dictionary<string, object> item)
+        {
+            return new PhaseCurveDefinition
+            {
+                RuleId = ReadString(item, "RuleId"),
+                CompositionIntervalSeconds = ReadFloat(item, "CompositionIntervalSeconds"),
+                Stages = ReadArray(item, "Stages", ReadPhaseCurveStage),
+                BreakCounterThreshold = ReadInt(item, "BreakCounterThreshold"),
+                BreakCounterWarnSeconds = ReadFloat(item, "BreakCounterWarnSeconds"),
+                Note = ReadOptionalString(item, "Note"),
+            };
+        }
+
+        private static PhaseCurveStageDefinition ReadPhaseCurveStage(Dictionary<string, object> item)
+        {
+            return new PhaseCurveStageDefinition
+            {
+                Stage = ReadString(item, "Stage"),
+                TimeStart = ReadInt(item, "TimeStart"),
+                GreenWeight = ReadFloat(item, "GreenWeight"),
+                YellowWeight = ReadFloat(item, "YellowWeight"),
+                RedWeight = ReadFloat(item, "RedWeight"),
+                MysteryWeight = ReadFloat(item, "MysteryWeight"),
+            };
+        }
+
+        private static PhaseMetaDefinition ReadPhaseMeta(Dictionary<string, object> item)
+        {
+            return new PhaseMetaDefinition
+            {
+                MetaId = ReadString(item, "MetaId"),
+                CurrencyWin = ReadInt(item, "CurrencyWin"),
+                CurrencyLoss = ReadInt(item, "CurrencyLoss"),
+                TechUnlockCost = ReadInt(item, "TechUnlockCost"),
+                NetOffsetBudget = ReadInt(item, "NetOffsetBudget"),
+                DropOffsetCap = ReadInt(item, "DropOffsetCap"),
+                PhiPerSecondCap = ReadInt(item, "PhiPerSecondCap"),
+                ScissorDiffTargetSeconds = ReadInt(item, "ScissorDiffTargetSeconds"),
+                Note = ReadOptionalString(item, "Note"),
+            };
+        }
+
+        private static IReadOnlyDictionary<string, object> ReadObjectMap(Dictionary<string, object> item, string key)
+        {
+            if (!item.TryGetValue(key, out object value) || value == null)
+            {
+                return new Dictionary<string, object>();
+            }
+
+            if (!(value is Dictionary<string, object> map))
+            {
+                throw new FormatException($"JSON field '{key}' must be an object.");
+            }
+
+            return map;
+        }
+
+        private static IReadOnlyList<T> ReadArray<T>(
             Dictionary<string, object> root,
             string key,
             Func<Dictionary<string, object>, T> read)

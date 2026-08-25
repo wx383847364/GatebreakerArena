@@ -1,0 +1,67 @@
+[
+  {
+    "ItemId": "ItemPierce",
+    "ItemName": "裂穿",
+    "ValueWeight": 3,
+    "BaseDropWeight": 0.15,
+    "Effect": {
+      "PierceCharges": 2,
+      "DurationSeconds": 0
+    },
+    "Note": "主球获得 2 次穿透；与英雄蓄力穿透共用计数池"
+  },
+  {
+    "ItemId": "ItemSplit",
+    "ItemName": "分形",
+    "ValueWeight": 3,
+    "BaseDropWeight": 0.15,
+    "Effect": {
+      "TempBallCount": 1,
+      "TempBallSeconds": 6
+    },
+    "Note": "生成 1 颗持续 6s 临时球；与英雄分裂球同为临时球实体"
+  },
+  {
+    "ItemId": "ItemDamp",
+    "ItemName": "缓滞",
+    "ValueWeight": 3,
+    "BaseDropWeight": 0.15,
+    "Effect": {
+      "TideSpeedMultiplier": 0.8,
+      "DurationSeconds": 6
+    },
+    "Note": "本方砖潮推进速度 -20%；只作用本方"
+  },
+  {
+    "ItemId": "ItemSpeed",
+    "ItemName": "疾风",
+    "ValueWeight": 2,
+    "BaseDropWeight": 0.2,
+    "Effect": {
+      "BallSpeedMultiplier": 1.2,
+      "DurationSeconds": 5
+    },
+    "Note": "球速临时 +20%"
+  },
+  {
+    "ItemId": "ItemWide",
+    "ItemName": "广域",
+    "ValueWeight": 2,
+    "BaseDropWeight": 0.2,
+    "Effect": {
+      "PaddleLengthMultiplier": 1.2,
+      "DurationSeconds": 8
+    },
+    "Note": "挡板 +20%"
+  },
+  {
+    "ItemId": "ItemMagnet",
+    "ItemName": "磁吸",
+    "ValueWeight": 1,
+    "BaseDropWeight": 0.15,
+    "Effect": {
+      "PullNextItem": true
+    },
+    "Note": "下一个道具自动落向挡板"
+  }
+]

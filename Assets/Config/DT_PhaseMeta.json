@@ -1,0 +1,13 @@
+[
+  {
+    "MetaId": "PHASE_META_V0",
+    "CurrencyWin": 12,
+    "CurrencyLoss": 4,
+    "TechUnlockCost": 15,
+    "NetOffsetBudget": 30,
+    "DropOffsetCap": 10,
+    "PhiPerSecondCap": 6,
+    "ScissorDiffTargetSeconds": 40,
+    "Note": "经济与全局平衡常数；全部为 §6 tuning 拍板值"
+  }
+]

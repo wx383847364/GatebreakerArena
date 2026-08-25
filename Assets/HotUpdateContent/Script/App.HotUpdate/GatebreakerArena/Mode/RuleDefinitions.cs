@@ -390,4 +390,114 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int AbilityCooldownRemainingFrames { get; set; }
         public IReadOnlyList<HeroTemporaryStatusState> TemporaryStatuses { get; set; } = new HeroTemporaryStatusState[0];
     }
+
+    // --- v0.3 phase-growth definition classes (data-only; gameplay application lives in Phase 2+). ---
+    // These are additive: the loader reads them via ReadOptionalArray, so the live V1 catalog
+    // keeps loading even when the DT_Phase* tables are absent.
+
+    public sealed class PhaseHeroDefinition
+    {
+        public string HeroId { get; set; }
+        public string DisplayName { get; set; }
+        public string Dimension { get; set; }
+        public string CoreResource { get; set; }
+        public string CoreItem { get; set; }
+        public IReadOnlyList<PhaseHeroLevelDefinition> PhaseLevels { get; set; }
+        public IReadOnlyList<PhaseHeroPhiSourceDefinition> PhiSources { get; set; }
+    }
+
+    public sealed class PhaseHeroLevelDefinition
+    {
+        public string PhaseLevel { get; set; }
+        public string Nature { get; set; }
+        public int PhiToReach { get; set; }
+        public string EffectText { get; set; }
+        public PhaseHeroActiveAbilityDefinition ActiveAbility { get; set; }
+        public IReadOnlyList<PhaseHeroProtocolOptionDefinition> ProtocolOptions { get; set; }
+    }
+
+    public sealed class PhaseHeroActiveAbilityDefinition
+    {
+        public string AbilityId { get; set; }
+        public float CooldownSeconds { get; set; }
+    }
+
+    public sealed class PhaseHeroProtocolOptionDefinition
+    {
+        public string OptionId { get; set; }
+        public string DisplayName { get; set; }
+        public bool IsDefault { get; set; }
+        public string EffectText { get; set; }
+    }
+
+    public sealed class PhaseHeroPhiSourceDefinition
+    {
+        public string Source { get; set; }
+        public float Phi { get; set; }
+        public string Note { get; set; }
+    }
+
+    public sealed class PhaseTechDefinition
+    {
+        public string TechId { get; set; }
+        public string HeroId { get; set; }
+        public string SlotPhase { get; set; }
+        public string Kind { get; set; }
+        public string DisplayName { get; set; }
+        public int CostCurrency { get; set; }
+        public int NetOffset { get; set; }
+        public IReadOnlyList<PhaseTechEffectDefinition> Effects { get; set; }
+        public string MechanicEffect { get; set; }
+    }
+
+    public sealed class PhaseTechEffectDefinition
+    {
+        public string ItemId { get; set; }
+        public string ItemName { get; set; }
+        public string Op { get; set; }
+        public int MagnitudePercent { get; set; }
+    }
+
+    public sealed class PhaseItemDefinition
+    {
+        public string ItemId { get; set; }
+        public string ItemName { get; set; }
+        public int ValueWeight { get; set; }
+        public float BaseDropWeight { get; set; }
+        public IReadOnlyDictionary<string, object> Effect { get; set; }
+        public string Note { get; set; }
+    }
+
+    public sealed class PhaseCurveDefinition
+    {
+        public string RuleId { get; set; }
+        public float CompositionIntervalSeconds { get; set; }
+        public IReadOnlyList<PhaseCurveStageDefinition> Stages { get; set; }
+        public int BreakCounterThreshold { get; set; }
+        public float BreakCounterWarnSeconds { get; set; }
+        public string Note { get; set; }
+    }
+
+    public sealed class PhaseCurveStageDefinition
+    {
+        public string Stage { get; set; }
+        public int TimeStart { get; set; }
+        public float GreenWeight { get; set; }
+        public float YellowWeight { get; set; }
+        public float RedWeight { get; set; }
+        public float MysteryWeight { get; set; }
+    }
+
+    public sealed class PhaseMetaDefinition
+    {
+        public string MetaId { get; set; }
+        public int CurrencyWin { get; set; }
+        public int CurrencyLoss { get; set; }
+        public int TechUnlockCost { get; set; }
+        public int NetOffsetBudget { get; set; }
+        public int DropOffsetCap { get; set; }
+        public int PhiPerSecondCap { get; set; }
+        public int ScissorDiffTargetSeconds { get; set; }
+        public string Note { get; set; }
+    }
 }

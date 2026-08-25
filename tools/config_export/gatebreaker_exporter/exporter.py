@@ -19,6 +19,11 @@ SOURCE_FILES = {
     "DT_HeroPath": "DT_HeroPath.json",
     "DT_UniversalChip": "DT_UniversalChip.json",
     "DT_SignatureChip": "DT_SignatureChip.json",
+    "DT_PhaseHero": "DT_PhaseHero.json",
+    "DT_PhaseTech": "DT_PhaseTech.json",
+    "DT_PhaseItem": "DT_PhaseItem.json",
+    "DT_PhaseCurve": "DT_PhaseCurve.json",
+    "DT_PhaseMeta": "DT_PhaseMeta.json",
 }
 V1_REQUIRED_TABLES = {
     "DT_BrickDuelRule",
@@ -105,6 +110,7 @@ def _build_payload(config_root: Path) -> tuple[dict[str, Any], list[str], list[s
         payload[table_name] = rows
 
     _validate_v1_relations(payload, errors)
+    _validate_phase_relations(payload, errors)
 
     return payload, warnings, errors
 
@@ -169,6 +175,11 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
         "DT_HeroPath": ("PathId", "HeroId", "DisplayName", "ResonanceCategories", "MilestoneEffects"),
         "DT_UniversalChip": ("ChipId", "DisplayName", "Category", "Rarity", "Modifiers", "ConditionalModifiers"),
         "DT_SignatureChip": ("ChipId", "DisplayName", "HeroId", "PathId", "ResonanceValue", "Description", "VariantKind", "Parameters"),
+        "DT_PhaseHero": ("HeroId", "DisplayName", "Dimension", "CoreResource", "CoreItem", "PhaseLevels", "PhiSources"),
+        "DT_PhaseTech": ("TechId", "HeroId", "SlotPhase", "Kind", "DisplayName", "CostCurrency", "NetOffset", "Effects"),
+        "DT_PhaseItem": ("ItemId", "ItemName", "ValueWeight", "BaseDropWeight", "Effect"),
+        "DT_PhaseCurve": ("RuleId", "CompositionIntervalSeconds", "Stages", "BreakCounterThreshold", "BreakCounterWarnSeconds"),
+        "DT_PhaseMeta": ("MetaId", "CurrencyWin", "CurrencyLoss", "TechUnlockCost", "NetOffsetBudget", "DropOffsetCap", "PhiPerSecondCap", "ScissorDiffTargetSeconds"),
     }
     for index, row in enumerate(rows):
         for field in required_fields[table_name]:
@@ -201,6 +212,16 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             _validate_universal_chip(row, index, errors)
         if table_name == "DT_SignatureChip":
             _validate_signature_chip(row, index, errors)
+        if table_name == "DT_PhaseHero":
+            _validate_phase_hero(row, index, errors)
+        if table_name == "DT_PhaseTech":
+            _validate_phase_tech(row, index, errors)
+        if table_name == "DT_PhaseItem":
+            _validate_phase_item(row, index, errors)
+        if table_name == "DT_PhaseCurve":
+            _validate_phase_curve(row, index, errors)
+        if table_name == "DT_PhaseMeta":
+            _validate_phase_meta(row, index, errors)
 
     if table_name == "DT_Hero":
         _validate_unique_ids(rows, "HeroId", table_name, errors)
@@ -224,6 +245,26 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             )
     elif table_name == "DT_BrickDuelItemDrop":
         _validate_brick_duel_item_drop_table(rows, errors)
+    elif table_name == "DT_PhaseHero":
+        _validate_unique_ids(rows, "HeroId", table_name, errors)
+        if len(rows) != 4:
+            errors.append("DT_PhaseHero: v0.3 requires exactly 4 heroes.")
+    elif table_name == "DT_PhaseTech":
+        _validate_unique_ids(rows, "TechId", table_name, errors)
+        if len(rows) != 60:
+            errors.append("DT_PhaseTech: v0.3 requires exactly 60 techs.")
+    elif table_name == "DT_PhaseItem":
+        _validate_unique_ids(rows, "ItemId", table_name, errors)
+        if len(rows) != 6:
+            errors.append("DT_PhaseItem: v0.3 requires exactly 6 items.")
+    elif table_name == "DT_PhaseCurve":
+        _validate_unique_ids(rows, "RuleId", table_name, errors)
+        if len(rows) != 1:
+            errors.append("DT_PhaseCurve: v0.3 requires exactly 1 curve row.")
+    elif table_name == "DT_PhaseMeta":
+        _validate_unique_ids(rows, "MetaId", table_name, errors)
+        if len(rows) != 1:
+            errors.append("DT_PhaseMeta: v0.3 requires exactly 1 meta row.")
 
 
 def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -261,6 +302,10 @@ def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list
         modifier_key = row.get("DurationModifierKey")
         if not isinstance(modifier_key, str) or not modifier_key.strip():
             errors.append(f"{prefix}: DurationModifierKey must be a non-empty string.")
+    elif row.get("ItemId") == "DUEL_ITEM_AIMED_REBOUND":
+        _validate_positive_number(
+            row, "EffectDurationSeconds", "DT_BrickDuelItemDrop", index, errors
+        )
 
 
 def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: list[str]) -> None:
@@ -270,13 +315,14 @@ def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: lis
         "DUEL_ITEM_PHASE_DRILL",
         "DUEL_ITEM_SPLIT_BALL",
         "DUEL_ITEM_SPEED_BALL",
+        "DUEL_ITEM_AIMED_REBOUND",
         "DUEL_ITEM_DAMPING_PULSE",
         "DUEL_ITEM_CORE_BUFFER",
     }
     item_ids = {row.get("ItemId") for row in rows}
     if item_ids != expected:
         errors.append(
-            "DT_BrickDuelItemDrop: must contain exactly the seven V0 duel item ids."
+            "DT_BrickDuelItemDrop: must contain exactly the eight V0 duel item ids."
         )
     weight_total = sum(float(row.get("DropWeight") or 0.0) for row in rows if row.get("Enabled", True))
     if abs(weight_total - 1.0) > 0.0001:
@@ -727,6 +773,107 @@ def _validate_signature_chip(row: dict[str, Any], index: int, errors: list[str])
             errors.append(f"DT_SignatureChip[{index}]: legacy field {legacy} is forbidden in V1.")
 
 
+def _validate_phase_hero(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_PhaseHero[{index}]"
+    levels = row.get("PhaseLevels")
+    if not isinstance(levels, list) or len(levels) != 5:
+        errors.append(f"{prefix}: PhaseLevels must contain exactly 5 levels (P1~P5).")
+    else:
+        for level in levels:
+            if not isinstance(level, dict):
+                errors.append(f"{prefix}.PhaseLevels: every item must be an object.")
+                continue
+            if level.get("PhaseLevel") not in {"P1", "P2", "P3", "P4", "P5"}:
+                errors.append(f"{prefix}: invalid PhaseLevel {level.get('PhaseLevel')}.")
+            if level.get("Nature") not in {"Identity", "Scale", "Active", "Protocol", "Climax"}:
+                errors.append(f"{prefix}: invalid Nature {level.get('Nature')}.")
+            if _normalize_int(level.get("PhiToReach")) is None:
+                errors.append(f"{prefix}: PhiToReach must be a non-negative integer.")
+    sources = row.get("PhiSources")
+    if not isinstance(sources, list) or not sources:
+        errors.append(f"{prefix}: PhiSources must be a non-empty array.")
+
+
+def _validate_phase_tech(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_PhaseTech[{index}]"
+    if row.get("Kind") not in {"Default", "Advanced"}:
+        errors.append(f"{prefix}: Kind must be Default or Advanced.")
+    if _normalize_int(row.get("NetOffset")) != 30:
+        errors.append(f"{prefix}: NetOffset must equal the budget 30.")
+    effects = row.get("Effects")
+    if not isinstance(effects, list) or not effects:
+        errors.append(f"{prefix}: Effects must be a non-empty array.")
+    else:
+        for effect in effects:
+            if isinstance(effect, dict) and effect.get("Op") not in {"Enhance", "Weaken"}:
+                errors.append(f"{prefix}: invalid Op {effect.get('Op')}.")
+
+
+def _validate_phase_item(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_PhaseItem[{index}]"
+    if _normalize_float(row.get("BaseDropWeight")) is None:
+        errors.append(f"{prefix}: BaseDropWeight must be a non-negative number.")
+    if not isinstance(row.get("Effect"), dict):
+        errors.append(f"{prefix}: Effect must be an object.")
+
+
+def _validate_phase_curve(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_PhaseCurve[{index}]"
+    stages = row.get("Stages")
+    if not isinstance(stages, list) or len(stages) != 6:
+        errors.append(f"{prefix}: Stages must contain exactly 6 stages.")
+    else:
+        for stage in stages:
+            if not isinstance(stage, dict):
+                errors.append(f"{prefix}.Stages: every item must be an object.")
+                continue
+            weights = [
+                stage.get("GreenWeight"),
+                stage.get("YellowWeight"),
+                stage.get("RedWeight"),
+                stage.get("MysteryWeight"),
+            ]
+            _validate_brick_composition_weights(
+                weights,
+                f"{prefix}.Stages[{stage.get('Stage')}]",
+                errors,
+            )
+
+
+def _validate_phase_meta(row: dict[str, Any], index: int, errors: list[str]) -> None:
+    prefix = f"DT_PhaseMeta[{index}]"
+    for field in (
+        "CurrencyWin", "CurrencyLoss", "TechUnlockCost", "NetOffsetBudget",
+        "DropOffsetCap", "PhiPerSecondCap", "ScissorDiffTargetSeconds",
+    ):
+        if _normalize_int(row.get(field)) is None:
+            errors.append(f"{prefix}: {field} must be an integer.")
+
+
+def _validate_phase_relations(payload: dict[str, Any], errors: list[str]) -> None:
+    heroes = {
+        hero.get("HeroId")
+        for hero in payload.get("DT_PhaseHero", [])
+        if isinstance(hero, dict)
+    }
+    for tech in payload.get("DT_PhaseTech", []):
+        if isinstance(tech, dict) and tech.get("HeroId") not in heroes:
+            errors.append(
+                f"DT_PhaseTech: {tech.get('TechId')} references unknown hero {tech.get('HeroId')}."
+            )
+    items = payload.get("DT_PhaseItem", [])
+    drop_total = sum(
+        _normalize_float(item.get("BaseDropWeight")) or 0.0
+        for item in items
+        if isinstance(item, dict)
+    )
+    if items and abs(drop_total - 1.0) > 0.0001:
+        errors.append("DT_PhaseItem: BaseDropWeight values must total 1.0.")
+    metas = payload.get("DT_PhaseMeta", [])
+    if metas and isinstance(metas[0], dict) and _normalize_int(metas[0].get("NetOffsetBudget")) != 30:
+        errors.append("DT_PhaseMeta: NetOffsetBudget must be 30.")
+
+
 def _validate_v1_relations(payload: dict[str, Any], errors: list[str]) -> None:
     brick_duel_ai_rows = {
         row.get("RuleId"): row
@@ -1076,6 +1223,11 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
         "DT_Hero": _v1_default_heroes(),
         "DT_HeroPath": _v1_default_paths(),
         "DT_UniversalChip": _v1_default_universal_chips(),
+        "DT_PhaseHero": [],
+        "DT_PhaseTech": [],
+        "DT_PhaseItem": [],
+        "DT_PhaseCurve": [],
+        "DT_PhaseMeta": [],
     }
     return defaults[table_name]
 
@@ -1200,5 +1352,27 @@ def _field_comments() -> dict[str, dict[str, str]]:
         "DT_UniversalChip": {
             "Modifiers": "Lv1 通用芯片的直接静态规则修饰；注入器按 ChipId 稳定排序应用。",
             "ConditionalModifiers": "可选的英雄/路径门槛修饰；满足 HeroId、PathId 和 MinimumPathLevel 时应用。",
+        },
+        "DT_PhaseHero": {
+            "CoreItem": "该英雄的核心道具 ID；科技价值矩阵以它为中心配平。",
+            "PhaseLevels": "P1~P5 五档相位：PhiToReach 为升阶所需 Φ 总量（0/30/50/70/100）。",
+            "PhiSources": "Φ 来源：接道具/击碎？砖/红黄砖等，PerSecondCap 为每秒上限硬约束。",
+        },
+        "DT_PhaseTech": {
+            "NetOffset": "科技净偏移，全部等于预算 D=+30，保证同英雄增益/代价守恒。",
+            "Effects": "道具价值矩阵：Op 为 Enhance/Weaken，MagnitudePercent 为增减幅度。",
+        },
+        "DT_PhaseItem": {
+            "ValueWeight": "道具价值权重 3/3/3/2/2/1，驱动科技净偏移配平。",
+            "BaseDropWeight": "道具基础掉率，六项合计 = 1.0。",
+            "Effect": "异构效果对象，运行时按 ItemId 解释，勿强类型化。",
+        },
+        "DT_PhaseCurve": {
+            "Stages": "C0~C5 六档绿/黄/红/？权重，每档合计 = 1.0。",
+            "BreakCounterThreshold": "破阵反馈阈值：清砖满该数向对手注入升级砖。",
+        },
+        "DT_PhaseMeta": {
+            "NetOffsetBudget": "科技净偏移预算 D，全局平衡常数。",
+            "ScissorDiffTargetSeconds": "剪刀差目标：操作差 vs 操作好死亡时间差应大于该秒数。",
         },
     }

@@ -43,12 +43,14 @@
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.0,
-      "Enabled": false,
+      "DropWeight": 0.2,
+      "EffectDurationSeconds": 8.0,
+      "EffectMagnitude": 1.5,
+      "Enabled": true,
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
       "ItemId": "DUEL_ITEM_WIDE_PADDLE",
       "ItemName": "宽幅组件",
-      "PrefabLocation": "",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
       "SortOrder": 1
     },
     {
@@ -65,7 +67,7 @@
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.33333333,
+      "DropWeight": 0.2,
       "Enabled": true,
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
       "ItemId": "DUEL_ITEM_PHASE_DRILL",
@@ -76,7 +78,7 @@
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.33333333,
+      "DropWeight": 0.2,
       "Enabled": true,
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_split_ball.png",
       "ItemId": "DUEL_ITEM_SPLIT_BALL",
@@ -87,7 +89,7 @@
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.33333334,
+      "DropWeight": 0.2,
       "DurationModifierKey": "DUEL_ITEM_SPEED_BALL_DURATION",
       "EffectDurationSeconds": 5.0,
       "EffectMagnitude": 1.3,
@@ -101,13 +103,25 @@
     {
       "BagCopies": 2,
       "DropTableId": "BRICK_DUEL_ITEM_V0",
+      "DropWeight": 0.2,
+      "EffectDurationSeconds": 5.0,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_aimed_rebound.png",
+      "ItemId": "DUEL_ITEM_AIMED_REBOUND",
+      "ItemName": "定向反弹",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
+      "SortOrder": 6
+    },
+    {
+      "BagCopies": 2,
+      "DropTableId": "BRICK_DUEL_ITEM_V0",
       "DropWeight": 0.0,
       "Enabled": false,
       "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
       "ItemId": "DUEL_ITEM_DAMPING_PULSE",
       "ItemName": "阻尼脉冲",
       "PrefabLocation": "",
-      "SortOrder": 6
+      "SortOrder": 7
     },
     {
       "BagCopies": 2,
@@ -118,7 +132,7 @@
       "ItemId": "DUEL_ITEM_CORE_BUFFER",
       "ItemName": "核心缓冲",
       "PrefabLocation": "",
-      "SortOrder": 7
+      "SortOrder": 8
     }
   ],
   "DT_BrickDuelRule": [
@@ -127,7 +141,7 @@
       "ArenaHalfWidth": 3.0,
       "BallRadius": 0.1,
       "BallResetSeconds": 0.5,
-      "BallSpeed": 3.0,
+      "BallSpeed": 4.5,
       "BaseTideSpeed": 0.035733,
       "BrickCompositionIntervalSeconds": 30.0,
       "BrickCompositionStages": [
@@ -138,32 +152,32 @@
           "YellowWeight": 0.0
         },
         {
-          "GreenWeight": 0.75,
-          "MysteryWeight": 0.05,
+          "GreenWeight": 0.725,
+          "MysteryWeight": 0.075,
           "RedWeight": 0.15,
           "YellowWeight": 0.05
         },
         {
-          "GreenWeight": 0.6,
-          "MysteryWeight": 0.05,
+          "GreenWeight": 0.55,
+          "MysteryWeight": 0.1,
           "RedWeight": 0.25,
           "YellowWeight": 0.1
         },
         {
-          "GreenWeight": 0.45,
-          "MysteryWeight": 0.05,
+          "GreenWeight": 0.375,
+          "MysteryWeight": 0.125,
           "RedWeight": 0.35,
           "YellowWeight": 0.15
         },
         {
-          "GreenWeight": 0.3,
-          "MysteryWeight": 0.05,
+          "GreenWeight": 0.2,
+          "MysteryWeight": 0.15,
           "RedWeight": 0.45,
           "YellowWeight": 0.2
         },
         {
-          "GreenWeight": 0.2,
-          "MysteryWeight": 0.05,
+          "GreenWeight": 0.1,
+          "MysteryWeight": 0.15,
           "RedWeight": 0.5,
           "YellowWeight": 0.25
         }
@@ -1003,6 +1017,2209 @@
       }
     }
   ],
+  "DT_PhaseCurve": [
+    {
+      "BreakCounterThreshold": 20,
+      "BreakCounterWarnSeconds": 1.0,
+      "CompositionIntervalSeconds": 30.0,
+      "Note": "替换现有 DT_BrickDuelRule.BrickCompositionStages；?砖占比 5%~7% 恒定，道具经济不被压缩",
+      "RuleId": "BRICK_DUEL_PHASE_V0",
+      "Stages": [
+        {
+          "GreenWeight": 0.8,
+          "MysteryWeight": 0.05,
+          "RedWeight": 0.05,
+          "Stage": "C0",
+          "TimeStart": 0,
+          "YellowWeight": 0.1
+        },
+        {
+          "GreenWeight": 0.65,
+          "MysteryWeight": 0.07,
+          "RedWeight": 0.1,
+          "Stage": "C1",
+          "TimeStart": 30,
+          "YellowWeight": 0.18
+        },
+        {
+          "GreenWeight": 0.5,
+          "MysteryWeight": 0.07,
+          "RedWeight": 0.18,
+          "Stage": "C2",
+          "TimeStart": 60,
+          "YellowWeight": 0.25
+        },
+        {
+          "GreenWeight": 0.35,
+          "MysteryWeight": 0.07,
+          "RedWeight": 0.26,
+          "Stage": "C3",
+          "TimeStart": 90,
+          "YellowWeight": 0.32
+        },
+        {
+          "GreenWeight": 0.22,
+          "MysteryWeight": 0.07,
+          "RedWeight": 0.33,
+          "Stage": "C4",
+          "TimeStart": 120,
+          "YellowWeight": 0.38
+        },
+        {
+          "GreenWeight": 0.12,
+          "MysteryWeight": 0.07,
+          "RedWeight": 0.39,
+          "Stage": "C5",
+          "TimeStart": 150,
+          "YellowWeight": 0.42
+        }
+      ]
+    }
+  ],
+  "DT_PhaseHero": [
+    {
+      "CoreItem": "ItemSplit",
+      "CoreResource": "Combo",
+      "Dimension": "数量",
+      "DisplayName": "蜃影",
+      "HeroId": "HERO_MIRAGE",
+      "PhaseLevels": [
+        {
+          "EffectText": "1 颗主球；连击达 8 时分裂 1 颗持续 6s 的临时球",
+          "Nature": "Identity",
+          "PhaseLevel": "P1",
+          "PhiToReach": 0
+        },
+        {
+          "EffectText": "连击阈值降至 6",
+          "Nature": "Scale",
+          "PhaseLevel": "P2",
+          "PhiToReach": 30
+        },
+        {
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_MIRAGE_MIRAGE_TIDE",
+            "CooldownSeconds": 12
+          },
+          "EffectText": "主动「幻潮」：复制场上所有球，最多 +2 颗临时球，持续 6s",
+          "Nature": "Active",
+          "PhaseLevel": "P3",
+          "PhiToReach": 50
+        },
+        {
+          "EffectText": "分裂生成的临时球：数量 1 → 2 颗（仅增加数量，不延长存在时间）",
+          "Nature": "Scale",
+          "PhaseLevel": "P4",
+          "PhiToReach": 70
+        },
+        {
+          "EffectText": "连击达 4 时分裂 1 颗临时球；场上每多 1 颗物理球挡板 +4%，上限 +12%",
+          "Nature": "Climax",
+          "PhaseLevel": "P5",
+          "PhiToReach": 100
+        }
+      ],
+      "PhiSources": [
+        {
+          "Note": "接取道具，纯操作",
+          "Phi": 2,
+          "Source": "PickupItem"
+        },
+        {
+          "Note": "击碎道具砖？，稀缺高价值",
+          "Phi": 2,
+          "Source": "BreakMysteryBrick"
+        },
+        {
+          "Note": "稳定低权重",
+          "Phi": 0.5,
+          "Source": "BreakRedBrick"
+        },
+        {
+          "Note": "稳定低权重，奖励处理难题",
+          "Phi": 1,
+          "Source": "BreakYellowBrick"
+        },
+        {
+          "Note": "挂机白嫖重灾区，不给",
+          "Phi": 0,
+          "Source": "BreakGreenBrick"
+        },
+        {
+          "Note": "所有来源每秒上限，硬约束，防滚雪球",
+          "Phi": 6,
+          "Source": "PerSecondCap"
+        }
+      ]
+    },
+    {
+      "CoreItem": "ItemSpeed",
+      "CoreResource": "Tempo",
+      "Dimension": "速度",
+      "DisplayName": "脉冲",
+      "HeroId": "HERO_PULSE",
+      "PhaseLevels": [
+        {
+          "EffectText": "节拍系统上线：每次挡板有效改向 +1 节拍，每 3s 无改向 -1；每节拍球速 +3%，上限 +12%",
+          "Nature": "Identity",
+          "PhaseLevel": "P1",
+          "PhiToReach": 0
+        },
+        {
+          "EffectText": "节拍上限提高到 5",
+          "Nature": "Scale",
+          "PhaseLevel": "P2",
+          "PhiToReach": 30
+        },
+        {
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_PULSE_BURST",
+            "CooldownSeconds": 18
+          },
+          "EffectText": "主动「爆点」：锁定当前最高节拍 5s，期间速度上限提高至 6.0",
+          "Nature": "Active",
+          "PhaseLevel": "P3",
+          "PhiToReach": 50
+        },
+        {
+          "EffectText": "节拍系统基础 Scaling 提升：每节拍球速 +3% → +5%，速度上限 +12% → +16%",
+          "Nature": "Scale",
+          "PhaseLevel": "P4",
+          "PhiToReach": 70
+        },
+        {
+          "EffectText": "高节拍（≥4）时每第 3 次命中获得 1 次穿透",
+          "Nature": "Climax",
+          "PhaseLevel": "P5",
+          "PhiToReach": 100
+        }
+      ],
+      "PhiSources": [
+        {
+          "Note": "接取道具，纯操作",
+          "Phi": 2,
+          "Source": "PickupItem"
+        },
+        {
+          "Note": "击碎道具砖？，稀缺高价值",
+          "Phi": 2,
+          "Source": "BreakMysteryBrick"
+        },
+        {
+          "Note": "稳定低权重",
+          "Phi": 0.5,
+          "Source": "BreakRedBrick"
+        },
+        {
+          "Note": "稳定低权重，奖励处理难题",
+          "Phi": 1,
+          "Source": "BreakYellowBrick"
+        },
+        {
+          "Note": "挂机白嫖重灾区，不给",
+          "Phi": 0,
+          "Source": "BreakGreenBrick"
+        },
+        {
+          "Note": "所有来源每秒上限，硬约束，防滚雪球",
+          "Phi": 6,
+          "Source": "PerSecondCap"
+        }
+      ]
+    },
+    {
+      "CoreItem": "ItemPierce",
+      "CoreResource": "Rift",
+      "Dimension": "穿透",
+      "DisplayName": "裂痕",
+      "HeroId": "HERO_RIFT",
+      "PhaseLevels": [
+        {
+          "EffectText": "蓄力满 5 点后主球获得 1 次穿透，最多存 2 次（与道具裂穿共用穿透计数池）",
+          "Nature": "Identity",
+          "PhaseLevel": "P1",
+          "PhiToReach": 0
+        },
+        {
+          "EffectText": "穿透储存上限提高到 3",
+          "Nature": "Scale",
+          "PhaseLevel": "P2",
+          "PhiToReach": 30
+        },
+        {
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_RIFT_PIERCE",
+            "CooldownSeconds": 20
+          },
+          "EffectText": "主动「贯裂」：主球立即获得 4 次穿透 + 12% 速度，持续到耗尽或 6s",
+          "Nature": "Active",
+          "PhaseLevel": "P3",
+          "PhiToReach": 50
+        },
+        {
+          "EffectText": "蓄力满释放时主球获得穿透 1 → 2 次（储存上限保持 3 次），蓄力阈值保持 5",
+          "Nature": "Scale",
+          "PhaseLevel": "P4",
+          "PhiToReach": 70
+        },
+        {
+          "EffectText": "蓄力阈值降至 4；穿透命中砖块返还 1 点蓄力（每次飞行最多返还 2 点）",
+          "Nature": "Climax",
+          "PhaseLevel": "P5",
+          "PhiToReach": 100
+        }
+      ],
+      "PhiSources": [
+        {
+          "Note": "接取道具，纯操作",
+          "Phi": 2,
+          "Source": "PickupItem"
+        },
+        {
+          "Note": "击碎道具砖？，稀缺高价值",
+          "Phi": 2,
+          "Source": "BreakMysteryBrick"
+        },
+        {
+          "Note": "稳定低权重",
+          "Phi": 0.5,
+          "Source": "BreakRedBrick"
+        },
+        {
+          "Note": "稳定低权重，奖励处理难题",
+          "Phi": 1,
+          "Source": "BreakYellowBrick"
+        },
+        {
+          "Note": "挂机白嫖重灾区，不给",
+          "Phi": 0,
+          "Source": "BreakGreenBrick"
+        },
+        {
+          "Note": "所有来源每秒上限，硬约束，防滚雪球",
+          "Phi": 6,
+          "Source": "PerSecondCap"
+        }
+      ]
+    },
+    {
+      "CoreItem": "ItemWide",
+      "CoreResource": "RefractMark",
+      "Dimension": "弹道",
+      "DisplayName": "折光",
+      "HeroId": "HERO_REFRACT",
+      "PhaseLevels": [
+        {
+          "EffectText": "完成折射循环后，下一次侧墙反弹速度 +8%，持续 3s",
+          "Nature": "Identity",
+          "PhaseLevel": "P1",
+          "PhiToReach": 0
+        },
+        {
+          "EffectText": "折射循环速度加成提高到 +12%；标记持续 2.5s 延长到 3s",
+          "Nature": "Scale",
+          "PhaseLevel": "P2",
+          "PhiToReach": 30
+        },
+        {
+          "ActiveAbility": {
+            "AbilityId": "ABILITY_REFRACT_MIRROR",
+            "CooldownSeconds": 16
+          },
+          "EffectText": "主动「镜界」：本方半场生成一面 6s 镜面，只与本方弹球碰撞",
+          "Nature": "Active",
+          "PhaseLevel": "P3",
+          "PhiToReach": 50
+        },
+        {
+          "EffectText": "折射循环的速度加成改为可叠加：每次循环 +6% 侧墙反弹速度，最多叠加 3 层（合计 +18%），折射标记持续 3s → 4s",
+          "Nature": "Scale",
+          "PhaseLevel": "P4",
+          "PhiToReach": 70
+        },
+        {
+          "EffectText": "每完成 2 次折射循环，镜界冷却 -3s；所有球经过镜面后获得“墙面命中不降速”",
+          "Nature": "Climax",
+          "PhaseLevel": "P5",
+          "PhiToReach": 100
+        }
+      ],
+      "PhiSources": [
+        {
+          "Note": "接取道具，纯操作",
+          "Phi": 2,
+          "Source": "PickupItem"
+        },
+        {
+          "Note": "击碎道具砖？，稀缺高价值",
+          "Phi": 2,
+          "Source": "BreakMysteryBrick"
+        },
+        {
+          "Note": "稳定低权重",
+          "Phi": 0.5,
+          "Source": "BreakRedBrick"
+        },
+        {
+          "Note": "稳定低权重，奖励处理难题",
+          "Phi": 1,
+          "Source": "BreakYellowBrick"
+        },
+        {
+          "Note": "挂机白嫖重灾区，不给",
+          "Phi": 0,
+          "Source": "BreakGreenBrick"
+        },
+        {
+          "Note": "所有来源每秒上限，硬约束，防滚雪球",
+          "Phi": 6,
+          "Source": "PerSecondCap"
+        }
+      ]
+    }
+  ],
+  "DT_PhaseItem": [
+    {
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "DurationSeconds": 0,
+        "PierceCharges": 2
+      },
+      "ItemId": "ItemPierce",
+      "ItemName": "裂穿",
+      "Note": "主球获得 2 次穿透；与英雄蓄力穿透共用计数池",
+      "ValueWeight": 3
+    },
+    {
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "TempBallCount": 1,
+        "TempBallSeconds": 6
+      },
+      "ItemId": "ItemSplit",
+      "ItemName": "分形",
+      "Note": "生成 1 颗持续 6s 临时球；与英雄分裂球同为临时球实体",
+      "ValueWeight": 3
+    },
+    {
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "DurationSeconds": 6,
+        "TideSpeedMultiplier": 0.8
+      },
+      "ItemId": "ItemDamp",
+      "ItemName": "缓滞",
+      "Note": "本方砖潮推进速度 -20%；只作用本方",
+      "ValueWeight": 3
+    },
+    {
+      "BaseDropWeight": 0.2,
+      "Effect": {
+        "BallSpeedMultiplier": 1.2,
+        "DurationSeconds": 5
+      },
+      "ItemId": "ItemSpeed",
+      "ItemName": "疾风",
+      "Note": "球速临时 +20%",
+      "ValueWeight": 2
+    },
+    {
+      "BaseDropWeight": 0.2,
+      "Effect": {
+        "DurationSeconds": 8,
+        "PaddleLengthMultiplier": 1.2
+      },
+      "ItemId": "ItemWide",
+      "ItemName": "广域",
+      "Note": "挡板 +20%",
+      "ValueWeight": 2
+    },
+    {
+      "BaseDropWeight": 0.15,
+      "Effect": {
+        "PullNextItem": true
+      },
+      "ItemId": "ItemMagnet",
+      "ItemName": "磁吸",
+      "Note": "下一个道具自动落向挡板",
+      "ValueWeight": 1
+    }
+  ],
+  "DT_PhaseMeta": [
+    {
+      "CurrencyLoss": 4,
+      "CurrencyWin": 12,
+      "DropOffsetCap": 10,
+      "MetaId": "PHASE_META_V0",
+      "NetOffsetBudget": 30,
+      "Note": "经济与全局平衡常数；全部为 §6 tuning 拍板值",
+      "PhiPerSecondCap": 6,
+      "ScissorDiffTargetSeconds": 40,
+      "TechUnlockCost": 15
+    }
+  ],
+  "DT_PhaseTech": [
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 6.6,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 6.6s（增强10%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_MIRAGE_P1_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "蜂拥",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 9.0,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 9.0s（增强50%）",
+          "Unit": "s"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 12.0,
+          "Op": "Weaken",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 12.0%（削弱40%），持续 6s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_MIRAGE_P1_SWARM"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "孤狼",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 4.2,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 4.2s（削弱30%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_MIRAGE_P1_LONEWOLF"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 6.6,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 6.6s（增强10%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_MIRAGE_P2_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "裂变",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 8.4,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 8.4s（增强40%）",
+          "Unit": "s"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 11.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 11.0%（削弱45%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_MIRAGE_P2_FISSION"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "洪流",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 9.6,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 9.6s（增强60%）",
+          "Unit": "s"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 75,
+          "ModifiedValue": 5.0,
+          "Op": "Weaken",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 5.0%（削弱75%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_MIRAGE_P2_FLOOD"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 6.6,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 6.6s（增强10%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_MIRAGE_P3_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "增殖",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 8.4,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 8.4s（增强40%）",
+          "Unit": "s"
+        },
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 1,
+          "Op": "Weaken",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 1次（削弱30%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_MIRAGE_P3_PROLIFERATE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "吞噬",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 26.0,
+          "Op": "Enhance",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 26.0%（增强30%），持续 6s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 20,
+          "ModifiedValue": 4.8,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 4.8s（削弱20%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_MIRAGE_P3_DEVOUR"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 6.6,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 6.6s（增强10%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_MIRAGE_P4_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "虫群",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 9.0,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 9.0s（增强50%）",
+          "Unit": "s"
+        },
+        {
+          "BaseValue": 1,
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "MagnitudePercent": 120,
+          "ModifiedValue": 1,
+          "Op": "Weaken",
+          "ParamLabel": "自动吸附道具数",
+          "ResolvedText": "磁吸 自动吸附道具数 1个 → 1个（削弱120%）",
+          "Unit": "个"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_MIRAGE_P4_HIVE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "归巢",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 14.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_MIRAGE_P4_HOMECOMING"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 6.6,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 6.6s（增强10%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_MIRAGE_P5_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "满巢",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 9.6,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 9.6s（增强60%）",
+          "Unit": "s"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 10.0,
+          "Op": "Weaken",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 10.0%（削弱50%），持续 6s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_MIRAGE_P5_FULLNEST"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "星爆",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 3.6,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 3.6s（削弱40%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_MIRAGE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_MIRAGE_P5_STARBURST"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_PULSE_P1_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "疾走",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 29.0%（增强45%），持续 5s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 20,
+          "ModifiedValue": 16.0,
+          "Op": "Weaken",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 16.0%（削弱20%），持续 6s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_PULSE_P1_SPRINT"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "穿刺",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 11.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 11.0%（削弱45%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_PULSE_P1_PIERCE"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_PULSE_P2_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "超频",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 32.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 32.0%（增强60%），持续 5s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 11.0,
+          "Op": "Weaken",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 11.0%（削弱45%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_PULSE_P2_OVERCLOCK"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "破甲",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 4.2,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 4.2s（削弱30%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_PULSE_P2_ARMORBREAK"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_PULSE_P3_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "红线",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 29.0%（增强45%），持续 5s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 20,
+          "ModifiedValue": 16.0,
+          "Op": "Weaken",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 16.0%（削弱20%），持续 6s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_PULSE_P3_REDLINE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "凝滞",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 26.0,
+          "Op": "Enhance",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 26.0%（增强30%），持续 6s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 14.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_PULSE_P3_STASIS"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_PULSE_P4_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "极速",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 32.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 32.0%（增强60%），持续 5s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 11.0,
+          "Op": "Weaken",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 11.0%（削弱45%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_PULSE_P4_MAXSPEED"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "制动",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 14.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_PULSE_P4_BRAKE"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_PULSE_P5_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "暴走",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 75,
+          "ModifiedValue": 35.0,
+          "Op": "Enhance",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 35.0%（增强75%），持续 5s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 12.0,
+          "Op": "Weaken",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 12.0%（削弱40%），持续 6s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_PULSE_P5_RAMPAGE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "穿云",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 8.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 8.0%（削弱60%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_PULSE",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_PULSE_P5_CLOUDPIERCE"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_RIFT_P1_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "深钻",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 3.6,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 3.6s（削弱40%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_RIFT_P1_DEEPDRILL"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "稳盘",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 1,
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 1,
+          "Op": "Weaken",
+          "ParamLabel": "自动吸附道具数",
+          "ResolvedText": "磁吸 自动吸附道具数 1个 → 1个（削弱60%）",
+          "Unit": "个"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_RIFT_P1_STEADY"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_RIFT_P2_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "贯穿",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强60%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 75,
+          "ModifiedValue": 5.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 5.0%（削弱75%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_RIFT_P2_PENETRATE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "破阵",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 4.2,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 4.2s（削弱30%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_RIFT_P2_BREAKARRAY"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_RIFT_P3_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "贯星",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 8.0,
+          "Op": "Weaken",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 8.0%（削弱60%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_RIFT_P3_STARPIERCE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "凝壁",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 26.0,
+          "Op": "Enhance",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 26.0%（增强30%），持续 6s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 20,
+          "ModifiedValue": 2,
+          "Op": "Weaken",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 2次（削弱20%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_RIFT_P3_WALLSTAB"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_RIFT_P4_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "钻地",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强60%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 3.0,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 3.0s（削弱50%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_RIFT_P4_DRILLDOWN"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "广域",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 14.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_RIFT_P4_WIDEFIELD"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_RIFT_P5_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "无界",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 70,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强70%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 8.0,
+          "Op": "Weaken",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 8.0%（削弱60%），持续 6s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_RIFT_P5_BOUNDLESS"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "碎星",
+      "Effects": [
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 50,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）",
+          "Unit": "次"
+        },
+        {
+          "BaseValue": 1,
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "MagnitudePercent": 120,
+          "ModifiedValue": 1,
+          "Op": "Weaken",
+          "ParamLabel": "自动吸附道具数",
+          "ResolvedText": "磁吸 自动吸附道具数 1个 → 1个（削弱120%）",
+          "Unit": "个"
+        }
+      ],
+      "HeroId": "HERO_RIFT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_RIFT_P5_STARCHATTER"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_REFRACT_P1_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "稳镜",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 14.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_REFRACT_P1_STEADYMIRROR"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "吸星",
+      "Effects": [
+        {
+          "BaseValue": 1,
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "自动吸附道具数",
+          "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（增强60%）",
+          "Unit": "个"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 10,
+          "ModifiedValue": 5.4,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 5.4s（削弱10%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P1",
+      "TechId": "TECH_REFRACT_P1_MAGNETSTAR"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_REFRACT_P2_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "扩域",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 32.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 32.0%（增强60%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 4.2,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 4.2s（削弱30%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_REFRACT_P2_EXPANDFIELD"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "校准",
+      "Effects": [
+        {
+          "BaseValue": 1,
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "MagnitudePercent": 90,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "自动吸附道具数",
+          "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（增强90%）",
+          "Unit": "个"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 14.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P2",
+      "TechId": "TECH_REFRACT_P2_CALIBRATE"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_REFRACT_P3_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "回廊",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 29.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 2,
+          "ItemId": "ItemPierce",
+          "ItemName": "裂穿",
+          "MagnitudePercent": 20,
+          "ModifiedValue": 2,
+          "Op": "Weaken",
+          "ParamLabel": "穿透次数",
+          "ResolvedText": "裂穿 穿透次数 2次 → 2次（削弱20%）",
+          "Unit": "次"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_REFRACT_P3_CORRIDOR"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "分光",
+      "Effects": [
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 7.8,
+          "Op": "Enhance",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 7.8s（增强30%）",
+          "Unit": "s"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 14.0,
+          "Op": "Weaken",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 14.0%（削弱30%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P3",
+      "TechId": "TECH_REFRACT_P3_SPLITLIGHT"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_REFRACT_P4_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "无限",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 32.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 32.0%（增强60%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 45,
+          "ModifiedValue": 11.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 11.0%（削弱45%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_REFRACT_P4_INFINITE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "引力",
+      "Effects": [
+        {
+          "BaseValue": 1,
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "MagnitudePercent": 120,
+          "ModifiedValue": 2,
+          "Op": "Enhance",
+          "ParamLabel": "自动吸附道具数",
+          "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（增强120%）",
+          "Unit": "个"
+        },
+        {
+          "BaseValue": 6,
+          "ItemId": "ItemSplit",
+          "ItemName": "分形",
+          "MagnitudePercent": 30,
+          "ModifiedValue": 4.2,
+          "Op": "Weaken",
+          "ParamLabel": "临时球持续",
+          "ResolvedText": "分形 临时球持续 6s → 4.2s（削弱30%）",
+          "Unit": "s"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P4",
+      "TechId": "TECH_REFRACT_P4_GRAVITY"
+    },
+    {
+      "CostCurrency": 0,
+      "DisplayName": "基准",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 15,
+          "ModifiedValue": 23.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Default",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_REFRACT_P5_BASE"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "全境",
+      "Effects": [
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemWide",
+          "ItemName": "广域",
+          "MagnitudePercent": 75,
+          "ModifiedValue": 35.0,
+          "Op": "Enhance",
+          "ParamLabel": "挡板增幅",
+          "ResolvedText": "广域 挡板增幅 20% → 35.0%（增强75%），持续 8s",
+          "Unit": "%"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemDamp",
+          "ItemName": "缓滞",
+          "MagnitudePercent": 40,
+          "ModifiedValue": 12.0,
+          "Op": "Weaken",
+          "ParamLabel": "砖潮减速",
+          "ResolvedText": "缓滞 砖潮减速 20% → 12.0%（削弱40%），持续 6s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_REFRACT_P5_FULLDOMAIN"
+    },
+    {
+      "CostCurrency": 15,
+      "DisplayName": "归流",
+      "Effects": [
+        {
+          "BaseValue": 1,
+          "ItemId": "ItemMagnet",
+          "ItemName": "磁吸",
+          "MagnitudePercent": 150,
+          "ModifiedValue": 3,
+          "Op": "Enhance",
+          "ParamLabel": "自动吸附道具数",
+          "ResolvedText": "磁吸 自动吸附道具数 1个 → 3个（增强150%）",
+          "Unit": "个"
+        },
+        {
+          "BaseValue": 20,
+          "ItemId": "ItemSpeed",
+          "ItemName": "疾风",
+          "MagnitudePercent": 60,
+          "ModifiedValue": 8.0,
+          "Op": "Weaken",
+          "ParamLabel": "球速增幅",
+          "ResolvedText": "疾风 球速增幅 20% → 8.0%（削弱60%），持续 5s",
+          "Unit": "%"
+        }
+      ],
+      "HeroId": "HERO_REFRACT",
+      "Kind": "Advanced",
+      "NetOffset": 30,
+      "SlotPhase": "P5",
+      "TechId": "TECH_REFRACT_P5_RETURNFLOW"
+    }
+  ],
   "DT_PlayerColorRule": [
     {
       "Alpha": 1.0,
@@ -1485,6 +3702,28 @@
       "BallSpeedByTime": "球移动速度时间表，二维数组格式为 [[时间秒, 速度], ...]；例如 [[15,10],[30,15],[45,20]] 表示比赛进行到 15 秒、30 秒、45 秒时球速分别调整为 10、15、20。",
       "MatchDuration": "比赛时间，单位秒；表示常规比赛从开局到时间结束的总时长，最终以策划填写的数据为准。",
       "TuningValues": "弹板反弹调参，包含 HitOffsetInfluenceValue、PaddleVelocityInfluenceValue、MinimumOutwardShareValue，运行时按整数档位换算为实际系数。"
+    },
+    "DT_PhaseCurve": {
+      "BreakCounterThreshold": "破阵反馈阈值：清砖满该数向对手注入升级砖。",
+      "Stages": "C0~C5 六档绿/黄/红/？权重，每档合计 = 1.0。"
+    },
+    "DT_PhaseHero": {
+      "CoreItem": "该英雄的核心道具 ID；科技价值矩阵以它为中心配平。",
+      "PhaseLevels": "P1~P5 五档相位：PhiToReach 为升阶所需 Φ 总量（0/30/50/70/100）。",
+      "PhiSources": "Φ 来源：接道具/击碎？砖/红黄砖等，PerSecondCap 为每秒上限硬约束。"
+    },
+    "DT_PhaseItem": {
+      "BaseDropWeight": "道具基础掉率，六项合计 = 1.0。",
+      "Effect": "异构效果对象，运行时按 ItemId 解释，勿强类型化。",
+      "ValueWeight": "道具价值权重 3/3/3/2/2/1，驱动科技净偏移配平。"
+    },
+    "DT_PhaseMeta": {
+      "NetOffsetBudget": "科技净偏移预算 D，全局平衡常数。",
+      "ScissorDiffTargetSeconds": "剪刀差目标：操作差 vs 操作好死亡时间差应大于该秒数。"
+    },
+    "DT_PhaseTech": {
+      "Effects": "道具价值矩阵：Op 为 Enhance/Weaken，MagnitudePercent 为增减幅度。",
+      "NetOffset": "科技净偏移，全部等于预算 D=+30，保证同英雄增益/代价守恒。"
     },
     "DT_UniversalChip": {
       "ConditionalModifiers": "可选的英雄/路径门槛修饰；满足 HeroId、PathId 和 MinimumPathLevel 时应用。",

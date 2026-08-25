@@ -122,6 +122,27 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void PlayerScorePanelStaysHiddenBeforeMatchStarts()
+        {
+            _service.UpdateHud(
+                new GatebreakerHudSnapshot
+                {
+                    PlayerScores = new[]
+                    {
+                        new PlayerScoreSnapshot(1, 1, false, 0, 0, 1),
+                        new PlayerScoreSnapshot(2, 2, false, 0, 0, 2),
+                        new PlayerScoreSnapshot(3, 3, false, 0, 0, 3),
+                    },
+                },
+                ServeBlockReason.None,
+                false);
+
+            Assert.IsFalse(_binding.TopPanel2PRoot.activeSelf);
+            Assert.IsFalse(_binding.TopPanel3PRoot.activeSelf);
+            Assert.IsFalse(_binding.TopPanel4PRoot.activeSelf);
+        }
+
+        [Test]
         public void PlayerScorePanelSwitchesToFourPlayerBindingsForFourVisiblePlayers()
         {
             _service.Bind(

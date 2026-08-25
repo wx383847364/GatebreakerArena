@@ -38,10 +38,10 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(6, rule.BrickCompositionStages.Count);
             Assert.AreEqual(0.90f, rule.BrickCompositionStages[0].GreenWeight, 0.0001f);
             Assert.AreEqual(0.00f, rule.BrickCompositionStages[0].YellowWeight, 0.0001f);
-            Assert.AreEqual(0.20f, rule.BrickCompositionStages[5].GreenWeight, 0.0001f);
+            Assert.AreEqual(0.10f, rule.BrickCompositionStages[5].GreenWeight, 0.0001f);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab", rule.ScenePrefabLocation);
             Assert.IsNotNull(rule.ItemDrops);
-            Assert.AreEqual(7, rule.ItemDrops.Count);
+            Assert.AreEqual(8, rule.ItemDrops.Count);
             Assert.AreEqual("DUEL_ITEM_WIDE_PADDLE", rule.ItemDrops[0].ItemId);
             Assert.AreEqual(
                 "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
@@ -55,6 +55,46 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(
                 "DUEL_ITEM_SPEED_BALL_DURATION",
                 rule.ItemDrops[4].DurationModifierKey);
+        }
+
+        [Test]
+        public void ParseJson_LoadsV03PhaseTables()
+        {
+            string json = File.ReadAllText(Path.Combine(Application.dataPath, "Config/json/gatebreaker_rules.json"));
+
+            GatebreakerConfigLoadResult result = GatebreakerConfigRuntimeLoader.ParseJson(json);
+
+            Assert.IsTrue(result.Succeeded, result.Message);
+
+            PhaseHeroDefinition mirage = result.Catalog.GetPhaseHero("HERO_MIRAGE");
+            Assert.IsNotNull(mirage);
+            Assert.AreEqual("蜃影", mirage.DisplayName);
+            Assert.AreEqual("ItemSplit", mirage.CoreItem);
+            Assert.AreEqual(5, mirage.PhaseLevels.Count);
+            Assert.AreEqual(0, mirage.PhaseLevels[0].PhiToReach);
+            Assert.AreEqual(100, mirage.PhaseLevels[4].PhiToReach);
+            Assert.AreEqual(6, mirage.PhiSources.Count);
+
+            Assert.AreEqual(4, result.Catalog.AllPhaseHeroes.Count);
+            Assert.AreEqual(60, result.Catalog.AllPhaseTechs.Count);
+            Assert.AreEqual(6, result.Catalog.AllPhaseItems.Count);
+
+            Assert.AreEqual(3, result.Catalog.GetPhaseItem("ItemPierce").ValueWeight);
+            Assert.AreEqual(30, result.Catalog.GetPhaseTech("TECH_MIRAGE_P1_BASE").NetOffset);
+
+            PhaseCurveDefinition curve = result.Catalog.GetPhaseCurve("BRICK_DUEL_PHASE_V0");
+            Assert.AreEqual(6, curve.Stages.Count);
+            Assert.AreEqual(20, curve.BreakCounterThreshold);
+            Assert.AreEqual(1.0f, curve.BreakCounterWarnSeconds, 0.0001f);
+
+            PhaseMetaDefinition meta = result.Catalog.GetPhaseMeta("PHASE_META_V0");
+            Assert.AreEqual(12, meta.CurrencyWin);
+            Assert.AreEqual(4, meta.CurrencyLoss);
+            Assert.AreEqual(15, meta.TechUnlockCost);
+            Assert.AreEqual(30, meta.NetOffsetBudget);
+            Assert.AreEqual(10, meta.DropOffsetCap);
+            Assert.AreEqual(6, meta.PhiPerSecondCap);
+            Assert.AreEqual(40, meta.ScissorDiffTargetSeconds);
         }
 
         [Test]
@@ -143,7 +183,7 @@ namespace Gatebreaker.Tests
                     canonical.Replace("\"GreenHealth\": 1", "\"GreenHealth\": 2"));
             GatebreakerConfigLoadResult invalidSpeed =
                 GatebreakerConfigRuntimeLoader.ParseJson(
-                    canonical.Replace("\"BallSpeed\": 3.0", "\"BallSpeed\": 0"));
+                    canonical.Replace("\"BallSpeed\": 4.5", "\"BallSpeed\": 0"));
             GatebreakerConfigLoadResult invalidPath =
                 GatebreakerConfigRuntimeLoader.ParseJson(
                     canonical.Replace(

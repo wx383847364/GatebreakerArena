@@ -64,6 +64,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private GatebreakerInputService _inputService;
         private GatebreakerArenaHudPresenter _hudPresenter;
         private GatebreakerArenaSceneBindingService _sceneBindingService;
+        private LeaderboardPresenter _leaderboardPresenter;
         private HeroDeckSelectionPresenter _loadoutPresenter;
         private readonly int[] _loadoutChipIndices = new int[5];
         private V1MatchLoadout _selectedLocalLoadout;
@@ -180,9 +181,14 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _lanTransport = context.Services?.Get<ILanTransport>();
             _sceneBindingService = context.SceneBindingService;
             await InitializeAsync(context.MatchRuntime, context.InputService, context.HudPresenter, DefaultLocalPlayerId);
+            IGatebreakerArenaSceneUiBinding sceneUiBinding = ResolveSceneUiBinding(context.Services);
             _sceneBindingService?.Bind(
-                ResolveSceneUiBinding(context.Services),
+                sceneUiBinding,
                 BuildSceneUiCallbacks(),
+                context.Logger);
+            _leaderboardPresenter = LeaderboardPresenter.TryCreate(
+                sceneUiBinding,
+                new LocalMockLeaderboardDataSource(),
                 context.Logger);
             _loadoutPresenter = new HeroDeckSelectionPresenter(_runtime.ModeCatalog);
             InitializeLoadoutUi();
@@ -802,6 +808,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void OnDestroy()
         {
             SubscribeLanRoomService(null);
+
+            _leaderboardPresenter?.Dispose();
+            _leaderboardPresenter = null;
 
             _brickDuelSession?.Dispose();
             _brickDuelSession = null;
@@ -3373,7 +3382,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             GatebreakerHudSnapshot snapshot = _hudPresenter.BuildSnapshot(_localPlayerId);
-            _sceneBindingService.UpdateHud(snapshot, _lastServeBlockReason);
+            bool showScorePanel = _startupUiState == StartupUiState.LocalPlaying || IsLanPlaying();
+            _sceneBindingService.UpdateHud(snapshot, _lastServeBlockReason, showScorePanel);
             PlayerRuntimeState localPlayer = _runtime?.FindPlayer(_localPlayerId);
             HeroRuntimeState hero = localPlayer?.Hero;
             int milestone = hero?.PathStates?.FirstOrDefault()?.Level ?? 0;

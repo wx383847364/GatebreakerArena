@@ -23,7 +23,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             ref int pierceCharges,
             ISet<int> ignoredBrickIds,
             ISet<int> hitBrickIds,
-            float targetBallSpeed = -1f)
+            float targetBallSpeed = -1f,
+            Vector2? paddleBounceTarget = null)
         {
             if (ball == null || !ball.IsActive || deltaTime <= 0f)
             {
@@ -92,13 +93,24 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     candidate.ColliderVelocity;
                 if (candidate.IsPaddle)
                 {
-                    float hitOffset = (ball.Position.x - candidate.ColliderCenter.x) /
-                                      Mathf.Max(0.001f, paddleHalfWidth);
-                    float tangentShare = Mathf.Clamp(hitOffset, -1f, 1f) * 0.72f +
-                                         paddle.MoveAxis * 0.18f;
-                    float outwardY = ball.Side == BrickDuelSide.Bottom ? 1f : -1f;
-                    float verticalShare = Mathf.Sqrt(Mathf.Max(0.16f, 1f - tangentShare * tangentShare));
-                    reflected = new Vector2(tangentShare, outwardY * verticalShare);
+                    Vector2 aimedDirection = paddleBounceTarget.HasValue
+                        ? paddleBounceTarget.Value - ball.Position
+                        : Vector2.zero;
+                    if (aimedDirection.sqrMagnitude > 0.0001f)
+                    {
+                        reflected = aimedDirection.normalized;
+                    }
+                    else
+                    {
+                        float hitOffset = (ball.Position.x - candidate.ColliderCenter.x) /
+                                          Mathf.Max(0.001f, paddleHalfWidth);
+                        float tangentShare = Mathf.Clamp(hitOffset, -1f, 1f) * 0.72f +
+                                             paddle.MoveAxis * 0.18f;
+                        float outwardY = ball.Side == BrickDuelSide.Bottom ? 1f : -1f;
+                        float verticalShare = Mathf.Sqrt(
+                            Mathf.Max(0.16f, 1f - tangentShare * tangentShare));
+                        reflected = new Vector2(tangentShare, outwardY * verticalShare);
+                    }
                 }
 
                 Vector2 direction = reflected.sqrMagnitude > 0.0001f

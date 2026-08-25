@@ -1,0 +1,59 @@
+[
+  {
+    "RuleId": "BRICK_DUEL_PHASE_V0",
+    "CompositionIntervalSeconds": 30.0,
+    "Stages": [
+      {
+        "Stage": "C0",
+        "TimeStart": 0,
+        "GreenWeight": 0.8,
+        "YellowWeight": 0.1,
+        "RedWeight": 0.05,
+        "MysteryWeight": 0.05
+      },
+      {
+        "Stage": "C1",
+        "TimeStart": 30,
+        "GreenWeight": 0.65,
+        "YellowWeight": 0.18,
+        "RedWeight": 0.1,
+        "MysteryWeight": 0.07
+      },
+      {
+        "Stage": "C2",
+        "TimeStart": 60,
+        "GreenWeight": 0.5,
+        "YellowWeight": 0.25,
+        "RedWeight": 0.18,
+        "MysteryWeight": 0.07
+      },
+      {
+        "Stage": "C3",
+        "TimeStart": 90,
+        "GreenWeight": 0.35,
+        "YellowWeight": 0.32,
+        "RedWeight": 0.26,
+        "MysteryWeight": 0.07
+      },
+      {
+        "Stage": "C4",
+        "TimeStart": 120,
+        "GreenWeight": 0.22,
+        "YellowWeight": 0.38,
+        "RedWeight": 0.33,
+        "MysteryWeight": 0.07
+      },
+      {
+        "Stage": "C5",
+        "TimeStart": 150,
+        "GreenWeight": 0.12,
+        "YellowWeight": 0.42,
+        "RedWeight": 0.39,
+        "MysteryWeight": 0.07
+      }
+    ],
+    "BreakCounterThreshold": 20,
+    "BreakCounterWarnSeconds": 1.0,
+    "Note": "替换现有 DT_BrickDuelRule.BrickCompositionStages；?砖占比 5%~7% 恒定，道具经济不被压缩"
+  }
+]

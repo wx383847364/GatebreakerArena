@@ -15,7 +15,7 @@
     "BrickWidth": 0.66,
     "BrickHeight": 0.46,
     "BallRadius": 0.1,
-    "BallSpeed": 3.0,
+    "BallSpeed": 4.5,
     "BaseTideSpeed": 0.035733,
     "BallResetSeconds": 0.5,
     "StuckTimeoutSeconds": 2.0,
@@ -41,34 +41,34 @@
         "MysteryWeight": 0.05
       },
       {
-        "GreenWeight": 0.75,
+        "GreenWeight": 0.725,
         "RedWeight": 0.15,
         "YellowWeight": 0.05,
-        "MysteryWeight": 0.05
+        "MysteryWeight": 0.075
       },
       {
-        "GreenWeight": 0.60,
+        "GreenWeight": 0.55,
         "RedWeight": 0.25,
         "YellowWeight": 0.10,
-        "MysteryWeight": 0.05
+        "MysteryWeight": 0.10
       },
       {
-        "GreenWeight": 0.45,
+        "GreenWeight": 0.375,
         "RedWeight": 0.35,
         "YellowWeight": 0.15,
-        "MysteryWeight": 0.05
-      },
-      {
-        "GreenWeight": 0.30,
-        "RedWeight": 0.45,
-        "YellowWeight": 0.20,
-        "MysteryWeight": 0.05
+        "MysteryWeight": 0.125
       },
       {
         "GreenWeight": 0.20,
+        "RedWeight": 0.45,
+        "YellowWeight": 0.20,
+        "MysteryWeight": 0.15
+      },
+      {
+        "GreenWeight": 0.10,
         "RedWeight": 0.50,
         "YellowWeight": 0.25,
-        "MysteryWeight": 0.05
+        "MysteryWeight": 0.15
       }
     ],
     "RandomSeed": 1,

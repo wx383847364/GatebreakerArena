@@ -522,13 +522,23 @@ namespace App.HotUpdate.GatebreakerArena.UI
             IsBound = true;
         }
 
-        public void UpdateHud(GatebreakerHudSnapshot snapshot, ServeBlockReason lastServeBlockReason)
+        public void UpdateHud(
+            GatebreakerHudSnapshot snapshot,
+            ServeBlockReason lastServeBlockReason,
+            bool showScorePanel = true)
         {
             UpdateBallCount(snapshot);
             if (snapshot == null)
             {
                 UpdateTimeText(0f);
-                UpdatePlayerScorePanel(null);
+                if (showScorePanel)
+                {
+                    UpdatePlayerScorePanel(null);
+                }
+                else
+                {
+                    SetActiveScorePanel(0);
+                }
                 return;
             }
 
@@ -536,7 +546,14 @@ namespace App.HotUpdate.GatebreakerArena.UI
             SetText(_hudTitleText, "Gatebreaker Arena 原型");
             SetText(_hudStatusText, $"阶段：{FormatPhase(snapshot.Phase)}    时间：{FormatTime(snapshot.RemainingTime)}");
             SetText(_hudScoreText, $"比分：{FormatScoreLine(snapshot)}");
-            UpdatePlayerScorePanel(snapshot);
+            if (showScorePanel)
+            {
+                UpdatePlayerScorePanel(snapshot);
+            }
+            else
+            {
+                SetActiveScorePanel(0);
+            }
             SetText(
                 _hudServeText,
                 $"弹药：{snapshot.CurrentServeAmmo}/{snapshot.MaxServeAmmo}    回复：{snapshot.ServeCooldownRemaining:0.0}秒");
