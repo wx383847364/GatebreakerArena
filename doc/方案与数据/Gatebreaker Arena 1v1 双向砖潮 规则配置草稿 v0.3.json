@@ -279,7 +279,7 @@
           "PhaseLevel": "P1",
           "Nature": "Identity",
           "PhiToReach": 0,
-          "EffectText": "完成折射循环后，下一次侧墙反弹速度 +8%，持续 3s"
+          "EffectText": "主球被挡板回球获得折射标记；带标记命中砖块完成折射循环，完成后下一次挡板回球速度 +8%，持续 3s"
         },
         {
           "PhaseLevel": "P2",

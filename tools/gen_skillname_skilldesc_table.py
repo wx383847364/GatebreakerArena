@@ -6,6 +6,7 @@
 """
 import json
 import csv
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,9 +39,58 @@ def load_json(path: Path):
     return data if isinstance(data, list) else (data.get("rows") or data.get("Techs") or data.get("Heroes") or [])
 
 
+# 单位中文映射
+UNIT_CN = {"s": "秒", "次": "次", "%": "%", "个": "个"}
+
+# ParamLabel 美化（更自然的中文宾语）
+PARAM_BEAUTIFY = {
+    "临时球持续": "临时球持续时间",
+}
+
+
+def _fmt_num(v) -> str:
+    """整数不带小数，小数保留 2 位（消除浮点尾差）。"""
+    f = round(float(v), 2)
+    return str(int(f)) if f.is_integer() else str(f)
+
+
 def build_skill_desc(effects: list) -> str:
-    """把多个 Effect 的 ResolvedText 用分号拼接成 SkillDesc。"""
-    return "；".join(e.get("ResolvedText", "") for e in effects if e.get("ResolvedText"))
+    """把多个 Effect 转写为增量描述：{道具}{参数}{增加/减少}{差值}{单位}（，持续Ns）。
+
+    用结构化字段（BaseValue / ModifiedValue / Op / Unit）生成，不依赖 ResolvedText 字符串。
+    """
+    parts = []
+    for e in effects:
+        if not e.get("ResolvedText"):
+            continue
+        item = e.get("ItemName", "")
+        param = PARAM_BEAUTIFY.get(e.get("ParamLabel", ""), e.get("ParamLabel", ""))
+        base = e.get("BaseValue", 0)
+        mod = e.get("ModifiedValue", 0)
+        op = e.get("Op", "")
+        unit = e.get("Unit", "")
+        unit_cn = UNIT_CN.get(unit, unit)
+
+        diff = mod - base
+        diff_abs = abs(diff)
+
+        # 零差值已被数据模型禁止（整数型走 MagnitudeStep、连续型走 MagnitudePercent，
+        # NetOffset 守恒要求每槽必有真实增减）。此分支仅兜底：跳过而非输出「无变化」。
+        if diff_abs == 0:
+            continue
+
+        direction = "增加" if op == "Enhance" else "减少"
+        desc = f"{item}{param}{direction}{_fmt_num(diff_abs)}{unit_cn}"
+
+        # 保留效果持续时长（缓滞/疾风/广域 在「→」之后的「持续 Ns」后缀；
+        # 分形参数值里的「持续 6s」是基准值本身，不属于时长，必须排除）
+        after = e.get("ResolvedText", "").split("→")[-1]
+        dur = re.search(r"持续\s*(\d+(?:\.\d+)?)s", after)
+        if dur:
+            desc += f"，持续{dur.group(1)}秒"
+
+        parts.append(desc)
+    return "；".join(parts)
 
 
 def build_rows(techs: list):
@@ -126,6 +176,7 @@ def write_markdown(rows: list, path: Path):
         "",
         "> 每英雄 5 相位（P1–P5），每相位 3 槽位（SlotIndex 0=基准，1/2=进阶）。",
         "> 本表可直接用于 Unity `SkillName` / `SkillDesc` 字段配置。",
+        "> `SkillDesc` 采用**增量描述**（如「分形临时球持续时间增加0.6秒」），便于玩家直观理解增减量，不展示 before→after 区间与增强/削弱百分比。",
         "",
         "| HeroId | HeroName | Phase | SlotIndex | Kind | Cost | TechId | SkillName | SkillDesc |",
         "|---|---|---|---|---:|---|---|---|---|",

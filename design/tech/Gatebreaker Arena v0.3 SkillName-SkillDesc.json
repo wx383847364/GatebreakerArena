@@ -9,7 +9,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_MIRAGE_P1_BASE",
           "SkillName": "基准",
-          "SkillDesc": "分形 临时球持续 6s → 6.6s（增强10%）"
+          "SkillDesc": "分形临时球持续时间增加0.6秒"
         },
         {
           "SlotIndex": 1,
@@ -17,7 +17,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P1_LONEWOLF",
           "SkillName": "孤狼",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强40%）；分形 临时球持续 6s → 4.2s（削弱30%）"
+          "SkillDesc": "裂穿穿透次数增加1次；分形临时球持续时间减少1.8秒"
         },
         {
           "SlotIndex": 2,
@@ -25,7 +25,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P1_SWARM",
           "SkillName": "蜂拥",
-          "SkillDesc": "分形 临时球持续 6s → 9.0s（增强50%）；缓滞 砖潮减速 20% → 12.0%（削弱40%），持续 6s"
+          "SkillDesc": "分形临时球持续时间增加3秒；缓滞砖潮减速减少8%，持续6秒"
         }
       ],
       "P2": [
@@ -35,7 +35,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_MIRAGE_P2_BASE",
           "SkillName": "基准",
-          "SkillDesc": "分形 临时球持续 6s → 6.6s（增强10%）"
+          "SkillDesc": "分形临时球持续时间增加0.6秒"
         },
         {
           "SlotIndex": 1,
@@ -43,7 +43,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P2_FISSION",
           "SkillName": "裂变",
-          "SkillDesc": "分形 临时球持续 6s → 8.4s（增强40%）；疾风 球速增幅 20% → 11.0%（削弱45%），持续 5s"
+          "SkillDesc": "分形临时球持续时间增加2.4秒；疾风球速增幅减少9%，持续5秒"
         },
         {
           "SlotIndex": 2,
@@ -51,7 +51,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P2_FLOOD",
           "SkillName": "洪流",
-          "SkillDesc": "分形 临时球持续 6s → 9.6s（增强60%）；广域 挡板增幅 20% → 5.0%（削弱75%），持续 8s"
+          "SkillDesc": "分形临时球持续时间增加3.6秒；广域挡板增幅减少15%，持续8秒"
         }
       ],
       "P3": [
@@ -61,7 +61,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_MIRAGE_P3_BASE",
           "SkillName": "基准",
-          "SkillDesc": "分形 临时球持续 6s → 6.6s（增强10%）"
+          "SkillDesc": "分形临时球持续时间增加0.6秒"
         },
         {
           "SlotIndex": 1,
@@ -69,7 +69,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P3_DEVOUR",
           "SkillName": "吞噬",
-          "SkillDesc": "缓滞 砖潮减速 20% → 26.0%（增强30%），持续 6s；分形 临时球持续 6s → 4.8s（削弱20%）"
+          "SkillDesc": "缓滞砖潮减速增加6%，持续6秒；分形临时球持续时间减少1.2秒"
         },
         {
           "SlotIndex": 2,
@@ -77,7 +77,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P3_PROLIFERATE",
           "SkillName": "增殖",
-          "SkillDesc": "分形 临时球持续 6s → 8.4s（增强40%）；裂穿 穿透次数 2次 → 1次（削弱30%）"
+          "SkillDesc": "分形临时球持续时间增加2.4秒；裂穿穿透次数减少1次"
         }
       ],
       "P4": [
@@ -87,7 +87,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_MIRAGE_P4_BASE",
           "SkillName": "基准",
-          "SkillDesc": "分形 临时球持续 6s → 6.6s（增强10%）"
+          "SkillDesc": "分形临时球持续时间增加0.6秒"
         },
         {
           "SlotIndex": 1,
@@ -95,7 +95,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P4_HIVE",
           "SkillName": "虫群",
-          "SkillDesc": "分形 临时球持续 6s → 9.0s（增强50%）；磁吸 自动吸附道具数 1个 → 1个（削弱120%）"
+          "SkillDesc": "分形临时球持续时间增加3秒；磁吸自动吸附道具数减少1个"
         },
         {
           "SlotIndex": 2,
@@ -103,7 +103,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P4_HOMECOMING",
           "SkillName": "归巢",
-          "SkillDesc": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s；疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s"
+          "SkillDesc": "广域挡板增幅增加9%，持续8秒；疾风球速增幅减少6%，持续5秒"
         }
       ],
       "P5": [
@@ -113,7 +113,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_MIRAGE_P5_BASE",
           "SkillName": "基准",
-          "SkillDesc": "分形 临时球持续 6s → 6.6s（增强10%）"
+          "SkillDesc": "分形临时球持续时间增加0.6秒"
         },
         {
           "SlotIndex": 1,
@@ -121,7 +121,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P5_FULLNEST",
           "SkillName": "满巢",
-          "SkillDesc": "分形 临时球持续 6s → 9.6s（增强60%）；缓滞 砖潮减速 20% → 10.0%（削弱50%），持续 6s"
+          "SkillDesc": "分形临时球持续时间增加3.6秒；缓滞砖潮减速减少10%，持续6秒"
         },
         {
           "SlotIndex": 2,
@@ -129,7 +129,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_MIRAGE_P5_STARBURST",
           "SkillName": "星爆",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强50%）；分形 临时球持续 6s → 3.6s（削弱40%）"
+          "SkillDesc": "裂穿穿透次数增加1次；分形临时球持续时间减少2.4秒"
         }
       ]
     }
@@ -144,7 +144,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_PULSE_P1_BASE",
           "SkillName": "基准",
-          "SkillDesc": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s"
+          "SkillDesc": "疾风球速增幅增加3%，持续5秒"
         },
         {
           "SlotIndex": 1,
@@ -152,7 +152,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P1_PIERCE",
           "SkillName": "穿刺",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强40%）；疾风 球速增幅 20% → 11.0%（削弱45%），持续 5s"
+          "SkillDesc": "裂穿穿透次数增加1次；疾风球速增幅减少9%，持续5秒"
         },
         {
           "SlotIndex": 2,
@@ -160,7 +160,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P1_SPRINT",
           "SkillName": "疾走",
-          "SkillDesc": "疾风 球速增幅 20% → 29.0%（增强45%），持续 5s；缓滞 砖潮减速 20% → 16.0%（削弱20%），持续 6s"
+          "SkillDesc": "疾风球速增幅增加9%，持续5秒；缓滞砖潮减速减少4%，持续6秒"
         }
       ],
       "P2": [
@@ -170,7 +170,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_PULSE_P2_BASE",
           "SkillName": "基准",
-          "SkillDesc": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s"
+          "SkillDesc": "疾风球速增幅增加3%，持续5秒"
         },
         {
           "SlotIndex": 1,
@@ -178,7 +178,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P2_ARMORBREAK",
           "SkillName": "破甲",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强40%）；分形 临时球持续 6s → 4.2s（削弱30%）"
+          "SkillDesc": "裂穿穿透次数增加1次；分形临时球持续时间减少1.8秒"
         },
         {
           "SlotIndex": 2,
@@ -186,7 +186,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P2_OVERCLOCK",
           "SkillName": "超频",
-          "SkillDesc": "疾风 球速增幅 20% → 32.0%（增强60%），持续 5s；广域 挡板增幅 20% → 11.0%（削弱45%），持续 8s"
+          "SkillDesc": "疾风球速增幅增加12%，持续5秒；广域挡板增幅减少9%，持续8秒"
         }
       ],
       "P3": [
@@ -196,7 +196,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_PULSE_P3_BASE",
           "SkillName": "基准",
-          "SkillDesc": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s"
+          "SkillDesc": "疾风球速增幅增加3%，持续5秒"
         },
         {
           "SlotIndex": 1,
@@ -204,7 +204,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P3_REDLINE",
           "SkillName": "红线",
-          "SkillDesc": "疾风 球速增幅 20% → 29.0%（增强45%），持续 5s；缓滞 砖潮减速 20% → 16.0%（削弱20%），持续 6s"
+          "SkillDesc": "疾风球速增幅增加9%，持续5秒；缓滞砖潮减速减少4%，持续6秒"
         },
         {
           "SlotIndex": 2,
@@ -212,7 +212,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P3_STASIS",
           "SkillName": "凝滞",
-          "SkillDesc": "缓滞 砖潮减速 20% → 26.0%（增强30%），持续 6s；疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s"
+          "SkillDesc": "缓滞砖潮减速增加6%，持续6秒；疾风球速增幅减少6%，持续5秒"
         }
       ],
       "P4": [
@@ -222,7 +222,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_PULSE_P4_BASE",
           "SkillName": "基准",
-          "SkillDesc": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s"
+          "SkillDesc": "疾风球速增幅增加3%，持续5秒"
         },
         {
           "SlotIndex": 1,
@@ -230,7 +230,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P4_BRAKE",
           "SkillName": "制动",
-          "SkillDesc": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s；疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s"
+          "SkillDesc": "广域挡板增幅增加9%，持续8秒；疾风球速增幅减少6%，持续5秒"
         },
         {
           "SlotIndex": 2,
@@ -238,7 +238,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P4_MAXSPEED",
           "SkillName": "极速",
-          "SkillDesc": "疾风 球速增幅 20% → 32.0%（增强60%），持续 5s；广域 挡板增幅 20% → 11.0%（削弱45%），持续 8s"
+          "SkillDesc": "疾风球速增幅增加12%，持续5秒；广域挡板增幅减少9%，持续8秒"
         }
       ],
       "P5": [
@@ -248,7 +248,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_PULSE_P5_BASE",
           "SkillName": "基准",
-          "SkillDesc": "疾风 球速增幅 20% → 23.0%（增强15%），持续 5s"
+          "SkillDesc": "疾风球速增幅增加3%，持续5秒"
         },
         {
           "SlotIndex": 1,
@@ -256,7 +256,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P5_CLOUDPIERCE",
           "SkillName": "穿云",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强50%）；疾风 球速增幅 20% → 8.0%（削弱60%），持续 5s"
+          "SkillDesc": "裂穿穿透次数增加1次；疾风球速增幅减少12%，持续5秒"
         },
         {
           "SlotIndex": 2,
@@ -264,7 +264,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_PULSE_P5_RAMPAGE",
           "SkillName": "暴走",
-          "SkillDesc": "疾风 球速增幅 20% → 35.0%（增强75%），持续 5s；缓滞 砖潮减速 20% → 12.0%（削弱40%），持续 6s"
+          "SkillDesc": "疾风球速增幅增加15%，持续5秒；缓滞砖潮减速减少8%，持续6秒"
         }
       ]
     }
@@ -279,7 +279,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_RIFT_P1_BASE",
           "SkillName": "基准",
-          "SkillDesc": "裂穿 穿透次数 2次 → 2次（增强10%）"
+          "SkillDesc": "裂穿穿透次数增加1次"
         },
         {
           "SlotIndex": 1,
@@ -287,7 +287,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P1_DEEPDRILL",
           "SkillName": "深钻",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强50%）；分形 临时球持续 6s → 3.6s（削弱40%）"
+          "SkillDesc": "裂穿穿透次数增加1次；分形临时球持续时间减少2.4秒"
         },
         {
           "SlotIndex": 2,
@@ -295,7 +295,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P1_STEADY",
           "SkillName": "稳盘",
-          "SkillDesc": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s；磁吸 自动吸附道具数 1个 → 1个（削弱60%）"
+          "SkillDesc": "广域挡板增幅增加9%，持续8秒；磁吸自动吸附道具数减少1个"
         }
       ],
       "P2": [
@@ -305,7 +305,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_RIFT_P2_BASE",
           "SkillName": "基准",
-          "SkillDesc": "裂穿 穿透次数 2次 → 2次（增强10%）"
+          "SkillDesc": "裂穿穿透次数增加1次"
         },
         {
           "SlotIndex": 1,
@@ -313,7 +313,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P2_BREAKARRAY",
           "SkillName": "破阵",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强40%）；分形 临时球持续 6s → 4.2s（削弱30%）"
+          "SkillDesc": "裂穿穿透次数增加1次；分形临时球持续时间减少1.8秒"
         },
         {
           "SlotIndex": 2,
@@ -321,7 +321,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P2_PENETRATE",
           "SkillName": "贯穿",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强60%）；疾风 球速增幅 20% → 5.0%（削弱75%），持续 5s"
+          "SkillDesc": "裂穿穿透次数增加1次；疾风球速增幅减少15%，持续5秒"
         }
       ],
       "P3": [
@@ -331,7 +331,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_RIFT_P3_BASE",
           "SkillName": "基准",
-          "SkillDesc": "裂穿 穿透次数 2次 → 2次（增强10%）"
+          "SkillDesc": "裂穿穿透次数增加1次"
         },
         {
           "SlotIndex": 1,
@@ -339,7 +339,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P3_STARPIERCE",
           "SkillName": "贯星",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强50%）；广域 挡板增幅 20% → 8.0%（削弱60%），持续 8s"
+          "SkillDesc": "裂穿穿透次数增加1次；广域挡板增幅减少12%，持续8秒"
         },
         {
           "SlotIndex": 2,
@@ -347,7 +347,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P3_WALLSTAB",
           "SkillName": "凝壁",
-          "SkillDesc": "缓滞 砖潮减速 20% → 26.0%（增强30%），持续 6s；裂穿 穿透次数 2次 → 2次（削弱20%）"
+          "SkillDesc": "缓滞砖潮减速增加6%，持续6秒；裂穿穿透次数减少1次"
         }
       ],
       "P4": [
@@ -357,7 +357,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_RIFT_P4_BASE",
           "SkillName": "基准",
-          "SkillDesc": "裂穿 穿透次数 2次 → 2次（增强10%）"
+          "SkillDesc": "裂穿穿透次数增加1次"
         },
         {
           "SlotIndex": 1,
@@ -365,7 +365,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P4_DRILLDOWN",
           "SkillName": "钻地",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强60%）；分形 临时球持续 6s → 3.0s（削弱50%）"
+          "SkillDesc": "裂穿穿透次数增加1次；分形临时球持续时间减少3秒"
         },
         {
           "SlotIndex": 2,
@@ -373,7 +373,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P4_WIDEFIELD",
           "SkillName": "广域",
-          "SkillDesc": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s；疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s"
+          "SkillDesc": "广域挡板增幅增加9%，持续8秒；疾风球速增幅减少6%，持续5秒"
         }
       ],
       "P5": [
@@ -383,7 +383,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_RIFT_P5_BASE",
           "SkillName": "基准",
-          "SkillDesc": "裂穿 穿透次数 2次 → 2次（增强10%）"
+          "SkillDesc": "裂穿穿透次数增加1次"
         },
         {
           "SlotIndex": 1,
@@ -391,7 +391,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P5_BOUNDLESS",
           "SkillName": "无界",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强70%）；缓滞 砖潮减速 20% → 8.0%（削弱60%），持续 6s"
+          "SkillDesc": "裂穿穿透次数增加1次；缓滞砖潮减速减少12%，持续6秒"
         },
         {
           "SlotIndex": 2,
@@ -399,7 +399,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_RIFT_P5_STARCHATTER",
           "SkillName": "碎星",
-          "SkillDesc": "裂穿 穿透次数 2次 → 3次（增强50%）；磁吸 自动吸附道具数 1个 → 1个（削弱120%）"
+          "SkillDesc": "裂穿穿透次数增加1次；磁吸自动吸附道具数减少1个"
         }
       ]
     }
@@ -414,7 +414,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_REFRACT_P1_BASE",
           "SkillName": "基准",
-          "SkillDesc": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s"
+          "SkillDesc": "广域挡板增幅增加3%，持续8秒"
         },
         {
           "SlotIndex": 1,
@@ -422,7 +422,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P1_MAGNETSTAR",
           "SkillName": "吸星",
-          "SkillDesc": "磁吸 自动吸附道具数 1个 → 2个（增强60%）；分形 临时球持续 6s → 5.4s（削弱10%）"
+          "SkillDesc": "磁吸自动吸附道具数增加1个；分形临时球持续时间减少0.6秒"
         },
         {
           "SlotIndex": 2,
@@ -430,7 +430,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P1_STEADYMIRROR",
           "SkillName": "稳镜",
-          "SkillDesc": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s；疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s"
+          "SkillDesc": "广域挡板增幅增加9%，持续8秒；疾风球速增幅减少6%，持续5秒"
         }
       ],
       "P2": [
@@ -440,7 +440,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_REFRACT_P2_BASE",
           "SkillName": "基准",
-          "SkillDesc": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s"
+          "SkillDesc": "广域挡板增幅增加3%，持续8秒"
         },
         {
           "SlotIndex": 1,
@@ -448,7 +448,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P2_CALIBRATE",
           "SkillName": "校准",
-          "SkillDesc": "磁吸 自动吸附道具数 1个 → 2个（增强90%）；疾风 球速增幅 20% → 14.0%（削弱30%），持续 5s"
+          "SkillDesc": "磁吸自动吸附道具数增加1个；疾风球速增幅减少6%，持续5秒"
         },
         {
           "SlotIndex": 2,
@@ -456,7 +456,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P2_EXPANDFIELD",
           "SkillName": "扩域",
-          "SkillDesc": "广域 挡板增幅 20% → 32.0%（增强60%），持续 8s；分形 临时球持续 6s → 4.2s（削弱30%）"
+          "SkillDesc": "广域挡板增幅增加12%，持续8秒；分形临时球持续时间减少1.8秒"
         }
       ],
       "P3": [
@@ -466,7 +466,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_REFRACT_P3_BASE",
           "SkillName": "基准",
-          "SkillDesc": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s"
+          "SkillDesc": "广域挡板增幅增加3%，持续8秒"
         },
         {
           "SlotIndex": 1,
@@ -474,7 +474,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P3_CORRIDOR",
           "SkillName": "回廊",
-          "SkillDesc": "广域 挡板增幅 20% → 29.0%（增强45%），持续 8s；裂穿 穿透次数 2次 → 2次（削弱20%）"
+          "SkillDesc": "广域挡板增幅增加9%，持续8秒；裂穿穿透次数减少1次"
         },
         {
           "SlotIndex": 2,
@@ -482,7 +482,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P3_SPLITLIGHT",
           "SkillName": "分光",
-          "SkillDesc": "分形 临时球持续 6s → 7.8s（增强30%）；广域 挡板增幅 20% → 14.0%（削弱30%），持续 8s"
+          "SkillDesc": "分形临时球持续时间增加1.8秒；广域挡板增幅减少6%，持续8秒"
         }
       ],
       "P4": [
@@ -492,7 +492,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_REFRACT_P4_BASE",
           "SkillName": "基准",
-          "SkillDesc": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s"
+          "SkillDesc": "广域挡板增幅增加3%，持续8秒"
         },
         {
           "SlotIndex": 1,
@@ -500,7 +500,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P4_GRAVITY",
           "SkillName": "引力",
-          "SkillDesc": "磁吸 自动吸附道具数 1个 → 2个（增强120%）；分形 临时球持续 6s → 4.2s（削弱30%）"
+          "SkillDesc": "磁吸自动吸附道具数增加1个；分形临时球持续时间减少1.8秒"
         },
         {
           "SlotIndex": 2,
@@ -508,7 +508,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P4_INFINITE",
           "SkillName": "无限",
-          "SkillDesc": "广域 挡板增幅 20% → 32.0%（增强60%），持续 8s；疾风 球速增幅 20% → 11.0%（削弱45%），持续 5s"
+          "SkillDesc": "广域挡板增幅增加12%，持续8秒；疾风球速增幅减少9%，持续5秒"
         }
       ],
       "P5": [
@@ -518,7 +518,7 @@
           "CostCurrency": 0,
           "TechId": "TECH_REFRACT_P5_BASE",
           "SkillName": "基准",
-          "SkillDesc": "广域 挡板增幅 20% → 23.0%（增强15%），持续 8s"
+          "SkillDesc": "广域挡板增幅增加3%，持续8秒"
         },
         {
           "SlotIndex": 1,
@@ -526,7 +526,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P5_FULLDOMAIN",
           "SkillName": "全境",
-          "SkillDesc": "广域 挡板增幅 20% → 35.0%（增强75%），持续 8s；缓滞 砖潮减速 20% → 12.0%（削弱40%），持续 6s"
+          "SkillDesc": "广域挡板增幅增加15%，持续8秒；缓滞砖潮减速减少8%，持续6秒"
         },
         {
           "SlotIndex": 2,
@@ -534,7 +534,7 @@
           "CostCurrency": 15,
           "TechId": "TECH_REFRACT_P5_RETURNFLOW",
           "SkillName": "归流",
-          "SkillDesc": "磁吸 自动吸附道具数 1个 → 3个（增强150%）；疾风 球速增幅 20% → 8.0%（削弱60%），持续 5s"
+          "SkillDesc": "磁吸自动吸附道具数增加2个；疾风球速增幅减少12%，持续5秒"
         }
       ]
     }

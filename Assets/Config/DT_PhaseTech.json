@@ -67,12 +67,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 40,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -221,12 +222,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Weaken",
-        "MagnitudePercent": 30,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 1,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 1次（削弱30%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 1次（-1次）",
+        "MagnitudeStep": -1
       }
     ]
   },
@@ -309,12 +311,13 @@
         "ItemId": "ItemMagnet",
         "ItemName": "磁吸",
         "Op": "Weaken",
-        "MagnitudePercent": 120,
+        "MagnitudePercent": 0,
         "ParamLabel": "自动吸附道具数",
         "BaseValue": 1,
-        "ModifiedValue": 1,
+        "ModifiedValue": 0,
         "Unit": "个",
-        "ResolvedText": "磁吸 自动吸附道具数 1个 → 1个（削弱120%）"
+        "ResolvedText": "磁吸 自动吸附道具数 1个 → 0个（-1个）",
+        "MagnitudeStep": -1
       }
     ]
   },
@@ -419,12 +422,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 50,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -507,12 +511,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 40,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSpeed",
@@ -595,12 +600,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 40,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -859,12 +865,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 50,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSpeed",
@@ -892,12 +899,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 10,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
-        "ModifiedValue": 2,
+        "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       }
     ]
   },
@@ -914,12 +922,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 50,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -958,12 +967,13 @@
         "ItemId": "ItemMagnet",
         "ItemName": "磁吸",
         "Op": "Weaken",
-        "MagnitudePercent": 60,
+        "MagnitudePercent": 0,
         "ParamLabel": "自动吸附道具数",
         "BaseValue": 1,
-        "ModifiedValue": 1,
+        "ModifiedValue": 0,
         "Unit": "个",
-        "ResolvedText": "磁吸 自动吸附道具数 1个 → 1个（削弱60%）"
+        "ResolvedText": "磁吸 自动吸附道具数 1个 → 0个（-1个）",
+        "MagnitudeStep": -1
       }
     ]
   },
@@ -980,12 +990,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 10,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
-        "ModifiedValue": 2,
+        "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       }
     ]
   },
@@ -1002,12 +1013,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 60,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强60%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSpeed",
@@ -1035,12 +1047,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 40,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强40%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -1068,12 +1081,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 10,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
-        "ModifiedValue": 2,
+        "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       }
     ]
   },
@@ -1090,12 +1104,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 50,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemWide",
@@ -1134,12 +1149,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Weaken",
-        "MagnitudePercent": 20,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
-        "ModifiedValue": 2,
+        "ModifiedValue": 1,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 2次（削弱20%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 1次（-1次）",
+        "MagnitudeStep": -1
       }
     ]
   },
@@ -1156,12 +1172,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 10,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
-        "ModifiedValue": 2,
+        "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       }
     ]
   },
@@ -1178,12 +1195,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 60,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强60%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -1244,12 +1262,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 10,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
-        "ModifiedValue": 2,
+        "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 2次（增强10%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       }
     ]
   },
@@ -1266,12 +1285,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 70,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强70%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemDamp",
@@ -1299,23 +1319,25 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Enhance",
-        "MagnitudePercent": 50,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
         "ModifiedValue": 3,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 3次（增强50%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 3次（+1次）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemMagnet",
         "ItemName": "磁吸",
         "Op": "Weaken",
-        "MagnitudePercent": 120,
+        "MagnitudePercent": 0,
         "ParamLabel": "自动吸附道具数",
         "BaseValue": 1,
-        "ModifiedValue": 1,
+        "ModifiedValue": 0,
         "Unit": "个",
-        "ResolvedText": "磁吸 自动吸附道具数 1个 → 1个（削弱120%）"
+        "ResolvedText": "磁吸 自动吸附道具数 1个 → 0个（-1个）",
+        "MagnitudeStep": -1
       }
     ]
   },
@@ -1387,12 +1409,13 @@
         "ItemId": "ItemMagnet",
         "ItemName": "磁吸",
         "Op": "Enhance",
-        "MagnitudePercent": 60,
+        "MagnitudePercent": 0,
         "ParamLabel": "自动吸附道具数",
         "BaseValue": 1,
         "ModifiedValue": 2,
         "Unit": "个",
-        "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（增强60%）"
+        "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（+1个）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -1475,12 +1498,13 @@
         "ItemId": "ItemMagnet",
         "ItemName": "磁吸",
         "Op": "Enhance",
-        "MagnitudePercent": 90,
+        "MagnitudePercent": 0,
         "ParamLabel": "自动吸附道具数",
         "BaseValue": 1,
         "ModifiedValue": 2,
         "Unit": "个",
-        "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（增强90%）"
+        "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（+1个）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSpeed",
@@ -1541,12 +1565,13 @@
         "ItemId": "ItemPierce",
         "ItemName": "裂穿",
         "Op": "Weaken",
-        "MagnitudePercent": 20,
+        "MagnitudePercent": 0,
         "ParamLabel": "穿透次数",
         "BaseValue": 2,
-        "ModifiedValue": 2,
+        "ModifiedValue": 1,
         "Unit": "次",
-        "ResolvedText": "裂穿 穿透次数 2次 → 2次（削弱20%）"
+        "ResolvedText": "裂穿 穿透次数 2次 → 1次（-1次）",
+        "MagnitudeStep": -1
       }
     ]
   },
@@ -1651,12 +1676,13 @@
         "ItemId": "ItemMagnet",
         "ItemName": "磁吸",
         "Op": "Enhance",
-        "MagnitudePercent": 120,
+        "MagnitudePercent": 0,
         "ParamLabel": "自动吸附道具数",
         "BaseValue": 1,
         "ModifiedValue": 2,
         "Unit": "个",
-        "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（增强120%）"
+        "ResolvedText": "磁吸 自动吸附道具数 1个 → 2个（+1个）",
+        "MagnitudeStep": 1
       },
       {
         "ItemId": "ItemSplit",
@@ -1739,12 +1765,13 @@
         "ItemId": "ItemMagnet",
         "ItemName": "磁吸",
         "Op": "Enhance",
-        "MagnitudePercent": 150,
+        "MagnitudePercent": 0,
         "ParamLabel": "自动吸附道具数",
         "BaseValue": 1,
         "ModifiedValue": 3,
         "Unit": "个",
-        "ResolvedText": "磁吸 自动吸附道具数 1个 → 3个（增强150%）"
+        "ResolvedText": "磁吸 自动吸附道具数 1个 → 3个（+2个）",
+        "MagnitudeStep": 2
       },
       {
         "ItemId": "ItemSpeed",

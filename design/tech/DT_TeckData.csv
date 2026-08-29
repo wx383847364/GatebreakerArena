@@ -1,4 +1,4 @@
-﻿HeroId,HeroName,Phase,SlotIndex,Kind,CostCurrency,TechId,SkillName,SkillDesc
+﻿HeroId,HeroName,Phase,SlotIndex,Kind,CostCurrency,TechId,TeckName,TeckDesc
 HERO_MIRAGE,蜃影,P1,0,Default,0,TECH_MIRAGE_P1_BASE,基准,分形临时球持续时间增加0.6秒
 HERO_MIRAGE,蜃影,P1,1,Advanced,15,TECH_MIRAGE_P1_LONEWOLF,孤狼,裂穿穿透次数增加1次；分形临时球持续时间减少1.8秒
 HERO_MIRAGE,蜃影,P1,2,Advanced,15,TECH_MIRAGE_P1_SWARM,蜂拥,分形临时球持续时间增加3秒；缓滞砖潮减速减少8%，持续6秒

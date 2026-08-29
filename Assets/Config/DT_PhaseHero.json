@@ -5,24 +5,25 @@
     "Dimension": "数量",
     "CoreResource": "Combo",
     "CoreItem": "ItemSplit",
+    "ResourceRule": "连击：主球命中砖块 +1 累积（临时球命中不计入连击）；主球碰底部墙壁即断连清零（球反弹不消失，无失球惩罚，仅资源重置）。",
     "PhaseLevels": [
       {
         "PhaseLevel": "P1",
         "Nature": "Identity",
         "PhiToReach": 0,
-        "EffectText": "1 颗主球；连击达 8 时分裂 1 颗持续 6s 的临时球"
+        "EffectText": "主球连击达8次时分裂1颗持续6秒的临时球"
       },
       {
         "PhaseLevel": "P2",
         "Nature": "Scale",
         "PhiToReach": 30,
-        "EffectText": "连击阈值降至 6"
+        "EffectText": "主球需求连击次数降至6次"
       },
       {
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "主动「幻潮」：复制场上所有球，最多 +2 颗临时球，持续 6s",
+        "EffectText": "「幻潮」：复制场上所有球，最多增加2颗临时球，持续6秒。冷却时间30秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_MIRAGE_MIRAGE_TIDE",
           "CooldownSeconds": 12
@@ -32,13 +33,13 @@
         "PhaseLevel": "P4",
         "Nature": "Scale",
         "PhiToReach": 70,
-        "EffectText": "分裂生成的临时球：数量 1 → 2 颗（仅增加数量，不延长存在时间）"
+        "EffectText": "分裂生成的临时球增加到2颗"
       },
       {
         "PhaseLevel": "P5",
         "Nature": "Climax",
         "PhiToReach": 100,
-        "EffectText": "连击达 4 时分裂 1 颗临时球；场上每多 1 颗物理球挡板 +4%，上限 +12%"
+        "EffectText": "连击达4次时分裂1颗临时球；场上每多1颗物理球挡板长度增加+4%（上限+12%）"
       }
     ],
     "PhiSources": [
@@ -85,19 +86,19 @@
         "PhaseLevel": "P1",
         "Nature": "Identity",
         "PhiToReach": 0,
-        "EffectText": "节拍系统上线：每次挡板有效改向 +1 节拍，每 3s 无改向 -1；每节拍球速 +3%，上限 +12%"
+        "EffectText": "每次挡板有效改向增加1点节拍，每3秒无改向减少1点节拍；每节拍球速+3%（上限+12%）"
       },
       {
         "PhaseLevel": "P2",
         "Nature": "Scale",
         "PhiToReach": 30,
-        "EffectText": "节拍上限提高到 5"
+        "EffectText": "节拍上限提高到5"
       },
       {
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "主动「爆点」：锁定当前最高节拍 5s，期间速度上限提高至 6.0",
+        "EffectText": "「爆点」：锁定当前最高节拍5秒，期间速度上限提高至6.0。冷却时间30秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_PULSE_BURST",
           "CooldownSeconds": 18
@@ -107,13 +108,13 @@
         "PhaseLevel": "P4",
         "Nature": "Scale",
         "PhiToReach": 70,
-        "EffectText": "节拍系统基础 Scaling 提升：每节拍球速 +3% → +5%，速度上限 +12% → +16%"
+        "EffectText": "每节拍球速增加至5%，速度上限为20%"
       },
       {
         "PhaseLevel": "P5",
         "Nature": "Climax",
         "PhiToReach": 100,
-        "EffectText": "高节拍（≥4）时每第 3 次命中获得 1 次穿透"
+        "EffectText": "节拍大于4次时每第3次命中获得1次穿透"
       }
     ],
     "PhiSources": [
@@ -155,24 +156,25 @@
     "Dimension": "穿透",
     "CoreResource": "Rift",
     "CoreItem": "ItemPierce",
+    "ResourceRule": "蓄力：主球命中砖块蓄力（每次 +1），满阈值自动释放穿透；主球碰底部墙壁即蓄力清零（球反弹不消失，无失球惩罚，仅资源重置；与蜃影连击共用同一断连规则）。",
     "PhaseLevels": [
       {
         "PhaseLevel": "P1",
         "Nature": "Identity",
         "PhiToReach": 0,
-        "EffectText": "蓄力满 5 点后主球获得 1 次穿透，最多存 2 次（与道具裂穿共用穿透计数池）"
+        "EffectText": "蓄力满5点后主球获得1次穿透，最多存2次（与道具裂穿共用穿透计数）"
       },
       {
         "PhaseLevel": "P2",
         "Nature": "Scale",
         "PhiToReach": 30,
-        "EffectText": "穿透储存上限提高到 3"
+        "EffectText": "穿透储存上限提高到3次"
       },
       {
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "主动「贯裂」：主球立即获得 4 次穿透 + 12% 速度，持续到耗尽或 6s",
+        "EffectText": "「贯裂」：主球立即获得4次穿透并且增加12%速度，效果持续到穿透次数耗尽。冷却时间30秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_RIFT_PIERCE",
           "CooldownSeconds": 20
@@ -182,13 +184,13 @@
         "PhaseLevel": "P4",
         "Nature": "Scale",
         "PhiToReach": 70,
-        "EffectText": "蓄力满释放时主球获得穿透 1 → 2 次（储存上限保持 3 次），蓄力阈值保持 5"
+        "EffectText": "蓄力满释放时主球获得穿透增加到2次（储存上限保持3次）"
       },
       {
         "PhaseLevel": "P5",
         "Nature": "Climax",
         "PhiToReach": 100,
-        "EffectText": "蓄力阈值降至 4；穿透命中砖块返还 1 点蓄力（每次飞行最多返还 2 点）"
+        "EffectText": "蓄力到达4次后获得穿透效果；穿透命中砖块返还1点蓄力。"
       }
     ],
     "PhiSources": [
@@ -230,24 +232,25 @@
     "Dimension": "弹道",
     "CoreResource": "RefractMark",
     "CoreItem": "ItemWide",
+    "ResourceRule": "折射标记：主球被挡板回球时获得标记；带标记命中砖块完成折射循环，完成后触发奖励（如挡板回球速度+X%）。标记有持续时间，超时未命中砖块则作废需重新回球装填。折射循环仅由主球完成，临时球不参与。",
     "PhaseLevels": [
       {
         "PhaseLevel": "P1",
         "Nature": "Identity",
         "PhiToReach": 0,
-        "EffectText": "完成折射循环后，下一次侧墙反弹速度 +8%，持续 3s"
+        "EffectText": "主球被挡板回球获得折射标记；带标记命中砖块完成折射循环，完成后下一次挡板回球速度+8%，持续3秒"
       },
       {
         "PhaseLevel": "P2",
         "Nature": "Scale",
         "PhiToReach": 30,
-        "EffectText": "折射循环速度加成提高到 +12%；标记持续 2.5s 延长到 3s"
+        "EffectText": "折射循环速度加成提高到+12%；标记持续增加到3秒"
       },
       {
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "主动「镜界」：本方半场生成一面 6s 镜面，只与本方弹球碰撞",
+        "EffectText": "「镜界」：本方半场生成一面6s镜面，只与本方弹球碰撞。冷却时间30秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_REFRACT_MIRROR",
           "CooldownSeconds": 16
@@ -257,13 +260,13 @@
         "PhaseLevel": "P4",
         "Nature": "Scale",
         "PhiToReach": 70,
-        "EffectText": "折射循环的速度加成改为可叠加：每次循环 +6% 侧墙反弹速度，最多叠加 3 层（合计 +18%），折射标记持续 3s → 4s"
+        "EffectText": "折射循环的速度加成改为可叠加：每次循环+6%挡板回球速度，最多叠加3层（合计+18%），折射标记持续增加到4秒"
       },
       {
         "PhaseLevel": "P5",
         "Nature": "Climax",
         "PhiToReach": 100,
-        "EffectText": "每完成 2 次折射循环，镜界冷却 -3s；所有球经过镜面后获得“墙面命中不降速”"
+        "EffectText": "每完成2次折射循环，镜界冷却-3s"
       }
     ],
     "PhiSources": [

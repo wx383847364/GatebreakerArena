@@ -1360,7 +1360,7 @@ def _field_comments() -> dict[str, dict[str, str]]:
         },
         "DT_PhaseTech": {
             "NetOffset": "科技净偏移，全部等于预算 D=+30，保证同英雄增益/代价守恒。",
-            "Effects": "道具价值矩阵：Op 为 Enhance/Weaken，MagnitudePercent 为增减幅度。",
+            "Effects": "道具价值矩阵：Op 为 Enhance/Weaken；整数型道具（裂穿/磁吸）用 MagnitudeStep 离散步进（±N 次/个，MagnitudePercent 恒 0 仅供旧加载器兼容），连续型道具（分形/缓滞/疾风/广域）用 MagnitudePercent 百分比。",
         },
         "DT_PhaseItem": {
             "ValueWeight": "道具价值权重 3/3/3/2/2/1，驱动科技净偏移配平。",

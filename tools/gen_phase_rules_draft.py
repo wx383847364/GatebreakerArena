@@ -119,7 +119,7 @@ HEROES = [
         "CoreResource": "RefractMark", "CoreItem": "ItemWide",
         "PhaseLevels": [
             {"PhaseLevel": "P1", "Nature": "Identity", "PhiToReach": 0,
-             "EffectText": "完成折射循环后，下一次侧墙反弹速度 +8%，持续 3s"},
+             "EffectText": "主球被挡板回球获得折射标记；带标记命中砖块完成折射循环，完成后下一次挡板回球速度 +8%，持续 3s"},
             {"PhaseLevel": "P2", "Nature": "Scale", "PhiToReach": 30,
              "EffectText": "折射循环速度加成提高到 +12%；标记持续 2.5s 延长到 3s"},
             {"PhaseLevel": "P3", "Nature": "Active", "PhiToReach": 50,
