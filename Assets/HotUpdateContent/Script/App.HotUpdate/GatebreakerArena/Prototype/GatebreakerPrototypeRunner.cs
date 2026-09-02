@@ -14,6 +14,7 @@ using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Paddle;
+using App.HotUpdate.GatebreakerArena.Phase;
 using App.HotUpdate.GatebreakerArena.UI;
 using App.Shared.Contracts;
 using UnityEngine;
@@ -66,12 +67,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private GatebreakerArenaSceneBindingService _sceneBindingService;
         private LeaderboardPresenter _leaderboardPresenter;
         private HeroDeckSelectionPresenter _loadoutPresenter;
+        private PhaseTechSelectionPresenter _phaseLoadoutPresenter;
+        private PhaseProfileService _phaseProfileService;
+        private PhaseSettlementCoordinator _phaseSettlementCoordinator;
         private readonly int[] _loadoutChipIndices = new int[5];
         private V1MatchLoadout _selectedLocalLoadout;
+        private PhaseMatchLoadout _selectedPhaseLoadout;
         private bool _loadoutForLan;
+        private bool _loadoutForBrickDuel;
         private LanRoomService _lanRoomService;
         private LanRoomService _subscribedLanRoomService;
         private LanDiagnosticsService _lanDiagnosticsService;
+        private GatebreakerNetworkMatchController _networkMatchController;
         private ILanTransport _lanTransport;
         private GatebreakerVisualAssetService _visualAssetService;
         private BrickDuelSessionController _brickDuelSession;
@@ -104,6 +111,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private string _lastLanDiagnosticsSummary = string.Empty;
         private string _lastLanDiagnosticsExportPath = string.Empty;
         private float _lanInputAccumulator;
+        private ushort _pendingLanButtons;
         private float _nextLocalLanAddressRefreshTime;
         private Vector2 _lanDiagnosticsScroll;
         private bool _showLanDiagnostics;
@@ -112,6 +120,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private bool _hasSceneVisualBounds;
         private bool _missingInputServiceWarningLogged;
         private bool _lanEntryUiHiddenForPlaying;
+        private ulong _observedLanSessionId;
+        private uint _observedLanRoundId;
+        private LanRoomState _observedLanState = LanRoomState.Idle;
         private int _loadedScenePlayerCount;
         private bool _sceneReloadInProgress;
         private float _paddlePrefabLength = 1f;
@@ -124,6 +135,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private float _brickDuelMoveAxis;
         private bool _brickDuelStarting;
         private int _lastBrickDuelUiFrame = int.MinValue;
+        private string _brickDuelMatchId;
+        private bool _brickDuelSettlementRequested;
+        private bool _brickDuelSettlementInFlight;
+        private string _brickDuelSettlementOperationMatchId;
+        private float _nextBrickDuelSettlementRetryTime;
+        private int _brickDuelMatchGeneration;
+        private bool _brickDuelAbilityPressed;
+        private bool _phaseLoadoutOperationInProgress;
+        private int _phaseLoadoutOperationVersion;
+        private int _pendingUnlockPhaseIndex = -1;
+        private string _pendingUnlockTechId = string.Empty;
+        private string _pendingUnlockHeroId = string.Empty;
 
         private enum StartupUiState
         {
@@ -176,6 +199,22 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _modeCatalog = context.ModeCatalog;
             _brickDuelSession = new BrickDuelSessionController(context.BrickDuelVisualAssetService);
             _modeCatalog.TryGetBrickDuelRule("BRICK_DUEL_V0", out _brickDuelRule);
+            _networkMatchController = context.NetworkMatchController;
+            if (_brickDuelRule != null && _networkMatchController != null)
+            {
+                _networkMatchController.ConfigureBrickDuel(
+                    _brickDuelSession,
+                    _modeCatalog,
+                    _brickDuelRule,
+                    _modeCatalog.GetBrickDuelAiRule(_brickDuelRule.BrickDuelAiRuleId));
+            }
+            if (_modeCatalog.AllPhaseHeroes.Count > 0)
+            {
+                string defaultPhaseHero = _modeCatalog.AllPhaseHeroes.ContainsKey("HERO_MIRAGE")
+                    ? "HERO_MIRAGE"
+                    : _modeCatalog.AllPhaseHeroes.Keys.OrderBy(id => id, StringComparer.Ordinal).First();
+                _selectedPhaseLoadout = PhaseMatchLoadout.CreateDefault(_modeCatalog, defaultPhaseHero);
+            }
             SubscribeLanRoomService(context.LanRoomService);
             _lanDiagnosticsService = context.LanDiagnosticsService;
             _lanTransport = context.Services?.Get<ILanTransport>();
@@ -191,6 +230,15 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 new LocalMockLeaderboardDataSource(),
                 context.Logger);
             _loadoutPresenter = new HeroDeckSelectionPresenter(_runtime.ModeCatalog);
+            IPersistence persistence = context.Services?.Get<IPersistence>();
+            if (persistence != null && _modeCatalog.AllPhaseMetas.Count > 0)
+            {
+                _phaseProfileService = new PhaseProfileService(persistence, _modeCatalog, context.Logger);
+                await _phaseProfileService.LoadAsync();
+                _phaseSettlementCoordinator = new PhaseSettlementCoordinator(_phaseProfileService);
+            }
+            if (_modeCatalog.AllPhaseHeroes.Count > 0)
+                _phaseLoadoutPresenter = new PhaseTechSelectionPresenter(_modeCatalog);
             InitializeLoadoutUi();
             RefreshBoundHud();
             EnsureLanIdentity();
@@ -298,6 +346,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _lanInputAccumulator = 0f;
+            _pendingLanButtons = 0;
             SetLocalInputFrame(frame);
             _runtime.ApplyInputFrame(frame);
             _runtime.TickLocalPrototype(Time.deltaTime);
@@ -488,20 +537,76 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (_subscribedLanRoomService != null)
             {
                 _subscribedLanRoomService.SnapshotChanged += OnLanRoomSnapshotChanged;
+                RoomSnapshot snapshot = _subscribedLanRoomService.CurrentSnapshot;
+                _observedLanSessionId = snapshot.SessionId;
+                _observedLanRoundId = snapshot.RoundId;
+                _observedLanState = snapshot.State;
             }
         }
 
         private void OnLanRoomSnapshotChanged(RoomSnapshot snapshot)
         {
-            if (_sceneBindingService == null || snapshot == null)
+            if (snapshot == null)
             {
                 return;
             }
 
-            _sceneBindingService.UpdateLanRoom(
+            bool invalidateMatchPresentation = ShouldInvalidateLanMatchPresentation(
+                _observedLanSessionId,
+                _observedLanRoundId,
+                _observedLanState,
+                snapshot.SessionId,
+                snapshot.RoundId,
+                snapshot.State);
+            _observedLanSessionId = snapshot.SessionId;
+            _observedLanRoundId = snapshot.RoundId;
+            _observedLanState = snapshot.State;
+
+            if (invalidateMatchPresentation)
+            {
+                InvalidatePhaseLoadoutOperation();
+                ClearPendingPhaseUnlock();
+                InvalidateLanBrickDuelPresentationState();
+                _lanEntryUiHiddenForPlaying = false;
+                SetLegacyVisualsActive(true);
+                _sceneBindingService?.HideBrickDuelHud();
+                if (snapshot.State == LanRoomState.Lobby)
+                {
+                    _startupUiState = StartupUiState.OnlineRoom;
+                    _sceneBindingService?.ShowLanRoomStatus();
+                }
+                else if (snapshot.State == LanRoomState.Left || snapshot.State == LanRoomState.Idle)
+                {
+                    _startupUiState = StartupUiState.ModeSelect;
+                    _sceneBindingService?.ShowModeSelect();
+                }
+                else
+                {
+                    _startupUiState = StartupUiState.OnlineRoom;
+                    _sceneBindingService?.ShowLanRoomStatus();
+                }
+            }
+
+            _sceneBindingService?.UpdateLanRoom(
                 snapshot,
                 GetLocalLanAddress(),
                 GetRoomLanAddress(snapshot));
+        }
+
+        internal static bool ShouldInvalidateLanMatchPresentation(
+            ulong previousSessionId,
+            uint previousRoundId,
+            LanRoomState previousState,
+            ulong nextSessionId,
+            uint nextRoundId,
+            LanRoomState nextState)
+        {
+            bool hadMatchPresentation = previousState == LanRoomState.Loading ||
+                                        previousState == LanRoomState.Playing;
+            return hadMatchPresentation &&
+                   (previousSessionId != nextSessionId ||
+                    previousRoundId != nextRoundId ||
+                    (nextState != LanRoomState.Loading && nextState != LanRoomState.Playing));
         }
 
         private void SyncLanLocalPlayer()
@@ -533,25 +638,49 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void SubmitLanInputAtFixedRate(PlayerInputFrame frame)
         {
+            if (frame.ServePressed) _pendingLanButtons |= GatebreakerLockstepInputConverter.ServeButton;
+            if (frame.AbilityPressed) _pendingLanButtons |= GatebreakerLockstepInputConverter.AbilityButton;
             float frameDelta = 1f / Mathf.Max(1, LockstepSession.SimulationFps);
-            _lanInputAccumulator += Mathf.Max(0f, Time.deltaTime);
-            int submitCount = Mathf.FloorToInt(_lanInputAccumulator / frameDelta);
+            int submitCount = AccumulateLanInputFrames(
+                ref _lanInputAccumulator,
+                Time.deltaTime,
+                frameDelta);
             if (submitCount <= 0)
             {
                 return;
             }
 
-            submitCount = Mathf.Min(submitCount, 4);
-            _lanInputAccumulator -= submitCount * frameDelta;
             short moveAxisQ = GatebreakerLockstepInputConverter.QuantizeSignedUnit(frame.MoveAxis);
             short aimXQ = GatebreakerLockstepInputConverter.QuantizeSignedUnit(frame.AimDirection.x);
             short aimYQ = GatebreakerLockstepInputConverter.QuantizeSignedUnit(frame.AimDirection.y);
-            ushort buttons = frame.ServePressed ? GatebreakerLockstepInputConverter.ServeButton : (ushort)0;
+            ushort buttons = _pendingLanButtons;
+            _pendingLanButtons = 0;
             for (int i = 0; i < submitCount; i++)
             {
                 _lanRoomService.Lockstep.SubmitLocalInput(moveAxisQ, aimXQ, aimYQ, buttons);
                 buttons = 0;
             }
+        }
+
+        internal static int AccumulateLanInputFrames(
+            ref float accumulator,
+            float deltaTime,
+            float frameDelta)
+        {
+            if (frameDelta <= 0f)
+            {
+                accumulator = 0f;
+                return 0;
+            }
+
+            accumulator = Mathf.Min(
+                accumulator + Mathf.Max(0f, deltaTime),
+                frameDelta * GatebreakerNetworkMatchController.MaxCatchUpStepsPerTick);
+            int submitCount = Mathf.Min(
+                Mathf.FloorToInt(accumulator / frameDelta),
+                GatebreakerNetworkMatchController.MaxCatchUpStepsPerTick);
+            accumulator -= submitCount * frameDelta;
+            return submitCount;
         }
 
         private void LateUpdate()
@@ -807,6 +936,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void OnDestroy()
         {
+            InvalidatePhaseLoadoutOperation();
+            _phaseSettlementCoordinator?.Dispose();
+            _phaseSettlementCoordinator = null;
             SubscribeLanRoomService(null);
 
             _leaderboardPresenter?.Dispose();
@@ -2548,15 +2680,16 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 BrickDuelRequested = StartBrickDuel,
                 SingleSelectBackRequested = ReturnFromSingleSelect,
                 BrickDuelPauseRequested = ToggleBrickDuelPause,
+                BrickDuelAbilityRequested = RequestBrickDuelAbility,
                 LoadoutHeroChanged = SelectLoadoutHero,
                 LoadoutPathChanged = SelectLoadoutPath,
                 LoadoutSignatureChanged = SelectLoadoutSignature,
-                LoadoutUniversalChipChanged = (slot, value) =>
-                {
-                    if (slot >= 0 && slot < _loadoutChipIndices.Length) _loadoutChipIndices[slot] = value;
-                },
+                LoadoutUniversalChipChanged = SelectPhaseTech,
                 LoadoutUseDefaultRequested = UseDefaultLoadout,
                 LoadoutConfirmRequested = ConfirmLoadout,
+                LoadoutBackRequested = ReturnFromLoadout,
+                LoadoutUnlockConfirmRequested = ConfirmPendingPhaseUnlock,
+                LoadoutUnlockCancelRequested = CancelPendingPhaseUnlock,
                 CreateLanHostRequested = CreateLanHost,
                 StartLanDiscoveryRequested = StartLanDiscovery,
                 JoinLanRoomRequested = JoinLanRoom,
@@ -2775,6 +2908,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
+
             EnsureLanIdentity();
             ResetLocalLanSessionTransport();
             _lanTransport?.StartDiscovery();
@@ -2809,6 +2945,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
+
             EnsureLanIdentity();
             ResetLocalLanSessionTransport();
             _lanTransport?.StartDiscovery();
@@ -2826,6 +2965,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 _lanRoomService?.RecordUiAction("JoinClicked", "ignored;roomCode=" + (_lanRoomCodeInput ?? string.Empty));
                 return;
             }
+
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
 
             _lanRoomService.RecordUiAction("JoinClicked", "roomCode=" + _lanRoomCodeInput);
             EnsureLanIdentity();
@@ -2850,7 +2992,9 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _lanRoomService.RecordUiAction("ReadyClicked", BuildLanUiSnapshotDetail(_lanRoomService.CurrentSnapshot));
             RoomSnapshot snapshot = _lanRoomService.CurrentSnapshot;
             RoomPlayerSnapshot local = snapshot?.Players?.FirstOrDefault(player => player.IsLocal);
-            if (local != null && !local.IsReady && string.IsNullOrEmpty(local.LoadoutHash))
+            if (local != null && !local.IsReady &&
+                _modeCatalog != null && _modeCatalog.AllPhaseHeroes.Count > 0 &&
+                !local.HasConfirmedPhaseLoadoutThisLobby)
             {
                 ShowLoadout(true);
                 return;
@@ -2866,6 +3010,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void LeaveLanRoom()
         {
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
+            _brickDuelAbilityPressed = false;
+            InvalidateLanBrickDuelPresentationState();
             _lanRoomService?.Leave("ui");
             ResetLocalLanSessionAfterLeave("ui");
             _startupUiState = StartupUiState.ModeSelect;
@@ -2878,6 +3026,28 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             if (_brickDuelSession != null && _brickDuelSession.IsActive)
             {
+                if (IsLanPlaying())
+                {
+                    if (!(_lanRoomService?.CurrentSnapshot.MatchCompleted ?? false))
+                    {
+                        _sceneBindingService?.SetHeroHud("等待双方终局结果确认…");
+                        return;
+                    }
+                    bool brickDuelReadyAfterReturn = _lanRoomService.CurrentSnapshot.IsHost;
+                    if (!_lanRoomService.ReturnToLobbyFromResult(brickDuelReadyAfterReturn))
+                    {
+                        LeaveLanRoom();
+                        return;
+                    }
+                    InvalidateLanBrickDuelPresentationState();
+                    _startupUiState = StartupUiState.OnlineRoom;
+                    _lanEntryUiHiddenForPlaying = false;
+                    SetLegacyVisualsActive(true);
+                    _sceneBindingService?.HideBrickDuelHud();
+                    _sceneBindingService?.ShowLanRoomStatus();
+                    RefreshBoundHud();
+                    return;
+                }
                 RestartBrickDuel();
                 return;
             }
@@ -2901,6 +3071,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 ReturnToModeSelectFromResult();
                 return;
             }
+            InvalidateLanBrickDuelPresentationState();
 
             _startupUiState = StartupUiState.OnlineRoom;
             _lanEntryUiHiddenForPlaying = false;
@@ -2913,6 +3084,16 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         {
             if (_brickDuelSession != null && _brickDuelSession.IsActive)
             {
+                if (IsLanPlaying())
+                {
+                    if (!(_lanRoomService?.CurrentSnapshot.MatchCompleted ?? false))
+                    {
+                        _sceneBindingService?.SetHeroHud("等待双方终局结果确认…");
+                        return;
+                    }
+                    LeaveLanRoom();
+                    return;
+                }
                 StopBrickDuelAndShowModeSelect();
                 return;
             }
@@ -2925,12 +3106,16 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
 
             _lanRoomService.Leave(snapshot.IsHost ? "resultBackHost" : "resultBack");
+            InvalidateLanBrickDuelPresentationState();
             ResetLocalLanSessionAfterLeave(snapshot.IsHost ? "resultBackHost" : "resultBack");
             ReturnToModeSelectFromResult();
         }
 
         private void ReturnToModeSelectFromResult()
         {
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
+            InvalidateLanBrickDuelPresentationState();
             ResetPrototypeMatchForEntryUi();
             _startupUiState = StartupUiState.ModeSelect;
             _lanEntryUiHiddenForPlaying = false;
@@ -2950,7 +3135,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void SetLanRoomPlayerCount(int value)
         {
-            _lanSelectedPlayerCount = Mathf.Clamp(value, 2, 4);
+            _lanSelectedPlayerCount = 2;
         }
 
         private void SetLanRoomCode(string value)
@@ -2960,29 +3145,80 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void InitializeLoadoutUi()
         {
-            if (_loadoutPresenter == null || _sceneBindingService == null) return;
-            _loadoutPresenter.TrySelectHero(_loadoutPresenter.AvailableHeroes[0].HeroId, out _);
-            UseDefaultLoadout();
+            if (_phaseLoadoutPresenter == null || _sceneBindingService == null) return;
+            string heroId = _phaseProfileService?.Current.LastSelectedHeroId;
+            if (!string.IsNullOrEmpty(heroId) && _modeCatalog.AllPhaseHeroes.ContainsKey(heroId))
+                _phaseLoadoutPresenter.SelectHero(heroId);
+            RestoreSavedLoadout(_phaseLoadoutPresenter.SelectedHeroId);
             RefreshLoadoutOptions();
         }
 
         private void ShowLoadout(bool forLan)
         {
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
             _loadoutForLan = forLan;
-            if (_loadoutPresenter == null) InitializeLoadoutUi();
+            _loadoutForBrickDuel = false;
+            if (_phaseLoadoutPresenter == null) InitializeLoadoutUi();
             if (_sceneBindingService == null || !_sceneBindingService.HasLoadoutBindings)
             {
-                UseDefaultLoadout();
-                ConfirmLoadout();
+                Debug.LogError("Phase loadout UI bindings are missing; automatic confirmation is disabled.");
+                if (forLan) _sceneBindingService?.ShowLanRoomStatus();
+                else _sceneBindingService?.ShowModeSelect();
                 return;
             }
             _sceneBindingService?.ShowLoadout();
         }
 
-        private void BeginLocalBattle() => ShowLoadout(false);
+        private void BeginLocalBattle()
+        {
+            _loadoutForLan = false;
+            _loadoutForBrickDuel = false;
+            InvalidatePhaseLoadoutOperation();
+            StartLocalBattleCountdown();
+        }
+
+        private void ShowBrickDuelLoadout()
+        {
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
+            _loadoutForLan = false;
+            _loadoutForBrickDuel = true;
+            if (_phaseLoadoutPresenter == null) InitializeLoadoutUi();
+            if (_sceneBindingService == null || !_sceneBindingService.HasLoadoutBindings)
+            {
+                Debug.LogError("Phase loadout UI bindings are missing; automatic confirmation is disabled.");
+                _sceneBindingService?.ShowSingleSelect(_brickDuelRule != null, "相位配装界面缺少显式绑定");
+                return;
+            }
+            _sceneBindingService.ShowLoadout();
+        }
+
+        private void ReturnFromLoadout()
+        {
+            bool returnToLan = _loadoutForLan;
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
+            if (_phaseLoadoutPresenter != null)
+            {
+                RestoreSavedLoadout(_phaseLoadoutPresenter.SelectedHeroId);
+                RefreshLoadoutOptions(false);
+            }
+            _loadoutForLan = false;
+            _loadoutForBrickDuel = false;
+            if (returnToLan && _lanRoomService?.CurrentSnapshot.State == LanRoomState.Lobby)
+            {
+                _sceneBindingService?.ShowLanRoomStatus();
+                return;
+            }
+
+            _sceneBindingService?.ShowSingleSelect(_brickDuelRule != null);
+        }
 
         private void ShowSingleBattleMenu()
         {
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
             bool available = _brickDuelRule != null;
             _startupUiState = StartupUiState.ModeSelect;
             _sceneBindingService?.ShowSingleSelect(available);
@@ -2990,11 +3226,15 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void ReturnFromSingleSelect()
         {
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
             _startupUiState = StartupUiState.ModeSelect;
             _sceneBindingService?.ShowModeSelect();
         }
 
-        private async void StartBrickDuel()
+        private void StartBrickDuel() => ShowBrickDuelLoadout();
+
+        private async void StartBrickDuelConfigured()
         {
             if (_brickDuelStarting || (_brickDuelSession != null && _brickDuelSession.IsActive))
             {
@@ -3014,7 +3254,15 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 BrickDuelAiRuleDefinition aiRule =
                     _modeCatalog.GetBrickDuelAiRule(_brickDuelRule.BrickDuelAiRuleId);
-                bool started = await _brickDuelSession.StartAsync(_brickDuelRule, aiRule);
+                PhaseMatchLoadout phaseLoadout = _selectedPhaseLoadout ??
+                    PhaseMatchLoadout.CreateDefault(_modeCatalog, "HERO_MIRAGE");
+                bool started = await _brickDuelSession.StartAsync(
+                    _brickDuelRule,
+                    aiRule,
+                    null,
+                    _modeCatalog,
+                    phaseLoadout,
+                    phaseLoadout.Clone());
                 if (!started)
                 {
                     Debug.LogWarning(_brickDuelSession.LastError);
@@ -3022,9 +3270,18 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     return;
                 }
 
+                _brickDuelSession.ConfigureLocalPerspective(false);
                 SetLegacyVisualsActive(false);
+                _brickDuelMatchGeneration++;
+                _brickDuelMatchId = Guid.NewGuid().ToString("N");
+                _brickDuelSettlementRequested = false;
+                _brickDuelSettlementInFlight = false;
+                _nextBrickDuelSettlementRetryTime = 0f;
+                _brickDuelSettlementOperationMatchId = null;
+                _brickDuelAbilityPressed = false;
                 _brickDuelMoveAxis = 0f;
                 _lastBrickDuelUiFrame = int.MinValue;
+                _sceneBindingService?.SetBrickDuelSettlementStatus(string.Empty);
                 _sceneBindingService?.ShowBrickDuelHud();
                 _sceneBindingService?.UpdateBrickDuel(
                     _brickDuelSession.Snapshot,
@@ -3052,7 +3309,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
+            bool isLanBrickDuel = IsLanPlaying() && _networkMatchController != null && _networkMatchController.UsesBrickDuel;
+            if (!isLanBrickDuel && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P)))
             {
                 _brickDuelSession.SetPaused(!runtime.IsPaused);
             }
@@ -3067,7 +3325,36 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 keyboardAxis += 1f;
             }
             float moveAxis = Mathf.Clamp(keyboardAxis + _brickDuelMoveAxis, -1f, 1f);
-            _brickDuelSession.Tick(Time.deltaTime, moveAxis);
+            bool abilityPressed = Input.GetKeyDown(KeyCode.E) || _brickDuelAbilityPressed;
+            _brickDuelAbilityPressed = false;
+            if (isLanBrickDuel)
+            {
+                SetLegacyVisualsActive(false);
+                _sceneBindingService?.ShowBrickDuelHud();
+                float logicalAxis = _networkMatchController.LocalIsTop ? -moveAxis : moveAxis;
+                RoomSnapshot roomSnapshot = _lanRoomService.CurrentSnapshot;
+                if (runtime.Phase != BrickDuelPhase.Result && !roomSnapshot.MatchCompleted)
+                {
+                    var input = new PlayerInputFrame(_localPlayerId, logicalAxis, false, Vector2.up, abilityPressed);
+                    SubmitLanInputAtFixedRate(input);
+                }
+                string lanMatchId = BuildLanBrickDuelMatchId(roomSnapshot);
+                if (_brickDuelMatchId != lanMatchId)
+                {
+                    _brickDuelMatchId = lanMatchId;
+                    _brickDuelMatchGeneration++;
+                    _brickDuelSettlementRequested = false;
+                    _brickDuelSettlementInFlight = false;
+                    _brickDuelSettlementOperationMatchId = null;
+                    _nextBrickDuelSettlementRetryTime = 0f;
+                    _lastBrickDuelUiFrame = int.MinValue;
+                    _sceneBindingService?.SetBrickDuelSettlementStatus(string.Empty);
+                }
+            }
+            else
+            {
+                _brickDuelSession.Tick(Time.deltaTime, moveAxis, abilityPressed);
+            }
             _sceneBindingService?.PreviewBrickDuelMoveAxis(moveAxis);
 
             BrickDuelSnapshot snapshot = _brickDuelSession.Snapshot;
@@ -3079,7 +3366,24 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 _lastBrickDuelUiFrame = snapshot.SimulationFrame;
             }
-            _sceneBindingService?.UpdateBrickDuel(snapshot, _brickDuelRule, events);
+            bool localIsTop = isLanBrickDuel && _networkMatchController.LocalIsTop;
+            _sceneBindingService?.UpdateBrickDuel(snapshot, _brickDuelRule, events, localIsTop);
+            BrickDuelPhaseSideState localPhaseState = localIsTop
+                ? snapshot?.TopPhaseState
+                : snapshot?.BottomPhaseState;
+            _sceneBindingService?.UpdateBrickDuelAbility(
+                localPhaseState,
+                _brickDuelRule != null ? _brickDuelRule.SimulationFps : LockstepSession.SimulationFps);
+            bool terminalConsensus = !isLanBrickDuel ||
+                                     (_lanRoomService?.CurrentSnapshot.MatchCompleted ?? false);
+            _sceneBindingService?.SetResultActionsInteractable(
+                snapshot == null || snapshot.Phase != BrickDuelPhase.Result || terminalConsensus);
+            if (snapshot != null && snapshot.Phase == BrickDuelPhase.Result && terminalConsensus &&
+                !_brickDuelSettlementRequested && !_brickDuelSettlementInFlight &&
+                Time.unscaledTime >= _nextBrickDuelSettlementRetryTime)
+            {
+                SettleBrickDuelAsync(_brickDuelMatchId, localIsTop ? SwapBrickDuelResult(snapshot.Result) : snapshot.Result);
+            }
         }
 
         private void SetBrickDuelMoveAxis(float moveAxis)
@@ -3093,6 +3397,15 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (runtime != null && runtime.Phase == BrickDuelPhase.Playing)
             {
                 _brickDuelSession.SetPaused(!runtime.IsPaused);
+            }
+        }
+
+        private void RequestBrickDuelAbility()
+        {
+            BrickDuelRuntime runtime = _brickDuelSession?.Runtime;
+            if (runtime != null && runtime.Phase == BrickDuelPhase.Playing)
+            {
+                _brickDuelAbilityPressed = true;
             }
         }
 
@@ -3110,7 +3423,15 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             {
                 BrickDuelAiRuleDefinition aiRule =
                     _modeCatalog.GetBrickDuelAiRule(_brickDuelRule.BrickDuelAiRuleId);
-                bool started = await _brickDuelSession.StartAsync(_brickDuelRule, aiRule);
+                PhaseMatchLoadout phaseLoadout = _selectedPhaseLoadout ??
+                    PhaseMatchLoadout.CreateDefault(_modeCatalog, "HERO_MIRAGE");
+                bool started = await _brickDuelSession.StartAsync(
+                    _brickDuelRule,
+                    aiRule,
+                    null,
+                    _modeCatalog,
+                    phaseLoadout,
+                    phaseLoadout.Clone());
                 if (!started)
                 {
                     SetLegacyVisualsActive(true);
@@ -3118,8 +3439,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                     return;
                 }
 
+                _brickDuelSession.ConfigureLocalPerspective(false);
                 _brickDuelMoveAxis = 0f;
+                _brickDuelMatchGeneration++;
+                _brickDuelMatchId = Guid.NewGuid().ToString("N");
+                _brickDuelSettlementRequested = false;
+                _brickDuelSettlementInFlight = false;
+                _nextBrickDuelSettlementRetryTime = 0f;
+                _brickDuelSettlementOperationMatchId = null;
+                _brickDuelAbilityPressed = false;
                 _lastBrickDuelUiFrame = int.MinValue;
+                _sceneBindingService?.SetBrickDuelSettlementStatus(string.Empty);
                 _sceneBindingService?.ShowBrickDuelHud();
                 _sceneBindingService?.UpdateBrickDuel(
                     _brickDuelSession.Snapshot,
@@ -3142,13 +3472,103 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private void StopBrickDuelAndShowModeSelect()
         {
             _brickDuelSession?.Stop();
+            _brickDuelMatchGeneration++;
+            _brickDuelMatchId = string.Empty;
+            _brickDuelSettlementRequested = false;
+            _brickDuelSettlementInFlight = false;
+            _brickDuelSettlementOperationMatchId = null;
+            _nextBrickDuelSettlementRetryTime = 0f;
             _brickDuelMoveAxis = 0f;
+            _brickDuelAbilityPressed = false;
             _lastBrickDuelUiFrame = int.MinValue;
             SetLegacyVisualsActive(true);
             _startupUiState = StartupUiState.ModeSelect;
             _sceneBindingService?.HideBrickDuelHud();
             _sceneBindingService?.ShowModeSelect();
             RefreshBoundHud();
+        }
+
+        private async void SettleBrickDuelAsync(string matchId, BrickDuelResult result)
+        {
+            if (_brickDuelSettlementInFlight || _brickDuelSettlementRequested) return;
+            if (_phaseSettlementCoordinator == null)
+            {
+                _brickDuelSettlementRequested = true;
+                return;
+            }
+
+            _brickDuelSettlementInFlight = true;
+            _brickDuelSettlementOperationMatchId = matchId;
+            int requestedGeneration = _brickDuelMatchGeneration;
+            try
+            {
+                PhaseSettlementResult settlement = await _phaseSettlementCoordinator.EnsureSettlementAsync(matchId, result, true);
+                if (_brickDuelMatchGeneration != requestedGeneration ||
+                    !string.Equals(_brickDuelMatchId, matchId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+                if (settlement.IsFinal)
+                {
+                    _brickDuelSettlementRequested = true;
+                    if (settlement.Reward > 0)
+                        _sceneBindingService?.SetBrickDuelSettlementStatus($"相位结算 +{settlement.Reward} · 余额 {_phaseProfileService.Current.Currency}");
+                    else
+                        _sceneBindingService?.SetBrickDuelSettlementStatus("相位结算已完成");
+                }
+                else
+                {
+                    _nextBrickDuelSettlementRetryTime = Time.unscaledTime + 2f;
+                    _sceneBindingService?.SetBrickDuelSettlementStatus("相位结算保存失败，正在重试…");
+                }
+            }
+            catch (Exception exception)
+            {
+                if (_brickDuelMatchGeneration != requestedGeneration ||
+                    !string.Equals(_brickDuelMatchId, matchId, StringComparison.Ordinal))
+                {
+                    Debug.LogException(exception);
+                    return;
+                }
+                _nextBrickDuelSettlementRetryTime = Time.unscaledTime + 2f;
+                _sceneBindingService?.SetBrickDuelSettlementStatus("相位结算异常，正在重试…");
+                Debug.LogException(exception);
+            }
+            finally
+            {
+                if (string.Equals(_brickDuelSettlementOperationMatchId, matchId, StringComparison.Ordinal))
+                {
+                    _brickDuelSettlementInFlight = false;
+                    _brickDuelSettlementOperationMatchId = null;
+                }
+            }
+        }
+
+        internal static string BuildLanBrickDuelMatchId(RoomSnapshot snapshot)
+        {
+            return snapshot == null
+                ? string.Empty
+                : "lan-" + snapshot.SessionId + "-" + snapshot.RoundId;
+        }
+
+        private void InvalidateLanBrickDuelPresentationState()
+        {
+            _brickDuelMatchGeneration++;
+            _brickDuelMatchId = string.Empty;
+            _brickDuelSettlementRequested = false;
+            _brickDuelSettlementInFlight = false;
+            _brickDuelSettlementOperationMatchId = null;
+            _nextBrickDuelSettlementRetryTime = 0f;
+            _brickDuelAbilityPressed = false;
+            _lastBrickDuelUiFrame = int.MinValue;
+            _sceneBindingService?.SetBrickDuelSettlementStatus(string.Empty);
+        }
+
+        private static BrickDuelResult SwapBrickDuelResult(BrickDuelResult result)
+        {
+            if (result == BrickDuelResult.PlayerWin) return BrickDuelResult.PlayerLose;
+            if (result == BrickDuelResult.PlayerLose) return BrickDuelResult.PlayerWin;
+            return result;
         }
 
         private void SetLegacyVisualsActive(bool active)
@@ -3166,93 +3586,305 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void SelectLoadoutHero(int index)
         {
-            if (_loadoutPresenter == null || index < 0 || index >= _loadoutPresenter.AvailableHeroes.Count) return;
-            if (_loadoutPresenter.TrySelectHero(_loadoutPresenter.AvailableHeroes[index].HeroId, out _)) RefreshLoadoutOptions(false);
+            if (_phaseLoadoutOperationInProgress || _phaseLoadoutPresenter == null ||
+                index < 0 || index >= _phaseLoadoutPresenter.AvailableHeroes.Count) return;
+            string heroId = _phaseLoadoutPresenter.AvailableHeroes[index].HeroId;
+            ClearPendingPhaseUnlock();
+            _phaseLoadoutPresenter.SelectHero(heroId);
+            RestoreSavedLoadout(heroId);
+            RefreshLoadoutOptions(false);
         }
 
-        private void SelectLoadoutPath(int index)
-        {
-            HeroPathDefinition[] paths = GetSelectedHeroPaths();
-            if (_loadoutPresenter == null || index < 0 || index >= paths.Length) return;
-            if (_loadoutPresenter.TrySelectPath(paths[index].PathId, out _)) RefreshSignatureOptions();
-        }
+        private void SelectLoadoutPath(int index) { }
 
-        private void SelectLoadoutSignature(int index)
-        {
-            SignatureChipDefinition[] signatures = GetSelectedPathSignatures();
-            if (_loadoutPresenter != null && index >= 0 && index < signatures.Length)
-                _loadoutPresenter.TrySelectSignatureChip(signatures[index].ChipId, out _);
-        }
+        private void SelectLoadoutSignature(int index) { }
 
         private void UseDefaultLoadout()
         {
-            if (_loadoutPresenter == null) return;
-            string[] defaults = { "STRIKE_POWER", "GUARD_LENGTH", "FLOW_SPEED", "STRIKE_SERVE", "GUARD_GOAL" };
-            for (int i = 0; i < defaults.Length; i++)
-                _loadoutChipIndices[i] = Math.Max(0, _loadoutPresenter.AvailableChips.ToList().FindIndex(chip => chip.ChipId == defaults[i]));
+            if (_phaseLoadoutPresenter == null) return;
+            ClearPendingPhaseUnlock();
+            _phaseLoadoutPresenter.SelectHero(_phaseLoadoutPresenter.SelectedHeroId);
+            for (int i = 0; i < _loadoutChipIndices.Length; i++) _loadoutChipIndices[i] = 0;
             _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
             _sceneBindingService?.SetLoadoutError(string.Empty);
         }
 
-        private void ConfirmLoadout()
+        private async void ConfirmLoadout()
         {
-            if (_loadoutPresenter == null) return;
-            _loadoutPresenter.ClearDeck();
-            for (int i = 0; i < _loadoutChipIndices.Length; i++)
+            if (_phaseLoadoutOperationInProgress || _pendingUnlockPhaseIndex >= 0 ||
+                _phaseLoadoutPresenter == null) return;
+            int operation = BeginPhaseLoadoutOperation();
+            bool forBrickDuel = _loadoutForBrickDuel;
+            bool forLan = _loadoutForLan;
+            RoomSnapshot requestedRoom = forLan ? _lanRoomService?.CurrentSnapshot : null;
+            ulong requestedSessionId = requestedRoom?.SessionId ?? 0UL;
+            uint requestedRoundId = requestedRoom?.RoundId ?? 0U;
+            PhaseMatchLoadout requestedLoadout;
+            try
             {
-                int index = _loadoutChipIndices[i];
-                if (index < 0 || index >= _loadoutPresenter.AvailableChips.Count)
-                {
-                    _sceneBindingService?.SetLoadoutError("芯片槽位无效。");
-                    return;
-                }
-                if (!_loadoutPresenter.TryAddChip(_loadoutPresenter.AvailableChips[index].ChipId, out HeroDeckSelectionValidation validation))
-                {
-                    _sceneBindingService?.SetLoadoutError(validation.Message);
-                    return;
-                }
+                requestedLoadout = _phaseLoadoutPresenter.Build(GetUnlockedPhaseTechIds());
             }
-            if (!_loadoutPresenter.TryCreatePlayerSlot(0, 0, _localPlayerId, false,
-                    out GatebreakerMatchPlayerSlot slot, out HeroDeckSelectionValidation result))
+            catch (Exception exception)
             {
-                _sceneBindingService?.SetLoadoutError(result.Message);
+                _sceneBindingService?.SetLoadoutError(exception.Message);
+                CompletePhaseLoadoutOperation(operation);
                 return;
             }
-            _selectedLocalLoadout = slot.Loadout;
-            if (_loadoutForLan)
+
+            try
             {
-                if (_lanRoomService == null || !_lanRoomService.SetLocalLoadout(_selectedLocalLoadout))
+                if (_phaseProfileService != null && !await _phaseProfileService.SaveLoadoutAsync(requestedLoadout))
                 {
-                    _sceneBindingService?.SetLoadoutError("房间已冻结或构筑校验失败。");
+                    if (IsPhaseLoadoutOperationCurrent(operation))
+                        _sceneBindingService?.SetLoadoutError("相位配装保存失败，请重试。");
                     return;
                 }
-                _sceneBindingService?.ShowLanRoomStatus();
-                ToggleLanReady(_lanRoomService.CurrentSnapshot);
-                return;
+                if (!IsPhaseLoadoutOperationCurrent(operation) ||
+                    !IsLoadoutContextCurrent(forBrickDuel, forLan, requestedSessionId, requestedRoundId))
+                    return;
+                _selectedPhaseLoadout = requestedLoadout;
+                if (forBrickDuel)
+                {
+                    _loadoutForBrickDuel = false;
+                    StartBrickDuelConfigured();
+                    return;
+                }
+                if (forLan)
+                {
+                    _selectedLocalLoadout = CreateLegacyCompatibilityLoadout();
+                    if (_lanRoomService == null ||
+                        !_lanRoomService.SetLocalPhaseLoadout(requestedLoadout) ||
+                        !_lanRoomService.SetLocalLoadout(_selectedLocalLoadout))
+                    {
+                        _sceneBindingService?.SetLoadoutError("房间已冻结或相位配装校验失败。");
+                        return;
+                    }
+                    _sceneBindingService?.ShowLanRoomStatus();
+                    ToggleLanReady(_lanRoomService.CurrentSnapshot);
+                }
             }
-            StartLocalBattleCountdown();
+            catch (Exception exception)
+            {
+                if (IsPhaseLoadoutOperationCurrent(operation))
+                    _sceneBindingService?.SetLoadoutError("相位配装操作失败：" + exception.Message);
+            }
+            finally
+            {
+                CompletePhaseLoadoutOperation(operation);
+            }
+        }
+
+        private bool IsLoadoutContextCurrent(
+            bool forBrickDuel,
+            bool forLan,
+            ulong requestedSessionId,
+            uint requestedRoundId)
+        {
+            if (_loadoutForBrickDuel != forBrickDuel || _loadoutForLan != forLan)
+                return false;
+            if (!forLan) return true;
+            RoomSnapshot current = _lanRoomService?.CurrentSnapshot;
+            return current != null &&
+                   current.State == LanRoomState.Lobby &&
+                   current.SessionId == requestedSessionId &&
+                   current.RoundId == requestedRoundId;
         }
 
         private void RefreshLoadoutOptions(bool includeHeroes = true)
         {
-            HeroPathDefinition[] paths = GetSelectedHeroPaths();
-            SignatureChipDefinition[] signatures = GetSelectedPathSignatures();
-            string[] heroes = _loadoutPresenter.AvailableHeroes.Select(item => item.DisplayName + " · " + item.HeroId).ToArray();
-            string[] chips = _loadoutPresenter.AvailableChips.Select(item => item.DisplayName + " · " + item.ChipId).ToArray();
-            if (includeHeroes)
-                _sceneBindingService?.ConfigureLoadout(heroes, paths.Select(FormatPath).ToArray(), signatures.Select(FormatSignature).ToArray(), chips);
-            else
-                _sceneBindingService?.UpdateLoadoutPaths(paths.Select(FormatPath).ToArray(), signatures.Select(FormatSignature).ToArray());
+            if (_phaseLoadoutPresenter == null) return;
+            PhaseHeroDefinition hero = _modeCatalog.GetPhaseHero(_phaseLoadoutPresenter.SelectedHeroId);
+            string[] heroes = _phaseLoadoutPresenter.AvailableHeroes
+                .Select(item => item.DisplayName + " · " + item.Dimension).ToArray();
+            var options = new List<IReadOnlyList<string>>(5);
+            ISet<string> unlocked = GetUnlockedPhaseTechIds();
+            for (int phase = 0; phase < 5; phase++)
+            {
+                options.Add(_phaseLoadoutPresenter.GetOptions(phase).Select(tech =>
+                    $"P{phase + 1} {tech.DisplayName}" +
+                    (tech.Kind == "Default" ? " · 免费" : unlocked.Contains(tech.TechId) ? " · 已解锁" : $" · {tech.CostCurrency}币") +
+                    (string.IsNullOrEmpty(tech.MechanicEffect) ? string.Empty : " · " + tech.MechanicEffect)).ToArray());
+                _loadoutChipIndices[phase] = _phaseLoadoutPresenter.GetSelectedOptionIndex(phase);
+            }
+            PhaseHeroActiveAbilityDefinition ability = hero.PhaseLevels.FirstOrDefault(level => level.PhaseLevel == "P3")?.ActiveAbility;
+            string abilityText = ability == null ? "无主动技能" : $"P3 主动 · {ability.AbilityId} · CD {ability.CooldownSeconds:0.#}s";
+            _sceneBindingService?.ConfigurePhaseLoadout(heroes, "维度 · " + hero.Dimension, abilityText, options);
+            int heroIndex = _phaseLoadoutPresenter.AvailableHeroes
+                .Select((item, index) => new { item.HeroId, Index = index })
+                .Where(item => item.HeroId == hero.HeroId)
+                .Select(item => item.Index)
+                .DefaultIfEmpty(0)
+                .First();
+            _sceneBindingService?.SetLoadoutHeroSelection(heroIndex);
+            _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
+            int currency = _phaseProfileService?.Current.Currency ?? 0;
+            _sceneBindingService?.SetLoadoutError($"相位币 {currency} · 每个 P 槽选择 1 项科技");
+        }
+
+        private void SelectPhaseTech(int phaseIndex, int optionIndex)
+        {
+            if (_phaseLoadoutOperationInProgress || _phaseLoadoutPresenter == null ||
+                phaseIndex < 0 || phaseIndex >= 5) return;
+            IReadOnlyList<PhaseTechDefinition> options = _phaseLoadoutPresenter.GetOptions(phaseIndex);
+            if (optionIndex < 0 || optionIndex >= options.Count) return;
+            PhaseTechDefinition selected = options[optionIndex];
+            ISet<string> unlocked = GetUnlockedPhaseTechIds();
+            if (selected.Kind != "Default" && !unlocked.Contains(selected.TechId))
+            {
+                _pendingUnlockPhaseIndex = phaseIndex;
+                _pendingUnlockTechId = selected.TechId;
+                _pendingUnlockHeroId = _phaseLoadoutPresenter.SelectedHeroId;
+                _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
+                int currency = _phaseProfileService?.Current.Currency ?? 0;
+                _sceneBindingService?.ShowLoadoutUnlockConfirmation(
+                    $"确认解锁 {selected.DisplayName}？\n费用 {selected.CostCurrency} 相位币 · 当前 {currency}");
+                return;
+            }
+
+            if (!_phaseLoadoutPresenter.TrySelectTech(phaseIndex, optionIndex, unlocked, out string error))
+            {
+                _sceneBindingService?.SetLoadoutError(error);
+                _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
+                return;
+            }
+
+            _loadoutChipIndices[phaseIndex] = optionIndex;
+            RefreshLoadoutOptions(false);
+        }
+
+        private async void ConfirmPendingPhaseUnlock()
+        {
+            if (_phaseLoadoutOperationInProgress || _pendingUnlockPhaseIndex < 0 ||
+                string.IsNullOrEmpty(_pendingUnlockTechId) || _phaseLoadoutPresenter == null)
+                return;
+
+            int requestedPhaseIndex = _pendingUnlockPhaseIndex;
+            string requestedTechId = _pendingUnlockTechId;
+            string requestedHeroId = _pendingUnlockHeroId;
+            bool forLan = _loadoutForLan;
+            bool forBrickDuel = _loadoutForBrickDuel;
+            RoomSnapshot requestedRoom = forLan ? _lanRoomService?.CurrentSnapshot : null;
+            ulong requestedSessionId = requestedRoom?.SessionId ?? 0UL;
+            uint requestedRoundId = requestedRoom?.RoundId ?? 0U;
+            int operation = BeginPhaseLoadoutOperation();
+            _sceneBindingService?.HideLoadoutUnlockConfirmation();
+            try
+            {
+                bool unlocked = _phaseProfileService != null &&
+                                await _phaseProfileService.UnlockAsync(requestedTechId);
+                if (!IsPhaseLoadoutOperationCurrent(operation))
+                    return;
+                if (!IsLoadoutContextCurrent(forBrickDuel, forLan, requestedSessionId, requestedRoundId) ||
+                    _phaseLoadoutPresenter.SelectedHeroId != requestedHeroId)
+                {
+                    ClearPendingPhaseUnlock();
+                    return;
+                }
+                if (!unlocked)
+                {
+                    ClearPendingPhaseUnlock();
+                    _sceneBindingService?.SetLoadoutError("相位币不足或保存失败，无法完成解锁。");
+                    _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
+                    return;
+                }
+
+                IReadOnlyList<PhaseTechDefinition> currentOptions = _phaseLoadoutPresenter.GetOptions(requestedPhaseIndex);
+                int currentIndex = currentOptions
+                    .Select((tech, index) => new { tech.TechId, Index = index })
+                    .Where(item => item.TechId == requestedTechId)
+                    .Select(item => item.Index)
+                    .DefaultIfEmpty(-1)
+                    .First();
+                string selectionError = string.Empty;
+                if (currentIndex < 0 || !_phaseLoadoutPresenter.TrySelectTech(
+                        requestedPhaseIndex,
+                        currentIndex,
+                        GetUnlockedPhaseTechIds(),
+                        out selectionError))
+                {
+                    ClearPendingPhaseUnlock();
+                    _sceneBindingService?.SetLoadoutError(
+                        currentIndex < 0 ? "相位科技选项已经变化，请重试。" : selectionError);
+                    return;
+                }
+
+                _loadoutChipIndices[requestedPhaseIndex] = currentIndex;
+                ClearPendingPhaseUnlock();
+                RefreshLoadoutOptions(false);
+            }
+            catch (Exception exception)
+            {
+                if (IsPhaseLoadoutOperationCurrent(operation))
+                {
+                    ClearPendingPhaseUnlock();
+                    _sceneBindingService?.SetLoadoutError("相位科技解锁失败：" + exception.Message);
+                }
+            }
+            finally
+            {
+                CompletePhaseLoadoutOperation(operation);
+            }
+        }
+
+        private void CancelPendingPhaseUnlock()
+        {
+            ClearPendingPhaseUnlock();
             _sceneBindingService?.SetLoadoutChipSelections(_loadoutChipIndices);
         }
 
-        private void RefreshSignatureOptions() => _sceneBindingService?.UpdateLoadoutSignatures(GetSelectedPathSignatures().Select(FormatSignature).ToArray());
-        private HeroPathDefinition[] GetSelectedHeroPaths() => _runtime.ModeCatalog.AllHeroPaths.Values
-            .Where(path => path.HeroId == _loadoutPresenter.SelectedHeroId).OrderBy(path => path.PathId, StringComparer.Ordinal).ToArray();
-        private SignatureChipDefinition[] GetSelectedPathSignatures() => _runtime.ModeCatalog.AllSignatureChips.Values
-            .Where(chip => chip.PathId == _loadoutPresenter.SelectedPathId).OrderBy(chip => chip.VariantKind == "Stable" ? 0 : 1).ThenBy(chip => chip.ChipId, StringComparer.Ordinal).ToArray();
-        private static string FormatPath(HeroPathDefinition path) => path.DisplayName + " · " + path.PathId;
-        private static string FormatSignature(SignatureChipDefinition chip) => chip.DisplayName + " · " + chip.VariantKind;
+        private void RestoreSavedLoadout(string heroId)
+        {
+            if (_phaseLoadoutPresenter == null || string.IsNullOrEmpty(heroId)) return;
+            PhaseMatchLoadout saved = _phaseProfileService?.GetLoadout(heroId) ??
+                                      PhaseMatchLoadout.CreateDefault(_modeCatalog, heroId);
+            if (!_phaseLoadoutPresenter.TryApplyLoadout(saved, GetUnlockedPhaseTechIds(), out _))
+                _phaseLoadoutPresenter.SelectHero(heroId);
+        }
+
+        private int BeginPhaseLoadoutOperation()
+        {
+            _phaseLoadoutOperationInProgress = true;
+            _sceneBindingService?.SetPhaseLoadoutBusy(true);
+            return ++_phaseLoadoutOperationVersion;
+        }
+
+        private bool IsPhaseLoadoutOperationCurrent(int operation) =>
+            _phaseLoadoutOperationInProgress && operation == _phaseLoadoutOperationVersion;
+
+        private void CompletePhaseLoadoutOperation(int operation)
+        {
+            if (operation == _phaseLoadoutOperationVersion)
+            {
+                _phaseLoadoutOperationInProgress = false;
+                _sceneBindingService?.SetPhaseLoadoutBusy(false);
+            }
+        }
+
+        private void InvalidatePhaseLoadoutOperation()
+        {
+            _phaseLoadoutOperationVersion++;
+            _phaseLoadoutOperationInProgress = false;
+            _sceneBindingService?.SetPhaseLoadoutBusy(false);
+        }
+
+        private void ClearPendingPhaseUnlock()
+        {
+            _pendingUnlockPhaseIndex = -1;
+            _pendingUnlockTechId = string.Empty;
+            _pendingUnlockHeroId = string.Empty;
+            _sceneBindingService?.HideLoadoutUnlockConfirmation();
+        }
+
+        private ISet<string> GetUnlockedPhaseTechIds() =>
+            _phaseProfileService?.Current.CreateUnlockedSet() ??
+            new HashSet<string>(_modeCatalog.AllPhaseTechs.Values
+                .Where(tech => tech.Kind == "Default").Select(tech => tech.TechId), StringComparer.Ordinal);
+
+        private static V1MatchLoadout CreateLegacyCompatibilityLoadout() =>
+            new V1MatchLoadout("HERO_FROST_QUEEN", "PATH_FROST_EXTREME",
+                "SIG_FROST_DEEP_FREEZE_TOUCH",
+                new[] { "STRIKE_SERVE", "GUARD_LENGTH" },
+                new[] { "STRIKE_POWER", "GUARD_GOAL", "STRIKE_OVERCHARGE" });
 
         private void StartLocalBattleCountdown()
         {
@@ -3265,6 +3897,8 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
 
         private void ShowOnlineBattleMenu()
         {
+            InvalidatePhaseLoadoutOperation();
+            ClearPendingPhaseUnlock();
             ResetTerminalLocalLanSessionForOnlineEntry();
             _startupUiState = StartupUiState.OnlineMenu;
             _sceneBindingService?.ShowOnlineMenu();

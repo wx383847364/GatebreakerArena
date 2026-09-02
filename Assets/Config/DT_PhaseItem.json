@@ -1,67 +1,11 @@
 [
-  {
-    "ItemId": "ItemPierce",
-    "ItemName": "裂穿",
-    "ValueWeight": 3,
-    "BaseDropWeight": 0.15,
-    "Effect": {
-      "PierceCharges": 2,
-      "DurationSeconds": 0
-    },
-    "Note": "主球获得 2 次穿透；与英雄蓄力穿透共用计数池"
-  },
-  {
-    "ItemId": "ItemSplit",
-    "ItemName": "分形",
-    "ValueWeight": 3,
-    "BaseDropWeight": 0.15,
-    "Effect": {
-      "TempBallCount": 1,
-      "TempBallSeconds": 6
-    },
-    "Note": "生成 1 颗持续 6s 临时球；与英雄分裂球同为临时球实体"
-  },
-  {
-    "ItemId": "ItemDamp",
-    "ItemName": "缓滞",
-    "ValueWeight": 3,
-    "BaseDropWeight": 0.15,
-    "Effect": {
-      "TideSpeedMultiplier": 0.8,
-      "DurationSeconds": 6
-    },
-    "Note": "本方砖潮推进速度 -20%；只作用本方"
-  },
-  {
-    "ItemId": "ItemSpeed",
-    "ItemName": "疾风",
-    "ValueWeight": 2,
-    "BaseDropWeight": 0.2,
-    "Effect": {
-      "BallSpeedMultiplier": 1.2,
-      "DurationSeconds": 5
-    },
-    "Note": "球速临时 +20%"
-  },
-  {
-    "ItemId": "ItemWide",
-    "ItemName": "广域",
-    "ValueWeight": 2,
-    "BaseDropWeight": 0.2,
-    "Effect": {
-      "PaddleLengthMultiplier": 1.2,
-      "DurationSeconds": 8
-    },
-    "Note": "挡板 +20%"
-  },
-  {
-    "ItemId": "ItemMagnet",
-    "ItemName": "磁吸",
-    "ValueWeight": 1,
-    "BaseDropWeight": 0.15,
-    "Effect": {
-      "PullNextItem": true
-    },
-    "Note": "下一个道具自动落向挡板"
-  }
+  {"ItemId":"ItemPierce","ItemName":"裂穿","ValueWeight":3,"BaseDropWeight":0.1275,"MinValue":0,"MaxValue":9,"IconLocation":"Assets/HotUpdateContent/Res/textures/item03.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item03.prefab","LegacyItemIds":["DUEL_ITEM_PHASE_DRILL"],"Effect":{"PierceCharges":2,"DurationSeconds":0},"Note":"主球获得2次穿透；与英雄蓄力穿透共用计数池"},
+  {"ItemId":"ItemSplit","ItemName":"分形","ValueWeight":3,"BaseDropWeight":0.1275,"MinValue":0.1,"MaxValue":60,"IconLocation":"Assets/HotUpdateContent/Res/textures/item06.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item06.prefab","LegacyItemIds":["DUEL_ITEM_SPLIT_BALL"],"Effect":{"TempBallCount":1,"TempBallSeconds":6},"Note":"生成1颗持续6秒临时球"},
+  {"ItemId":"ItemDamp","ItemName":"缓滞","ValueWeight":3,"BaseDropWeight":0.1275,"MinValue":0.5,"MaxValue":1.5,"IconLocation":"Assets/HotUpdateContent/Res/textures/item04.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item04.prefab","LegacyItemIds":["DUEL_ITEM_DAMPING_PULSE"],"Effect":{"TideSpeedMultiplier":0.8,"DurationSeconds":6},"Note":"本方砖潮推进速度-20%"},
+  {"ItemId":"ItemSpeed","ItemName":"疾风","ValueWeight":2,"BaseDropWeight":0.17,"MinValue":0.5,"MaxValue":2,"IconLocation":"Assets/HotUpdateContent/Res/textures/item07.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item07.prefab","LegacyItemIds":["DUEL_ITEM_SPEED_BALL"],"Effect":{"BallSpeedMultiplier":1.2,"DurationSeconds":5},"Note":"球速临时+20%"},
+  {"ItemId":"ItemWide","ItemName":"广域","ValueWeight":2,"BaseDropWeight":0.17,"MinValue":0.75,"MaxValue":1.5,"IconLocation":"Assets/HotUpdateContent/Res/textures/item01.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item01.prefab","LegacyItemIds":["DUEL_ITEM_WIDE_PADDLE"],"Effect":{"PaddleLengthMultiplier":1.2,"DurationSeconds":8},"Note":"挡板长度+20%"},
+  {"ItemId":"ItemMagnet","ItemName":"磁吸","ValueWeight":1,"BaseDropWeight":0.1275,"MinValue":0,"MaxValue":3,"IconLocation":"Assets/HotUpdateContent/Res/textures/item05.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item05.prefab","LegacyItemIds":[],"Effect":{"PullNextItemCount":1},"Note":"后续1个道具自动落向挡板"},
+  {"ItemId":"ItemLarge","ItemName":"扩容球体","ValueWeight":0,"BaseDropWeight":0.05,"MinValue":1,"MaxValue":1.25,"IconLocation":"Assets/HotUpdateContent/Res/textures/item02.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item02.prefab","LegacyItemIds":["DUEL_ITEM_LARGE_BALL"],"Effect":{"BallRadiusMultiplier":1.15,"DurationSeconds":8},"Note":"特色道具，不参与科技矩阵"},
+  {"ItemId":"ItemAimed","ItemName":"定向反弹","ValueWeight":0,"BaseDropWeight":0.05,"MinValue":0,"MaxValue":5,"IconLocation":"Assets/HotUpdateContent/Res/textures/item08.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item08.prefab","LegacyItemIds":["DUEL_ITEM_AIMED_REBOUND"],"Effect":{"DurationSeconds":5},"Note":"特色道具，不参与科技矩阵"},
+  {"ItemId":"ItemBuffer","ItemName":"核心缓冲","ValueWeight":0,"BaseDropWeight":0.05,"MinValue":0,"MaxValue":1,"IconLocation":"Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item01.prefab","LegacyItemIds":["DUEL_ITEM_CORE_BUFFER"],"Effect":{"AbsorbDamageLayers":1,"DurationSeconds":15},"Note":"特色道具，不参与科技矩阵"}
 ]

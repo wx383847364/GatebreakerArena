@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using App.Shared.Contracts;
@@ -14,6 +15,7 @@ namespace App.AOT.Infrastructure.Persistence
         private const string PlayerPrefsPrefix = "GatebreakerArena.Persistence.";
 
         private readonly string _basePath;
+        private readonly SemaphoreSlim _fileGate = new SemaphoreSlim(1, 1);
 
         public FilePersistenceProvider(string basePath = null)
         {
@@ -58,6 +60,11 @@ namespace App.AOT.Infrastructure.Persistence
             return $"{GetFilePath(key)}.tmp";
         }
 
+        private string GetBackupFilePath(string key)
+        {
+            return $"{GetFilePath(key)}.bak";
+        }
+
         private string GetLegacyFilePath(string key)
         {
             return Path.Combine(_basePath, $"{key}.dat");
@@ -71,10 +78,12 @@ namespace App.AOT.Infrastructure.Persistence
         public async Task<bool> SaveAsync(string key, byte[] data)
         {
             byte[] bytes = data ?? Array.Empty<byte>();
+            await _fileGate.WaitAsync().ConfigureAwait(false);
             try
             {
                 var filePath = GetFilePath(key);
                 var tempPath = GetTempFilePath(key);
+                var backupPath = GetBackupFilePath(key);
                 var directory = Path.GetDirectoryName(filePath);
                 if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
@@ -84,79 +93,121 @@ namespace App.AOT.Infrastructure.Persistence
                 await File.WriteAllBytesAsync(tempPath, bytes).ConfigureAwait(false);
                 if (File.Exists(filePath))
                 {
-                    File.Delete(filePath);
+                    ReplaceFileWithRecovery(tempPath, filePath, backupPath);
+                }
+                else
+                {
+                    File.Move(tempPath, filePath);
                 }
 
-                File.Move(tempPath, filePath);
+                DeleteFileIfExists(backupPath);
+                DeletePlayerPrefsIfExists(key);
                 return true;
             }
             catch (Exception ex)
             {
                 Debug.LogWarning($"FilePersistenceProvider: File save failed for {key}, using PlayerPrefs fallback. {ex}");
-                return SavePlayerPrefs(key, bytes);
+                return SaveFallbackAndRetireFiles(key, bytes);
+            }
+            finally
+            {
+                _fileGate.Release();
             }
         }
 
         public async Task<byte[]> LoadAsync(string key)
         {
-            byte[] fileBytes = await TryLoadFileAsync(GetFilePath(key), key).ConfigureAwait(false);
-            if (fileBytes != null)
+            await _fileGate.WaitAsync().ConfigureAwait(false);
+            try
             {
-                return fileBytes;
-            }
-
-            string legacyPath = GetLegacyFilePath(key);
-            if (!string.Equals(legacyPath, GetFilePath(key), StringComparison.Ordinal))
-            {
-                fileBytes = await TryLoadFileAsync(legacyPath, key).ConfigureAwait(false);
+                string filePath = GetFilePath(key);
+                byte[] fileBytes = await TryLoadFileAsync(filePath, key).ConfigureAwait(false);
                 if (fileBytes != null)
                 {
                     return fileBytes;
                 }
-            }
 
-            return LoadPlayerPrefs(key);
+                fileBytes = await TryRecoverFileAsync(GetTempFilePath(key), filePath, key).ConfigureAwait(false);
+                if (fileBytes != null)
+                {
+                    return fileBytes;
+                }
+
+                fileBytes = await TryRecoverFileAsync(GetBackupFilePath(key), filePath, key).ConfigureAwait(false);
+                if (fileBytes != null)
+                {
+                    return fileBytes;
+                }
+
+                string legacyPath = GetLegacyFilePath(key);
+                if (!string.Equals(legacyPath, filePath, StringComparison.Ordinal))
+                {
+                    fileBytes = await TryLoadFileAsync(legacyPath, key).ConfigureAwait(false);
+                    if (fileBytes != null)
+                    {
+                        return fileBytes;
+                    }
+                }
+
+                return LoadPlayerPrefs(key);
+            }
+            finally
+            {
+                _fileGate.Release();
+            }
         }
 
         public async Task<bool> DeleteAsync(string key)
         {
-            bool success = true;
+            await _fileGate.WaitAsync().ConfigureAwait(false);
             try
             {
-                DeleteFileIfExists(GetFilePath(key));
-                DeleteFileIfExists(GetTempFilePath(key));
-
-                string legacyPath = GetLegacyFilePath(key);
-                if (!string.Equals(legacyPath, GetFilePath(key), StringComparison.Ordinal))
+                bool success = true;
+                try
                 {
-                    DeleteFileIfExists(legacyPath);
+                    DeleteFileIfExists(GetFilePath(key));
+                    DeleteFileIfExists(GetTempFilePath(key));
+                    DeleteFileIfExists(GetBackupFilePath(key));
+
+                    string legacyPath = GetLegacyFilePath(key);
+                    if (!string.Equals(legacyPath, GetFilePath(key), StringComparison.Ordinal))
+                    {
+                        DeleteFileIfExists(legacyPath);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"FilePersistenceProvider: Failed to delete file data for {key}: {ex}");
-                success = false;
-            }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"FilePersistenceProvider: Failed to delete file data for {key}: {ex}");
+                    success = false;
+                }
 
-            try
-            {
-                PlayerPrefs.DeleteKey(GetPlayerPrefsKey(key));
-                PlayerPrefs.Save();
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"FilePersistenceProvider: Failed to delete PlayerPrefs data for {key}: {ex}");
-                success = false;
-            }
+                try
+                {
+                    PlayerPrefs.DeleteKey(GetPlayerPrefsKey(key));
+                    PlayerPrefs.Save();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"FilePersistenceProvider: Failed to delete PlayerPrefs data for {key}: {ex}");
+                    success = false;
+                }
 
-            return await Task.FromResult(success).ConfigureAwait(false);
+                return success;
+            }
+            finally
+            {
+                _fileGate.Release();
+            }
         }
 
         public bool Exists(string key)
         {
             try
             {
-                if (File.Exists(GetFilePath(key)) || File.Exists(GetLegacyFilePath(key)))
+                if (File.Exists(GetFilePath(key)) ||
+                    File.Exists(GetTempFilePath(key)) ||
+                    File.Exists(GetBackupFilePath(key)) ||
+                    File.Exists(GetLegacyFilePath(key)))
                 {
                     return true;
                 }
@@ -187,6 +238,56 @@ namespace App.AOT.Infrastructure.Persistence
             }
         }
 
+        private static async Task<byte[]> TryRecoverFileAsync(
+            string recoveryPath,
+            string filePath,
+            string key)
+        {
+            byte[] bytes = await TryLoadFileAsync(recoveryPath, key).ConfigureAwait(false);
+            if (bytes == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    File.Move(recoveryPath, filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"FilePersistenceProvider: Failed to promote recovery data for {key}: {ex}");
+            }
+
+            return bytes;
+        }
+
+        private static void ReplaceFileWithRecovery(string tempPath, string filePath, string backupPath)
+        {
+            DeleteFileIfExists(backupPath);
+            try
+            {
+                File.Replace(tempPath, filePath, backupPath, true);
+            }
+            catch (PlatformNotSupportedException)
+            {
+                ReplaceFileWithPortableRecovery(tempPath, filePath, backupPath);
+            }
+            catch (IOException)
+            {
+                ReplaceFileWithPortableRecovery(tempPath, filePath, backupPath);
+            }
+        }
+
+        private static void ReplaceFileWithPortableRecovery(string tempPath, string filePath, string backupPath)
+        {
+            File.Copy(filePath, backupPath, true);
+            File.Delete(filePath);
+            File.Move(tempPath, filePath);
+        }
+
         private static void DeleteFileIfExists(string filePath)
         {
             if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
@@ -207,6 +308,39 @@ namespace App.AOT.Infrastructure.Persistence
             {
                 Debug.LogError($"FilePersistenceProvider: PlayerPrefs fallback save failed for {key}: {ex}");
                 return false;
+            }
+        }
+
+        private bool SaveFallbackAndRetireFiles(string key, byte[] data)
+        {
+            if (!SavePlayerPrefs(key, data)) return false;
+            try
+            {
+                DeleteFileIfExists(GetFilePath(key));
+                DeleteFileIfExists(GetTempFilePath(key));
+                DeleteFileIfExists(GetBackupFilePath(key));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                DeletePlayerPrefsIfExists(key);
+                Debug.LogError($"FilePersistenceProvider: Could not retire stale file data after fallback save for {key}. {ex}");
+                return false;
+            }
+        }
+
+        private static void DeletePlayerPrefsIfExists(string key)
+        {
+            try
+            {
+                string playerPrefsKey = GetPlayerPrefsKey(key);
+                if (!PlayerPrefs.HasKey(playerPrefsKey)) return;
+                PlayerPrefs.DeleteKey(playerPrefsKey);
+                PlayerPrefs.Save();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"FilePersistenceProvider: Failed to clear stale PlayerPrefs data for {key}: {ex}");
             }
         }
 

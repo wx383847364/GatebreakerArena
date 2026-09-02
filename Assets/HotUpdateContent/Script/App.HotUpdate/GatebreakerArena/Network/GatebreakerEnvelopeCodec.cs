@@ -35,8 +35,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
     public static class GatebreakerEnvelopeCodec
     {
-        // V4 adds frozen V1 loadout fields to the room/player contract.
-        public const ushort ProtocolVersion = 4;
+        // V7 isolates every match round and hardens prepared-loading/lockstep ownership.
+        public const ushort ProtocolVersion = 7;
         public const int MaxPayloadBytes = 4096;
         private const int HeaderSize = 28;
 
@@ -168,6 +168,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteUInt16(value?.ProtocolVersion ?? GatebreakerEnvelopeCodec.ProtocolVersion);
             writer.WriteUInt64(value?.SessionId ?? 0UL);
             writer.WriteUInt32(value?.ChannelId ?? 0U);
+            writer.WriteUInt32(value?.RoundId ?? 0U);
             writer.WriteString(value?.RoomCode);
             writer.WriteInt32(value?.RulesSchemaVersion ?? 0);
             writer.WriteString(value?.RulesHash);
@@ -188,6 +189,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 ProtocolVersion = reader.ReadUInt16(),
                 SessionId = reader.ReadUInt64(),
                 ChannelId = reader.ReadUInt32(),
+                RoundId = reader.ReadUInt32(),
                 RoomCode = reader.ReadString(),
                 RulesSchemaVersion = reader.ReadInt32(),
                 RulesHash = reader.ReadString(),
@@ -280,6 +282,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteString(value?.SignatureChipId);
             WriteStringArray(writer, value?.OpeningUniversalChipIds);
             WriteStringArray(writer, value?.ScheduledUniversalChipIds);
+            writer.WriteString(value?.PhaseHeroId);
+            WriteStringArray(writer, value?.PhaseTechIds);
+            writer.WriteBool(value?.HasConfirmedPhaseLoadoutThisLobby ?? false);
             return writer.ToArray();
         }
 
@@ -295,6 +300,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 SignatureChipId = reader.ReadString(),
                 OpeningUniversalChipIds = ReadStringArray(reader),
                 ScheduledUniversalChipIds = ReadStringArray(reader),
+                PhaseHeroId = reader.ReadString(),
+                PhaseTechIds = ReadStringArray(reader),
+                HasConfirmedPhaseLoadoutThisLobby = reader.ReadBool(),
             };
         }
 
@@ -303,6 +311,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             var writer = new LittleEndianWriter();
             writer.WriteUInt64(value?.ClientInstanceId ?? 0UL);
             writer.WriteInt32(value?.SlotIndex ?? -1);
+            writer.WriteUInt32(value?.RoundId ?? 0U);
             return writer.ToArray();
         }
 
@@ -313,6 +322,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 ClientInstanceId = reader.ReadUInt64(),
                 SlotIndex = reader.ReadInt32(),
+                RoundId = reader.ReadUInt32(),
             };
         }
 
@@ -342,6 +352,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteUInt64(value?.ClientInstanceId ?? 0UL);
             writer.WriteInt32(value?.SlotIndex ?? -1);
             writer.WriteBool(value?.IsReady ?? false);
+            writer.WriteUInt32(value?.RoundId ?? 0U);
             return writer.ToArray();
         }
 
@@ -353,6 +364,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 ClientInstanceId = reader.ReadUInt64(),
                 SlotIndex = reader.ReadInt32(),
                 IsReady = reader.ReadBool(),
+                RoundId = reader.ReadUInt32(),
             };
         }
 
@@ -391,6 +403,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             var writer = new LittleEndianWriter();
             writer.WriteInt32(value?.FrameIndex ?? 0);
             writer.WriteUInt32(value?.BundleSeq ?? 0U);
+            writer.WriteUInt32(value?.RoundId ?? 0U);
             WriteInputArray(writer, value?.Inputs);
             return writer.ToArray();
         }
@@ -402,6 +415,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 FrameIndex = reader.ReadInt32(),
                 BundleSeq = reader.ReadUInt32(),
+                RoundId = reader.ReadUInt32(),
                 Inputs = ReadInputArray(reader),
             };
         }
@@ -409,10 +423,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public static byte[] EncodeChecksumReport(ChecksumReport value)
         {
             var writer = new LittleEndianWriter();
+            writer.WriteUInt32(value?.RoundId ?? 0U);
             writer.WriteInt32(value?.SlotIndex ?? -1);
             writer.WriteInt32(value?.FrameIndex ?? 0);
             writer.WriteUInt32(value?.Checksum ?? 0U);
             writer.WriteBool(value?.DesyncDetected ?? false);
+            writer.WriteBool(value?.IsTerminal ?? false);
+            writer.WriteInt32(value?.TerminalResult ?? 0);
             return writer.ToArray();
         }
 
@@ -421,10 +438,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             var reader = new LittleEndianReader(payload);
             return new ChecksumReport
             {
+                RoundId = reader.ReadUInt32(),
                 SlotIndex = reader.ReadInt32(),
                 FrameIndex = reader.ReadInt32(),
                 Checksum = reader.ReadUInt32(),
                 DesyncDetected = reader.ReadBool(),
+                IsTerminal = reader.ReadBool(),
+                TerminalResult = reader.ReadInt32(),
             };
         }
 
@@ -432,6 +452,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         {
             writer.WriteUInt64(value?.SessionId ?? 0UL);
             writer.WriteUInt32(value?.ChannelId ?? 0U);
+            writer.WriteUInt32(value?.RoundId ?? 0U);
             writer.WriteString(value?.RoomCode);
             writer.WriteInt32(value?.RulesSchemaVersion ?? 0);
             writer.WriteString(value?.RulesHash);
@@ -446,6 +467,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteString(value?.AbortMessage);
             WritePlayers(writer, value?.Players);
             WriteLockstepSnapshot(writer, value?.Lockstep);
+            writer.WriteBool(value?.MatchCompleted ?? false);
+            writer.WriteInt32(value?.CompletedFrameIndex ?? -1);
+            writer.WriteUInt32(value?.CompletedChecksum ?? 0U);
+            writer.WriteInt32(value?.CompletedResult ?? 0);
         }
 
         private static RoomSnapshot ReadRoomSnapshot(LittleEndianReader reader)
@@ -454,6 +479,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 SessionId = reader.ReadUInt64(),
                 ChannelId = reader.ReadUInt32(),
+                RoundId = reader.ReadUInt32(),
                 RoomCode = reader.ReadString(),
                 RulesSchemaVersion = reader.ReadInt32(),
                 RulesHash = reader.ReadString(),
@@ -468,6 +494,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 AbortMessage = reader.ReadString(),
                 Players = ReadPlayers(reader),
                 Lockstep = ReadLockstepSnapshot(reader),
+                MatchCompleted = reader.ReadBool(),
+                CompletedFrameIndex = reader.ReadInt32(),
+                CompletedChecksum = reader.ReadUInt32(),
+                CompletedResult = reader.ReadInt32(),
             };
         }
 
@@ -496,6 +526,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 WriteStringArray(writer, player.ScheduledUniversalChipIds);
                 writer.WriteString(player.LoadoutHash);
                 WriteStringArray(writer, player.DeckChipIds);
+                writer.WriteString(player.PhaseHeroId);
+                WriteStringArray(writer, player.PhaseTechIds);
+                writer.WriteString(player.PhaseLoadoutHash);
+                writer.WriteBool(player.HasConfirmedPhaseLoadoutThisLobby);
             }
         }
 
@@ -525,6 +559,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     ScheduledUniversalChipIds = ReadStringArray(reader),
                     LoadoutHash = reader.ReadString(),
                     DeckChipIds = ReadStringArray(reader),
+                    PhaseHeroId = reader.ReadString(),
+                    PhaseTechIds = ReadStringArray(reader),
+                    PhaseLoadoutHash = reader.ReadString(),
+                    HasConfirmedPhaseLoadoutThisLobby = reader.ReadBool(),
                 };
             }
 
@@ -613,6 +651,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             writer.WriteInt16(input.AimXQ);
             writer.WriteInt16(input.AimYQ);
             writer.WriteUInt16(input.Buttons);
+            writer.WriteUInt32(input.RoundId);
         }
 
         private static LockstepInputFrame ReadLockstepInput(LittleEndianReader reader)
@@ -625,7 +664,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 reader.ReadInt16(),
                 reader.ReadInt16(),
                 reader.ReadInt16(),
-                reader.ReadUInt16());
+                reader.ReadUInt16(),
+                reader.ReadUInt32());
         }
 
         private static void WriteIntArray(LittleEndianWriter writer, int[] values)
@@ -679,10 +719,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             for (int i = 0; i < reports.Length; i++)
             {
                 ChecksumReport report = reports[i] ?? new ChecksumReport();
+                writer.WriteUInt32(report.RoundId);
                 writer.WriteInt32(report.SlotIndex);
                 writer.WriteInt32(report.FrameIndex);
                 writer.WriteUInt32(report.Checksum);
                 writer.WriteBool(report.DesyncDetected);
+                writer.WriteBool(report.IsTerminal);
+                writer.WriteInt32(report.TerminalResult);
             }
         }
 
@@ -694,10 +737,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 reports[i] = new ChecksumReport
                 {
+                    RoundId = reader.ReadUInt32(),
                     SlotIndex = reader.ReadInt32(),
                     FrameIndex = reader.ReadInt32(),
                     Checksum = reader.ReadUInt32(),
                     DesyncDetected = reader.ReadBool(),
+                    IsTerminal = reader.ReadBool(),
+                    TerminalResult = reader.ReadInt32(),
                 };
             }
 

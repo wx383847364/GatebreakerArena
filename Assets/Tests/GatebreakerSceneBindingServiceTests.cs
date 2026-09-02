@@ -744,6 +744,7 @@ namespace Gatebreaker.Tests
 
             snapshot.BottomCoreHealth = 4;
             _service.UpdateBrickDuel(snapshot, rule, null);
+            _service.ShowBrickDuelHud();
 
             Assert.IsTrue(_binding.BrickDuelBottomCoreHitFeedback.gameObject.activeSelf);
             Assert.IsFalse(_binding.BrickDuelTopCoreHitFeedback.gameObject.activeSelf);
@@ -766,6 +767,23 @@ namespace Gatebreaker.Tests
             Assert.IsFalse(_binding.ResultScoreText.gameObject.activeSelf);
             Assert.IsTrue(_binding.ResultRankLabelTexts.All(text => !text.gameObject.activeSelf));
             Assert.IsTrue(_binding.ResultRankNameTexts.All(text => !text.gameObject.activeSelf));
+        }
+
+        [Test]
+        public void BrickDuelSettlementStatusRemainsVisibleAcrossResultRefreshAndClearsOnExit()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+            _service.ShowBrickDuelHud();
+            _service.UpdateBrickDuelResult(BrickDuelResult.PlayerWin);
+
+            _service.SetBrickDuelSettlementStatus("相位结算 +5 · 余额 20");
+            _service.ShowBrickDuelHud();
+            _service.UpdateBrickDuelResult(BrickDuelResult.PlayerWin);
+
+            StringAssert.Contains("相位结算 +5", _binding.ResultBodyText.text);
+            _service.ShowModeSelect();
+            _service.UpdateBrickDuelResult(BrickDuelResult.PlayerWin);
+            Assert.AreEqual("胜利", _binding.ResultBodyText.text);
         }
 
         private sealed class TestSceneUiBinding : IGatebreakerArenaSceneUiBinding
@@ -833,6 +851,8 @@ namespace Gatebreaker.Tests
             public Graphic BrickDuelBottomCoreHitFeedback { get; private set; }
             public Graphic BrickDuelTopCoreHitFeedback { get; private set; }
             public Button BrickDuelPauseButton { get; private set; }
+            public Button BrickDuelAbilityButton { get; private set; }
+            public TMP_Text BrickDuelAbilityText { get; private set; }
             public RectTransform BrickDuelMovementPad { get; private set; }
             public RectTransform BrickDuelMovementHandle { get; private set; }
             public RectTransform BrickDuelMovementLeftArrowInput { get; private set; }
@@ -846,7 +866,12 @@ namespace Gatebreaker.Tests
             public TMP_Dropdown[] LoadoutUniversalChipDropdowns { get; private set; }
             public Button LoadoutUseDefaultButton { get; private set; }
             public Button LoadoutConfirmButton { get; private set; }
+            public Button LoadoutBackButton { get; private set; }
             public TMP_Text LoadoutErrorText { get; private set; }
+            public GameObject LoadoutUnlockConfirmRoot { get; private set; }
+            public TMP_Text LoadoutUnlockConfirmText { get; private set; }
+            public Button LoadoutUnlockConfirmButton { get; private set; }
+            public Button LoadoutUnlockCancelButton { get; private set; }
             public TMP_Text HeroHudText { get; private set; }
             public GameObject LanMenuRoot { get; private set; }
             public GameObject LanRoomInfoRoot { get; private set; }
@@ -939,6 +964,8 @@ namespace Gatebreaker.Tests
             public Object BrickDuelBottomCoreHitFeedbackObject => BrickDuelBottomCoreHitFeedback;
             public Object BrickDuelTopCoreHitFeedbackObject => BrickDuelTopCoreHitFeedback;
             public Object BrickDuelPauseButtonObject => BrickDuelPauseButton;
+            public Object BrickDuelAbilityButtonObject => BrickDuelAbilityButton;
+            public Object BrickDuelAbilityTextObject => BrickDuelAbilityText;
             public Object BrickDuelMovementPadObject => BrickDuelMovementPad;
             public Object BrickDuelMovementHandleObject => BrickDuelMovementHandle;
             public Object BrickDuelMovementLeftArrowInputObject => BrickDuelMovementLeftArrowInput;
@@ -952,7 +979,12 @@ namespace Gatebreaker.Tests
             public Object[] LoadoutUniversalChipDropdownObjects => LoadoutUniversalChipDropdowns;
             public Object LoadoutUseDefaultButtonObject => LoadoutUseDefaultButton;
             public Object LoadoutConfirmButtonObject => LoadoutConfirmButton;
+            public Object LoadoutBackButtonObject => LoadoutBackButton;
             public Object LoadoutErrorTextObject => LoadoutErrorText;
+            public Object LoadoutUnlockConfirmRootObject => LoadoutUnlockConfirmRoot;
+            public Object LoadoutUnlockConfirmTextObject => LoadoutUnlockConfirmText;
+            public Object LoadoutUnlockConfirmButtonObject => LoadoutUnlockConfirmButton;
+            public Object LoadoutUnlockCancelButtonObject => LoadoutUnlockCancelButton;
             public Object HeroHudTextObject => HeroHudText;
             public Object LanMenuRootObject => LanMenuRoot;
             public Object LanRoomInfoRootObject => LanRoomInfoRoot;
@@ -1099,6 +1131,8 @@ namespace Gatebreaker.Tests
                     BrickDuelBottomCoreHitFeedback = AddClearImage(parent, "BrickDuelBottomCoreHitFeedback"),
                     BrickDuelTopCoreHitFeedback = AddClearImage(parent, "BrickDuelTopCoreHitFeedback"),
                     BrickDuelPauseButton = Add<Button>(parent, "BrickDuelPause"),
+                    BrickDuelAbilityButton = Add<Button>(parent, "BrickDuelAbility"),
+                    BrickDuelAbilityText = Add<TextMeshProUGUI>(parent, "BrickDuelAbilityText"),
                     BrickDuelMovementPad = Add<RectTransform>(parent, "BrickDuelMovementPad"),
                     BrickDuelMovementHandle = Add<RectTransform>(parent, "BrickDuelMovementHandle"),
                     BrickDuelMovementLeftArrowInput = Add<RectTransform>(parent, "BrickDuelMovementLeftArrowInput"),
@@ -1117,7 +1151,12 @@ namespace Gatebreaker.Tests
                     },
                     LoadoutUseDefaultButton = Add<Button>(parent, "LoadoutDefault"),
                     LoadoutConfirmButton = Add<Button>(parent, "LoadoutConfirm"),
+                    LoadoutBackButton = Add<Button>(parent, "LoadoutBack"),
                     LoadoutErrorText = Add<TextMeshProUGUI>(parent, "LoadoutError"),
+                    LoadoutUnlockConfirmRoot = CreateRoot(parent, "LoadoutUnlockConfirmRoot"),
+                    LoadoutUnlockConfirmText = Add<TextMeshProUGUI>(parent, "LoadoutUnlockConfirmText"),
+                    LoadoutUnlockConfirmButton = Add<Button>(parent, "LoadoutUnlockConfirm"),
+                    LoadoutUnlockCancelButton = Add<Button>(parent, "LoadoutUnlockCancel"),
                     HeroHudText = Add<TextMeshProUGUI>(parent, "HeroHud"),
                     LanMenuRoot = CreateRoot(parent, "LanMenuRoot"),
                     LanRoomInfoRoot = CreateRoot(parent, "LanRoomInfoRoot"),

@@ -29,7 +29,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void BootstrapSceneGatebreakerUiBindingHasStaticReferences()
+        public void BootstrapSceneGatebreakerUiBindingHasStaticCoreReferences()
         {
             var scene = EditorSceneManager.OpenScene(BootstrapScenePath, OpenSceneMode.Single);
             GatebreakerArenaSceneUiBinding binding = Resources
@@ -38,8 +38,8 @@ namespace Gatebreaker.Tests
 
             Assert.IsNotNull(binding, "BootstrapScene should contain the Gatebreaker scene UI binding bridge.");
             Assert.IsTrue(
-                binding.HasRequiredBindings,
-                "Gatebreaker scene UI binding should include Skill/BallCount and player Score/Hit panel references.");
+                binding.HasStaticCoreBindings,
+                "BootstrapScene should serialize the stable core UI references; the generated v0.3 phase panel is completed during Awake.");
         }
 
         [Test]

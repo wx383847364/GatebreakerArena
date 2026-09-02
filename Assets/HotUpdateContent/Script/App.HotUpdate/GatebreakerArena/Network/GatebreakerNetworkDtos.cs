@@ -51,6 +51,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         SyncWaiting = 2,
         Desync = 3,
         Aborted = 4,
+        Completed = 5,
     }
 
     public enum MatchAbortReason : byte
@@ -72,6 +73,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public ushort ProtocolVersion { get; set; }
         public ulong SessionId { get; set; }
         public uint ChannelId { get; set; }
+        public uint RoundId { get; set; }
         public string RoomCode { get; set; } = string.Empty;
         public int RulesSchemaVersion { get; set; }
         public string RulesHash { get; set; } = string.Empty;
@@ -110,6 +112,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
     {
         public ulong SessionId { get; set; }
         public uint ChannelId { get; set; }
+        public uint RoundId { get; set; }
         public string RoomCode { get; set; } = string.Empty;
         public int RulesSchemaVersion { get; set; }
         public string RulesHash { get; set; } = string.Empty;
@@ -124,6 +127,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public string AbortMessage { get; set; } = string.Empty;
         public RoomPlayerSnapshot[] Players { get; set; } = Array.Empty<RoomPlayerSnapshot>();
         public LockstepSnapshot Lockstep { get; set; }
+        public bool MatchCompleted { get; set; }
+        public int CompletedFrameIndex { get; set; } = -1;
+        public uint CompletedChecksum { get; set; }
+        public int CompletedResult { get; set; }
     }
 
     public sealed class RoomPlayerSnapshot
@@ -146,6 +153,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public string[] ScheduledUniversalChipIds { get; set; } = Array.Empty<string>();
         public string LoadoutHash { get; set; } = string.Empty;
         public string[] DeckChipIds { get; set; } = Array.Empty<string>();
+        public string PhaseHeroId { get; set; } = string.Empty;
+        public string[] PhaseTechIds { get; set; } = Array.Empty<string>();
+        public string PhaseLoadoutHash { get; set; } = string.Empty;
+        public bool HasConfirmedPhaseLoadoutThisLobby { get; set; }
     }
 
     public sealed class RoomReadyCommand
@@ -157,12 +168,16 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public string SignatureChipId { get; set; } = string.Empty;
         public string[] OpeningUniversalChipIds { get; set; } = Array.Empty<string>();
         public string[] ScheduledUniversalChipIds { get; set; } = Array.Empty<string>();
+        public string PhaseHeroId { get; set; } = string.Empty;
+        public string[] PhaseTechIds { get; set; } = Array.Empty<string>();
+        public bool HasConfirmedPhaseLoadoutThisLobby { get; set; }
     }
 
     public sealed class RoomStartAck
     {
         public ulong ClientInstanceId { get; set; }
         public int SlotIndex { get; set; }
+        public uint RoundId { get; set; }
     }
 
     public sealed class RoomLeaveNotice
@@ -177,6 +192,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public ulong ClientInstanceId { get; set; }
         public int SlotIndex { get; set; } = -1;
         public bool IsReady { get; set; }
+        public uint RoundId { get; set; }
     }
 
     public sealed class RoomAbortNotice
@@ -195,7 +211,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             short moveAxisQ,
             short aimXQ,
             short aimYQ,
-            ushort buttons)
+            ushort buttons,
+            uint roundId = 0U)
         {
             SlotIndex = slotIndex;
             PlayerId = playerId;
@@ -205,6 +222,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             AimXQ = aimXQ;
             AimYQ = aimYQ;
             Buttons = buttons;
+            RoundId = roundId;
         }
 
         public int SlotIndex { get; }
@@ -215,21 +233,26 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public short AimXQ { get; }
         public short AimYQ { get; }
         public ushort Buttons { get; }
+        public uint RoundId { get; }
     }
 
     public sealed class LockstepFrameBundle
     {
         public int FrameIndex { get; set; }
         public uint BundleSeq { get; set; }
+        public uint RoundId { get; set; }
         public LockstepInputFrame[] Inputs { get; set; } = Array.Empty<LockstepInputFrame>();
     }
 
     public sealed class ChecksumReport
     {
+        public uint RoundId { get; set; }
         public int SlotIndex { get; set; }
         public int FrameIndex { get; set; }
         public uint Checksum { get; set; }
         public bool DesyncDetected { get; set; }
+        public bool IsTerminal { get; set; }
+        public int TerminalResult { get; set; }
     }
 
     public sealed class LockstepSnapshot

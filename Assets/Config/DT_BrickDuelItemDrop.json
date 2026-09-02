@@ -1,96 +1,11 @@
 [
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 1,
-    "ItemId": "DUEL_ITEM_WIDE_PADDLE",
-    "ItemName": "宽幅组件",
-    "DropWeight": 0.2,
-    "BagCopies": 2,
-    "Enabled": true,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
-    "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
-    "EffectDurationSeconds": 8.0,
-    "EffectMagnitude": 1.5
-  },
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 2,
-    "ItemId": "DUEL_ITEM_LARGE_BALL",
-    "ItemName": "扩容球体",
-    "DropWeight": 0.0,
-    "BagCopies": 2,
-    "Enabled": false,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
-    "PrefabLocation": ""
-  },
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 3,
-    "ItemId": "DUEL_ITEM_PHASE_DRILL",
-    "ItemName": "相位钻头",
-    "DropWeight": 0.2,
-    "BagCopies": 2,
-    "Enabled": true,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
-    "PrefabLocation": ""
-  },
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 4,
-    "ItemId": "DUEL_ITEM_SPLIT_BALL",
-    "ItemName": "裂变球体",
-    "DropWeight": 0.2,
-    "BagCopies": 2,
-    "Enabled": true,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_split_ball.png",
-    "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item06.prefab"
-  },
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 5,
-    "ItemId": "DUEL_ITEM_SPEED_BALL",
-    "ItemName": "弹球加速",
-    "DropWeight": 0.2,
-    "BagCopies": 2,
-    "Enabled": true,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_speed_ball.png",
-    "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
-    "EffectDurationSeconds": 5.0,
-    "EffectMagnitude": 1.3,
-    "DurationModifierKey": "DUEL_ITEM_SPEED_BALL_DURATION"
-  },
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 6,
-    "ItemId": "DUEL_ITEM_AIMED_REBOUND",
-    "ItemName": "定向反弹",
-    "DropWeight": 0.2,
-    "BagCopies": 2,
-    "Enabled": true,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_aimed_rebound.png",
-    "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
-    "EffectDurationSeconds": 5.0
-  },
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 7,
-    "ItemId": "DUEL_ITEM_DAMPING_PULSE",
-    "ItemName": "阻尼脉冲",
-    "DropWeight": 0.0,
-    "BagCopies": 2,
-    "Enabled": false,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
-    "PrefabLocation": ""
-  },
-  {
-    "DropTableId": "BRICK_DUEL_ITEM_V0",
-    "SortOrder": 8,
-    "ItemId": "DUEL_ITEM_CORE_BUFFER",
-    "ItemName": "核心缓冲",
-    "DropWeight": 0.0,
-    "BagCopies": 2,
-    "Enabled": false,
-    "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
-    "PrefabLocation": ""
-  }
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":1,"ItemId":"ItemPierce","ItemName":"裂穿","DropWeight":0.1275,"BagCopies":51,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item03.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item03.prefab"},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":2,"ItemId":"ItemSplit","ItemName":"分形","DropWeight":0.1275,"BagCopies":51,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item06.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item06.prefab","EffectDurationSeconds":6.0},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":3,"ItemId":"ItemDamp","ItemName":"缓滞","DropWeight":0.1275,"BagCopies":51,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item04.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item04.prefab","EffectDurationSeconds":6.0,"EffectMagnitude":0.8},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":4,"ItemId":"ItemSpeed","ItemName":"疾风","DropWeight":0.17,"BagCopies":68,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item07.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item07.prefab","EffectDurationSeconds":5.0,"EffectMagnitude":1.2},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":5,"ItemId":"ItemWide","ItemName":"广域","DropWeight":0.17,"BagCopies":68,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item01.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item01.prefab","EffectDurationSeconds":8.0,"EffectMagnitude":1.2},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":6,"ItemId":"ItemMagnet","ItemName":"磁吸","DropWeight":0.1275,"BagCopies":51,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item05.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item05.prefab"},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":7,"ItemId":"ItemLarge","ItemName":"扩容","DropWeight":0.05,"BagCopies":20,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item02.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item02.prefab","EffectDurationSeconds":8.0,"EffectMagnitude":1.15},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":8,"ItemId":"ItemAimed","ItemName":"定向","DropWeight":0.05,"BagCopies":20,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/item08.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item08.prefab","EffectDurationSeconds":5.0},
+  {"DropTableId":"BRICK_DUEL_PHASE_V0","SortOrder":9,"ItemId":"ItemBuffer","ItemName":"核心缓冲","DropWeight":0.05,"BagCopies":20,"Enabled":true,"IconLocation":"Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png","PrefabLocation":"Assets/HotUpdateContent/Res/prefabs/Item01.prefab","EffectDurationSeconds":15.0}
 ]

@@ -594,33 +594,214 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void ApplyWallInnerBounds_UpdatesRuleUsedByOverlayAndCollisionPlanes()
+        public void ExplicitSceneWallBounds_DoNotMutateAuthoritativeRule()
         {
             BrickDuelRuleDefinition rule = CreateRule();
+            float arenaHalfWidth = rule.ArenaHalfWidth;
+            float coreLineY = rule.CoreLineY;
+            float paddleSpawnY = rule.PaddleSpawnY;
             var wallBounds = new BrickDuelWallOverlayBounds(-2.75f, 2.8f, -4.55f, 4.6f);
-
-            Assert.IsTrue(BrickDuelCollisionOverlayGeometry.TryApplyWallInnerBoundsToRule(
-                rule,
-                wallBounds));
-            Assert.AreEqual(2.75f, rule.ArenaHalfWidth, 0.0001f);
-            Assert.AreEqual(4.55f, rule.CoreLineY, 0.0001f);
 
             BrickDuelRuntime runtime = new BrickDuelRuntime(rule, CreateTacticalAiRule());
             runtime.BeginCountdown();
             BrickDuelSnapshot snapshot = runtime.CreateSnapshot();
             IReadOnlyList<BrickDuelCollisionOverlayLine> lines =
-                BrickDuelCollisionOverlayGeometry.BuildLines(rule, snapshot);
+                BrickDuelCollisionOverlayGeometry.BuildLines(rule, snapshot, wallBounds);
+
+            Assert.AreEqual(arenaHalfWidth, rule.ArenaHalfWidth, 0.0001f);
+            Assert.AreEqual(coreLineY, rule.CoreLineY, 0.0001f);
+            Assert.AreEqual(paddleSpawnY, rule.PaddleSpawnY, 0.0001f);
 
             Assert.IsTrue(HasOverlayLine(
                 lines,
                 BrickDuelCollisionOverlayLineKind.Wall,
                 new Vector2(-2.75f, -4.55f),
-                new Vector2(2.75f, -4.55f)));
+                new Vector2(2.8f, -4.55f)));
             Assert.IsTrue(HasOverlayLine(
                 lines,
                 BrickDuelCollisionOverlayLineKind.Wall,
-                new Vector2(-2.75f, 4.55f),
-                new Vector2(2.75f, 4.55f)));
+                new Vector2(-2.75f, 4.6f),
+                new Vector2(2.8f, 4.6f)));
+        }
+
+        [Test]
+        public void MirrorCollision_WinsAgainstBrickBehindPlaneWithoutCountingAsOuterWall()
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            rule.BallSpeed = 4f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), BrickDuelSide.Bottom);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0f, -1.8f));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.down * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), BrickDuelSide.Bottom);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, -8f));
+            var brick = new BrickDuelBrickState();
+            SetState(brick, nameof(BrickDuelBrickState.BrickId), 7001);
+            SetState(brick, nameof(BrickDuelBrickState.Side), BrickDuelSide.Bottom);
+            SetState(brick, nameof(BrickDuelBrickState.InitialType), BrickDuelBrickType.Green);
+            SetState(brick, nameof(BrickDuelBrickState.Health), 1);
+            SetState(brick, nameof(BrickDuelBrickState.Position), new Vector2(0f, -2.6f));
+            var hitBrickIds = new HashSet<int>();
+            var telemetry = new BrickDuelCollisionFrameTelemetry();
+
+            StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState> { brick },
+                rule,
+                0.2f,
+                0f,
+                hitBrickIds,
+                horizontalBarrier: new BrickDuelHorizontalBarrier(-2f, 1f, Vector2.up),
+                telemetry: telemetry);
+
+            Assert.IsEmpty(hitBrickIds);
+            Assert.Greater(ball.Position.y, -2f);
+            Assert.Greater(ball.Velocity.y, 0f);
+            Assert.AreEqual(0, telemetry.OwnOuterWallBounceCount);
+        }
+
+        [Test]
+        public void MirrorCollision_UsesIntersectionXInsteadOfEndOfFrameX()
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            rule.BallSpeed = 4f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), BrickDuelSide.Bottom);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0.8f, -1.8f));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), new Vector2(1f, -2f));
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), BrickDuelSide.Bottom);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, -8f));
+
+            StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.2f,
+                0f,
+                new HashSet<int>(),
+                horizontalBarrier: new BrickDuelHorizontalBarrier(-2f, 1f, Vector2.up));
+
+            Assert.Greater(ball.Position.x, 1f);
+            Assert.Greater(ball.Position.y, -2f);
+            Assert.Greater(ball.Velocity.y, 0f);
+        }
+
+        [Test]
+        public void PaddleBounce_UsesRequestedSpeedDuringTheSameSolverStep()
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            rule.BallSpeed = 2f;
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), BrickDuelSide.Bottom);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, -3f));
+            var ball = new BrickDuelBallState();
+            float contactY = paddle.Position.y + rule.PaddleHalfHeight + rule.BallRadius;
+            SetState(ball, nameof(BrickDuelBallState.Side), BrickDuelSide.Bottom);
+            SetState(ball, nameof(BrickDuelBallState.Position), new Vector2(0f, contactY + 0.05f));
+            SetState(ball, nameof(BrickDuelBallState.Velocity), Vector2.down * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var telemetry = new BrickDuelCollisionFrameTelemetry();
+
+            StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState>(),
+                rule,
+                0.1f,
+                0f,
+                new HashSet<int>(),
+                telemetry: telemetry,
+                paddleBounceBallSpeed: 3f);
+
+            Assert.AreEqual(1, telemetry.PaddleBounceCount);
+            Assert.AreEqual(3f, ball.Velocity.magnitude, 0.0001f);
+            Assert.Greater(ball.Position.y, contactY);
+        }
+
+        [Test]
+        public void CollisionTelemetry_PreservesBrickAndPaddleToiOrder()
+        {
+            BrickDuelCollisionFrameTelemetry brickThenPaddle = CaptureCollisionEvents(
+                new Vector2(0f, -3f),
+                Vector2.down,
+                brickY: -3.8f,
+                paddleY: -5f,
+                deltaTime: 0.15f,
+                pierceCharges: 1);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    BrickDuelCollisionEventType.BrickHit,
+                    BrickDuelCollisionEventType.PaddleBounce,
+                },
+                brickThenPaddle.Events.Select(item => item.EventType).ToArray());
+
+            BrickDuelCollisionFrameTelemetry paddleThenBrick = CaptureCollisionEvents(
+                new Vector2(0f, -4.4f),
+                Vector2.down,
+                brickY: -3.8f,
+                paddleY: -5f,
+                deltaTime: 0.05f,
+                pierceCharges: 0);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    BrickDuelCollisionEventType.PaddleBounce,
+                    BrickDuelCollisionEventType.BrickHit,
+                },
+                paddleThenBrick.Events.Select(item => item.EventType).ToArray());
+        }
+
+        [Test]
+        public void CollisionTelemetry_PreservesBrickAndOuterWallToiOrder()
+        {
+            BrickDuelCollisionFrameTelemetry brickThenWall = CaptureCollisionEvents(
+                new Vector2(0f, -8f),
+                Vector2.down,
+                brickY: -8.7f,
+                paddleY: -20f,
+                deltaTime: 0.1f,
+                pierceCharges: 1);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    BrickDuelCollisionEventType.BrickHit,
+                    BrickDuelCollisionEventType.OwnOuterWallBounce,
+                },
+                brickThenWall.Events.Select(item => item.EventType).ToArray());
+
+            BrickDuelCollisionFrameTelemetry wallThenBrick = CaptureCollisionEvents(
+                new Vector2(0f, -9.5f),
+                Vector2.down,
+                brickY: -8.8f,
+                paddleY: -20f,
+                deltaTime: 0.06f,
+                pierceCharges: 0);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    BrickDuelCollisionEventType.OwnOuterWallBounce,
+                    BrickDuelCollisionEventType.BrickHit,
+                },
+                wallThenBrick.Events.Select(item => item.EventType).ToArray());
         }
 
         [Test]
@@ -810,6 +991,66 @@ namespace Gatebreaker.Tests
             }
 
             Assert.AreEqual(first.GetChecksum(), second.GetChecksum());
+        }
+
+        [Test]
+        public void Checksum_IncludesIgnoredBrickContacts()
+        {
+            BrickDuelRuntime first = CreateRuntime();
+            BrickDuelRuntime second = CreateRuntime();
+            first.BeginCountdown();
+            second.BeginCountdown();
+            Assert.AreEqual(first.GetChecksum(), second.GetChecksum());
+            int brickId = second.Bricks.First(brick => brick.Side == BrickDuelSide.Bottom).BrickId;
+            FieldInfo field = typeof(BrickDuelRuntime).GetField(
+                "_bottomIgnoredBrickIds",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var ignored = (HashSet<int>)field.GetValue(second);
+
+            ignored.Add(brickId);
+
+            Assert.AreNotEqual(first.GetChecksum(), second.GetChecksum());
+        }
+
+        [Test]
+        public void Checksum_IncludesRemainingItemBagOrder()
+        {
+            BrickDuelRuntime first = CreateRuntime();
+            BrickDuelRuntime second = CreateRuntime();
+            first.BeginCountdown();
+            second.BeginCountdown();
+            Assert.AreEqual(first.GetChecksum(), second.GetChecksum());
+            FieldInfo field = typeof(BrickDuelRuntime).GetField(
+                "_itemBag",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var bag = (BrickDuelItemDropBag)field.GetValue(second);
+
+            bag.NextItemId();
+
+            Assert.AreNotEqual(first.GetChecksum(), second.GetChecksum());
+        }
+
+        [Test]
+        public void Checksum_IncludesLatentLogicalRows()
+        {
+            BrickDuelRuntime first = CreateRuntime();
+            BrickDuelRuntime second = CreateRuntime();
+            first.BeginCountdown();
+            second.BeginCountdown();
+            Assert.AreEqual(first.GetChecksum(), second.GetChecksum());
+            FieldInfo field = typeof(BrickDuelRuntime).GetField(
+                "_logicalRows",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            object rows = field.GetValue(second);
+            int logicalRowId = second.Bricks.First().LogicalRowId;
+            PropertyInfo indexer = rows.GetType().GetProperty("Item");
+            object row = indexer.GetValue(rows, new object[] { logicalRowId });
+            var types = (BrickDuelBrickType[])row.GetType().GetProperty("Types").GetValue(row);
+            types[0] = types[0] == BrickDuelBrickType.Green
+                ? BrickDuelBrickType.Red
+                : BrickDuelBrickType.Green;
+
+            Assert.AreNotEqual(first.GetChecksum(), second.GetChecksum());
         }
 
         [Test]
@@ -1237,6 +1478,25 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void MirageSplitRequest_CanSpawnTwoBallsFromTheMainBall()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+            runtime.BottomBall.Position = new Vector2(0f, -0.8f);
+            runtime.BottomBall.Velocity = Vector2.up * runtime.Rule.BallSpeed;
+            runtime.BottomBall.IsActive = true;
+            MethodInfo spawn = typeof(BrickDuelRuntime).GetMethod(
+                "SpawnSplitBallsFromSide",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+            spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom, 2, true });
+
+            Assert.AreEqual(2, runtime.SplitBalls.Count);
+            Assert.Less(runtime.SplitBalls[0].Velocity.x * runtime.SplitBalls[1].Velocity.x, 0f);
+        }
+
+        [Test]
         public void SplitBall_PickupFromCapsule_SpawnsSplitBall()
         {
             BrickDuelRuntime runtime = CreateRuntime();
@@ -1558,6 +1818,59 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void LargeBall_UsesExpandedRadiusForExistingSplitBallCollision()
+        {
+            BrickDuelRuntime runtime = CreateRuntime();
+            runtime.BeginCountdown();
+            Step(runtime, runtime.Rule.CountdownSeconds * runtime.Rule.SimulationFps);
+            MethodInfo spawn = typeof(BrickDuelRuntime).GetMethod(
+                "SpawnSplitBallsFromSide",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            spawn.Invoke(runtime, new object[] { BrickDuelSide.Bottom, 1, true });
+            BrickDuelBallState split = runtime.SplitBalls.Single();
+            float expandedRadius =
+                runtime.Rule.BallRadius * BrickDuelItemConstants.LargeBallRadiusMultiplier;
+            split.Position = new Vector2(
+                runtime.Rule.ArenaHalfWidth - expandedRadius + 0.005f,
+                -2f);
+            split.Velocity = new Vector2(0.01f, 1f).normalized * runtime.Rule.BallSpeed;
+            SpawnCapsuleNearBottomPaddle(runtime, BrickDuelItemIds.LargeBall);
+
+            runtime.StepFrame(new BrickDuelFrameInput(0f));
+
+            Assert.IsTrue(runtime.BottomEffects.HasLargeBall);
+            Assert.Less(split.Velocity.x, 0f);
+            Assert.LessOrEqual(
+                split.Position.x,
+                runtime.Rule.ArenaHalfWidth - expandedRadius + 0.001f);
+        }
+
+        [Test]
+        public void SplitBallViewRadius_FollowsOwningSideLargeBallRadius()
+        {
+            var snapshot = new BrickDuelSnapshot
+            {
+                BottomBallRadius = 0.31f,
+                TopBallRadius = 0.27f,
+            };
+
+            Assert.AreEqual(
+                0.31f,
+                BrickDuelSessionController.ResolveSplitBallViewRadius(
+                    snapshot,
+                    BrickDuelSide.Bottom,
+                    0.2f),
+                0.0001f);
+            Assert.AreEqual(
+                0.27f,
+                BrickDuelSessionController.ResolveSplitBallViewRadius(
+                    snapshot,
+                    BrickDuelSide.Top,
+                    0.2f),
+                0.0001f);
+        }
+
+        [Test]
         public void CapsuleCap_ExpiresOldestWhenThirdSpawns()
         {
             BrickDuelRuntime runtime = CreateRuntime();
@@ -1846,7 +2159,10 @@ namespace Gatebreaker.Tests
             float? paddleHalfWidth = null,
             float? ballRadius = null,
             int pierceCharges = 0,
-            Vector2? paddleBounceTarget = null)
+            Vector2? paddleBounceTarget = null,
+            BrickDuelHorizontalBarrier? horizontalBarrier = null,
+            BrickDuelCollisionFrameTelemetry telemetry = null,
+            float paddleBounceBallSpeed = -1f)
         {
             var ignoredBrickIds = new HashSet<int>();
             new BrickDuelCollisionSolver().StepBall(
@@ -1863,7 +2179,53 @@ namespace Gatebreaker.Tests
                 ref pierceCharges,
                 ignoredBrickIds,
                 hitBrickIds,
-                paddleBounceTarget: paddleBounceTarget);
+                paddleBounceTarget: paddleBounceTarget,
+                telemetry: telemetry,
+                horizontalBarrier: horizontalBarrier,
+                paddleBounceBallSpeed: paddleBounceBallSpeed);
+        }
+
+        private static BrickDuelCollisionFrameTelemetry CaptureCollisionEvents(
+            Vector2 origin,
+            Vector2 direction,
+            float brickY,
+            float paddleY,
+            float deltaTime,
+            int pierceCharges)
+        {
+            BrickDuelRuleDefinition rule = CreateRule();
+            rule.ArenaHalfWidth = 10f;
+            rule.CoreLineY = 10f;
+            rule.BallSpeed = 20f;
+            var ball = new BrickDuelBallState();
+            SetState(ball, nameof(BrickDuelBallState.Side), BrickDuelSide.Bottom);
+            SetState(ball, nameof(BrickDuelBallState.Position), origin);
+            SetState(ball, nameof(BrickDuelBallState.Velocity), direction * rule.BallSpeed);
+            SetState(ball, nameof(BrickDuelBallState.IsActive), true);
+            var paddle = new BrickDuelPaddleState();
+            SetState(paddle, nameof(BrickDuelPaddleState.Side), BrickDuelSide.Bottom);
+            SetState(paddle, nameof(BrickDuelPaddleState.Position), new Vector2(0f, paddleY));
+            var brick = new BrickDuelBrickState();
+            SetState(brick, nameof(BrickDuelBrickState.BrickId), 8123);
+            SetState(brick, nameof(BrickDuelBrickState.Side), BrickDuelSide.Bottom);
+            SetState(brick, nameof(BrickDuelBrickState.InitialType), BrickDuelBrickType.Green);
+            SetState(brick, nameof(BrickDuelBrickState.Health), 1);
+            SetState(brick, nameof(BrickDuelBrickState.Position), new Vector2(0f, brickY));
+            var telemetry = new BrickDuelCollisionFrameTelemetry();
+
+            StepBall(
+                ball,
+                paddle,
+                paddle.Position,
+                Vector2.zero,
+                new List<BrickDuelBrickState> { brick },
+                rule,
+                deltaTime,
+                0f,
+                new HashSet<int>(),
+                pierceCharges: pierceCharges,
+                telemetry: telemetry);
+            return telemetry;
         }
 
         private static bool HasOverlayLine(

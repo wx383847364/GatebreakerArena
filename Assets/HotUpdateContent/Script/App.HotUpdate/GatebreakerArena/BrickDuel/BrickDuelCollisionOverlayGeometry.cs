@@ -161,34 +161,6 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             return bounds.IsValid;
         }
 
-        public static bool TryApplyWallInnerBoundsToRule(
-            BrickDuelRuleDefinition rule,
-            BrickDuelWallOverlayBounds bounds)
-        {
-            if (rule == null || !bounds.IsValid)
-            {
-                return false;
-            }
-
-            float halfWidth = Mathf.Min(-bounds.MinimumX, bounds.MaximumX);
-            float halfHeight = Mathf.Min(-bounds.MinimumY, bounds.MaximumY);
-            if (halfWidth <= rule.BallRadius || halfHeight <= rule.BallRadius)
-            {
-                return false;
-            }
-
-            rule.ArenaHalfWidth = halfWidth;
-            rule.CoreLineY = halfHeight;
-            if (rule.PaddleSpawnY >= rule.CoreLineY)
-            {
-                rule.PaddleSpawnY = Mathf.Max(
-                    rule.PaddleHalfHeight + rule.BallRadius + 0.02f,
-                    rule.CoreLineY - 0.2f);
-            }
-
-            return true;
-        }
-
         private static bool TryGetWallRendererBounds(
             Transform sceneRoot,
             string wallName,

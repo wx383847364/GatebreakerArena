@@ -125,6 +125,11 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 {
                     ValidateBrickDuelCatalog(catalog);
                 }
+                if (catalog.AllPhaseHeroes.Count > 0 || catalog.AllPhaseTechs.Count > 0 ||
+                    catalog.AllPhaseItems.Count > 0)
+                {
+                    ValidatePhaseCatalog(catalog);
+                }
 
                 return GatebreakerConfigLoadResult.Success(catalog, source, version);
             }
@@ -312,6 +317,80 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             {
                 throw new FormatException("BRICK_DUEL_V0 requires all scene, paddle, ball and brick prefab locations.");
             }
+        }
+
+        private static void ValidatePhaseCatalog(GatebreakerModeCatalog catalog)
+        {
+            string[] heroIds = { "HERO_MIRAGE", "HERO_PULSE", "HERO_RIFT", "HERO_REFRACT" };
+            string[] itemIds = { "ItemPierce", "ItemSplit", "ItemDamp", "ItemSpeed", "ItemWide", "ItemMagnet", "ItemLarge", "ItemAimed", "ItemBuffer" };
+            if (catalog.AllPhaseHeroes.Count != heroIds.Length || heroIds.Any(id => !catalog.AllPhaseHeroes.ContainsKey(id)))
+                throw new FormatException("DT_PhaseHero must contain the four canonical phase heroes.");
+            if (catalog.AllPhaseItems.Count != itemIds.Length || itemIds.Any(id => !catalog.AllPhaseItems.ContainsKey(id)))
+                throw new FormatException("DT_PhaseItem must contain the nine canonical phase items.");
+
+            float weightSum = catalog.AllPhaseItems.Values.Sum(item => item.BaseDropWeight);
+            if (Math.Abs(weightSum - 1f) > 0.0001f ||
+                catalog.AllPhaseItems.Values.Any(item => item.BaseDropWeight <= 0f ||
+                    string.IsNullOrWhiteSpace(item.IconLocation) || string.IsNullOrWhiteSpace(item.PrefabLocation)))
+                throw new FormatException("Phase item weights must total 1 and every item must declare icon/prefab locations.");
+
+            var expectedWeights = new Dictionary<string, float>(StringComparer.Ordinal)
+            {
+                ["ItemPierce"] = 0.1275f, ["ItemSplit"] = 0.1275f, ["ItemDamp"] = 0.1275f,
+                ["ItemSpeed"] = 0.17f, ["ItemWide"] = 0.17f, ["ItemMagnet"] = 0.1275f,
+                ["ItemLarge"] = 0.05f, ["ItemAimed"] = 0.05f, ["ItemBuffer"] = 0.05f,
+            };
+            if (expectedWeights.Any(pair => Math.Abs(catalog.GetPhaseItem(pair.Key).BaseDropWeight - pair.Value) > 0.0001f))
+                throw new FormatException("DT_PhaseItem weights must match the canonical 12.75% / 17% / 5% distribution.");
+
+            var expectedCooldowns = new Dictionary<string, float>(StringComparer.Ordinal)
+            {
+                ["HERO_MIRAGE"] = 12f,
+                ["HERO_PULSE"] = 18f,
+                ["HERO_RIFT"] = 20f,
+                ["HERO_REFRACT"] = 16f,
+            };
+
+            foreach (string heroId in heroIds)
+            {
+                PhaseHeroDefinition hero = catalog.GetPhaseHero(heroId);
+                if (hero.PhaseLevels == null || hero.PhaseLevels.Count != 5 ||
+                    string.IsNullOrWhiteSpace(hero.ResourceRule) ||
+                    hero.RuntimeTuning == null || hero.RuntimeTuning.Count == 0)
+                    throw new FormatException($"Phase hero '{heroId}' must declare P1-P5 and runtime tuning.");
+                int[] costs = hero.PhaseLevels.OrderBy(level => level.PhaseLevel, StringComparer.Ordinal)
+                    .Select(level => level.PhiToReach).ToArray();
+                if (!costs.SequenceEqual(new[] { 0, 30, 50, 70, 100 }))
+                    throw new FormatException($"Phase hero '{heroId}' must use stage costs 0/30/50/70/100.");
+                PhaseHeroActiveAbilityDefinition active = hero.PhaseLevels.Single(level => level.PhaseLevel == "P3").ActiveAbility;
+                if (active == null || Math.Abs(active.CooldownSeconds - expectedCooldowns[heroId]) > 0.0001f)
+                    throw new FormatException($"Phase hero '{heroId}' P3 cooldown does not match the v0.3 contract.");
+                PhaseTechDefinition[] techs = catalog.AllPhaseTechs.Values.Where(tech => tech.HeroId == heroId).ToArray();
+                for (int phase = 1; phase <= 5; phase++)
+                {
+                    string slot = "P" + phase.ToString(CultureInfo.InvariantCulture);
+                    PhaseTechDefinition[] choices = techs.Where(tech => tech.SlotPhase == slot).ToArray();
+                    if (choices.Length != 3 || choices.Count(tech => tech.Kind == "Default") != 1 ||
+                        choices.Any(tech => tech.NetOffset != 30))
+                        throw new FormatException($"Phase hero '{heroId}' slot '{slot}' must have one default, two advanced choices and NetOffset 30.");
+                }
+            }
+
+            PhaseMetaDefinition meta = catalog.AllPhaseMetas.Values.SingleOrDefault();
+            if (meta == null || meta.StartingCurrency != 15 || meta.CurrencyWin != 12 ||
+                meta.CurrencyLoss != 4 || meta.CurrencyDraw != 4 || meta.PhiPerSecondCap != 6)
+                throw new FormatException("PHASE_META_V0 economy or Φ cap does not match the v0.3 contract.");
+
+            PhaseCurveDefinition curve = catalog.AllPhaseCurves.Values.SingleOrDefault();
+            if (curve == null || curve.Stages == null || curve.Stages.Count != 6 ||
+                curve.BreakCounterThreshold != 20 || Math.Abs(curve.BreakCounterWarnSeconds - 1f) > 0.0001f)
+                throw new FormatException("BRICK_DUEL_PHASE_V0 must contain six stages and the 20-brick/1-second break counter rule.");
+
+            BrickDuelRuleDefinition rule = catalog.GetBrickDuelRule("BRICK_DUEL_V0");
+            string[] configuredDropIds = (rule.ItemDrops ?? Array.Empty<BrickDuelItemDropDefinition>())
+                .Where(item => item.Enabled).Select(item => item.ItemId).ToArray();
+            if (configuredDropIds.Length != itemIds.Length || itemIds.Any(id => !configuredDropIds.Contains(id)))
+                throw new FormatException("BRICK_DUEL_V0 drop table must expose exactly the nine phase items.");
         }
 
         private static ModeRuleDefinition ReadMode(Dictionary<string, object> item)
@@ -715,6 +794,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 Dimension = ReadString(item, "Dimension"),
                 CoreResource = ReadString(item, "CoreResource"),
                 CoreItem = ReadString(item, "CoreItem"),
+                ResourceRule = ReadOptionalString(item, "ResourceRule"),
+                RuntimeTuning = ReadObjectMap(item, "RuntimeTuning"),
                 PhaseLevels = ReadArray(item, "PhaseLevels", ReadPhaseHeroLevel),
                 PhiSources = ReadArray(item, "PhiSources", ReadPhaseHeroPhiSource),
             };
@@ -751,6 +832,9 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             {
                 AbilityId = ReadString(ability, "AbilityId"),
                 CooldownSeconds = ReadFloat(ability, "CooldownSeconds"),
+                DurationSeconds = ability.ContainsKey("DurationSeconds")
+                    ? ReadFloat(ability, "DurationSeconds")
+                    : 0f,
             };
         }
 
@@ -799,6 +883,12 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 ItemName = ReadString(item, "ItemName"),
                 Op = ReadString(item, "Op"),
                 MagnitudePercent = ReadInt(item, "MagnitudePercent"),
+                MagnitudeStep = item.ContainsKey("MagnitudeStep") ? ReadInt(item, "MagnitudeStep") : 0,
+                ParamLabel = ReadOptionalString(item, "ParamLabel"),
+                BaseValue = item.ContainsKey("BaseValue") ? ReadFloat(item, "BaseValue") : 0f,
+                ModifiedValue = item.ContainsKey("ModifiedValue") ? ReadFloat(item, "ModifiedValue") : 0f,
+                Unit = ReadOptionalString(item, "Unit"),
+                ResolvedText = ReadOptionalString(item, "ResolvedText"),
             };
         }
 
@@ -811,6 +901,11 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 ValueWeight = ReadInt(item, "ValueWeight"),
                 BaseDropWeight = ReadFloat(item, "BaseDropWeight"),
                 Effect = ReadObjectMap(item, "Effect"),
+                IconLocation = ReadOptionalString(item, "IconLocation"),
+                PrefabLocation = ReadOptionalString(item, "PrefabLocation"),
+                LegacyItemIds = ReadOptionalStringArray(item, "LegacyItemIds"),
+                MinValue = item.ContainsKey("MinValue") ? ReadFloat(item, "MinValue") : float.MinValue,
+                MaxValue = item.ContainsKey("MaxValue") ? ReadFloat(item, "MaxValue") : float.MaxValue,
                 Note = ReadOptionalString(item, "Note"),
             };
         }
@@ -853,6 +948,12 @@ namespace App.HotUpdate.GatebreakerArena.Mode
                 DropOffsetCap = ReadInt(item, "DropOffsetCap"),
                 PhiPerSecondCap = ReadInt(item, "PhiPerSecondCap"),
                 ScissorDiffTargetSeconds = ReadInt(item, "ScissorDiffTargetSeconds"),
+                StartingCurrency = item.ContainsKey("StartingCurrency") ? ReadInt(item, "StartingCurrency") : 15,
+                CurrencyDraw = item.ContainsKey("CurrencyDraw") ? ReadInt(item, "CurrencyDraw") : 4,
+                ProfileSchemaVersion = item.ContainsKey("ProfileSchemaVersion") ? ReadInt(item, "ProfileSchemaVersion") : 1,
+                SettlementHistoryCapacity = item.ContainsKey("SettlementHistoryCapacity")
+                    ? ReadInt(item, "SettlementHistoryCapacity")
+                    : 64,
                 Note = ReadOptionalString(item, "Note"),
             };
         }
@@ -870,6 +971,18 @@ namespace App.HotUpdate.GatebreakerArena.Mode
             }
 
             return map;
+        }
+
+        private static IReadOnlyList<string> ReadOptionalStringArray(
+            Dictionary<string, object> item,
+            string key)
+        {
+            if (!item.TryGetValue(key, out object value) || !(value is List<object> values))
+            {
+                return Array.Empty<string>();
+            }
+
+            return values.Select(entry => Convert.ToString(entry, CultureInfo.InvariantCulture) ?? string.Empty).ToArray();
         }
 
         private static IReadOnlyList<T> ReadArray<T>(

@@ -84,8 +84,8 @@ def main() -> int:
                 errors.append(f"{t['TechId']} 非法 Op {e.get('Op')}")
 
     # 道具
-    if len(items) != 6:
-        errors.append(f"DT_PhaseItem 应为 6 道具，实际 {len(items)}")
+    if len(items) != 9:
+        errors.append(f"DT_PhaseItem 应为 9 道具，实际 {len(items)}")
     for it in items:
         w = it.get("ValueWeight")
         if w != EXPECTED_VALUE_WEIGHTS.get(it.get("ItemId")):

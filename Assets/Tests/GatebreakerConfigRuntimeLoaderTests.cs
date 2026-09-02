@@ -41,20 +41,17 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(0.10f, rule.BrickCompositionStages[5].GreenWeight, 0.0001f);
             Assert.AreEqual("Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab", rule.ScenePrefabLocation);
             Assert.IsNotNull(rule.ItemDrops);
-            Assert.AreEqual(8, rule.ItemDrops.Count);
-            Assert.AreEqual("DUEL_ITEM_WIDE_PADDLE", rule.ItemDrops[0].ItemId);
+            Assert.AreEqual(9, rule.ItemDrops.Count);
+            Assert.AreEqual("ItemPierce", rule.ItemDrops[0].ItemId);
             Assert.AreEqual(
                 "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
-                rule.ItemDrops[3].PrefabLocation);
-            Assert.AreEqual("DUEL_ITEM_SPEED_BALL", rule.ItemDrops[4].ItemId);
+                rule.ItemDrops[1].PrefabLocation);
+            Assert.AreEqual("ItemSpeed", rule.ItemDrops[3].ItemId);
             Assert.AreEqual(
                 "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
-                rule.ItemDrops[4].PrefabLocation);
-            Assert.AreEqual(5f, rule.ItemDrops[4].EffectDurationSeconds, 0.0001f);
-            Assert.AreEqual(1.3f, rule.ItemDrops[4].EffectMagnitude, 0.0001f);
-            Assert.AreEqual(
-                "DUEL_ITEM_SPEED_BALL_DURATION",
-                rule.ItemDrops[4].DurationModifierKey);
+                rule.ItemDrops[3].PrefabLocation);
+            Assert.AreEqual(5f, rule.ItemDrops[3].EffectDurationSeconds, 0.0001f);
+            Assert.AreEqual(1.2f, rule.ItemDrops[3].EffectMagnitude, 0.0001f);
         }
 
         [Test]
@@ -71,13 +68,15 @@ namespace Gatebreaker.Tests
             Assert.AreEqual("蜃影", mirage.DisplayName);
             Assert.AreEqual("ItemSplit", mirage.CoreItem);
             Assert.AreEqual(5, mirage.PhaseLevels.Count);
+            Assert.AreEqual(12f, mirage.PhaseLevels[2].ActiveAbility.CooldownSeconds, 0.0001f);
+            Assert.AreEqual(8d, (double)mirage.RuntimeTuning["P1ComboThreshold"], 0.0001d);
             Assert.AreEqual(0, mirage.PhaseLevels[0].PhiToReach);
             Assert.AreEqual(100, mirage.PhaseLevels[4].PhiToReach);
             Assert.AreEqual(6, mirage.PhiSources.Count);
 
             Assert.AreEqual(4, result.Catalog.AllPhaseHeroes.Count);
             Assert.AreEqual(60, result.Catalog.AllPhaseTechs.Count);
-            Assert.AreEqual(6, result.Catalog.AllPhaseItems.Count);
+            Assert.AreEqual(9, result.Catalog.AllPhaseItems.Count);
 
             Assert.AreEqual(3, result.Catalog.GetPhaseItem("ItemPierce").ValueWeight);
             Assert.AreEqual(30, result.Catalog.GetPhaseTech("TECH_MIRAGE_P1_BASE").NetOffset);
@@ -95,6 +94,8 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(10, meta.DropOffsetCap);
             Assert.AreEqual(6, meta.PhiPerSecondCap);
             Assert.AreEqual(40, meta.ScissorDiffTargetSeconds);
+            Assert.AreEqual(15, meta.StartingCurrency);
+            Assert.AreEqual(4, meta.CurrencyDraw);
         }
 
         [Test]

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using App.HotUpdate.GatebreakerArena.Mode;
+using App.HotUpdate.GatebreakerArena.Phase;
 using UnityEngine;
 
 namespace App.HotUpdate.GatebreakerArena.BrickDuel
@@ -43,6 +44,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private float _frameAccumulator;
         private int _operationVersion;
         private bool _disposed;
+        private bool _mirrorForLocalTop;
+        private bool _pendingBottomAbility;
 
         public BrickDuelSessionController(BrickDuelVisualAssetService assetService)
         {
@@ -54,10 +57,21 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public string LastError { get; private set; } = string.Empty;
         public BrickDuelSnapshot Snapshot => Runtime?.CreateSnapshot();
 
+        public void ConfigureLocalPerspective(bool localIsTop)
+        {
+            _mirrorForLocalTop = localIsTop;
+            if (_bottomPaddle != null) _bottomPaddle.transform.rotation = Quaternion.Euler(0f, 0f, localIsTop ? 180f : 0f);
+            if (_topPaddle != null) _topPaddle.transform.rotation = Quaternion.Euler(0f, 0f, localIsTop ? 0f : 180f);
+            SyncViews(Runtime?.CreateSnapshot());
+        }
+
         public async Task<bool> StartAsync(
             BrickDuelRuleDefinition rule,
             BrickDuelAiRuleDefinition aiRule,
-            Transform parent = null)
+            Transform parent = null,
+            GatebreakerModeCatalog catalog = null,
+            PhaseMatchLoadout bottomLoadout = null,
+            PhaseMatchLoadout topLoadout = null)
         {
             if (_disposed)
             {
@@ -85,7 +99,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             try
             {
                 _assets = loadedAssets;
-                Runtime = new BrickDuelRuntime(rule, aiRule);
+                Runtime = new BrickDuelRuntime(rule, aiRule, catalog, bottomLoadout, topLoadout);
                 _root = new GameObject("BrickDuelRuntimeRoot");
                 if (parent != null)
                 {
@@ -100,16 +114,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 _scene.name = "SceneSingle_Runtime";
                 if (BrickDuelCollisionOverlayGeometry.TryResolveWallInnerBounds(
                         _scene.transform,
-                        out BrickDuelWallOverlayBounds wallBounds) &&
-                    BrickDuelCollisionOverlayGeometry.TryApplyWallInnerBoundsToRule(
-                        rule,
-                        wallBounds))
+                        out BrickDuelWallOverlayBounds wallBounds))
                 {
-                    _sceneWallInnerBounds = new BrickDuelWallOverlayBounds(
-                        -rule.ArenaHalfWidth,
-                        rule.ArenaHalfWidth,
-                        -rule.CoreLineY,
-                        rule.CoreLineY);
+                    // Scene geometry is presentation-only. Deterministic collision dimensions
+                    // come exclusively from the hashed rule configuration.
+                    _sceneWallInnerBounds = wallBounds;
                 }
                 else
                 {
@@ -136,7 +145,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
         }
 
-        public void Tick(float deltaTime, float playerMoveAxis)
+        public void Tick(float deltaTime, float playerMoveAxis, bool abilityPressed = false)
         {
             if (Runtime == null || deltaTime <= 0f)
             {
@@ -151,11 +160,18 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             _frameAccumulator += Mathf.Min(deltaTime, 0.25f);
+            _pendingBottomAbility |= abilityPressed;
             float frameDelta = Runtime.FrameDelta;
             int steps = 0;
             while (_frameAccumulator + 0.000001f >= frameDelta && steps < 8)
             {
-                Runtime.StepFrame(new BrickDuelFrameInput(playerMoveAxis));
+                Runtime.StepFrame(new BrickDuelFrameInput(
+                    playerMoveAxis,
+                    0f,
+                    _pendingBottomAbility,
+                    false,
+                    true));
+                _pendingBottomAbility = false;
                 SpawnMysteryBreakFeedback(Runtime.LastFrameEvents.MysteryDestroyedBrickIds);
                 _frameAccumulator -= frameDelta;
                 steps++;
@@ -170,6 +186,15 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             SyncViews(Runtime.CreateSnapshot());
         }
 
+        public void StepConfirmedFrame(BrickDuelFrameInput input)
+        {
+            if (Runtime == null || Runtime.IsPaused) return;
+            Runtime.StepFrame(input);
+            SpawnMysteryBreakFeedback(Runtime.LastFrameEvents.MysteryDestroyedBrickIds);
+            UpdateSpecialFeedback(Runtime.FrameDelta);
+            SyncViews(Runtime.CreateSnapshot());
+        }
+
         public void SetPaused(bool paused)
         {
             Runtime?.SetPaused(paused);
@@ -181,6 +206,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             _operationVersion++;
             Runtime = null;
             _frameAccumulator = 0f;
+            _pendingBottomAbility = false;
+            _mirrorForLocalTop = false;
             _brickViews.Clear();
             _capsuleViews.Clear();
             _splitBallViews.Clear();
@@ -240,10 +267,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 return;
             }
 
-            SetPosition(_bottomPaddle, snapshot.BottomPaddle.Position);
-            SetPosition(_topPaddle, snapshot.TopPaddle.Position);
-            SetPosition(_bottomBall, snapshot.BottomBall.Position);
-            SetPosition(_topBall, snapshot.TopBall.Position);
+            SetPosition(_bottomPaddle, ToViewPosition(snapshot.BottomPaddle.Position));
+            SetPosition(_topPaddle, ToViewPosition(snapshot.TopPaddle.Position));
+            SetPosition(_bottomBall, ToViewPosition(snapshot.BottomBall.Position));
+            SetPosition(_topBall, ToViewPosition(snapshot.TopBall.Position));
             SetActive(_bottomBall, snapshot.BottomBall.IsActive);
             SetActive(_topBall, snapshot.TopBall.IsActive);
             ApplyPaddleScale(_bottomPaddle, _bottomPaddleBaseScale, snapshot.BottomPaddleHalfWidth);
@@ -252,7 +279,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             ApplyBallScale(_topBall, _topBallBaseScale, snapshot.TopBallRadius);
             SyncBrickViews(snapshot.Bricks);
             SyncCapsuleViews(snapshot.Capsules);
-            SyncSplitBallViews(snapshot.SplitBalls);
+            SyncSplitBallViews(snapshot);
             SyncDebugCollisionOverlay(snapshot);
         }
 
@@ -294,9 +321,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     _brickViews[brick.BrickId] = view;
                 }
 
+                Vector2 viewPosition = ToViewPosition(brick.Position);
                 view.GameObject.transform.position = new Vector3(
-                    brick.Position.x,
-                    brick.Position.y,
+                    viewPosition.x,
+                    viewPosition.y,
                     view.GameObject.transform.position.z);
                 ApplyBrickSprite(view, brick.VisualType);
             }
@@ -342,9 +370,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     _capsuleViews[capsule.CapsuleId] = view;
                 }
 
+                Vector2 viewPosition = ToViewPosition(capsule.Position);
                 view.GameObject.transform.position = new Vector3(
-                    capsule.Position.x,
-                    capsule.Position.y,
+                    viewPosition.x,
+                    viewPosition.y,
                     view.GameObject.transform.position.z);
             }
 
@@ -375,8 +404,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
         }
 
-        private void SyncSplitBallViews(IReadOnlyList<BrickDuelBallState> splitBalls)
+        private void SyncSplitBallViews(BrickDuelSnapshot snapshot)
         {
+            IReadOnlyList<BrickDuelBallState> splitBalls = snapshot?.SplitBalls;
             _liveSplitBallIds.Clear();
             if (splitBalls == null)
             {
@@ -399,15 +429,35 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     _splitBallViews[ball.BallId] = view;
                 }
 
+                Vector2 viewPosition = ToViewPosition(ball.Position);
                 view.GameObject.transform.position = new Vector3(
-                    ball.Position.x,
-                    ball.Position.y,
+                    viewPosition.x,
+                    viewPosition.y,
                     view.GameObject.transform.position.z);
                 SetActive(view.GameObject, true);
-                ApplyBallScale(view.GameObject, view.BaseScale, Runtime.Rule.BallRadius);
+                ApplyBallScale(
+                    view.GameObject,
+                    view.BaseScale,
+                    ResolveSplitBallViewRadius(snapshot, ball.Side, Runtime.Rule.BallRadius));
             }
 
             ReleaseStaleSplitBallViews();
+        }
+
+        internal static float ResolveSplitBallViewRadius(
+            BrickDuelSnapshot snapshot,
+            BrickDuelSide side,
+            float fallbackRadius)
+        {
+            if (snapshot == null)
+            {
+                return fallbackRadius;
+            }
+
+            float radius = side == BrickDuelSide.Top
+                ? snapshot.TopBallRadius
+                : snapshot.BottomBallRadius;
+            return radius > 0f ? radius : fallbackRadius;
         }
 
         private void ReleaseStaleSplitBallViews()
@@ -637,6 +687,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             target.transform.position = new Vector3(position.x, position.y, current.z);
         }
 
+        private Vector2 ToViewPosition(Vector2 position) => _mirrorForLocalTop ? -position : position;
+
         private static void SetActive(GameObject target, bool active)
         {
             if (target != null && target.activeSelf != active)
@@ -665,8 +717,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 LineRenderer line = EnsureDebugCollisionLine(i);
                 line.gameObject.SetActive(true);
                 line.positionCount = 2;
-                line.SetPosition(0, new Vector3(source.Start.x, source.Start.y, DebugOverlayDepth));
-                line.SetPosition(1, new Vector3(source.End.x, source.End.y, DebugOverlayDepth));
+                Vector2 start = ToViewPosition(source.Start);
+                Vector2 end = ToViewPosition(source.End);
+                line.SetPosition(0, new Vector3(start.x, start.y, DebugOverlayDepth));
+                line.SetPosition(1, new Vector3(end.x, end.y, DebugOverlayDepth));
                 ApplyDebugCollisionStyle(line, source.Kind);
             }
 

@@ -391,7 +391,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public IReadOnlyList<HeroTemporaryStatusState> TemporaryStatuses { get; set; } = new HeroTemporaryStatusState[0];
     }
 
-    // --- v0.3 phase-growth definition classes (data-only; gameplay application lives in Phase 2+). ---
+    // --- v0.3 phase-growth definition classes (data-only; gameplay application lives in Phase/BrickDuel). ---
     // These are additive: the loader reads them via ReadOptionalArray, so the live V1 catalog
     // keeps loading even when the DT_Phase* tables are absent.
 
@@ -402,6 +402,8 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public string Dimension { get; set; }
         public string CoreResource { get; set; }
         public string CoreItem { get; set; }
+        public string ResourceRule { get; set; }
+        public IReadOnlyDictionary<string, object> RuntimeTuning { get; set; }
         public IReadOnlyList<PhaseHeroLevelDefinition> PhaseLevels { get; set; }
         public IReadOnlyList<PhaseHeroPhiSourceDefinition> PhiSources { get; set; }
     }
@@ -420,6 +422,7 @@ namespace App.HotUpdate.GatebreakerArena.Mode
     {
         public string AbilityId { get; set; }
         public float CooldownSeconds { get; set; }
+        public float DurationSeconds { get; set; }
     }
 
     public sealed class PhaseHeroProtocolOptionDefinition
@@ -456,6 +459,12 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public string ItemName { get; set; }
         public string Op { get; set; }
         public int MagnitudePercent { get; set; }
+        public int MagnitudeStep { get; set; }
+        public string ParamLabel { get; set; }
+        public float BaseValue { get; set; }
+        public float ModifiedValue { get; set; }
+        public string Unit { get; set; }
+        public string ResolvedText { get; set; }
     }
 
     public sealed class PhaseItemDefinition
@@ -465,6 +474,11 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int ValueWeight { get; set; }
         public float BaseDropWeight { get; set; }
         public IReadOnlyDictionary<string, object> Effect { get; set; }
+        public string IconLocation { get; set; }
+        public string PrefabLocation { get; set; }
+        public IReadOnlyList<string> LegacyItemIds { get; set; }
+        public float MinValue { get; set; }
+        public float MaxValue { get; set; }
         public string Note { get; set; }
     }
 
@@ -498,6 +512,10 @@ namespace App.HotUpdate.GatebreakerArena.Mode
         public int DropOffsetCap { get; set; }
         public int PhiPerSecondCap { get; set; }
         public int ScissorDiffTargetSeconds { get; set; }
+        public int StartingCurrency { get; set; }
+        public int CurrencyDraw { get; set; }
+        public int ProfileSchemaVersion { get; set; }
+        public int SettlementHistoryCapacity { get; set; }
         public string Note { get; set; }
     }
 }

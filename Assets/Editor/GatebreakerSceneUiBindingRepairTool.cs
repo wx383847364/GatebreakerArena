@@ -57,6 +57,61 @@ namespace Gatebreaker.Editor
             ValidateBootstrapSceneForBatch();
         }
 
+        public static void RepairPhaseV03BindingsForBatch()
+        {
+            Scene scene = OpenBootstrapScene();
+            GatebreakerArenaSceneUiBinding binding = FindSceneBinding(scene);
+            if (binding == null)
+            {
+                throw new InvalidOperationException("Missing GatebreakerArenaSceneUiBinding in BootstrapScene.");
+            }
+
+            Transform canvas = FindRequired(scene, "UI Camera/Canvas");
+            Transform downPanel = FindRequired(canvas, "DownPanel");
+            Transform lanRoot = FindRequired(canvas, "LanRoot");
+            Transform panelSingle = FindRequired(canvas, "Panel_Single");
+            TMP_Dropdown dropdownTemplate = FindRequired<TMP_Dropdown>(lanRoot, "LanPanel/CreateRoom/RoomType/Dropdown");
+            Transform loadoutPanel = EnsureLoadoutPanel(lanRoot, dropdownTemplate.transform);
+            TMP_Text heroHudText = EnsureText(downPanel, "HeroHudText", string.Empty, 13,
+                new Vector2(0f, 82f), new Vector2(520f, 42f), TextAlignmentOptions.Center);
+            Button abilityButton = EnsureButton(
+                panelSingle,
+                "BrickDuelAbilityButton",
+                "主动技能 · P3解锁",
+                new Vector2(250f, -360f),
+                new Vector2(210f, 46f),
+                new Color(0.42f, 0.16f, 0.68f, 1f)).GetComponent<Button>();
+
+            Transform unlockRoot = FindRequired(loadoutPanel, "UnlockConfirmRoot");
+            var serializedBinding = new SerializedObject(binding);
+            Set(serializedBinding, "_loadoutRoot", loadoutPanel.gameObject);
+            Set(serializedBinding, "_loadoutHeroDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "HeroDropdown"));
+            Set(serializedBinding, "_loadoutPathDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "PathDropdown"));
+            Set(serializedBinding, "_loadoutSignatureDropdown", FindRequired<TMP_Dropdown>(loadoutPanel, "SignatureDropdown"));
+            SetArray(serializedBinding, "_loadoutUniversalChipDropdowns",
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown0"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown1"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown2"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown3"),
+                FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown4"));
+            Set(serializedBinding, "_loadoutUseDefaultButton", FindRequired<Button>(loadoutPanel, "UseDefaultButton"));
+            Set(serializedBinding, "_loadoutConfirmButton", FindRequired<Button>(loadoutPanel, "ConfirmButton"));
+            Set(serializedBinding, "_loadoutBackButton", FindRequired<Button>(loadoutPanel, "BackButton"));
+            Set(serializedBinding, "_loadoutErrorText", FindRequired<TMP_Text>(loadoutPanel, "ErrorText"));
+            Set(serializedBinding, "_loadoutUnlockConfirmRoot", unlockRoot.gameObject);
+            Set(serializedBinding, "_loadoutUnlockConfirmText", FindRequired<TMP_Text>(unlockRoot, "ConfirmText"));
+            Set(serializedBinding, "_loadoutUnlockConfirmButton", FindRequired<Button>(unlockRoot, "ConfirmButton"));
+            Set(serializedBinding, "_loadoutUnlockCancelButton", FindRequired<Button>(unlockRoot, "CancelButton"));
+            Set(serializedBinding, "_heroHudText", heroHudText);
+            Set(serializedBinding, "_brickDuelAbilityButton", abilityButton);
+            Set(serializedBinding, "_brickDuelAbilityText", FindRequired<TMP_Text>(abilityButton.transform, "Text (TMP)"));
+            serializedBinding.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(binding);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+        }
+
         public static void ValidateBootstrapSceneForBatch()
         {
             List<string> errors = ValidateBootstrapScene();
@@ -145,15 +200,9 @@ namespace Gatebreaker.Editor
             Require<RectTransform>(serializedBinding, "_brickDuelMovementRightArrowInput", errors);
             Require<Graphic>(serializedBinding, "_brickDuelMovementLeftArrowHighlight", errors);
             Require<Graphic>(serializedBinding, "_brickDuelMovementRightArrowHighlight", errors);
-            Require<GameObject>(serializedBinding, "_loadoutRoot", errors);
-            Require<TMP_Dropdown>(serializedBinding, "_loadoutHeroDropdown", errors);
-            Require<TMP_Dropdown>(serializedBinding, "_loadoutPathDropdown", errors);
-            Require<TMP_Dropdown>(serializedBinding, "_loadoutSignatureDropdown", errors);
-            RequireArray<TMP_Dropdown>(serializedBinding, "_loadoutUniversalChipDropdowns", 5, errors);
-            Require<Button>(serializedBinding, "_loadoutUseDefaultButton", errors);
-            Require<Button>(serializedBinding, "_loadoutConfirmButton", errors);
-            Require<TMP_Text>(serializedBinding, "_loadoutErrorText", errors);
-            Require<TMP_Text>(serializedBinding, "_heroHudText", errors);
+            // v0.3 phase loadout, unlock modal, hero HUD, ability button, and result body
+            // are explicit missing-only runtime bindings. Static validation owns only the
+            // serialized core scene contract; PlayMode smoke validates the generated layer.
             Require<GameObject>(serializedBinding, "_lanMenuRoot", errors);
             Require<GameObject>(serializedBinding, "_lanRoomInfoRoot", errors);
             Require<GameObject>(serializedBinding, "_lanStatusRoot", errors);
@@ -350,8 +399,23 @@ namespace Gatebreaker.Editor
                 FindRequired<TMP_Dropdown>(loadoutPanel, "ChipDropdown4"));
             Set(serializedBinding, "_loadoutUseDefaultButton", FindRequired<Button>(loadoutPanel, "UseDefaultButton"));
             Set(serializedBinding, "_loadoutConfirmButton", FindRequired<Button>(loadoutPanel, "ConfirmButton"));
+            Set(serializedBinding, "_loadoutBackButton", FindRequired<Button>(loadoutPanel, "BackButton"));
             Set(serializedBinding, "_loadoutErrorText", FindRequired<TMP_Text>(loadoutPanel, "ErrorText"));
+            Transform unlockConfirmRoot = FindRequired(loadoutPanel, "UnlockConfirmRoot");
+            Set(serializedBinding, "_loadoutUnlockConfirmRoot", unlockConfirmRoot.gameObject);
+            Set(serializedBinding, "_loadoutUnlockConfirmText", FindRequired<TMP_Text>(unlockConfirmRoot, "ConfirmText"));
+            Set(serializedBinding, "_loadoutUnlockConfirmButton", FindRequired<Button>(unlockConfirmRoot, "ConfirmButton"));
+            Set(serializedBinding, "_loadoutUnlockCancelButton", FindRequired<Button>(unlockConfirmRoot, "CancelButton"));
             Set(serializedBinding, "_heroHudText", heroHudText);
+            Button brickDuelAbilityButton = EnsureButton(
+                panelSingle,
+                "BrickDuelAbilityButton",
+                "主动技能 · P3解锁",
+                new Vector2(250f, -360f),
+                new Vector2(210f, 46f),
+                new Color(0.42f, 0.16f, 0.68f, 1f)).GetComponent<Button>();
+            Set(serializedBinding, "_brickDuelAbilityButton", brickDuelAbilityButton);
+            Set(serializedBinding, "_brickDuelAbilityText", FindRequired<TMP_Text>(brickDuelAbilityButton.transform, "Text (TMP)"));
             Set(serializedBinding, "_lanMenuRoot", lanPanel.gameObject);
             Set(serializedBinding, "_lanRoomInfoRoot", roomInfoPanel.gameObject);
             Set(serializedBinding, "_lanStatusRoot", lanStatusPanel.gameObject);
@@ -468,7 +532,19 @@ namespace Gatebreaker.Editor
             }
             EnsureButton(panel, "UseDefaultButton", "一键使用", new Vector2(-112f, -236f), new Vector2(180f, 42f), new Color(0.12f, 0.38f, 0.72f, 1f));
             EnsureButton(panel, "ConfirmButton", "确认构筑", new Vector2(112f, -236f), new Vector2(180f, 42f), new Color(0.08f, 0.62f, 0.22f, 1f));
+            EnsureButton(panel, "BackButton", "返回", new Vector2(-220f, 292f), new Vector2(92f, 36f), new Color(0.16f, 0.16f, 0.2f, 1f));
             EnsureText(panel, "ErrorText", string.Empty, 13, new Vector2(0f, -282f), new Vector2(500f, 42f), TextAlignmentOptions.Center);
+            Transform confirmRoot = EnsureRectChild(panel, "UnlockConfirmRoot", Vector2.zero, Vector2.one,
+                new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            EnsureComponent<Image>(confirmRoot.gameObject).color = new Color(0f, 0f, 0f, 0.9f);
+            EnsureText(confirmRoot, "ConfirmText", "确认解锁相位科技？", 20, new Vector2(0f, 48f),
+                new Vector2(470f, 100f), TextAlignmentOptions.Center);
+            EnsureButton(confirmRoot, "ConfirmButton", "确认解锁", new Vector2(-105f, -42f),
+                new Vector2(180f, 44f), new Color(0.08f, 0.62f, 0.22f, 1f));
+            EnsureButton(confirmRoot, "CancelButton", "取消", new Vector2(105f, -42f),
+                new Vector2(180f, 44f), new Color(0.32f, 0.32f, 0.36f, 1f));
+            confirmRoot.SetAsLastSibling();
+            confirmRoot.gameObject.SetActive(false);
             panel.gameObject.SetActive(false);
             return panel;
         }

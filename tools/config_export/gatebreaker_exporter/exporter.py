@@ -255,8 +255,8 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
             errors.append("DT_PhaseTech: v0.3 requires exactly 60 techs.")
     elif table_name == "DT_PhaseItem":
         _validate_unique_ids(rows, "ItemId", table_name, errors)
-        if len(rows) != 6:
-            errors.append("DT_PhaseItem: v0.3 requires exactly 6 items.")
+        if len(rows) != 9:
+            errors.append("DT_PhaseItem: v0.3 requires exactly 9 items.")
     elif table_name == "DT_PhaseCurve":
         _validate_unique_ids(rows, "RuleId", table_name, errors)
         if len(rows) != 1:
@@ -269,8 +269,8 @@ def _validate_table(table_name: str, rows: list[Any], errors: list[str]) -> None
 
 def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list[str]) -> None:
     prefix = f"DT_BrickDuelItemDrop[{index}]"
-    if row.get("DropTableId") != "BRICK_DUEL_ITEM_V0":
-        errors.append(f"{prefix}: DropTableId must be BRICK_DUEL_ITEM_V0.")
+    if row.get("DropTableId") != "BRICK_DUEL_PHASE_V0":
+        errors.append(f"{prefix}: DropTableId must be BRICK_DUEL_PHASE_V0.")
     enabled = row.get("Enabled", True)
     if not isinstance(enabled, bool):
         errors.append(f"{prefix}: Enabled must be a boolean.")
@@ -292,17 +292,14 @@ def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list
         row["PrefabLocation"] = ""
     elif not isinstance(prefab, str):
         errors.append(f"{prefix}: PrefabLocation must be a string.")
-    if row.get("ItemId") == "DUEL_ITEM_SPEED_BALL":
+    if row.get("ItemId") == "ItemSpeed":
         _validate_positive_number(
             row, "EffectDurationSeconds", "DT_BrickDuelItemDrop", index, errors
         )
         _validate_positive_number(
             row, "EffectMagnitude", "DT_BrickDuelItemDrop", index, errors
         )
-        modifier_key = row.get("DurationModifierKey")
-        if not isinstance(modifier_key, str) or not modifier_key.strip():
-            errors.append(f"{prefix}: DurationModifierKey must be a non-empty string.")
-    elif row.get("ItemId") == "DUEL_ITEM_AIMED_REBOUND":
+    elif row.get("ItemId") == "ItemAimed":
         _validate_positive_number(
             row, "EffectDurationSeconds", "DT_BrickDuelItemDrop", index, errors
         )
@@ -310,19 +307,13 @@ def _validate_brick_duel_item_drop(row: dict[str, Any], index: int, errors: list
 
 def _validate_brick_duel_item_drop_table(rows: list[dict[str, Any]], errors: list[str]) -> None:
     expected = {
-        "DUEL_ITEM_WIDE_PADDLE",
-        "DUEL_ITEM_LARGE_BALL",
-        "DUEL_ITEM_PHASE_DRILL",
-        "DUEL_ITEM_SPLIT_BALL",
-        "DUEL_ITEM_SPEED_BALL",
-        "DUEL_ITEM_AIMED_REBOUND",
-        "DUEL_ITEM_DAMPING_PULSE",
-        "DUEL_ITEM_CORE_BUFFER",
+        "ItemPierce", "ItemSplit", "ItemDamp", "ItemSpeed", "ItemWide",
+        "ItemMagnet", "ItemLarge", "ItemAimed", "ItemBuffer",
     }
     item_ids = {row.get("ItemId") for row in rows}
     if item_ids != expected:
         errors.append(
-            "DT_BrickDuelItemDrop: must contain exactly the eight V0 duel item ids."
+            "DT_BrickDuelItemDrop: must contain exactly the nine v0.3 phase item ids."
         )
     weight_total = sum(float(row.get("DropWeight") or 0.0) for row in rows if row.get("Enabled", True))
     if abs(weight_total - 1.0) > 0.0001:
@@ -815,6 +806,9 @@ def _validate_phase_item(row: dict[str, Any], index: int, errors: list[str]) -> 
         errors.append(f"{prefix}: BaseDropWeight must be a non-negative number.")
     if not isinstance(row.get("Effect"), dict):
         errors.append(f"{prefix}: Effect must be an object.")
+    for field in ("IconLocation", "PrefabLocation"):
+        if not isinstance(row.get(field), str) or not row[field].strip():
+            errors.append(f"{prefix}: {field} must be a non-empty string.")
 
 
 def _validate_phase_curve(row: dict[str, Any], index: int, errors: list[str]) -> None:
@@ -845,6 +839,8 @@ def _validate_phase_meta(row: dict[str, Any], index: int, errors: list[str]) -> 
     for field in (
         "CurrencyWin", "CurrencyLoss", "TechUnlockCost", "NetOffsetBudget",
         "DropOffsetCap", "PhiPerSecondCap", "ScissorDiffTargetSeconds",
+        "StartingCurrency", "CurrencyDraw", "ProfileSchemaVersion",
+        "SettlementHistoryCapacity",
     ):
         if _normalize_int(row.get(field)) is None:
             errors.append(f"{prefix}: {field} must be an integer.")
@@ -1228,6 +1224,7 @@ def _default_rows(table_name: str) -> list[dict[str, Any]]:
         "DT_PhaseItem": [],
         "DT_PhaseCurve": [],
         "DT_PhaseMeta": [],
+        "DT_BrickDuelItemDrop": [],
     }
     return defaults[table_name]
 

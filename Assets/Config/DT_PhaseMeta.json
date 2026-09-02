@@ -8,6 +8,10 @@
     "DropOffsetCap": 10,
     "PhiPerSecondCap": 6,
     "ScissorDiffTargetSeconds": 40,
+    "StartingCurrency": 15,
+    "CurrencyDraw": 4,
+    "ProfileSchemaVersion": 1,
+    "SettlementHistoryCapacity": 64,
     "Note": "经济与全局平衡常数；全部为 §6 tuning 拍板值"
   }
 ]

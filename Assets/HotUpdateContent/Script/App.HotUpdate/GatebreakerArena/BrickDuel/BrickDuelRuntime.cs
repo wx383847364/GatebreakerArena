@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using App.HotUpdate.GatebreakerArena.Core;
 using App.HotUpdate.GatebreakerArena.Mode;
+using App.HotUpdate.GatebreakerArena.Phase;
 using UnityEngine;
 
 namespace App.HotUpdate.GatebreakerArena.BrickDuel
@@ -37,6 +38,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             new Dictionary<int, HashSet<int>>();
         private readonly BrickDuelSideItemEffects _bottomEffects = new BrickDuelSideItemEffects();
         private readonly BrickDuelSideItemEffects _topEffects = new BrickDuelSideItemEffects();
+        private readonly GatebreakerModeCatalog _catalog;
+        private readonly BrickDuelPhaseSideRuntime _bottomPhase;
+        private readonly BrickDuelPhaseSideRuntime _topPhase;
+        private readonly PhaseCurveDefinition _phaseCurve;
         private GatebreakerDeterministicPrng _rowRandom;
         private BrickDuelItemDropBag _itemBag;
         private int _nextBrickId;
@@ -47,10 +52,26 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private int _topNextRowId;
         private float _bottomRowTravelSinceSpawn;
         private float _topRowTravelSinceSpawn;
+        private int _bottomBreakCounter;
+        private int _topBreakCounter;
+        private int _bottomPendingUpgradeFrames;
+        private int _topPendingUpgradeFrames;
+        private int _bottomPendingRowUpgrades;
+        private int _topPendingRowUpgrades;
 
         public BrickDuelRuntime(
             BrickDuelRuleDefinition rule,
             BrickDuelAiRuleDefinition aiRule)
+            : this(rule, aiRule, null, null, null)
+        {
+        }
+
+        public BrickDuelRuntime(
+            BrickDuelRuleDefinition rule,
+            BrickDuelAiRuleDefinition aiRule,
+            GatebreakerModeCatalog catalog,
+            PhaseMatchLoadout bottomLoadout,
+            PhaseMatchLoadout topLoadout)
         {
             _rule = rule ?? throw new ArgumentNullException(nameof(rule));
             if (aiRule == null)
@@ -59,6 +80,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             _collisionSolver = new BrickDuelCollisionSolver();
+            _catalog = catalog;
+            _phaseCurve = catalog?.AllPhaseCurves.Values.FirstOrDefault();
+            if (catalog != null && bottomLoadout != null && topLoadout != null)
+            {
+                _bottomPhase = new BrickDuelPhaseSideRuntime(catalog, bottomLoadout, rule.SimulationFps);
+                _topPhase = new BrickDuelPhaseSideRuntime(catalog, topLoadout, rule.SimulationFps);
+            }
             _aiController = new BrickDuelTacticalAiController(
                 rule,
                 aiRule,
@@ -100,6 +128,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public IReadOnlyList<BrickDuelBallState> SplitBalls => _splitBalls;
         public IReadOnlyList<BrickDuelItemCapsuleState> Capsules => _capsules;
         public BrickDuelFrameEvents LastFrameEvents { get; }
+        public bool HasPhaseGrowth => _bottomPhase != null && _topPhase != null;
+        public BrickDuelPhaseSideState BottomPhaseState => _bottomPhase?.State;
+        public BrickDuelPhaseSideState TopPhaseState => _topPhase?.State;
         public float FrameDelta => 1f / Mathf.Max(1, _rule.SimulationFps);
         public int PressureLevel =>
             Mathf.FloorToInt(ElapsedFrames / (float)PressureIntervalFrames);
@@ -146,6 +177,12 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             _topNextRowId = 0;
             _bottomRowTravelSinceSpawn = 0f;
             _topRowTravelSinceSpawn = 0f;
+            _bottomBreakCounter = 0;
+            _topBreakCounter = 0;
+            _bottomPendingUpgradeFrames = 0;
+            _topPendingUpgradeFrames = 0;
+            _bottomPendingRowUpgrades = 0;
+            _topPendingRowUpgrades = 0;
             _rowRandom = new GatebreakerDeterministicPrng(unchecked((uint)_rule.RandomSeed));
             _itemBag = new BrickDuelItemDropBag(
                 BrickDuelItemDropBag.ResolveDefinitions(_rule.ItemDrops),
@@ -160,6 +197,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             _splitIgnoredBrickIds.Clear();
             _bottomEffects.Clear();
             _topEffects.Clear();
+            _bottomPhase?.Reset();
+            _topPhase?.Reset();
             SpawnInitialRows();
             ResetPaddles();
             PositionBallForServe(BottomBall, BottomBallRadius);
@@ -242,6 +281,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             _splitIgnoredBrickIds.Clear();
             _bottomEffects.Clear();
             _topEffects.Clear();
+            _bottomPhase?.Reset();
+            _topPhase?.Reset();
             ResetPaddles();
             PositionBallForServe(BottomBall, _rule.BallRadius);
             PositionBallForServe(TopBall, _rule.BallRadius);
@@ -278,17 +319,26 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
             Vector2 bottomPaddleStart = BottomPaddle.Position;
             Vector2 topPaddleStart = TopPaddle.Position;
-            MovePaddle(BottomPaddle, input.PlayerMoveAxis, BottomPaddleHalfWidth);
-            float aiMoveAxis = _aiController.Step(
-                TopBall,
-                _splitBalls,
-                TopPaddle,
-                _bricks,
-                _capsules,
-                _rule.BaseTideSpeed * PressureMultiplier * TopTideSpeedMultiplier,
-                TopPaddleHalfWidth,
-                TopBallRadius);
-            MovePaddle(TopPaddle, aiMoveAxis, TopPaddleHalfWidth);
+            _bottomPhase?.Tick(SimulationFrame);
+            _topPhase?.Tick(SimulationFrame);
+            MovePaddle(BottomPaddle, input.BottomMoveAxis, BottomPaddleHalfWidth);
+            float topMoveAxis = input.UseTopAi
+                ? _aiController.Step(
+                    TopBall,
+                    _splitBalls,
+                    TopPaddle,
+                    _bricks,
+                    _capsules,
+                    _rule.BaseTideSpeed * PressureMultiplier * TopTideSpeedMultiplier,
+                    TopPaddleHalfWidth,
+                    TopBallRadius)
+                : input.TopMoveAxis;
+            MovePaddle(TopPaddle, topMoveAxis, TopPaddleHalfWidth);
+
+            if (input.BottomAbilityPressed) ApplyPhaseAbility(BrickDuelSide.Bottom);
+            bool topAiAbility = input.UseTopAi && _topPhase != null &&
+                                _topPhase.State.AbilityAvailable;
+            if (input.TopAbilityPressed || topAiAbility) ApplyPhaseAbility(BrickDuelSide.Top);
 
             ResolveItemCapsulePickupsAndMisses();
 
@@ -300,18 +350,36 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 (TopPaddle.Position - topPaddleStart) / FrameDelta;
             _bottomHitBrickIds.Clear();
             _topHitBrickIds.Clear();
-            int bottomPierceCharges = _bottomEffects.PhaseDrillCharges;
-            int topPierceCharges = _topEffects.PhaseDrillCharges;
-            if (!_bottomEffects.HasPhaseDrill)
+            int bottomPierceCharges = _bottomPhase?.State.TotalPierceCharges ?? _bottomEffects.PhaseDrillCharges;
+            int topPierceCharges = _topPhase?.State.TotalPierceCharges ?? _topEffects.PhaseDrillCharges;
+            if (_bottomPhase == null && !_bottomEffects.HasPhaseDrill)
             {
                 bottomPierceCharges = 0;
             }
 
-            if (!_topEffects.HasPhaseDrill)
+            if (_topPhase == null && !_topEffects.HasPhaseDrill)
             {
                 topPierceCharges = 0;
             }
 
+            int bottomSplits = 0;
+            int topSplits = 0;
+            var bottomTelemetry = new BrickDuelCollisionFrameTelemetry(
+                _bottomPhase == null
+                    ? null
+                    : (Action<BrickDuelCollisionEvent>)(collisionEvent =>
+                    {
+                        if (collisionEvent.Pierced) _bottomPhase.ConsumePierce(1);
+                        bottomSplits += _bottomPhase.OnMainBallCollisionEvent(collisionEvent);
+                    }));
+            var topTelemetry = new BrickDuelCollisionFrameTelemetry(
+                _topPhase == null
+                    ? null
+                    : (Action<BrickDuelCollisionEvent>)(collisionEvent =>
+                    {
+                        if (collisionEvent.Pierced) _topPhase.ConsumePierce(1);
+                        topSplits += _topPhase.OnMainBallCollisionEvent(collisionEvent);
+                    }));
             StepBall(
                 BottomBall,
                 BottomPaddle,
@@ -322,7 +390,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 BottomBallRadius,
                 ref bottomPierceCharges,
                 _bottomIgnoredBrickIds,
-                _bottomHitBrickIds);
+                _bottomHitBrickIds,
+                bottomTelemetry);
             StepBall(
                 TopBall,
                 TopPaddle,
@@ -333,9 +402,12 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 TopBallRadius,
                 ref topPierceCharges,
                 _topIgnoredBrickIds,
-                _topHitBrickIds);
-            _bottomEffects.PhaseDrillCharges = bottomPierceCharges;
-            _topEffects.PhaseDrillCharges = topPierceCharges;
+                _topHitBrickIds,
+                topTelemetry);
+            if (_bottomPhase == null)
+                _bottomEffects.PhaseDrillCharges = bottomPierceCharges;
+            if (_topPhase == null)
+                _topEffects.PhaseDrillCharges = topPierceCharges;
             if (_bottomEffects.PhaseDrillCharges <= 0)
             {
                 _bottomEffects.PhaseDrillFramesRemaining = 0;
@@ -348,6 +420,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
             ApplyBrickHits(BrickDuelSide.Bottom, _bottomHitBrickIds);
             ApplyBrickHits(BrickDuelSide.Top, _topHitBrickIds);
+            if (bottomSplits > 0) SpawnSplitBallsFromSide(BrickDuelSide.Bottom, bottomSplits, true);
+            if (topSplits > 0) SpawnSplitBallsFromSide(BrickDuelSide.Top, topSplits, true);
             StepSplitBalls(
                 bottomPaddleStart,
                 topPaddleStart,
@@ -361,6 +435,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             AdvanceItemCapsules();
             ResolveCoreDamage();
             TickItemEffects();
+            TickBreakCounterUpgrades();
             ResolveResult();
         }
 
@@ -391,6 +466,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 TopBall = CloneBall(TopBall),
                 BottomEffects = _bottomEffects.Clone(),
                 TopEffects = _topEffects.Clone(),
+                BottomPhaseState = _bottomPhase?.State.Clone(),
+                TopPhaseState = _topPhase?.State.Clone(),
                 Bricks = _bricks
                     .OrderBy(brick => brick.BrickId)
                     .Select(CloneBrick)
@@ -427,8 +504,60 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Hash(ref hash, _topNextRowId, prime);
             Hash(ref hash, Quantize(_bottomRowTravelSinceSpawn), prime);
             Hash(ref hash, Quantize(_topRowTravelSinceSpawn), prime);
+            Hash(ref hash, _bottomBreakCounter, prime);
+            Hash(ref hash, _topBreakCounter, prime);
+            Hash(ref hash, _bottomPendingUpgradeFrames, prime);
+            Hash(ref hash, _topPendingUpgradeFrames, prime);
+            Hash(ref hash, _bottomPendingRowUpgrades, prime);
+            Hash(ref hash, _topPendingRowUpgrades, prime);
             Hash(ref hash, unchecked((int)_rowRandom.State), prime);
             Hash(ref hash, unchecked((int)(_itemBag?.RandomState ?? 0u)), prime);
+            if (_itemBag == null)
+            {
+                Hash(ref hash, 0, prime);
+            }
+            else
+            {
+                Hash(ref hash, 1, prime);
+                IReadOnlyList<string> remainingItems = _itemBag.RemainingItemIds;
+                Hash(ref hash, remainingItems.Count, prime);
+                for (int i = 0; i < remainingItems.Count; i++)
+                {
+                    HashString(ref hash, remainingItems[i], prime);
+                }
+            }
+            HashIntSet(ref hash, _bottomIgnoredBrickIds, prime);
+            HashIntSet(ref hash, _topIgnoredBrickIds, prime);
+            BrickDuelBallState[] orderedSplitBalls = _splitBalls
+                .OrderBy(item => item.BallId)
+                .ToArray();
+            Hash(ref hash, orderedSplitBalls.Length, prime);
+            for (int i = 0; i < orderedSplitBalls.Length; i++)
+            {
+                BrickDuelBallState splitBall = orderedSplitBalls[i];
+                Hash(ref hash, splitBall.BallId, prime);
+                _splitIgnoredBrickIds.TryGetValue(
+                    splitBall.BallId,
+                    out HashSet<int> ignoredBrickIds);
+                HashIntSet(ref hash, ignoredBrickIds, prime);
+            }
+            Hash(ref hash, _logicalRows.Count, prime);
+            foreach (KeyValuePair<int, LogicalRow> pair in _logicalRows.OrderBy(item => item.Key))
+            {
+                Hash(ref hash, pair.Key, prime);
+                BrickDuelBrickType[] types = pair.Value.Types ?? Array.Empty<BrickDuelBrickType>();
+                string[] itemIds = pair.Value.ItemIds ?? Array.Empty<string>();
+                Hash(ref hash, types.Length, prime);
+                for (int i = 0; i < types.Length; i++)
+                {
+                    Hash(ref hash, (int)types[i], prime);
+                }
+                Hash(ref hash, itemIds.Length, prime);
+                for (int i = 0; i < itemIds.Length; i++)
+                {
+                    HashString(ref hash, itemIds[i], prime);
+                }
+            }
             Hash(ref hash, _aiController.FramesUntilDecision, prime);
             Hash(ref hash, _aiController.CurrentTargetBrickId, prime);
             Hash(ref hash, _aiController.CurrentTargetTier, prime);
@@ -446,6 +575,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Hash(ref hash, Quantize(TopPaddle.Position.x), prime);
             HashEffects(ref hash, _bottomEffects, prime);
             HashEffects(ref hash, _topEffects, prime);
+            HashPhaseState(ref hash, _bottomPhase?.State, prime);
+            HashPhaseState(ref hash, _topPhase?.State, prime);
             foreach (BrickDuelBrickState brick in _bricks.OrderBy(item => item.BrickId))
             {
                 Hash(ref hash, brick.BrickId, prime);
@@ -498,7 +629,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             float ballRadius,
             ref int pierceCharges,
             ISet<int> ignoredBrickIds,
-            ISet<int> hitBrickIds)
+            ISet<int> hitBrickIds,
+            BrickDuelCollisionFrameTelemetry telemetry)
         {
             if (!ball.IsActive)
             {
@@ -537,7 +669,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 ignoredBrickIds,
                 hitBrickIds,
                 GetBallSpeed(ball.Side),
-                GetAimedReboundTarget(ball.Side));
+                GetAimedReboundTarget(ball.Side),
+                telemetry,
+                GetRefractMirrorBarrier(ball.Side),
+                GetBallSpeed(ball.Side, forPaddleBounce: true),
+                () => GetBallSpeed(ball.Side, forPaddleBounce: true));
             Vector2 displacement = ball.Position - previous;
             if (displacement.sqrMagnitude <
                 _rule.StuckMovementEpsilon * _rule.StuckMovementEpsilon * FrameDelta * FrameDelta)
@@ -571,7 +707,6 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 return;
             }
 
-            float ballRadius = _rule.BallRadius;
             int stuckFrameLimit = Mathf.Max(
                 1,
                 Mathf.RoundToInt(_rule.StuckTimeoutSeconds * _rule.SimulationFps));
@@ -594,6 +729,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 _splitHitBrickIds.Clear();
                 int pierceCharges = 0;
                 bool isBottom = ball.Side == BrickDuelSide.Bottom;
+                float ballRadius = isBottom ? BottomBallRadius : TopBallRadius;
                 Vector2 previous = ball.Position;
                 BrickDuelCollisionSolver.RefreshIgnoredBrickContacts(
                     ball,
@@ -616,7 +752,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     ignoredBrickIds,
                     _splitHitBrickIds,
                     GetBallSpeed(ball.Side),
-                    GetAimedReboundTarget(ball.Side));
+                    GetAimedReboundTarget(ball.Side),
+                    horizontalBarrier: GetRefractMirrorBarrier(ball.Side));
 
                 Vector2 displacement = ball.Position - previous;
                 if (displacement.sqrMagnitude <
@@ -647,7 +784,10 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
         }
 
-        private void SpawnSplitBallsFromSide(BrickDuelSide side)
+        private void SpawnSplitBallsFromSide(
+            BrickDuelSide side,
+            int requestedCount = 1,
+            bool mainBallOnly = true)
         {
             var sources = new List<(BrickDuelBallState Ball, float Radius)>();
             BrickDuelBallState mother = side == BrickDuelSide.Bottom ? BottomBall : TopBall;
@@ -658,30 +798,39 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     side == BrickDuelSide.Bottom ? BottomBallRadius : TopBallRadius));
             }
 
-            for (int i = 0; i < _splitBalls.Count; i++)
+            for (int i = 0; !mainBallOnly && i < _splitBalls.Count; i++)
             {
                 BrickDuelBallState existing = _splitBalls[i];
                 if (existing.Side == side && existing.IsActive)
                 {
-                    sources.Add((existing, _rule.BallRadius));
+                    sources.Add((existing, side == BrickDuelSide.Bottom
+                        ? BottomBallRadius
+                        : TopBallRadius));
                 }
             }
 
-            float newRadius = _rule.BallRadius;
+            float newRadius = side == BrickDuelSide.Bottom
+                ? BottomBallRadius
+                : TopBallRadius;
             float angleRadians =
                 BrickDuelItemConstants.SplitBallSpawnAngleDegrees * Mathf.Deg2Rad;
             float cos = Mathf.Cos(angleRadians);
             float sin = Mathf.Sin(angleRadians);
-            for (int i = 0; i < sources.Count; i++)
+            int spawned = 0;
+            int spawnTarget = mainBallOnly ? requestedCount : Math.Min(requestedCount, sources.Count);
+            while (spawned < spawnTarget && sources.Count > 0)
             {
-                BrickDuelBallState source = sources[i].Ball;
-                float sourceRadius = sources[i].Radius;
+                int sourceIndex = mainBallOnly ? 0 : spawned;
+                BrickDuelBallState source = sources[sourceIndex].Ball;
+                float sourceRadius = sources[sourceIndex].Radius;
                 Vector2 sourceDirection = source.Velocity.sqrMagnitude > 0.0001f
                     ? source.Velocity.normalized
                     : new Vector2(0f, side == BrickDuelSide.Bottom ? 1f : -1f);
+                float directionSign = mainBallOnly && (spawned & 1) == 1 ? -1f : 1f;
+                float spawnSin = sin * directionSign;
                 Vector2 spawnDirection = new Vector2(
-                    sourceDirection.x * cos - sourceDirection.y * sin,
-                    sourceDirection.x * sin + sourceDirection.y * cos);
+                    sourceDirection.x * cos - sourceDirection.y * spawnSin,
+                    sourceDirection.x * spawnSin + sourceDirection.y * cos);
                 if (spawnDirection.sqrMagnitude <= 0.0001f)
                 {
                     spawnDirection = sourceDirection;
@@ -703,7 +852,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     Velocity = spawnDirection * GetBallSpeed(side),
                     IsActive = true,
                     IsSplit = true,
-                    RemainingLifetimeFrames = GetSplitBallLifetimeFrames(),
+                    RemainingLifetimeFrames = GetSplitBallLifetimeFrames(side),
                 };
                 BrickDuelCollisionSolver.SeparateBallFromBricksAndWalls(
                     splitBall,
@@ -713,6 +862,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     GetBallSpeed(side));
                 _splitBalls.Add(splitBall);
                 _splitIgnoredBrickIds[splitBall.BallId] = new HashSet<int>();
+                spawned++;
             }
         }
 
@@ -731,12 +881,15 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
         }
 
-        private int GetSplitBallLifetimeFrames()
+        private int GetSplitBallLifetimeFrames(BrickDuelSide side)
         {
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            float seconds = phase != null
+                ? phase.GetSplitLifetimeSeconds(GetPhaseItem(BrickDuelItemIds.Split))
+                : BrickDuelItemConstants.SplitBallLifetimeSeconds;
             return Mathf.Max(
                 1,
-                Mathf.RoundToInt(
-                    BrickDuelItemConstants.SplitBallLifetimeSeconds * _rule.SimulationFps));
+                Mathf.RoundToInt(seconds * _rule.SimulationFps));
         }
 
         private void BeginBallReset(BrickDuelBallState ball, float ballRadius)
@@ -843,6 +996,15 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 float paddleHalfWidth = capsule.Side == BrickDuelSide.Bottom
                     ? BottomPaddleHalfWidth
                     : TopPaddleHalfWidth;
+                BrickDuelSideItemEffects sideEffects = capsule.Side == BrickDuelSide.Bottom
+                    ? _bottomEffects
+                    : _topEffects;
+                if (sideEffects.MagnetPullRemaining > 0)
+                {
+                    sideEffects.MagnetPullRemaining--;
+                    collected.Add(capsule);
+                    continue;
+                }
                 if (OverlapsPaddle(capsule, paddle, paddleHalfWidth))
                 {
                     collected.Add(capsule);
@@ -890,31 +1052,37 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             BrickDuelSideItemEffects effects = capsule.Side == BrickDuelSide.Bottom
                 ? _bottomEffects
                 : _topEffects;
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(capsule.Side);
+            phase?.OnItemCollected();
             bool hadLargeBall = effects.HasLargeBall;
             switch (capsule.ItemId)
             {
+                case BrickDuelItemIds.Wide:
                 case BrickDuelItemIds.WidePaddle:
                     effects.WidePaddleFramesRemaining = SecondsToFrames(
-                        GetWidePaddleDurationSeconds());
+                        GetPhaseRawFloat(capsule.Side, BrickDuelItemIds.Wide, "DurationSeconds", GetWidePaddleDurationSeconds()));
                     ClampPaddleInsideArena(
                         capsule.Side == BrickDuelSide.Bottom ? BottomPaddle : TopPaddle,
                         GetPaddleHalfWidth(effects));
                     break;
+                case BrickDuelItemIds.Large:
                 case BrickDuelItemIds.LargeBall:
                     effects.LargeBallFramesRemaining = SecondsToFrames(
-                        BrickDuelItemConstants.LargeBallDurationSeconds);
+                        GetPhaseRawFloat(capsule.Side, BrickDuelItemIds.Large, "DurationSeconds", BrickDuelItemConstants.LargeBallDurationSeconds));
                     if (!hadLargeBall)
                     {
-                        BrickDuelBallState ball = capsule.Side == BrickDuelSide.Bottom
-                            ? BottomBall
-                            : TopBall;
-                        BrickDuelCollisionSolver.SeparateBallFromBricksAndWalls(
-                            ball,
-                            _bricks,
-                            _rule,
-                            GetBallRadius(effects),
-                            GetBallSpeed(capsule.Side));
+                        SeparateSideBallsFromBricksAndWalls(
+                            capsule.Side,
+                            GetBallRadius(effects));
                     }
+                    break;
+                case BrickDuelItemIds.Pierce:
+                    int phaseGrant = GetPhaseInt(capsule.Side, BrickDuelItemIds.Pierce, "PierceCharges", 2);
+                    if (phase != null)
+                        phase.AddItemPierce(phaseGrant);
+                    else
+                        effects.PhaseDrillCharges = Mathf.Max(effects.PhaseDrillCharges, phaseGrant);
+                    effects.PhaseDrillFramesRemaining = int.MaxValue;
                     break;
                 case BrickDuelItemIds.PhaseDrill:
                     effects.PhaseDrillCharges = Mathf.Min(
@@ -923,26 +1091,39 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     effects.PhaseDrillFramesRemaining = SecondsToFrames(
                         BrickDuelItemConstants.PhaseDrillDurationSeconds);
                     break;
+                case BrickDuelItemIds.Split:
+                    SpawnSplitBallsFromSide(
+                        capsule.Side,
+                        GetPhaseInt(capsule.Side, BrickDuelItemIds.Split, "TempBallCount", 1),
+                        true);
+                    break;
                 case BrickDuelItemIds.SplitBall:
                     SpawnSplitBallsFromSide(capsule.Side);
                     break;
+                case BrickDuelItemIds.Speed:
                 case BrickDuelItemIds.SpeedBall:
                     effects.SpeedBallFramesRemaining = SecondsToFrames(
-                        GetResolvedSpeedBallDurationSeconds(capsule.Side));
+                        GetPhaseRawFloat(capsule.Side, BrickDuelItemIds.Speed, "DurationSeconds", GetResolvedSpeedBallDurationSeconds(capsule.Side)));
                     NormalizeBallSpeeds(capsule.Side, GetBallSpeed(capsule.Side));
                     break;
+                case BrickDuelItemIds.Aimed:
                 case BrickDuelItemIds.AimedRebound:
                     effects.AimedReboundFramesRemaining = SecondsToFrames(
-                        GetAimedReboundDurationSeconds());
+                        GetPhaseRawFloat(capsule.Side, BrickDuelItemIds.Aimed, "DurationSeconds", GetAimedReboundDurationSeconds()));
                     break;
+                case BrickDuelItemIds.Damp:
                 case BrickDuelItemIds.DampingPulse:
                     effects.DampingFramesRemaining = SecondsToFrames(
-                        BrickDuelItemConstants.DampingDurationSeconds);
+                        GetPhaseRawFloat(capsule.Side, BrickDuelItemIds.Damp, "DurationSeconds", BrickDuelItemConstants.DampingDurationSeconds));
                     break;
+                case BrickDuelItemIds.Magnet:
+                    effects.MagnetPullRemaining += GetPhaseInt(capsule.Side, BrickDuelItemIds.Magnet, "PullNextItemCount", 1);
+                    break;
+                case BrickDuelItemIds.Buffer:
                 case BrickDuelItemIds.CoreBuffer:
                     effects.HasCoreBuffer = true;
                     effects.CoreBufferFramesRemaining = SecondsToFrames(
-                        BrickDuelItemConstants.CoreBufferDurationSeconds);
+                        GetPhaseRawFloat(capsule.Side, BrickDuelItemIds.Buffer, "DurationSeconds", BrickDuelItemConstants.CoreBufferDurationSeconds));
                     break;
             }
         }
@@ -1009,13 +1190,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
             if (hadLarge && !effects.HasLargeBall)
             {
-                BrickDuelBallState ball = side == BrickDuelSide.Bottom ? BottomBall : TopBall;
-                BrickDuelCollisionSolver.SeparateBallFromBricksAndWalls(
-                    ball,
-                    _bricks,
-                    _rule,
-                    GetBallRadius(effects),
-                    GetBallSpeed(side));
+                SeparateSideBallsFromBricksAndWalls(side, GetBallRadius(effects));
             }
 
             if (hadSpeedBall && !effects.HasSpeedBall)
@@ -1162,6 +1337,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 if (brick.Health == 0)
                 {
                     LastFrameEvents.AddDestroyed(brick);
+                    GetPhaseRuntime(side)?.OnBrickDestroyed(brick.InitialType);
+                    RegisterBreakCounter(side);
                     if (brick.InitialType == BrickDuelBrickType.Mystery &&
                         !string.IsNullOrEmpty(brick.ItemId))
                     {
@@ -1262,6 +1439,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 _nextLogicalRowId = Mathf.Max(_nextLogicalRowId, logicalRowId + 1);
             }
 
+            row = ApplyPendingRowUpgrade(side, row);
+
             float startX = -(_rule.Columns - 1) * _rule.BrickWidth * 0.5f;
             float y = (visualRowIndex + 0.5f) * _rule.BrickHeight;
             for (int column = 0; column < _rule.Columns; column++)
@@ -1288,11 +1467,94 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             return new LogicalRow(types, itemIds);
         }
 
+        private BrickDuelCompositionStageDefinition ResolveCompositionWeights(float elapsedSeconds)
+        {
+            if (_phaseCurve?.Stages == null || _phaseCurve.Stages.Count == 0)
+                return _rule.ResolveBrickCompositionWeights(elapsedSeconds);
+            PhaseCurveStageDefinition stage = _phaseCurve.Stages
+                .Where(item => item != null && item.TimeStart <= elapsedSeconds)
+                .OrderBy(item => item.TimeStart)
+                .LastOrDefault() ?? _phaseCurve.Stages[0];
+            return new BrickDuelCompositionStageDefinition
+            {
+                GreenWeight = stage.GreenWeight,
+                RedWeight = stage.RedWeight,
+                YellowWeight = stage.YellowWeight,
+                MysteryWeight = stage.MysteryWeight,
+            };
+        }
+
+        private void RegisterBreakCounter(BrickDuelSide scoringSide)
+        {
+            int threshold = Math.Max(1, _phaseCurve?.BreakCounterThreshold ?? int.MaxValue);
+            if (threshold == int.MaxValue) return;
+            if (scoringSide == BrickDuelSide.Bottom)
+            {
+                _bottomBreakCounter++;
+                if (_bottomBreakCounter < threshold) return;
+                _bottomBreakCounter -= threshold;
+                _topPendingRowUpgrades++;
+                _topPendingUpgradeFrames = Math.Max(
+                    _topPendingUpgradeFrames,
+                    SecondsToFrames(_phaseCurve.BreakCounterWarnSeconds));
+                LastFrameEvents.BottomBreakCounterTriggered = true;
+            }
+            else
+            {
+                _topBreakCounter++;
+                if (_topBreakCounter < threshold) return;
+                _topBreakCounter -= threshold;
+                _bottomPendingRowUpgrades++;
+                _bottomPendingUpgradeFrames = Math.Max(
+                    _bottomPendingUpgradeFrames,
+                    SecondsToFrames(_phaseCurve.BreakCounterWarnSeconds));
+                LastFrameEvents.TopBreakCounterTriggered = true;
+            }
+        }
+
+        private void TickBreakCounterUpgrades()
+        {
+            if (_bottomPendingUpgradeFrames > 0) _bottomPendingUpgradeFrames--;
+            if (_topPendingUpgradeFrames > 0) _topPendingUpgradeFrames--;
+        }
+
+        private LogicalRow ApplyPendingRowUpgrade(BrickDuelSide side, LogicalRow row)
+        {
+            int pending = side == BrickDuelSide.Bottom
+                ? _bottomPendingRowUpgrades
+                : _topPendingRowUpgrades;
+            int warningFrames = side == BrickDuelSide.Bottom
+                ? _bottomPendingUpgradeFrames
+                : _topPendingUpgradeFrames;
+            if (pending <= 0 || warningFrames > 0) return row;
+
+            BrickDuelBrickType[] types = (BrickDuelBrickType[])row.Types.Clone();
+            bool upgraded = false;
+            for (int i = 0; i < types.Length; i++)
+            {
+                if (types[i] == BrickDuelBrickType.Green)
+                {
+                    types[i] = BrickDuelBrickType.Red;
+                    upgraded = true;
+                    break;
+                }
+                if (types[i] == BrickDuelBrickType.Red)
+                {
+                    types[i] = BrickDuelBrickType.Yellow;
+                    upgraded = true;
+                    break;
+                }
+            }
+            if (!upgraded) return row;
+            if (side == BrickDuelSide.Bottom) _bottomPendingRowUpgrades--;
+            else _topPendingRowUpgrades--;
+            return new LogicalRow(types, (string[])row.ItemIds.Clone());
+        }
+
         private BrickDuelBrickType[] GenerateWeightedRow()
         {
             float elapsedSeconds = ElapsedFrames / (float)Mathf.Max(1, _rule.SimulationFps);
-            BrickDuelCompositionStageDefinition weights =
-                _rule.ResolveBrickCompositionWeights(elapsedSeconds);
+            BrickDuelCompositionStageDefinition weights = ResolveCompositionWeights(elapsedSeconds);
             var row = new BrickDuelBrickType[_rule.Columns];
             for (int i = 0; i < row.Length; i++)
             {
@@ -1378,9 +1640,15 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
         private float GetPaddleHalfWidth(BrickDuelSideItemEffects effects)
         {
+            BrickDuelSide side = ReferenceEquals(effects, _bottomEffects)
+                ? BrickDuelSide.Bottom
+                : BrickDuelSide.Top;
             float multiplier = effects.HasWidePaddle
-                ? GetWidePaddleConfiguredMultiplier()
+                ? GetPhaseEffectMultiplier(side, BrickDuelItemIds.Wide, "PaddleLengthMultiplier", GetWidePaddleConfiguredMultiplier(), false)
                 : 1f;
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            if (phase != null)
+                multiplier *= phase.GetHeroPaddleMultiplier(_splitBalls.Count(ball => ball.Side == side && ball.IsActive));
             multiplier = Mathf.Clamp(
                 multiplier,
                 BrickDuelItemConstants.PaddleWidthMultiplierMin,
@@ -1390,8 +1658,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 
         private float GetBallRadius(BrickDuelSideItemEffects effects)
         {
+            BrickDuelSide side = ReferenceEquals(effects, _bottomEffects)
+                ? BrickDuelSide.Bottom
+                : BrickDuelSide.Top;
             float multiplier = effects.HasLargeBall
-                ? BrickDuelItemConstants.LargeBallRadiusMultiplier
+                ? GetPhaseEffectMultiplier(side, BrickDuelItemIds.Large, "BallRadiusMultiplier", BrickDuelItemConstants.LargeBallRadiusMultiplier, false)
                 : 1f;
             multiplier = Mathf.Clamp(
                 multiplier,
@@ -1400,10 +1671,13 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             return _rule.BallRadius * multiplier;
         }
 
-        private static float GetTideSpeedMultiplier(BrickDuelSideItemEffects effects)
+        private float GetTideSpeedMultiplier(BrickDuelSideItemEffects effects)
         {
+            BrickDuelSide side = ReferenceEquals(effects, _bottomEffects)
+                ? BrickDuelSide.Bottom
+                : BrickDuelSide.Top;
             float multiplier = effects.HasDamping
-                ? BrickDuelItemConstants.DampingTideMultiplier
+                ? GetPhaseEffectMultiplier(side, BrickDuelItemIds.Damp, "TideSpeedMultiplier", 0.8f, true)
                 : 1f;
             return Mathf.Clamp(
                 multiplier,
@@ -1411,23 +1685,35 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 BrickDuelItemConstants.TideSpeedMultiplierMax);
         }
 
-        private float GetBallSpeedMultiplier(BrickDuelSideItemEffects effects)
+        private float GetBallSpeedMultiplier(
+            BrickDuelSideItemEffects effects,
+            bool forPaddleBounce = false)
         {
+            BrickDuelSide side = ReferenceEquals(effects, _bottomEffects)
+                ? BrickDuelSide.Bottom
+                : BrickDuelSide.Top;
             float multiplier = effects.HasSpeedBall
-                ? GetSpeedBallConfiguredMultiplier()
+                ? GetPhaseEffectMultiplier(side, BrickDuelItemIds.Speed, "BallSpeedMultiplier", GetSpeedBallConfiguredMultiplier(), false)
                 : 1f;
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            if (phase != null)
+                multiplier *= phase.GetHeroBallSpeedMultiplier(forPaddleBounce);
             return Mathf.Clamp(
                 multiplier,
                 BrickDuelItemConstants.BallSpeedMultiplierMin,
                 BrickDuelItemConstants.BallSpeedMultiplierMax);
         }
 
-        private float GetBallSpeed(BrickDuelSide side)
+        private float GetBallSpeed(
+            BrickDuelSide side,
+            bool forPaddleBounce = false)
         {
             BrickDuelSideItemEffects effects = side == BrickDuelSide.Bottom
                 ? _bottomEffects
                 : _topEffects;
-            return _rule.BallSpeed * GetBallSpeedMultiplier(effects);
+            float speed = _rule.BallSpeed * GetBallSpeedMultiplier(effects, forPaddleBounce);
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            return phase == null ? speed : Mathf.Min(speed, phase.GetAbsoluteBallSpeedCap());
         }
 
         private float GetSpeedBallBaseDurationSeconds()
@@ -1541,6 +1827,99 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             return null;
         }
 
+        private BrickDuelPhaseSideRuntime GetPhaseRuntime(BrickDuelSide side) =>
+            side == BrickDuelSide.Bottom ? _bottomPhase : _topPhase;
+
+        private PhaseItemDefinition GetPhaseItem(string itemId)
+        {
+            if (_catalog == null || string.IsNullOrEmpty(itemId)) return null;
+            return _catalog.AllPhaseItems.TryGetValue(itemId, out PhaseItemDefinition item)
+                ? item
+                : null;
+        }
+
+        private float GetPhaseRawFloat(
+            BrickDuelSide side,
+            string itemId,
+            string effectKey,
+            float fallback)
+        {
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            PhaseItemDefinition item = GetPhaseItem(itemId);
+            if (phase == null || item?.Effect == null ||
+                !item.Effect.TryGetValue(effectKey, out object raw) || raw == null)
+                return fallback;
+            float value;
+            try { value = Convert.ToSingle(raw); }
+            catch { value = fallback; }
+            return value;
+        }
+
+        private float GetPhaseEffectMultiplier(
+            BrickDuelSide side,
+            string itemId,
+            string effectKey,
+            float fallback,
+            bool inverse)
+        {
+            float configured = GetPhaseRawFloat(side, itemId, effectKey, fallback);
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            if (phase == null) return configured;
+            float factor = 1f + phase.Modifiers.GetPercent(itemId) / 100f;
+            float magnitude = inverse ? 1f - configured : configured - 1f;
+            return inverse ? 1f - magnitude * factor : 1f + magnitude * factor;
+        }
+
+        private int GetPhaseInt(
+            BrickDuelSide side,
+            string itemId,
+            string effectKey,
+            int fallback)
+        {
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            PhaseItemDefinition item = GetPhaseItem(itemId);
+            if (phase == null || item?.Effect == null ||
+                !item.Effect.TryGetValue(effectKey, out object raw) || raw == null)
+                return fallback;
+            int value;
+            try { value = Convert.ToInt32(raw); }
+            catch { value = fallback; }
+            return phase.Modifiers.ApplyStep(item, value);
+        }
+
+        private void ApplyPhaseAbility(BrickDuelSide side)
+        {
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            if (phase == null) return;
+            switch (phase.TryActivateAbility())
+            {
+                case PhaseAbilityActivation.MirageTide:
+                    SpawnSplitBallsFromSide(side, 2, false);
+                    break;
+                case PhaseAbilityActivation.PulseBurst:
+                case PhaseAbilityActivation.RiftPierce:
+                    NormalizeBallSpeeds(side, GetBallSpeed(side));
+                    break;
+            }
+        }
+
+        private BrickDuelHorizontalBarrier? GetRefractMirrorBarrier(BrickDuelSide side)
+        {
+            BrickDuelPhaseSideRuntime phase = GetPhaseRuntime(side);
+            if (phase == null || phase.State.MirrorFrames <= 0)
+            {
+                return null;
+            }
+
+            float direction = side == BrickDuelSide.Bottom ? 1f : -1f;
+            float mirrorY = -direction * _rule.CoreLineY * phase.GetMirrorHalfFieldRatio();
+            float halfWidth = _rule.ArenaHalfWidth * phase.GetMirrorWidthRatio();
+            return new BrickDuelHorizontalBarrier(
+                mirrorY,
+                halfWidth,
+                new Vector2(0f, direction));
+        }
+
         private void NormalizeBallSpeeds(BrickDuelSide side, float speed)
         {
             BrickDuelBallState mother = side == BrickDuelSide.Bottom ? BottomBall : TopBall;
@@ -1552,6 +1931,31 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 {
                     NormalizeBallSpeed(split, speed);
                 }
+            }
+        }
+
+        private void SeparateSideBallsFromBricksAndWalls(
+            BrickDuelSide side,
+            float ballRadius)
+        {
+            float speed = GetBallSpeed(side);
+            BrickDuelBallState mother = side == BrickDuelSide.Bottom ? BottomBall : TopBall;
+            BrickDuelCollisionSolver.SeparateBallFromBricksAndWalls(
+                mother,
+                _bricks,
+                _rule,
+                ballRadius,
+                speed);
+            for (int i = 0; i < _splitBalls.Count; i++)
+            {
+                BrickDuelBallState split = _splitBalls[i];
+                if (split.Side != side) continue;
+                BrickDuelCollisionSolver.SeparateBallFromBricksAndWalls(
+                    split,
+                    _bricks,
+                    _rule,
+                    ballRadius,
+                    speed);
             }
         }
 
@@ -1660,6 +2064,43 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             Hash(ref hash, effects.DampingFramesRemaining, prime);
             Hash(ref hash, effects.CoreBufferFramesRemaining, prime);
             Hash(ref hash, effects.HasCoreBuffer ? 1 : 0, prime);
+            Hash(ref hash, effects.MagnetPullRemaining, prime);
+        }
+
+        private static void HashPhaseState(
+            ref ulong hash,
+            BrickDuelPhaseSideState state,
+            ulong prime)
+        {
+            if (state == null)
+            {
+                Hash(ref hash, 0, prime);
+                return;
+            }
+
+            Hash(ref hash, 1, prime);
+            HashString(ref hash, state.HeroId, prime);
+            HashString(ref hash, state.LoadoutHash, prime);
+            Hash(ref hash, state.PhaseLevel, prime);
+            Hash(ref hash, Quantize(state.Phi), prime);
+            Hash(ref hash, Quantize(state.PhiGainedThisSecond), prime);
+            Hash(ref hash, state.PhiSecondWindow, prime);
+            Hash(ref hash, state.AbilityCooldownFrames, prime);
+            Hash(ref hash, state.AbilityActiveFrames, prime);
+            Hash(ref hash, state.Combo, prime);
+            Hash(ref hash, state.Tempo, prime);
+            Hash(ref hash, state.TempoIdleFrames, prime);
+            Hash(ref hash, state.RiftCharge, prime);
+            Hash(ref hash, state.HeroPierceCharges, prime);
+            Hash(ref hash, state.ItemPierceCharges, prime);
+            Hash(ref hash, state.PulseHitCounter, prime);
+            Hash(ref hash, state.RefractMarkFrames, prime);
+            Hash(ref hash, state.RefractSpeedStacks, prime);
+            Hash(ref hash, state.RefractPendingSpeedStacks, prime);
+            Hash(ref hash, state.RefractBoostFrames, prime);
+            Hash(ref hash, state.RefractCycles, prime);
+            Hash(ref hash, state.MirrorFrames, prime);
+            Hash(ref hash, state.RiftEmpowered ? 1 : 0, prime);
         }
 
         private static void HashString(ref ulong hash, string value, ulong prime)
@@ -1674,6 +2115,21 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             for (int i = 0; i < value.Length; i++)
             {
                 Hash(ref hash, value[i], prime);
+            }
+        }
+
+        private static void HashIntSet(
+            ref ulong hash,
+            IEnumerable<int> values,
+            ulong prime)
+        {
+            int[] ordered = values == null
+                ? Array.Empty<int>()
+                : values.OrderBy(value => value).ToArray();
+            Hash(ref hash, ordered.Length, prime);
+            for (int i = 0; i < ordered.Length; i++)
+            {
+                Hash(ref hash, ordered[i], prime);
             }
         }
 

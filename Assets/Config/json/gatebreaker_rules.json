@@ -41,98 +41,114 @@
   ],
   "DT_BrickDuelItemDrop": [
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.2,
-      "EffectDurationSeconds": 8.0,
-      "EffectMagnitude": 1.5,
+      "BagCopies": 51,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.1275,
       "Enabled": true,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
-      "ItemId": "DUEL_ITEM_WIDE_PADDLE",
-      "ItemName": "宽幅组件",
-      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item03.png",
+      "ItemId": "ItemPierce",
+      "ItemName": "裂穿",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item03.prefab",
       "SortOrder": 1
     },
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.0,
-      "Enabled": false,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
-      "ItemId": "DUEL_ITEM_LARGE_BALL",
-      "ItemName": "扩容球体",
-      "PrefabLocation": "",
+      "BagCopies": 51,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.1275,
+      "EffectDurationSeconds": 6.0,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item06.png",
+      "ItemId": "ItemSplit",
+      "ItemName": "分形",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
       "SortOrder": 2
     },
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.2,
+      "BagCopies": 51,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.1275,
+      "EffectDurationSeconds": 6.0,
+      "EffectMagnitude": 0.8,
       "Enabled": true,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
-      "ItemId": "DUEL_ITEM_PHASE_DRILL",
-      "ItemName": "相位钻头",
-      "PrefabLocation": "",
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item04.png",
+      "ItemId": "ItemDamp",
+      "ItemName": "缓滞",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item04.prefab",
       "SortOrder": 3
     },
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.2,
+      "BagCopies": 68,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.17,
+      "EffectDurationSeconds": 5.0,
+      "EffectMagnitude": 1.2,
       "Enabled": true,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_split_ball.png",
-      "ItemId": "DUEL_ITEM_SPLIT_BALL",
-      "ItemName": "裂变球体",
-      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item07.png",
+      "ItemId": "ItemSpeed",
+      "ItemName": "疾风",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
       "SortOrder": 4
     },
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.2,
-      "DurationModifierKey": "DUEL_ITEM_SPEED_BALL_DURATION",
-      "EffectDurationSeconds": 5.0,
-      "EffectMagnitude": 1.3,
+      "BagCopies": 68,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.17,
+      "EffectDurationSeconds": 8.0,
+      "EffectMagnitude": 1.2,
       "Enabled": true,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_speed_ball.png",
-      "ItemId": "DUEL_ITEM_SPEED_BALL",
-      "ItemName": "弹球加速",
-      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item01.png",
+      "ItemId": "ItemWide",
+      "ItemName": "广域",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
       "SortOrder": 5
     },
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.2,
-      "EffectDurationSeconds": 5.0,
+      "BagCopies": 51,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.1275,
       "Enabled": true,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_aimed_rebound.png",
-      "ItemId": "DUEL_ITEM_AIMED_REBOUND",
-      "ItemName": "定向反弹",
-      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item05.png",
+      "ItemId": "ItemMagnet",
+      "ItemName": "磁吸",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item05.prefab",
       "SortOrder": 6
     },
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.0,
-      "Enabled": false,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
-      "ItemId": "DUEL_ITEM_DAMPING_PULSE",
-      "ItemName": "阻尼脉冲",
-      "PrefabLocation": "",
+      "BagCopies": 20,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.05,
+      "EffectDurationSeconds": 8.0,
+      "EffectMagnitude": 1.15,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item02.png",
+      "ItemId": "ItemLarge",
+      "ItemName": "扩容",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item02.prefab",
       "SortOrder": 7
     },
     {
-      "BagCopies": 2,
-      "DropTableId": "BRICK_DUEL_ITEM_V0",
-      "DropWeight": 0.0,
-      "Enabled": false,
-      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
-      "ItemId": "DUEL_ITEM_CORE_BUFFER",
-      "ItemName": "核心缓冲",
-      "PrefabLocation": "",
+      "BagCopies": 20,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.05,
+      "EffectDurationSeconds": 5.0,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item08.png",
+      "ItemId": "ItemAimed",
+      "ItemName": "定向",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
       "SortOrder": 8
+    },
+    {
+      "BagCopies": 20,
+      "DropTableId": "BRICK_DUEL_PHASE_V0",
+      "DropWeight": 0.05,
+      "EffectDurationSeconds": 15.0,
+      "Enabled": true,
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
+      "ItemId": "ItemBuffer",
+      "ItemName": "核心缓冲",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
+      "SortOrder": 9
     }
   ],
   "DT_BrickDuelRule": [
@@ -1099,9 +1115,10 @@
         {
           "ActiveAbility": {
             "AbilityId": "ABILITY_MIRAGE_MIRAGE_TIDE",
-            "CooldownSeconds": 12
+            "CooldownSeconds": 12,
+            "DurationSeconds": 6
           },
-          "EffectText": "「幻潮」：复制场上所有球，最多增加2颗临时球，持续6秒。冷却时间30秒",
+          "EffectText": "「幻潮」：复制场上所有球，最多增加2颗临时球，持续6秒。冷却时间12秒",
           "Nature": "Active",
           "PhaseLevel": "P3",
           "PhiToReach": 50
@@ -1151,7 +1168,18 @@
           "Source": "PerSecondCap"
         }
       ],
-      "ResourceRule": "连击：主球命中砖块 +1 累积（临时球命中不计入连击）；主球碰底部墙壁即断连清零（球反弹不消失，无失球惩罚，仅资源重置）。"
+      "ResourceRule": "连击：主球命中砖块 +1 累积（临时球命中不计入连击）；主球碰底部墙壁即断连清零（球反弹不消失，无失球惩罚，仅资源重置）。",
+      "RuntimeTuning": {
+        "P1ComboThreshold": 8,
+        "P1SplitCount": 1,
+        "P2ComboThreshold": 6,
+        "P3MaxClones": 2,
+        "P4SplitCount": 2,
+        "P5ComboThreshold": 4,
+        "P5PaddlePercentCap": 12,
+        "P5PaddlePercentPerExtraBall": 4,
+        "SplitLifetimeSeconds": 6
+      }
     },
     {
       "CoreItem": "ItemSpeed",
@@ -1175,9 +1203,10 @@
         {
           "ActiveAbility": {
             "AbilityId": "ABILITY_PULSE_BURST",
-            "CooldownSeconds": 18
+            "CooldownSeconds": 18,
+            "DurationSeconds": 5
           },
-          "EffectText": "「爆点」：锁定当前最高节拍5秒，期间速度上限提高至6.0。冷却时间30秒",
+          "EffectText": "「爆点」：锁定当前最高节拍5秒，期间速度上限提高至6.0。冷却时间18秒",
           "Nature": "Active",
           "PhaseLevel": "P3",
           "PhiToReach": 50
@@ -1226,7 +1255,21 @@
           "Phi": 6,
           "Source": "PerSecondCap"
         }
-      ]
+      ],
+      "ResourceRule": "节拍：挡板回球相对无操作镜面反射方向偏转至少10度时 +1；连续3秒无有效改向 -1。",
+      "RuntimeTuning": {
+        "P1SpeedPercentCap": 12,
+        "P1SpeedPercentPerTempo": 3,
+        "P1TempoCap": 4,
+        "P2TempoCap": 5,
+        "P3AbsoluteSpeedCap": 6,
+        "P4SpeedPercentCap": 20,
+        "P4SpeedPercentPerTempo": 5,
+        "P5HitThreshold": 3,
+        "P5PierceCap": 1,
+        "RedirectMinDegrees": 10,
+        "TempoDecaySeconds": 3
+      }
     },
     {
       "CoreItem": "ItemPierce",
@@ -1252,7 +1295,7 @@
             "AbilityId": "ABILITY_RIFT_PIERCE",
             "CooldownSeconds": 20
           },
-          "EffectText": "「贯裂」：主球立即获得4次穿透并且增加12%速度，效果持续到穿透次数耗尽。冷却时间30秒",
+          "EffectText": "「贯裂」：主球立即获得4次穿透并且增加12%速度，效果持续到穿透次数耗尽。冷却时间20秒",
           "Nature": "Active",
           "PhaseLevel": "P3",
           "PhiToReach": 50
@@ -1302,7 +1345,17 @@
           "Source": "PerSecondCap"
         }
       ],
-      "ResourceRule": "蓄力：主球命中砖块蓄力（每次 +1），满阈值自动释放穿透；主球碰底部墙壁即蓄力清零（球反弹不消失，无失球惩罚，仅资源重置；与蜃影连击共用同一断连规则）。"
+      "ResourceRule": "蓄力：主球命中砖块蓄力（每次 +1），满阈值自动释放穿透；主球碰底部墙壁即蓄力清零（球反弹不消失，无失球惩罚，仅资源重置；与蜃影连击共用同一断连规则）。",
+      "RuntimeTuning": {
+        "P1ChargeThreshold": 5,
+        "P1PierceCap": 2,
+        "P1PierceGrant": 1,
+        "P2PierceCap": 3,
+        "P3MinimumPierce": 4,
+        "P3SpeedPercent": 12,
+        "P4PierceGrant": 2,
+        "P5ChargeThreshold": 4
+      }
     },
     {
       "CoreItem": "ItemWide",
@@ -1326,9 +1379,10 @@
         {
           "ActiveAbility": {
             "AbilityId": "ABILITY_REFRACT_MIRROR",
-            "CooldownSeconds": 16
+            "CooldownSeconds": 16,
+            "DurationSeconds": 6
           },
-          "EffectText": "「镜界」：本方半场生成一面6s镜面，只与本方弹球碰撞。冷却时间30秒",
+          "EffectText": "「镜界」：本方半场生成一面6s镜面，只与本方弹球碰撞。冷却时间16秒",
           "Nature": "Active",
           "PhaseLevel": "P3",
           "PhiToReach": 50
@@ -1378,78 +1432,187 @@
           "Source": "PerSecondCap"
         }
       ],
-      "ResourceRule": "折射标记：主球被挡板回球时获得标记；带标记命中砖块完成折射循环，完成后触发奖励（如挡板回球速度+X%）。标记有持续时间，超时未命中砖块则作废需重新回球装填。折射循环仅由主球完成，临时球不参与。"
+      "ResourceRule": "折射标记：主球被挡板回球时获得标记；带标记命中砖块完成折射循环，完成后触发奖励（如挡板回球速度+X%）。标记有持续时间，超时未命中砖块则作废需重新回球装填。折射循环仅由主球完成，临时球不参与。",
+      "RuntimeTuning": {
+        "BounceBoostSeconds": 3,
+        "MirrorHalfFieldRatio": 0.55,
+        "MirrorWidthRatio": 0.6,
+        "P1BounceSpeedPercent": 8,
+        "P1MarkSeconds": 2,
+        "P2BounceSpeedPercent": 12,
+        "P2MarkSeconds": 3,
+        "P4MarkSeconds": 4,
+        "P4MaxStacks": 3,
+        "P4StackSpeedPercent": 6,
+        "P5CooldownReductionSeconds": 3,
+        "P5CyclesPerCooldownReduction": 2,
+        "P5MinimumCooldownSeconds": 4
+      }
     }
   ],
   "DT_PhaseItem": [
     {
-      "BaseDropWeight": 0.15,
+      "BaseDropWeight": 0.1275,
       "Effect": {
         "DurationSeconds": 0,
         "PierceCharges": 2
       },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item03.png",
       "ItemId": "ItemPierce",
       "ItemName": "裂穿",
-      "Note": "主球获得 2 次穿透；与英雄蓄力穿透共用计数池",
+      "LegacyItemIds": [
+        "DUEL_ITEM_PHASE_DRILL"
+      ],
+      "MaxValue": 9,
+      "MinValue": 0,
+      "Note": "主球获得2次穿透；与英雄蓄力穿透共用计数池",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item03.prefab",
       "ValueWeight": 3
     },
     {
-      "BaseDropWeight": 0.15,
+      "BaseDropWeight": 0.1275,
       "Effect": {
         "TempBallCount": 1,
         "TempBallSeconds": 6
       },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item06.png",
       "ItemId": "ItemSplit",
       "ItemName": "分形",
-      "Note": "生成 1 颗持续 6s 临时球；与英雄分裂球同为临时球实体",
+      "LegacyItemIds": [
+        "DUEL_ITEM_SPLIT_BALL"
+      ],
+      "MaxValue": 60,
+      "MinValue": 0.1,
+      "Note": "生成1颗持续6秒临时球",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
       "ValueWeight": 3
     },
     {
-      "BaseDropWeight": 0.15,
+      "BaseDropWeight": 0.1275,
       "Effect": {
         "DurationSeconds": 6,
         "TideSpeedMultiplier": 0.8
       },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item04.png",
       "ItemId": "ItemDamp",
       "ItemName": "缓滞",
-      "Note": "本方砖潮推进速度 -20%；只作用本方",
+      "LegacyItemIds": [
+        "DUEL_ITEM_DAMPING_PULSE"
+      ],
+      "MaxValue": 1.5,
+      "MinValue": 0.5,
+      "Note": "本方砖潮推进速度-20%",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item04.prefab",
       "ValueWeight": 3
     },
     {
-      "BaseDropWeight": 0.2,
+      "BaseDropWeight": 0.17,
       "Effect": {
         "BallSpeedMultiplier": 1.2,
         "DurationSeconds": 5
       },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item07.png",
       "ItemId": "ItemSpeed",
       "ItemName": "疾风",
-      "Note": "球速临时 +20%",
+      "LegacyItemIds": [
+        "DUEL_ITEM_SPEED_BALL"
+      ],
+      "MaxValue": 2,
+      "MinValue": 0.5,
+      "Note": "球速临时+20%",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
       "ValueWeight": 2
     },
     {
-      "BaseDropWeight": 0.2,
+      "BaseDropWeight": 0.17,
       "Effect": {
         "DurationSeconds": 8,
         "PaddleLengthMultiplier": 1.2
       },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item01.png",
       "ItemId": "ItemWide",
       "ItemName": "广域",
-      "Note": "挡板 +20%",
+      "LegacyItemIds": [
+        "DUEL_ITEM_WIDE_PADDLE"
+      ],
+      "MaxValue": 1.5,
+      "MinValue": 0.75,
+      "Note": "挡板长度+20%",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
       "ValueWeight": 2
     },
     {
-      "BaseDropWeight": 0.15,
+      "BaseDropWeight": 0.1275,
       "Effect": {
-        "PullNextItem": true
+        "PullNextItemCount": 1
       },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item05.png",
       "ItemId": "ItemMagnet",
       "ItemName": "磁吸",
-      "Note": "下一个道具自动落向挡板",
+      "LegacyItemIds": [],
+      "MaxValue": 3,
+      "MinValue": 0,
+      "Note": "后续1个道具自动落向挡板",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item05.prefab",
       "ValueWeight": 1
+    },
+    {
+      "BaseDropWeight": 0.05,
+      "Effect": {
+        "BallRadiusMultiplier": 1.15,
+        "DurationSeconds": 8
+      },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item02.png",
+      "ItemId": "ItemLarge",
+      "ItemName": "扩容球体",
+      "LegacyItemIds": [
+        "DUEL_ITEM_LARGE_BALL"
+      ],
+      "MaxValue": 1.25,
+      "MinValue": 1,
+      "Note": "特色道具，不参与科技矩阵",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item02.prefab",
+      "ValueWeight": 0
+    },
+    {
+      "BaseDropWeight": 0.05,
+      "Effect": {
+        "DurationSeconds": 5
+      },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/item08.png",
+      "ItemId": "ItemAimed",
+      "ItemName": "定向反弹",
+      "LegacyItemIds": [
+        "DUEL_ITEM_AIMED_REBOUND"
+      ],
+      "MaxValue": 5,
+      "MinValue": 0,
+      "Note": "特色道具，不参与科技矩阵",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
+      "ValueWeight": 0
+    },
+    {
+      "BaseDropWeight": 0.05,
+      "Effect": {
+        "AbsorbDamageLayers": 1,
+        "DurationSeconds": 15
+      },
+      "IconLocation": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
+      "ItemId": "ItemBuffer",
+      "ItemName": "核心缓冲",
+      "LegacyItemIds": [
+        "DUEL_ITEM_CORE_BUFFER"
+      ],
+      "MaxValue": 1,
+      "MinValue": 0,
+      "Note": "特色道具，不参与科技矩阵",
+      "PrefabLocation": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
+      "ValueWeight": 0
     }
   ],
   "DT_PhaseMeta": [
     {
+      "CurrencyDraw": 4,
       "CurrencyLoss": 4,
       "CurrencyWin": 12,
       "DropOffsetCap": 10,
@@ -1457,7 +1620,10 @@
       "NetOffsetBudget": 30,
       "Note": "经济与全局平衡常数；全部为 §6 tuning 拍板值",
       "PhiPerSecondCap": 6,
+      "ProfileSchemaVersion": 1,
       "ScissorDiffTargetSeconds": 40,
+      "SettlementHistoryCapacity": 64,
+      "StartingCurrency": 15,
       "TechUnlockCost": 15
     }
   ],

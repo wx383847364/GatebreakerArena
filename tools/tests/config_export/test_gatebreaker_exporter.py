@@ -19,10 +19,17 @@ def _copy_v1_sources(config_root: Path) -> None:
     source_root = Path(__file__).resolve().parents[3] / "Assets" / "Config"
     for filename in (
         "DT_BrickDuelRule.json",
+        "DT_BrickDuelAiRule.json",
+        "DT_BrickDuelItemDrop.json",
         "DT_Hero.json",
         "DT_HeroPath.json",
         "DT_UniversalChip.json",
         "DT_SignatureChip.json",
+        "DT_PhaseHero.json",
+        "DT_PhaseTech.json",
+        "DT_PhaseItem.json",
+        "DT_PhaseCurve.json",
+        "DT_PhaseMeta.json",
     ):
         (config_root / filename).write_text((source_root / filename).read_text(encoding="utf-8"), encoding="utf-8")
 

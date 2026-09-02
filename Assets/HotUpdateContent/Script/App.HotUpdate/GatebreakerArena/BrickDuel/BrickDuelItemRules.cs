@@ -7,6 +7,17 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
 {
     public static class BrickDuelItemIds
     {
+        public const string Pierce = "ItemPierce";
+        public const string Split = "ItemSplit";
+        public const string Damp = "ItemDamp";
+        public const string Speed = "ItemSpeed";
+        public const string Wide = "ItemWide";
+        public const string Magnet = "ItemMagnet";
+        public const string Large = "ItemLarge";
+        public const string Aimed = "ItemAimed";
+        public const string Buffer = "ItemBuffer";
+
+        // Kept for one compatibility release. New phase matches never put these ids in the bag.
         public const string WidePaddle = "DUEL_ITEM_WIDE_PADDLE";
         public const string LargeBall = "DUEL_ITEM_LARGE_BALL";
         public const string PhaseDrill = "DUEL_ITEM_PHASE_DRILL";
@@ -123,6 +134,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         }
 
         public uint RandomState => _random.State;
+        internal IReadOnlyList<string> RemainingItemIds => _bag;
 
         public string NextItemId()
         {

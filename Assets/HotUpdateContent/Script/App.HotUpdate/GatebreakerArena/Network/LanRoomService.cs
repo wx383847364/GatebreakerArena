@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using App.HotUpdate.GatebreakerArena.Application;
+using App.HotUpdate.GatebreakerArena.BrickDuel;
 using App.HotUpdate.GatebreakerArena.Chip;
 using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
+using App.HotUpdate.GatebreakerArena.Phase;
 using App.Shared.Contracts;
 
 namespace App.HotUpdate.GatebreakerArena.Network
@@ -14,14 +16,19 @@ namespace App.HotUpdate.GatebreakerArena.Network
     {
         private const int DefaultLanMapPlayerCount = 2;
         private const int DefaultMaxPlayers = DefaultLanMapPlayerCount;
-        private const int MaxLanPlayers = 4;
+        private const int MaxLanPlayers = 2;
         private const float AdvertiseIntervalSeconds = 1f;
+        private const int MaxAcceptedInputLeadFrames = LockstepSession.SimulationFps * 4;
 
         private readonly List<RoomSlot> _slots = new List<RoomSlot>();
         private readonly Dictionary<string, DiscoveredRoom> _discoveredRooms =
             new Dictionary<string, DiscoveredRoom>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<int, Dictionary<int, uint>> _checksumReportsByFrame =
             new Dictionary<int, Dictionary<int, uint>>();
+        private readonly Dictionary<int, ChecksumReport> _terminalReportsBySlot =
+            new Dictionary<int, ChecksumReport>();
+        private readonly Dictionary<int, uint> _lastInputSequenceBySlot =
+            new Dictionary<int, uint>();
         private readonly IAppLogger _logger;
         private readonly ILanDiagnosticsSink _diagnostics;
         private readonly LockstepSession _lockstepSession;
@@ -39,9 +46,17 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private string _pendingJoinRoomCode = string.Empty;
         private object _hostEndpoint;
         private object _hostConnectionId;
+        private object _pendingHostConnectionId;
         private int _hostTcpPort;
         private LockstepSyncState _lastDiagnosticSyncState = LockstepSyncState.Idle;
         private string _lastDiagnosticWaitingSlots = string.Empty;
+        private bool _explicitLoadingPreparationRequired;
+        private bool _matchCompleted;
+        private int _completedFrameIndex = -1;
+        private uint _completedChecksum;
+        private int _completedResult;
+        private uint _roundId;
+        private bool _handlingConnectionFailure;
 
         public LanRoomService(IAppLogger logger = null, ILanDiagnosticsSink diagnostics = null, GatebreakerModeCatalog modeCatalog = null)
         {
@@ -49,7 +64,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _diagnostics = diagnostics;
             _lockstepSession = new LockstepSession();
             _modeCatalog = modeCatalog ?? GatebreakerModeCatalog.CreateDefault();
-            _rulesHash = V1ContractHash.ComputeCatalog(_modeCatalog);
+            _rulesHash = PhaseMatchContractHash.ComputeCatalog(
+                _modeCatalog,
+                V1ContractHash.ComputeCatalog(_modeCatalog));
             _lockstepSession.LocalInputReady += OnLocalInputReady;
             _lockstepSession.FrameBundleReady += OnFrameBundleReady;
             _lockstepSession.ChecksumReportReady += OnChecksumReportReady;
@@ -73,6 +90,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         public RoomSnapshot CurrentSnapshot => CreateSnapshot();
 
+        public void RequireExplicitLoadingPreparation()
+        {
+            _explicitLoadingPreparationRequired = true;
+        }
+
         public void Tick(float deltaTime)
         {
             if (_isHost && State == LanRoomState.Lobby)
@@ -85,7 +107,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 }
             }
 
-            _lockstepSession.Tick(deltaTime);
+            if (!_matchCompleted)
+            {
+                _lockstepSession.Tick(deltaTime);
+            }
             RecordLockstepStateChanges();
         }
 
@@ -104,7 +129,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             LocalClientInstanceId = clientInstanceId;
             LocalPlayerName = NormalizeName(playerName);
             LocalSlotIndex = 0;
-            _maxPlayers = Math.Min(MaxLanPlayers, Math.Max(1, maxPlayers));
+            _maxPlayers = MaxLanPlayers;
             _hostTcpPort = tcpPort;
             _roomCode = string.IsNullOrWhiteSpace(roomCode) ? CreateRoomCode(SessionId) : roomCode.Trim().ToUpperInvariant();
             _slots.Add(new RoomSlot
@@ -116,11 +141,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 PlayerName = LocalPlayerName,
                 IsHost = true,
                 IsLocal = true,
-                IsReady = true,
+                IsReady = false,
                 IsLoadingAcked = false,
                 IsActive = true,
+                HasConfirmedPhaseLoadoutThisLobby = false,
             });
             ApplyLoadout(_slots[0], CreateDefaultLoadout());
+            PhaseMatchLoadout defaultPhaseLoadout = CreateDefaultPhaseLoadout();
+            if (defaultPhaseLoadout != null) ApplyPhaseLoadout(_slots[0], defaultPhaseLoadout);
 
             for (int i = 1; i < _maxPlayers; i++)
             {
@@ -253,6 +281,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     SetError(loadoutError);
                     return false;
                 }
+                if (isReady && RequiresConfirmedPhaseLoadout && !slot.HasConfirmedPhaseLoadoutThisLobby)
+                {
+                    SetError("Confirm a phase loadout before readying.");
+                    return false;
+                }
                 slot.IsReady = isReady;
                 RecordRoomEvent("ReadyChanged", "ok", "ready=true;requested=" + isReady);
                 BroadcastRoomSnapshot();
@@ -264,6 +297,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
             if (isReady && (local == null || !TryValidateSlotLoadout(local, out _)))
             {
                 SetError("A valid V1 loadout is required before ready.");
+                return false;
+            }
+            if (isReady && RequiresConfirmedPhaseLoadout && !local.HasConfirmedPhaseLoadoutThisLobby)
+            {
+                SetError("Confirm a phase loadout before readying.");
                 return false;
             }
 
@@ -278,6 +316,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     SignatureChipId = local.SignatureChipId,
                     OpeningUniversalChipIds = CloneIds(local.OpeningUniversalChipIds),
                     ScheduledUniversalChipIds = CloneIds(local.ScheduledUniversalChipIds),
+                    PhaseHeroId = local.PhaseHeroId,
+                    PhaseTechIds = CloneIds(local.PhaseTechIds),
+                    HasConfirmedPhaseLoadoutThisLobby = local.HasConfirmedPhaseLoadoutThisLobby,
                 }));
             RecordRoomEvent("ReadyChanged", "sent", "ready=" + isReady);
             return true;
@@ -298,14 +339,54 @@ namespace App.HotUpdate.GatebreakerArena.Network
             return true;
         }
 
+        public bool SetLocalPhaseLoadout(PhaseMatchLoadout loadout)
+        {
+            if (_playersFrozen || State != LanRoomState.Lobby || loadout == null ||
+                !ValidatePhaseLoadout(loadout).IsValid)
+                return false;
+            RoomSlot slot = FindLocalSlot();
+            if (slot == null) return false;
+            ApplyPhaseLoadout(slot, loadout);
+            slot.HasConfirmedPhaseLoadoutThisLobby = true;
+            if (_isHost)
+            {
+                foreach (RoomSlot ai in _slots.Where(item => item.IsActive && item.IsAi))
+                {
+                    ApplyPhaseLoadout(ai, loadout.Clone());
+                    ai.HasConfirmedPhaseLoadoutThisLobby = true;
+                }
+            }
+            slot.IsReady = false;
+            PublishSnapshot();
+            return true;
+        }
+
         public void HandleReliableSendFailed(object endpoint, string reason)
+        {
+            HandleReliableSendFailed(endpoint, null, reason);
+        }
+
+        public void HandleReliableSendFailed(object endpoint, object connectionId, string reason)
         {
             string detail = string.IsNullOrWhiteSpace(reason) ? EndpointToString(endpoint) : reason;
             RecordRoomEvent("ReliableSendFailed", "error", detail);
-            if (!_isHost && State == LanRoomState.Joining)
+            HandleConnectionFailure(endpoint, connectionId, detail, true);
+        }
+
+        public void HandleTransportDisconnected(object endpoint, object connectionId, string reason = null)
+        {
+            string detail = string.IsNullOrWhiteSpace(reason) ? "connection disconnected" : reason;
+            RecordRoomEvent("TransportDisconnected", "error", detail);
+            HandleConnectionFailure(endpoint, connectionId, detail, false);
+        }
+
+        public void BindPendingHostConnection(object endpoint, object connectionId)
+        {
+            if (State == LanRoomState.Joining &&
+                HasUsableConnectionIdentity(connectionId) &&
+                (endpoint == null || Equals(_hostEndpoint, endpoint)))
             {
-                State = LanRoomState.Discovering;
-                SetError("Join failed: TCP connection to host was not established.");
+                _pendingHostConnectionId = connectionId;
             }
         }
 
@@ -324,13 +405,15 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             EnsureAiBackfillPlayers();
+            _roundId = NextRoundId(_roundId);
+            _lastInputSequenceBySlot.Clear();
             State = LanRoomState.Loading;
             RecordRoomEvent("StartLoading", "ok", string.Empty);
             foreach (RoomSlot slot in _slots)
             {
                 if (slot.IsActive)
                 {
-                    slot.IsLoadingAcked = slot.IsHost || slot.IsAi;
+                    slot.IsLoadingAcked = slot.IsAi || (slot.IsHost && !_explicitLoadingPreparationRequired);
                 }
             }
 
@@ -343,11 +426,16 @@ namespace App.HotUpdate.GatebreakerArena.Network
             return true;
         }
 
-        public bool AcknowledgeStart()
+        public bool AcknowledgeStart(bool preparationCompleted = false)
         {
             if (State != LanRoomState.Loading)
             {
                 RecordRoomEvent("StartAck", "ignored", "state=" + State);
+                return false;
+            }
+            if (_explicitLoadingPreparationRequired && !preparationCompleted)
+            {
+                RecordRoomEvent("StartAck", "rejected", "preparationNotCompleted");
                 return false;
             }
 
@@ -371,6 +459,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 {
                     ClientInstanceId = LocalClientInstanceId,
                     SlotIndex = LocalSlotIndex,
+                    RoundId = _roundId,
                 }));
             RoomSlot localSlot = FindLocalSlot();
             if (localSlot != null)
@@ -393,12 +482,19 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 RecordRoomEvent("ReturnToLobby", "ignored", "state=" + State + ";abort=" + _abortReason);
                 return false;
             }
+            if (State == LanRoomState.Loading ||
+                (State == LanRoomState.Playing && !_matchCompleted))
+            {
+                RecordRoomEvent("ReturnToLobby", "consensusPending", "state=" + State + ";round=" + _roundId);
+                return false;
+            }
 
             var command = new RoomReturnToLobbyCommand
             {
                 ClientInstanceId = LocalClientInstanceId,
                 SlotIndex = LocalSlotIndex,
                 IsReady = isReady,
+                RoundId = _roundId,
             };
 
             if (_isHost)
@@ -526,6 +622,18 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             RecordPacketEvent("PacketReceived", envelope.MessageType, envelope.Sequence, envelope.PayloadHash, envelope.PayloadBytes.Length, envelope.SessionId, EndpointToString(endpoint));
 
+            // Discovery advertisements are the only datagrams accepted by the room state machine.
+            // Every business message must arrive through a live reliable connection; an advertised
+            // endpoint is public routing information and is not an authentication credential.
+            if (envelope.MessageType != GatebreakerNetworkMessageType.RoomAdvertise &&
+                !HasUsableConnectionIdentity(connectionId))
+            {
+                RecordPacketEvent("PacketIgnored", envelope.MessageType, envelope.Sequence,
+                    envelope.PayloadHash, envelope.PayloadBytes.Length, envelope.SessionId,
+                    "reliableConnectionRequired");
+                return true;
+            }
+
             try
             {
                 switch (envelope.MessageType)
@@ -540,38 +648,60 @@ namespace App.HotUpdate.GatebreakerArena.Network
                         HandleJoinResponse(GatebreakerPayloadCodec.DecodeJoinResponse(envelope.PayloadBytes), endpoint, connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.RoomSnapshot:
-                        ApplyRemoteSnapshot(GatebreakerPayloadCodec.DecodeRoomSnapshot(envelope.PayloadBytes));
+                        if (!_isHost && IsBoundHostSender(endpoint, connectionId))
+                            ApplyRemoteSnapshot(GatebreakerPayloadCodec.DecodeRoomSnapshot(envelope.PayloadBytes));
                         return true;
                     case GatebreakerNetworkMessageType.RoomReady:
                         HandleReady(GatebreakerPayloadCodec.DecodeRoomReady(envelope.PayloadBytes), endpoint, connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.RoomStartLoading:
-                        HandleStartLoading(GatebreakerPayloadCodec.DecodeRoomSnapshot(envelope.PayloadBytes));
+                        HandleStartLoading(
+                            GatebreakerPayloadCodec.DecodeRoomSnapshot(envelope.PayloadBytes),
+                            endpoint,
+                            connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.RoomStartAck:
-                        HandleStartAck(GatebreakerPayloadCodec.DecodeStartAck(envelope.PayloadBytes));
+                        HandleStartAck(
+                            GatebreakerPayloadCodec.DecodeStartAck(envelope.PayloadBytes),
+                            endpoint,
+                            connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.RoomPlaying:
-                        ApplyRemoteSnapshot(GatebreakerPayloadCodec.DecodeRoomSnapshot(envelope.PayloadBytes));
-                        EnterClientPlaying();
+                        if (!_isHost && IsBoundHostSender(endpoint, connectionId))
+                        {
+                            RoomSnapshot playing = GatebreakerPayloadCodec.DecodeRoomSnapshot(envelope.PayloadBytes);
+                            if (playing.State == LanRoomState.Playing && ApplyRemoteSnapshot(playing))
+                                EnterClientPlaying();
+                        }
                         return true;
                     case GatebreakerNetworkMessageType.RoomLeave:
-                        HandleLeave(GatebreakerPayloadCodec.DecodeLeaveNotice(envelope.PayloadBytes));
+                        HandleLeave(GatebreakerPayloadCodec.DecodeLeaveNotice(envelope.PayloadBytes), endpoint, connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.RoomAbort:
-                        HandleAbort(GatebreakerPayloadCodec.DecodeAbortNotice(envelope.PayloadBytes));
+                        HandleAbort(GatebreakerPayloadCodec.DecodeAbortNotice(envelope.PayloadBytes), endpoint, connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.RoomReturnToLobby:
-                        HandleReturnToLobby(GatebreakerPayloadCodec.DecodeReturnToLobby(envelope.PayloadBytes));
+                        HandleReturnToLobby(
+                            GatebreakerPayloadCodec.DecodeReturnToLobby(envelope.PayloadBytes),
+                            endpoint,
+                            connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.LockstepInput:
-                        HandleLockstepInput(GatebreakerPayloadCodec.DecodeLockstepInput(envelope.PayloadBytes));
+                        HandleLockstepInput(
+                            GatebreakerPayloadCodec.DecodeLockstepInput(envelope.PayloadBytes),
+                            endpoint,
+                            connectionId);
                         return true;
                     case GatebreakerNetworkMessageType.LockstepFrameBundle:
                         LockstepFrameBundle receivedBundle = GatebreakerPayloadCodec.DecodeFrameBundle(envelope.PayloadBytes);
-                        _lockstepSession.ReceiveFrameBundle(receivedBundle);
-                        RecordFrameBundle("BundleReceived", receivedBundle);
-                        PublishSnapshot();
+                        if (!_isHost && State == LanRoomState.Playing && !_matchCompleted &&
+                            IsBoundHostSender(endpoint, connectionId) &&
+                            receivedBundle.RoundId == _roundId)
+                        {
+                            _lockstepSession.ReceiveFrameBundle(receivedBundle);
+                            RecordFrameBundle("BundleReceived", receivedBundle);
+                            PublishSnapshot();
+                        }
                         return true;
                     case GatebreakerNetworkMessageType.ChecksumReport:
                         HandleChecksumReport(GatebreakerPayloadCodec.DecodeChecksumReport(envelope.PayloadBytes), endpoint, connectionId);
@@ -690,6 +820,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             freeSlot.IsLoadingAcked = false;
             freeSlot.IsActive = true;
             freeSlot.IsAi = false;
+            freeSlot.HasConfirmedPhaseLoadoutThisLobby = false;
             freeSlot.Endpoint = endpoint;
             freeSlot.ConnectionId = connectionId;
             LogRoomMemberEntered(freeSlot, endpoint);
@@ -725,6 +856,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 return;
             }
+            if (!IsExpectedHostJoinSender(endpoint, connectionId))
+            {
+                RecordRoomEvent("JoinResponseReceive", "rejected", "unexpectedHostSender");
+                return;
+            }
 
             if (!response.Accepted)
             {
@@ -734,14 +870,23 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 return;
             }
 
+            object acceptedConnectionId = _pendingHostConnectionId;
             _hostEndpoint = endpoint ?? _hostEndpoint;
-            _hostConnectionId = connectionId ?? _hostConnectionId;
-            SessionId = response.SessionId;
-            ChannelId = response.ChannelId;
+            _hostConnectionId = acceptedConnectionId;
+            _pendingHostConnectionId = null;
+            if (response.Snapshot == null ||
+                response.Snapshot.State != LanRoomState.Lobby ||
+                response.SessionId != SessionId ||
+                response.ChannelId != ChannelId ||
+                response.Snapshot.SessionId != response.SessionId ||
+                response.Snapshot.ChannelId != response.ChannelId ||
+                !ApplyRemoteSnapshot(response.Snapshot))
+            {
+                ApplyAbort(MatchAbortReason.ProtocolMismatch, "Join response room identity or snapshot is invalid.");
+                return;
+            }
             LocalSlotIndex = response.SlotIndex;
-            State = LanRoomState.Lobby;
             RecordRoomEvent("JoinResponseReceive", "accepted", "slot=" + response.SlotIndex);
-            ApplyRemoteSnapshot(response.Snapshot);
             LogLocalRoomJoined(_hostEndpoint);
             PublishSnapshot();
         }
@@ -763,33 +908,54 @@ namespace App.HotUpdate.GatebreakerArena.Network
             var loadout = new V1MatchLoadout(ready.HeroId, ready.PathId, ready.SignatureChipId,
                 ready.OpeningUniversalChipIds, ready.ScheduledUniversalChipIds);
             LoadoutValidationResult validation = V1MatchLoadoutValidator.Validate(_modeCatalog, loadout);
-            if (ready.IsReady && !validation.IsValid)
+            var phaseLoadout = new PhaseMatchLoadout(ready.PhaseHeroId, ready.PhaseTechIds);
+            PhaseLoadoutValidation phaseValidation = _modeCatalog.AllPhaseHeroes.Count > 0
+                ? ValidatePhaseLoadout(phaseLoadout)
+                : PhaseLoadoutValidation.Success();
+            if (ready.IsReady && (!validation.IsValid || !phaseValidation.IsValid))
             {
-                RecordRoomEvent("ReadyChanged", "rejected", validation.Error);
+                RecordRoomEvent("ReadyChanged", "rejected", !validation.IsValid ? validation.Error : phaseValidation.Error);
                 return;
             }
-            if (ready.IsReady) ApplyLoadout(slot, loadout);
+            if (ready.IsReady && RequiresConfirmedPhaseLoadout &&
+                !ready.HasConfirmedPhaseLoadoutThisLobby)
+            {
+                RecordRoomEvent("ReadyChanged", "rejected", "phaseLoadoutNotConfirmed");
+                return;
+            }
+            if (ready.IsReady)
+            {
+                ApplyLoadout(slot, loadout);
+                ApplyPhaseLoadout(slot, phaseLoadout);
+                slot.HasConfirmedPhaseLoadoutThisLobby = ready.HasConfirmedPhaseLoadoutThisLobby ||
+                                                        !RequiresConfirmedPhaseLoadout;
+            }
             slot.IsReady = ready.IsReady;
             RecordRoomEvent("ReadyChanged", "remote", "slot=" + slot.SlotIndex + ";ready=" + ready.IsReady);
             BroadcastRoomSnapshot();
             PublishSnapshot();
         }
 
-        private void HandleStartLoading(RoomSnapshot snapshot)
+        private void HandleStartLoading(RoomSnapshot snapshot, object endpoint, object connectionId)
         {
-            if (_isHost || snapshot == null)
+            if (_isHost || snapshot == null || !IsBoundHostSender(endpoint, connectionId))
             {
                 return;
             }
 
-            ApplyRemoteSnapshot(snapshot);
-            State = LanRoomState.Loading;
+            if (snapshot.State != LanRoomState.Loading || !ApplyRemoteSnapshot(snapshot))
+            {
+                return;
+            }
             RecordRoomEvent("StartLoadingReceive", "ok", string.Empty);
             PublishSnapshot();
-            AcknowledgeStart();
+            if (!_explicitLoadingPreparationRequired)
+            {
+                AcknowledgeStart();
+            }
         }
 
-        private void HandleStartAck(RoomStartAck ack)
+        private void HandleStartAck(RoomStartAck ack, object endpoint, object connectionId)
         {
             if (!_isHost || ack == null || State != LanRoomState.Loading)
             {
@@ -800,8 +966,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 item.IsActive &&
                 item.ClientInstanceId == ack.ClientInstanceId &&
                 item.SlotIndex == ack.SlotIndex);
-            if (slot == null)
+            if (slot == null || slot.IsHost || ack.RoundId != _roundId ||
+                !IsBoundSender(slot, endpoint, connectionId))
             {
+                RecordRoomEvent("StartAckReceive", "rejected", "unboundOrStaleRound");
                 return;
             }
 
@@ -812,7 +980,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             PublishSnapshot();
         }
 
-        private void HandleLeave(RoomLeaveNotice leave)
+        private void HandleLeave(RoomLeaveNotice leave, object endpoint, object connectionId)
         {
             if (leave == null)
             {
@@ -825,7 +993,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     item.IsActive &&
                     item.ClientInstanceId == leave.ClientInstanceId &&
                     (leave.SlotIndex < 0 || item.SlotIndex == leave.SlotIndex));
-                if (slot == null)
+                if (slot == null || slot.IsHost || slot.IsAi || !IsBoundSender(slot, endpoint, connectionId))
                 {
                     return;
                 }
@@ -860,14 +1028,26 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 return;
             }
 
+            if (!IsBoundHostSender(endpoint, connectionId)) return;
             ApplyAbort(MatchAbortReason.HostLeft, "Host left the room.");
             LogHostLeftRoom(leave.Reason);
             RecordRoomEvent("LeaveReceive", "hostLeft", leave.Reason);
         }
 
-        private void HandleAbort(RoomAbortNotice notice)
+        private void HandleAbort(RoomAbortNotice notice, object endpoint, object connectionId)
         {
             if (notice == null)
+            {
+                return;
+            }
+
+            if (_isHost)
+            {
+                RoomSlot sender = _slots.FirstOrDefault(slot => slot.IsActive && !slot.IsHost && !slot.IsAi &&
+                    IsBoundSender(slot, endpoint, connectionId));
+                if (sender == null) return;
+            }
+            else if (!IsBoundHostSender(endpoint, connectionId))
             {
                 return;
             }
@@ -876,10 +1056,18 @@ namespace App.HotUpdate.GatebreakerArena.Network
             RecordRoomEvent("AbortReceive", notice.Reason.ToString(), notice.Message);
         }
 
-        private void HandleReturnToLobby(RoomReturnToLobbyCommand command)
+        private void HandleReturnToLobby(RoomReturnToLobbyCommand command, object endpoint, object connectionId)
         {
             if (!_isHost || command == null)
             {
+                return;
+            }
+
+            RoomSlot sender = FindSlot(command.ClientInstanceId, command.SlotIndex);
+            if (sender == null || sender.IsHost || sender.IsAi || command.RoundId != _roundId ||
+                !IsBoundSender(sender, endpoint, connectionId))
+            {
+                RecordRoomEvent("ReturnToLobby", "rejected", "unboundOrStaleRound");
                 return;
             }
 
@@ -903,6 +1091,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
             if (requester == null || requester.IsAi)
             {
                 RecordRoomEvent("ReturnToLobby", "requesterMissing", source ?? string.Empty);
+                return false;
+            }
+            if (command.RoundId != _roundId || State == LanRoomState.Loading ||
+                (State == LanRoomState.Playing && !_matchCompleted))
+            {
+                RecordRoomEvent("ReturnToLobby", "consensusPendingOrStaleRound", source ?? string.Empty);
                 return false;
             }
 
@@ -942,13 +1136,39 @@ namespace App.HotUpdate.GatebreakerArena.Network
             return true;
         }
 
-        private void HandleLockstepInput(LockstepInputFrame input)
+        private void HandleLockstepInput(LockstepInputFrame input, object endpoint, object connectionId)
         {
-            if (!_isHost || State != LanRoomState.Playing)
+            if (!_isHost || State != LanRoomState.Playing || _matchCompleted)
             {
                 return;
             }
 
+            RoomSlot sender = _slots.FirstOrDefault(slot =>
+                slot.IsActive &&
+                !slot.IsHost &&
+                !slot.IsAi &&
+                slot.SlotIndex == input.SlotIndex);
+            int minFrame = _lockstepSession.HostNextBundleFrame;
+            int maxFrame = minFrame + MaxAcceptedInputLeadFrames;
+            if (sender == null ||
+                !IsBoundSender(sender, endpoint, connectionId) ||
+                input.PlayerId != sender.PlayerId ||
+                input.RoundId != _roundId ||
+                input.FrameIndex < minFrame ||
+                input.FrameIndex > maxFrame ||
+                input.InputSeq == 0U ||
+                (_lastInputSequenceBySlot.TryGetValue(input.SlotIndex, out uint lastSequence) &&
+                 input.InputSeq <= lastSequence))
+            {
+                RecordRoomEvent(
+                    "RemoteInputRejected",
+                    "invalidSenderSequenceOrFrame",
+                    "slot=" + input.SlotIndex + ";frame=" + input.FrameIndex +
+                    ";seq=" + input.InputSeq + ";round=" + input.RoundId);
+                return;
+            }
+
+            _lastInputSequenceBySlot[input.SlotIndex] = input.InputSeq;
             _lockstepSession.SubmitInput(input);
             Record(new LanDiagnosticEvent
             {
@@ -962,41 +1182,142 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private void HandleChecksumReport(ChecksumReport report, object endpoint, object connectionId)
         {
-            if (report == null)
+            if (!_isHost || State != LanRoomState.Playing || report == null ||
+                report.RoundId != _roundId || _matchCompleted)
             {
                 return;
             }
 
-            if (_isHost)
+            RoomSlot sender = _slots.FirstOrDefault(slot => slot.IsActive && !slot.IsHost && !slot.IsAi &&
+                IsBoundSender(slot, endpoint, connectionId));
+            if (sender == null || sender.SlotIndex != report.SlotIndex)
             {
-                RoomSlot sender = _slots.FirstOrDefault(slot => slot.IsActive && !slot.IsHost &&
-                    ((connectionId != null && Equals(slot.ConnectionId, connectionId)) ||
-                     (endpoint != null && Equals(slot.Endpoint, endpoint))));
-                if (sender == null || sender.SlotIndex != report.SlotIndex)
-                {
-                    RecordRoomEvent("ChecksumReport", "rejected", "unboundOrSpoofedSlot");
-                    return;
-                }
-                Record(new LanDiagnosticEvent
-                {
-                    EventName = "ChecksumReportReceived",
-                    SlotIndex = report.SlotIndex,
-                    FrameIndex = report.FrameIndex,
-                    Checksum = report.Checksum,
-                    Result = report.DesyncDetected ? "desyncFlag" : "ok",
-                });
-                RecordChecksumReport(report);
+                RecordRoomEvent("ChecksumReport", "rejected", "unboundOrSpoofedSlot");
                 return;
             }
-
-            _lockstepSession.SubmitChecksumReport(report);
+            Record(new LanDiagnosticEvent
+            {
+                EventName = "ChecksumReportReceived",
+                SlotIndex = report.SlotIndex,
+                FrameIndex = report.FrameIndex,
+                Checksum = report.Checksum,
+                Result = report.DesyncDetected ? "desyncFlag" : "ok",
+            });
+            RecordChecksumReport(report);
         }
 
         private static bool IsBoundSender(RoomSlot slot, object endpoint, object connectionId)
         {
             return slot != null &&
-                   ((connectionId != null && Equals(slot.ConnectionId, connectionId)) ||
-                    (endpoint != null && Equals(slot.Endpoint, endpoint)));
+                   HasUsableConnectionIdentity(connectionId) &&
+                   HasUsableConnectionIdentity(slot.ConnectionId) &&
+                   Equals(slot.ConnectionId, connectionId);
+        }
+
+        private bool IsBoundHostSender(object endpoint, object connectionId)
+        {
+            return HasUsableConnectionIdentity(connectionId) &&
+                   HasUsableConnectionIdentity(_hostConnectionId) &&
+                   Equals(_hostConnectionId, connectionId);
+        }
+
+        private bool IsExpectedHostJoinSender(object endpoint, object connectionId)
+        {
+            return HasUsableConnectionIdentity(connectionId) &&
+                   HasUsableConnectionIdentity(_pendingHostConnectionId) &&
+                   Equals(_pendingHostConnectionId, connectionId);
+        }
+
+        private static bool HasUsableConnectionIdentity(object connectionId)
+        {
+            if (connectionId == null)
+            {
+                return false;
+            }
+
+            return !(connectionId is LanConnectionId lanConnectionId) || lanConnectionId.IsValid;
+        }
+
+        private bool RequiresConfirmedPhaseLoadout => _modeCatalog.AllPhaseHeroes.Count > 0;
+
+        private void HandleConnectionFailure(
+            object endpoint,
+            object connectionId,
+            string detail,
+            bool isSendFailure)
+        {
+            if (_handlingConnectionFailure || State == LanRoomState.Idle || State == LanRoomState.Left)
+            {
+                return;
+            }
+
+            _handlingConnectionFailure = true;
+            try
+            {
+                if (_isHost)
+                {
+                    RoomSlot remote = _slots.FirstOrDefault(slot =>
+                        slot.IsActive && !slot.IsHost && !slot.IsAi &&
+                        IsBoundSender(slot, endpoint, connectionId));
+                    if (remote == null)
+                    {
+                        return;
+                    }
+
+                    if (State == LanRoomState.Lobby)
+                    {
+                        LogRoomMemberLeft(remote, detail);
+                        ReplaceSlotWithAi(remote);
+                        RecordRoomEvent("ConnectionLost", "aiBackfill", "slot=" + remote.SlotIndex);
+                        BroadcastRoomSnapshot();
+                        PublishSnapshot();
+                        return;
+                    }
+
+                    if (State == LanRoomState.Loading || State == LanRoomState.Playing)
+                    {
+                        Abort(
+                            isSendFailure ? MatchAbortReason.TransportError : MatchAbortReason.ClientLeft,
+                            isSendFailure
+                                ? "Reliable send to a player failed: " + detail
+                                : "A player connection was lost: " + detail);
+                    }
+                    return;
+                }
+
+                bool expectedHost = State == LanRoomState.Joining
+                    ? (IsExpectedHostJoinSender(endpoint, connectionId) ||
+                       (!HasUsableConnectionIdentity(_pendingHostConnectionId) &&
+                        endpoint != null && Equals(_hostEndpoint, endpoint)))
+                    : IsBoundHostSender(endpoint, connectionId);
+                if (!expectedHost)
+                {
+                    return;
+                }
+
+                if (State == LanRoomState.Joining)
+                {
+                    _pendingHostConnectionId = null;
+                    State = LanRoomState.Discovering;
+                    SetError("Join failed: TCP connection to host was not established.");
+                    return;
+                }
+
+                if (State == LanRoomState.Lobby ||
+                    State == LanRoomState.Loading ||
+                    State == LanRoomState.Playing)
+                {
+                    ApplyAbort(
+                        isSendFailure ? MatchAbortReason.TransportError : MatchAbortReason.HostLeft,
+                        isSendFailure
+                            ? "Reliable send to host failed: " + detail
+                            : "Host connection was lost: " + detail);
+                }
+            }
+            finally
+            {
+                _handlingConnectionFailure = false;
+            }
         }
 
         private void TryEnterPlaying()
@@ -1010,7 +1331,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             State = LanRoomState.Playing;
             _playersFrozen = true;
-            _lockstepSession.StartHost(CreateSnapshot().Players, LocalSlotIndex);
+            _lockstepSession.StartHost(CreateSnapshot().Players, LocalSlotIndex, _roundId);
             RecordRoomEvent("PlayingEntered", "host", string.Empty);
             RoomSnapshot snapshot = CreateSnapshot();
             Broadcast(
@@ -1036,34 +1357,24 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             State = LanRoomState.Playing;
             _playersFrozen = true;
-            _lockstepSession.StartClient(CreateSnapshot().Players, LocalSlotIndex);
+            _lockstepSession.StartClient(CreateSnapshot().Players, LocalSlotIndex, _roundId);
             RecordRoomEvent("PlayingEntered", "client", string.Empty);
             PublishSnapshot();
         }
 
-        private void ApplyRemoteSnapshot(RoomSnapshot snapshot)
+        private bool ApplyRemoteSnapshot(RoomSnapshot snapshot)
         {
             if (snapshot == null)
             {
-                return;
+                return false;
             }
             if (snapshot.RulesSchemaVersion != V1ContractHash.RulesSchemaVersion ||
                 !string.Equals(snapshot.RulesHash, _rulesHash, StringComparison.Ordinal))
             {
                 ApplyAbort(MatchAbortReason.ProtocolMismatch, "V1 rules hash/schema mismatch.");
-                return;
+                return false;
             }
-
-            SessionId = snapshot.SessionId;
-            ChannelId = snapshot.ChannelId;
-            _roomCode = snapshot.RoomCode ?? string.Empty;
-            State = snapshot.State;
-            _playersFrozen = snapshot.PlayersFrozen;
-            _maxPlayers = snapshot.MaxPlayers;
-            _lastError = snapshot.Error ?? string.Empty;
-            _abortReason = snapshot.AbortReason;
-            _abortMessage = snapshot.AbortMessage ?? string.Empty;
-            _slots.Clear();
+            var validatedSlots = new List<RoomSlot>();
             foreach (RoomPlayerSnapshot player in snapshot.Players ?? Array.Empty<RoomPlayerSnapshot>())
             {
                 var remoteLoadout = new V1MatchLoadout(player.HeroId, player.PathId, player.SignatureChipId,
@@ -1071,15 +1382,33 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 if (!string.Equals(player.LoadoutHash, V1ContractHash.ComputeLoadout(remoteLoadout), StringComparison.Ordinal))
                 {
                     ApplyAbort(MatchAbortReason.PayloadHashMismatch, "Room loadout hash mismatch.");
-                    return;
+                    return false;
                 }
                 if ((snapshot.PlayersFrozen || player.IsReady || player.IsAi) &&
                     !V1MatchLoadoutValidator.Validate(_modeCatalog, remoteLoadout).IsValid)
                 {
                     ApplyAbort(MatchAbortReason.ProtocolMismatch, "Room contains an invalid frozen V1 loadout.");
-                    return;
+                    return false;
                 }
-                _slots.Add(new RoomSlot
+                var remotePhaseLoadout = new PhaseMatchLoadout(player.PhaseHeroId, player.PhaseTechIds);
+                if (_modeCatalog.AllPhaseHeroes.Count > 0)
+                {
+                    if (!string.Equals(
+                            player.PhaseLoadoutHash,
+                            remotePhaseLoadout.LoadoutHash,
+                            StringComparison.Ordinal))
+                    {
+                        ApplyAbort(MatchAbortReason.PayloadHashMismatch, "Room phase loadout hash mismatch.");
+                        return false;
+                    }
+                    if ((snapshot.PlayersFrozen || player.IsReady || player.IsAi) &&
+                        !ValidatePhaseLoadout(remotePhaseLoadout).IsValid)
+                    {
+                        ApplyAbort(MatchAbortReason.ProtocolMismatch, "Room contains an invalid frozen phase loadout.");
+                        return false;
+                    }
+                }
+                validatedSlots.Add(new RoomSlot
                 {
                     SlotIndex = player.SlotIndex,
                     SideOrder = player.SideOrder,
@@ -1098,13 +1427,38 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     OpeningUniversalChipIds = CloneIds(player.OpeningUniversalChipIds),
                     ScheduledUniversalChipIds = CloneIds(player.ScheduledUniversalChipIds),
                     DeckChipIds = player.DeckChipIds ?? Array.Empty<string>(),
+                    PhaseHeroId = player.PhaseHeroId,
+                    PhaseTechIds = CloneIds(player.PhaseTechIds),
+                    HasConfirmedPhaseLoadoutThisLobby = player.HasConfirmedPhaseLoadoutThisLobby,
                 });
             }
+
+            SessionId = snapshot.SessionId;
+            ChannelId = snapshot.ChannelId;
+            _roundId = snapshot.RoundId;
+            _roomCode = snapshot.RoomCode ?? string.Empty;
+            State = snapshot.State;
+            _playersFrozen = snapshot.PlayersFrozen;
+            _maxPlayers = snapshot.MaxPlayers;
+            _lastError = snapshot.Error ?? string.Empty;
+            _abortReason = snapshot.AbortReason;
+            _abortMessage = snapshot.AbortMessage ?? string.Empty;
+            _matchCompleted = snapshot.MatchCompleted;
+            _completedFrameIndex = snapshot.CompletedFrameIndex;
+            _completedChecksum = snapshot.CompletedChecksum;
+            _completedResult = snapshot.CompletedResult;
+            if (_matchCompleted)
+            {
+                _lockstepSession.Complete();
+            }
+            _slots.Clear();
+            _slots.AddRange(validatedSlots);
 
             RoomSlot local = FindLocalSlot();
             LocalSlotIndex = local?.SlotIndex ?? LocalSlotIndex;
             RecordRoomEvent("SnapshotReceive", "ok", "state=" + State);
             PublishSnapshot();
+            return true;
         }
 
         private void AdvertiseRoom()
@@ -1119,6 +1473,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 ProtocolVersion = GatebreakerEnvelopeCodec.ProtocolVersion,
                 SessionId = SessionId,
                 ChannelId = ChannelId,
+                RoundId = _roundId,
                 RoomCode = _roomCode,
                 RulesSchemaVersion = V1ContractHash.RulesSchemaVersion,
                 RulesHash = _rulesHash,
@@ -1192,6 +1547,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 SessionId = SessionId,
                 ChannelId = ChannelId,
+                RoundId = _roundId,
                 RoomCode = _roomCode,
                 RulesSchemaVersion = V1ContractHash.RulesSchemaVersion,
                 RulesHash = _rulesHash,
@@ -1206,6 +1562,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 AbortMessage = _abortMessage,
                 Players = _slots.Where(slot => slot.IsActive).Select(slot => slot.ToSnapshot()).ToArray(),
                 Lockstep = _lockstepSession.CreateSnapshot(),
+                MatchCompleted = _matchCompleted,
+                CompletedFrameIndex = _completedFrameIndex,
+                CompletedChecksum = _completedChecksum,
+                CompletedResult = _completedResult,
             };
         }
 
@@ -1218,7 +1578,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
             RoomSlot[] active = _slots.Where(slot => slot.IsActive).ToArray();
             return active.Any(slot => !slot.IsAi) &&
-                   active.All(slot => TryValidateSlotLoadout(slot, out _) && (slot.IsAi || slot.IsReady));
+                   active.All(slot => TryValidateSlotLoadout(slot, out _) &&
+                                      (slot.IsAi ||
+                                       (slot.IsReady && (!RequiresConfirmedPhaseLoadout ||
+                                                         slot.HasConfirmedPhaseLoadoutThisLobby))));
         }
 
         private void EnsureAiBackfillPlayers()
@@ -1300,6 +1663,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             slot.Endpoint = null;
             slot.ConnectionId = null;
             ApplyLoadout(slot, CreateDefaultLoadout());
+            RoomSlot host = _slots.FirstOrDefault(item => item.IsHost && item.IsActive);
+            PhaseMatchLoadout mirrored = host != null && host.HasConfirmedPhaseLoadoutThisLobby &&
+                                         host.PhaseTechIds?.Length == 5
+                ? new PhaseMatchLoadout(host.PhaseHeroId, host.PhaseTechIds)
+                : CreateDefaultPhaseLoadout();
+            if (mirrored != null) ApplyPhaseLoadout(slot, mirrored);
+            slot.HasConfirmedPhaseLoadoutThisLobby = host?.HasConfirmedPhaseLoadoutThisLobby ?? false;
         }
 
         private void EnsureSlotCapacity(int targetPlayerCount)
@@ -1328,7 +1698,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private void OnLocalInputReady(LockstepInputFrame input)
         {
-            if (_isHost || State != LanRoomState.Playing)
+            if (_isHost || State != LanRoomState.Playing || _matchCompleted || input.RoundId != _roundId)
             {
                 return;
             }
@@ -1348,7 +1718,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private void OnFrameBundleReady(LockstepFrameBundle bundle)
         {
-            if (!_isHost || State != LanRoomState.Playing)
+            if (!_isHost || State != LanRoomState.Playing || _matchCompleted || bundle.RoundId != _roundId)
             {
                 return;
             }
@@ -1361,7 +1731,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private void OnChecksumReportReady(ChecksumReport report)
         {
-            if (State != LanRoomState.Playing)
+            if (State != LanRoomState.Playing || _matchCompleted || report == null || report.RoundId != _roundId)
             {
                 return;
             }
@@ -1421,6 +1791,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _abortReason = MatchAbortReason.None;
             _abortMessage = string.Empty;
             _checksumReportsByFrame.Clear();
+            _terminalReportsBySlot.Clear();
+            _lastInputSequenceBySlot.Clear();
+            _matchCompleted = false;
+            _completedFrameIndex = -1;
+            _completedChecksum = 0U;
+            _completedResult = 0;
             _lockstepSession.Reset();
             _lastDiagnosticSyncState = LockstepSyncState.Idle;
             _lastDiagnosticWaitingSlots = string.Empty;
@@ -1436,22 +1812,26 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 {
                     slot.IsReady = true;
                     slot.IsLoadingAcked = true;
+                    slot.HasConfirmedPhaseLoadoutThisLobby = false;
                     continue;
                 }
 
                 slot.IsLoadingAcked = false;
-                slot.IsReady = slot.ClientInstanceId == readyClientInstanceId && requesterReady;
+                slot.IsReady = false;
+                slot.HasConfirmedPhaseLoadoutThisLobby = false;
             }
         }
 
-        private static void ApplyRequesterReady(RoomSlot requester, bool isReady)
+        private void ApplyRequesterReady(RoomSlot requester, bool isReady)
         {
             if (requester == null || requester.IsAi)
             {
                 return;
             }
 
-            requester.IsReady = isReady;
+            requester.IsReady = isReady &&
+                                (!RequiresConfirmedPhaseLoadout ||
+                                 requester.HasConfirmedPhaseLoadoutThisLobby);
             requester.IsLoadingAcked = false;
         }
 
@@ -1470,6 +1850,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             slot.IsLoadingAcked = false;
             slot.IsActive = false;
             slot.IsAi = false;
+            slot.HasConfirmedPhaseLoadoutThisLobby = false;
             slot.Endpoint = null;
             slot.ConnectionId = null;
         }
@@ -1492,6 +1873,13 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _slots.Clear();
             _discoveredRooms.Clear();
             _checksumReportsByFrame.Clear();
+            _terminalReportsBySlot.Clear();
+            _lastInputSequenceBySlot.Clear();
+            _matchCompleted = false;
+            _completedFrameIndex = -1;
+            _completedChecksum = 0U;
+            _completedResult = 0;
+            _roundId = 0U;
             _lockstepSession.Reset();
             _nextSequence = 1;
             _advertiseTimer = 0f;
@@ -1505,7 +1893,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _pendingJoinRoomCode = string.Empty;
             _hostEndpoint = null;
             _hostConnectionId = null;
+            _pendingHostConnectionId = null;
             _hostTcpPort = 0;
+            _handlingConnectionFailure = false;
             SessionId = 0;
             ChannelId = 0;
             LocalSlotIndex = -1;
@@ -1530,6 +1920,15 @@ namespace App.HotUpdate.GatebreakerArena.Network
             {
                 ulong ticks = (ulong)DateTime.UtcNow.Ticks;
                 return ticks ^ (clientInstanceId * 1099511628211UL);
+            }
+        }
+
+        private static uint NextRoundId(uint roundId)
+        {
+            unchecked
+            {
+                roundId++;
+                return roundId == 0U ? 1U : roundId;
             }
         }
 
@@ -1565,7 +1964,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         private void RecordChecksumReport(ChecksumReport report)
         {
-            if (report == null || State != LanRoomState.Playing)
+            if (report == null || State != LanRoomState.Playing || _matchCompleted ||
+                report.RoundId != _roundId)
             {
                 return;
             }
@@ -1630,6 +2030,40 @@ namespace App.HotUpdate.GatebreakerArena.Network
             }
 
             frameReports[report.SlotIndex] = report.Checksum;
+            if (report.IsTerminal)
+            {
+                RecordTerminalReport(report);
+            }
+        }
+
+        private void RecordTerminalReport(ChecksumReport report)
+        {
+            foreach (ChecksumReport existing in _terminalReportsBySlot.Values)
+            {
+                if (existing.FrameIndex != report.FrameIndex ||
+                    existing.Checksum != report.Checksum ||
+                    existing.TerminalResult != report.TerminalResult)
+                {
+                    Abort(MatchAbortReason.Desync, "Terminal result consensus mismatch.");
+                    return;
+                }
+            }
+
+            _terminalReportsBySlot[report.SlotIndex] = report;
+            int expectedReports = _slots.Count(slot => slot.IsActive && !slot.IsAi);
+            if (_matchCompleted || expectedReports <= 0 || _terminalReportsBySlot.Count < expectedReports)
+            {
+                return;
+            }
+
+            _matchCompleted = true;
+            _completedFrameIndex = report.FrameIndex;
+            _completedChecksum = report.Checksum;
+            _completedResult = report.TerminalResult;
+            _lockstepSession.Complete();
+            RecordRoomEvent("MatchCompleted", "consensus", "frame=" + report.FrameIndex);
+            BroadcastRoomSnapshot();
+            PublishSnapshot();
         }
 
         private void RecordLockstepStateChanges()
@@ -1866,6 +2300,21 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 new[] { "STRIKE_POWER", "GUARD_GOAL", "STRIKE_OVERCHARGE" });
         }
 
+        private PhaseMatchLoadout CreateDefaultPhaseLoadout()
+        {
+            if (_modeCatalog.AllPhaseHeroes.Count == 0) return null;
+            string heroId = _modeCatalog.AllPhaseHeroes.ContainsKey("HERO_MIRAGE")
+                ? "HERO_MIRAGE"
+                : _modeCatalog.AllPhaseHeroes.Keys.OrderBy(id => id, StringComparer.Ordinal).First();
+            return PhaseMatchLoadout.CreateDefault(_modeCatalog, heroId);
+        }
+
+        private PhaseLoadoutValidation ValidatePhaseLoadout(PhaseMatchLoadout loadout) =>
+            PhaseLoadoutValidator.Validate(
+                _modeCatalog,
+                loadout,
+                new HashSet<string>(loadout?.TechIds ?? Array.Empty<string>(), StringComparer.Ordinal));
+
         private bool TryValidateSlotLoadout(RoomSlot slot, out string error)
         {
             if (slot == null)
@@ -1876,8 +2325,20 @@ namespace App.HotUpdate.GatebreakerArena.Network
             LoadoutValidationResult result = V1MatchLoadoutValidator.Validate(_modeCatalog,
                 new V1MatchLoadout(slot.HeroId, slot.PathId, slot.SignatureChipId,
                     slot.OpeningUniversalChipIds, slot.ScheduledUniversalChipIds));
-            error = result.Error;
-            return result.IsValid;
+            if (!result.IsValid)
+            {
+                error = result.Error;
+                return false;
+            }
+            if (_modeCatalog.AllPhaseHeroes.Count == 0)
+            {
+                error = string.Empty;
+                return true;
+            }
+            PhaseLoadoutValidation phase = ValidatePhaseLoadout(
+                new PhaseMatchLoadout(slot.PhaseHeroId, slot.PhaseTechIds));
+            error = phase.Error;
+            return phase.IsValid;
         }
 
         private static void ApplyLoadout(RoomSlot slot, V1MatchLoadout loadout)
@@ -1888,6 +2349,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
             slot.OpeningUniversalChipIds = CloneIds(loadout.OpeningUniversalChipIds);
             slot.ScheduledUniversalChipIds = CloneIds(loadout.ScheduledUniversalChipIds);
             slot.DeckChipIds = CloneIds(loadout.OrderedUniversalChipIds);
+        }
+
+        private static void ApplyPhaseLoadout(RoomSlot slot, PhaseMatchLoadout loadout)
+        {
+            slot.PhaseHeroId = loadout.HeroId;
+            slot.PhaseTechIds = CloneIds(loadout.TechIds);
         }
 
         private static string[] CloneIds(IReadOnlyList<string> values)
@@ -1975,6 +2442,9 @@ namespace App.HotUpdate.GatebreakerArena.Network
             public string[] OpeningUniversalChipIds { get; set; } = Array.Empty<string>();
             public string[] ScheduledUniversalChipIds { get; set; } = Array.Empty<string>();
             public string[] DeckChipIds { get; set; } = Array.Empty<string>();
+            public string PhaseHeroId { get; set; } = string.Empty;
+            public string[] PhaseTechIds { get; set; } = Array.Empty<string>();
+            public bool HasConfirmedPhaseLoadoutThisLobby { get; set; }
             public object Endpoint { get; set; }
             public object ConnectionId { get; set; }
 
@@ -2001,6 +2471,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
                     LoadoutHash = V1ContractHash.ComputeLoadout(new V1MatchLoadout(HeroId, PathId,
                         SignatureChipId, OpeningUniversalChipIds, ScheduledUniversalChipIds)),
                     DeckChipIds = DeckChipIds ?? Array.Empty<string>(),
+                    PhaseHeroId = PhaseHeroId,
+                    PhaseTechIds = CloneIds(PhaseTechIds),
+                    PhaseLoadoutHash = string.IsNullOrEmpty(PhaseHeroId)
+                        ? string.Empty
+                        : PhaseMatchLoadout.ComputeHash(PhaseHeroId, PhaseTechIds),
+                    HasConfirmedPhaseLoadoutThisLobby = HasConfirmedPhaseLoadoutThisLobby,
                 };
             }
         }
@@ -2091,6 +2567,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
             byte[] safePayload = payload ?? Array.Empty<byte>();
             if (connectionOrEndpoint is LanConnectionId connectionId)
             {
+                LanEndpoint knownEndpoint = ResolveEndpoint(connectionId);
+                _roomService.BindPendingHostConnection(
+                    knownEndpoint.IsValid ? (object)knownEndpoint : null,
+                    connectionId);
                 bool sent = _transport.Send(connectionId, safePayload);
                 if (!sent)
                 {
@@ -2100,7 +2580,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
                         ConnectionId = connectionId.Value,
                         PayloadBytes = safePayload.Length,
                     });
-                    _roomService.HandleReliableSendFailed(connectionId, "send failed");
+                    _roomService.HandleReliableSendFailed(
+                        knownEndpoint.IsValid ? (object)knownEndpoint : null,
+                        connectionId,
+                        "send failed");
                 }
 
                 return;
@@ -2111,6 +2594,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 LanConnectionId resolved = ResolveConnection(endpoint);
                 if (resolved.IsValid)
                 {
+                    _roomService.BindPendingHostConnection(endpoint, resolved);
                     bool sent = _transport.Send(resolved, safePayload);
                     if (!sent)
                     {
@@ -2121,12 +2605,12 @@ namespace App.HotUpdate.GatebreakerArena.Network
                             ConnectionId = resolved.Value,
                             PayloadBytes = safePayload.Length,
                         });
-                        _roomService.HandleReliableSendFailed(endpoint, "send failed");
+                        _roomService.HandleReliableSendFailed(endpoint, resolved, "send failed");
                     }
                 }
                 else
                 {
-                    _roomService.HandleReliableSendFailed(endpoint, "connect failed");
+                    _roomService.HandleReliableSendFailed(endpoint, LanConnectionId.Invalid, "connect failed");
                 }
             }
         }
@@ -2161,9 +2645,24 @@ namespace App.HotUpdate.GatebreakerArena.Network
                         transportEvent.ConnectionId);
                     break;
                 case LanTransportEventType.Disconnected:
+                    _roomService.HandleTransportDisconnected(
+                        transportEvent.RemoteEndpoint.IsValid ? (object)transportEvent.RemoteEndpoint : null,
+                        transportEvent.ConnectionId,
+                        string.IsNullOrWhiteSpace(transportEvent.Message)
+                            ? "connection disconnected"
+                            : transportEvent.Message);
                     RemoveConnection(transportEvent.ConnectionId);
                     break;
                 case LanTransportEventType.Error:
+                    if (transportEvent.ConnectionId.IsValid || transportEvent.RemoteEndpoint.IsValid)
+                    {
+                        _roomService.HandleTransportDisconnected(
+                            transportEvent.RemoteEndpoint.IsValid ? (object)transportEvent.RemoteEndpoint : null,
+                            transportEvent.ConnectionId,
+                            string.IsNullOrWhiteSpace(transportEvent.Message)
+                                ? transportEvent.Error.ToString()
+                                : transportEvent.Message);
+                    }
                     break;
             }
         }
@@ -2218,10 +2717,24 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 _endpointConnections.Remove(endpointsToRemove[i]);
             }
         }
+
+        private LanEndpoint ResolveEndpoint(LanConnectionId connectionId)
+        {
+            foreach (KeyValuePair<LanEndpoint, LanConnectionId> item in _endpointConnections)
+            {
+                if (item.Value.Equals(connectionId))
+                {
+                    return item.Key;
+                }
+            }
+
+            return default;
+        }
     }
 
     public sealed class GatebreakerNetworkMatchController : ITickable
     {
+        public const int MaxCatchUpStepsPerTick = 8;
         private const int ChecksumIntervalFrames = 30;
 
         private readonly LanRoomService _roomService;
@@ -2230,6 +2743,17 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private bool _runtimeStarted;
         private ulong _activeSessionId;
         private float _frameAccumulator;
+        private BrickDuelSessionController _brickDuelSession;
+        private GatebreakerModeCatalog _brickDuelCatalog;
+        private BrickDuelRuleDefinition _brickDuelRule;
+        private BrickDuelAiRuleDefinition _brickDuelAiRule;
+        private bool _brickDuelStarting;
+        private bool _brickDuelRuntimeStarted;
+        private ulong _brickDuelSessionId;
+        private uint _brickDuelRoundId;
+        private float _brickDuelFrameAccumulator;
+        private int _brickDuelGeneration;
+        private bool _brickDuelTerminalReportSubmitted;
 
         public GatebreakerNetworkMatchController(
             LanRoomService roomService,
@@ -2241,9 +2765,30 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _diagnostics = diagnostics;
         }
 
+        public bool UsesBrickDuel => _brickDuelSession != null && _brickDuelRule != null;
+        public bool LocalIsTop { get; private set; }
+
+        public void ConfigureBrickDuel(
+            BrickDuelSessionController session,
+            GatebreakerModeCatalog catalog,
+            BrickDuelRuleDefinition rule,
+            BrickDuelAiRuleDefinition aiRule)
+        {
+            _brickDuelSession = session ?? throw new ArgumentNullException(nameof(session));
+            _brickDuelCatalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _brickDuelRule = rule ?? throw new ArgumentNullException(nameof(rule));
+            _brickDuelAiRule = aiRule ?? throw new ArgumentNullException(nameof(aiRule));
+            _roomService.RequireExplicitLoadingPreparation();
+        }
+
         public void Tick(float deltaTime)
         {
             RoomSnapshot snapshot = _roomService.CurrentSnapshot;
+            if (UsesBrickDuel)
+            {
+                TickBrickDuel(snapshot, deltaTime);
+                return;
+            }
             if (snapshot.State != LanRoomState.Playing)
             {
                 _runtimeStarted = false;
@@ -2257,66 +2802,349 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 StartRuntime(snapshot);
             }
 
-            SubmitHostAiInputs(snapshot);
-            _frameAccumulator = Math.Min(
-                _frameAccumulator + Math.Max(0f, deltaTime),
-                _runtime.FrameDelta * 4f);
-            if (_frameAccumulator < _runtime.FrameDelta)
+            _frameAccumulator = AccumulateCatchUpTime(
+                _frameAccumulator,
+                deltaTime,
+                _runtime.FrameDelta);
+            int steps = 0;
+            while (_frameAccumulator + 0.000001f >= _runtime.FrameDelta &&
+                   steps < MaxCatchUpStepsPerTick)
+            {
+                SubmitHostAiInputs(snapshot);
+                if (!_roomService.Lockstep.TryDequeueConfirmedFrame(out LockstepFrameBundle bundle))
+                {
+                    break;
+                }
+
+                _frameAccumulator -= _runtime.FrameDelta;
+                steps++;
+                StepGenericBundle(snapshot, bundle);
+            }
+        }
+
+        private void StepGenericBundle(RoomSnapshot snapshot, LockstepFrameBundle bundle)
+        {
+            _diagnostics?.Record(new LanDiagnosticEvent
+            {
+                EventName = "BundleDequeued",
+                Role = snapshot.IsHost ? "Host" : "Client",
+                RoomCode = snapshot.RoomCode,
+                SessionId = snapshot.SessionId,
+                ChannelId = snapshot.ChannelId,
+                SlotIndex = snapshot.LocalSlotIndex,
+                FrameIndex = bundle.FrameIndex,
+                Sequence = bundle.BundleSeq,
+                PayloadBytes = bundle.Inputs != null ? bundle.Inputs.Length : 0,
+            });
+            _runtime.StepFrame(
+                bundle.FrameIndex,
+                GatebreakerLockstepInputConverter.ToGatebreakerFrameInputs(bundle));
+            if (bundle.FrameIndex % ChecksumIntervalFrames != 0)
             {
                 return;
             }
 
-            if (_roomService.Lockstep.TryDequeueConfirmedFrame(out LockstepFrameBundle bundle))
+            GatebreakerMatchChecksum checksum = _runtime.CreateChecksum(bundle.FrameIndex);
+            _diagnostics?.Record(new LanDiagnosticEvent
             {
-                _frameAccumulator -= _runtime.FrameDelta;
+                EventName = "ChecksumCreated",
+                Role = snapshot.IsHost ? "Host" : "Client",
+                RoomCode = snapshot.RoomCode,
+                SessionId = snapshot.SessionId,
+                ChannelId = snapshot.ChannelId,
+                SlotIndex = snapshot.LocalSlotIndex,
+                FrameIndex = bundle.FrameIndex,
+                Checksum = checksum.Value,
+            });
+            _diagnostics?.RecordFrameTrace(new LanFrameTrace
+            {
+                FrameIndex = bundle.FrameIndex,
+                BundleSeq = bundle.BundleSeq,
+                Checksum = checksum.Value,
+                LatestConfirmedFrame = _roomService.Lockstep.LatestConfirmedFrame,
+                LocalTargetFrame = _roomService.Lockstep.LocalTargetFrame,
+                InputSlots = bundle.Inputs != null
+                    ? bundle.Inputs.Select(input => input.SlotIndex).ToArray()
+                    : Array.Empty<int>(),
+                WaitingSlots = snapshot.Lockstep != null
+                    ? snapshot.Lockstep.WaitingSlotIndexes
+                    : Array.Empty<int>(),
+            });
+            _roomService.Lockstep.SubmitChecksumReport(new ChecksumReport
+            {
+                RoundId = snapshot.RoundId,
+                SlotIndex = snapshot.LocalSlotIndex,
+                FrameIndex = bundle.FrameIndex,
+                Checksum = checksum.Value,
+                DesyncDetected = false,
+            });
+        }
+
+        private void TickBrickDuel(RoomSnapshot snapshot, float deltaTime)
+        {
+            if (snapshot == null ||
+                (snapshot.State != LanRoomState.Loading && snapshot.State != LanRoomState.Playing))
+            {
+                ResetBrickDuelRuntime();
+                return;
+            }
+
+            if (!_brickDuelRuntimeStarted ||
+                _brickDuelSessionId != snapshot.SessionId ||
+                _brickDuelRoundId != snapshot.RoundId)
+            {
+                if (!_brickDuelStarting) StartBrickDuelRuntime(snapshot);
+                return;
+            }
+
+            if (snapshot.State != LanRoomState.Playing)
+            {
+                return;
+            }
+
+            if (_brickDuelSession.Runtime?.Phase == BrickDuelPhase.Result)
+            {
+                SubmitTerminalBrickDuelReport(snapshot);
+                return;
+            }
+
+            float frameDelta = _brickDuelSession.Runtime?.FrameDelta ??
+                               1f / Math.Max(1, _brickDuelRule.SimulationFps);
+            _brickDuelFrameAccumulator = AccumulateCatchUpTime(
+                _brickDuelFrameAccumulator,
+                deltaTime,
+                frameDelta);
+            int steps = 0;
+            while (_brickDuelFrameAccumulator + 0.000001f >= frameDelta &&
+                   steps < MaxCatchUpStepsPerTick)
+            {
+                SubmitHostBrickDuelAiInputs(snapshot, _roomService.Lockstep.HostNextBundleFrame);
+                if (!_roomService.Lockstep.TryDequeueConfirmedFrame(out LockstepFrameBundle bundle)) break;
+                StepBrickDuelBundle(snapshot, bundle);
+                _brickDuelFrameAccumulator -= frameDelta;
+                steps++;
+                if (_brickDuelSession.Runtime?.Phase == BrickDuelPhase.Result)
+                {
+                    SubmitTerminalBrickDuelReport(snapshot);
+                    break;
+                }
+            }
+        }
+
+        private void StepBrickDuelBundle(RoomSnapshot snapshot, LockstepFrameBundle bundle)
+        {
+            RoomPlayerSnapshot[] sides = (snapshot.Players ?? Array.Empty<RoomPlayerSnapshot>())
+                .Where(player => player != null && player.IsActive)
+                .OrderBy(player => player.SideOrder)
+                .Take(2)
+                .ToArray();
+            if (sides.Length != 2) return;
+            LockstepInputFrame bottom = FindInput(bundle, sides[0].SlotIndex);
+            LockstepInputFrame top = FindInput(bundle, sides[1].SlotIndex);
+            var input = new BrickDuelFrameInput(
+                GatebreakerLockstepInputConverter.DequantizeSignedUnit(bottom.MoveAxisQ),
+                GatebreakerLockstepInputConverter.DequantizeSignedUnit(top.MoveAxisQ),
+                (bottom.Buttons & GatebreakerLockstepInputConverter.AbilityButton) != 0,
+                (top.Buttons & GatebreakerLockstepInputConverter.AbilityButton) != 0,
+                sides[1].IsAi);
+            _brickDuelSession.StepConfirmedFrame(input);
+
+            if (bundle.FrameIndex % ChecksumIntervalFrames != 0 || _brickDuelSession.Runtime == null) return;
+            SubmitBrickDuelChecksum(snapshot, bundle.FrameIndex, false);
+        }
+
+        internal static float AccumulateCatchUpTime(
+            float accumulator,
+            float deltaTime,
+            float frameDelta)
+        {
+            if (frameDelta <= 0f)
+            {
+                return 0f;
+            }
+
+            return Math.Min(
+                Math.Max(0f, accumulator) + Math.Max(0f, deltaTime),
+                frameDelta * MaxCatchUpStepsPerTick);
+        }
+
+        private void SubmitTerminalBrickDuelReport(RoomSnapshot snapshot)
+        {
+            if (_brickDuelTerminalReportSubmitted || _brickDuelSession.Runtime == null) return;
+            _brickDuelTerminalReportSubmitted = true;
+            SubmitBrickDuelChecksum(snapshot, _brickDuelSession.Runtime.SimulationFrame, true);
+        }
+
+        private void SubmitBrickDuelChecksum(RoomSnapshot snapshot, int frameIndex, bool terminal)
+        {
+            ulong fullChecksum = _brickDuelSession.Runtime.GetChecksum();
+            uint checksum = unchecked((uint)(fullChecksum ^ (fullChecksum >> 32)));
+            _diagnostics?.Record(new LanDiagnosticEvent
+            {
+                EventName = "BrickDuelChecksumCreated",
+                Role = snapshot.IsHost ? "Host" : "Client",
+                RoomCode = snapshot.RoomCode,
+                SessionId = snapshot.SessionId,
+                ChannelId = snapshot.ChannelId,
+                SlotIndex = snapshot.LocalSlotIndex,
+                FrameIndex = frameIndex,
+                Checksum = checksum,
+            });
+            _roomService.Lockstep.SubmitChecksumReport(new ChecksumReport
+            {
+                RoundId = snapshot.RoundId,
+                SlotIndex = snapshot.LocalSlotIndex,
+                FrameIndex = frameIndex,
+                Checksum = checksum,
+                DesyncDetected = false,
+                IsTerminal = terminal,
+                TerminalResult = terminal ? (int)_brickDuelSession.Runtime.Result : 0,
+            });
+        }
+
+        private async void StartBrickDuelRuntime(RoomSnapshot snapshot)
+        {
+            _brickDuelStarting = true;
+            ulong requestedSessionId = snapshot.SessionId;
+            uint requestedRoundId = snapshot.RoundId;
+            int requestedGeneration = _brickDuelGeneration;
+            try
+            {
+                RoomPlayerSnapshot[] sides = (snapshot.Players ?? Array.Empty<RoomPlayerSnapshot>())
+                    .Where(player => player != null && player.IsActive)
+                    .OrderBy(player => player.SideOrder)
+                    .Take(2)
+                    .ToArray();
+                if (sides.Length != 2)
+                    throw new InvalidOperationException("BrickDuel requires exactly two active sides.");
+                PhaseMatchLoadout bottom = CreatePhaseLoadout(sides[0]);
+                PhaseMatchLoadout top = CreatePhaseLoadout(sides[1]);
+                LocalIsTop = sides[1].SlotIndex == snapshot.LocalSlotIndex;
+                _brickDuelSession.ConfigureLocalPerspective(LocalIsTop);
+                bool started = await _brickDuelSession.StartAsync(
+                    _brickDuelRule,
+                    _brickDuelAiRule,
+                    null,
+                    _brickDuelCatalog,
+                    bottom,
+                    top);
+                RoomSnapshot current = _roomService.CurrentSnapshot;
+                bool validState = current.State == LanRoomState.Loading || current.State == LanRoomState.Playing;
+                bool generationCurrent = requestedGeneration == _brickDuelGeneration;
+                bool requestCurrent = generationCurrent &&
+                                      current.SessionId == requestedSessionId &&
+                                      current.RoundId == requestedRoundId;
+                if (!started || !validState || !requestCurrent)
+                {
+                    if (started && generationCurrent) _brickDuelSession.Stop();
+                    if (!started && validState && requestCurrent)
+                    {
+                        _roomService.Abort(
+                            MatchAbortReason.TransportError,
+                            string.IsNullOrWhiteSpace(_brickDuelSession.LastError)
+                                ? "BrickDuel preparation failed."
+                                : _brickDuelSession.LastError);
+                    }
+                    return;
+                }
+                _brickDuelSession.ConfigureLocalPerspective(LocalIsTop);
+                _brickDuelRuntimeStarted = true;
+                _brickDuelSessionId = requestedSessionId;
+                _brickDuelRoundId = requestedRoundId;
+                _brickDuelFrameAccumulator = 0f;
+                _brickDuelTerminalReportSubmitted = false;
+                if (current.State == LanRoomState.Loading)
+                {
+                    _roomService.AcknowledgeStart(true);
+                    current = _roomService.CurrentSnapshot;
+                }
                 _diagnostics?.Record(new LanDiagnosticEvent
                 {
-                    EventName = "BundleDequeued",
+                    EventName = "BrickDuelRuntimeStarted",
+                    Role = current.IsHost ? "Host" : "Client",
+                    RoomCode = current.RoomCode,
+                    SessionId = current.SessionId,
+                    ChannelId = current.ChannelId,
+                    SlotIndex = current.LocalSlotIndex,
+                    Detail = bottom.LoadoutHash + "/" + top.LoadoutHash,
+                });
+            }
+            catch (Exception ex)
+            {
+                RoomSnapshot current = _roomService.CurrentSnapshot;
+                bool generationCurrent = requestedGeneration == _brickDuelGeneration;
+                bool requestCurrent = generationCurrent &&
+                                      current.SessionId == requestedSessionId &&
+                                      current.RoundId == requestedRoundId;
+                bool validState = current.State == LanRoomState.Loading || current.State == LanRoomState.Playing;
+                if (generationCurrent)
+                {
+                    _brickDuelSession.Stop();
+                    _brickDuelRuntimeStarted = false;
+                }
+                if (validState && requestCurrent)
+                {
+                    _roomService.Abort(MatchAbortReason.TransportError, "BrickDuel preparation failed: " + ex.Message);
+                }
+                _diagnostics?.Record(new LanDiagnosticEvent
+                {
+                    EventName = "BrickDuelRuntimeStartFailed",
                     Role = snapshot.IsHost ? "Host" : "Client",
                     RoomCode = snapshot.RoomCode,
                     SessionId = snapshot.SessionId,
                     ChannelId = snapshot.ChannelId,
                     SlotIndex = snapshot.LocalSlotIndex,
-                    FrameIndex = bundle.FrameIndex,
-                    Sequence = bundle.BundleSeq,
-                    PayloadBytes = bundle.Inputs != null ? bundle.Inputs.Length : 0,
+                    Detail = (requestCurrent ? string.Empty : "stale;") + ex.Message,
                 });
-                _runtime.StepFrame(
-                    bundle.FrameIndex,
-                    GatebreakerLockstepInputConverter.ToGatebreakerFrameInputs(bundle));
-                if (bundle.FrameIndex % ChecksumIntervalFrames == 0)
-                {
-                    GatebreakerMatchChecksum checksum = _runtime.CreateChecksum(bundle.FrameIndex);
-                    _diagnostics?.Record(new LanDiagnosticEvent
-                    {
-                        EventName = "ChecksumCreated",
-                        Role = snapshot.IsHost ? "Host" : "Client",
-                        RoomCode = snapshot.RoomCode,
-                        SessionId = snapshot.SessionId,
-                        ChannelId = snapshot.ChannelId,
-                        SlotIndex = snapshot.LocalSlotIndex,
-                        FrameIndex = bundle.FrameIndex,
-                        Checksum = checksum.Value,
-                    });
-                    _diagnostics?.RecordFrameTrace(new LanFrameTrace
-                    {
-                        FrameIndex = bundle.FrameIndex,
-                        BundleSeq = bundle.BundleSeq,
-                        Checksum = checksum.Value,
-                        LatestConfirmedFrame = _roomService.Lockstep.LatestConfirmedFrame,
-                        LocalTargetFrame = _roomService.Lockstep.LocalTargetFrame,
-                        InputSlots = bundle.Inputs != null ? bundle.Inputs.Select(input => input.SlotIndex).ToArray() : Array.Empty<int>(),
-                        WaitingSlots = snapshot.Lockstep != null ? snapshot.Lockstep.WaitingSlotIndexes : Array.Empty<int>(),
-                    });
-                    _roomService.Lockstep.SubmitChecksumReport(new ChecksumReport
-                    {
-                        SlotIndex = snapshot.LocalSlotIndex,
-                        FrameIndex = bundle.FrameIndex,
-                        Checksum = checksum.Value,
-                        DesyncDetected = false,
-                    });
-                }
             }
+            finally
+            {
+                if (requestedGeneration == _brickDuelGeneration)
+                    _brickDuelStarting = false;
+            }
+        }
+
+        private void ResetBrickDuelRuntime()
+        {
+            if (!_brickDuelStarting && !_brickDuelRuntimeStarted && _brickDuelSessionId == 0UL) return;
+            _brickDuelGeneration++;
+            _brickDuelSession.Stop();
+            _brickDuelStarting = false;
+            _brickDuelRuntimeStarted = false;
+            _brickDuelSessionId = 0UL;
+            _brickDuelRoundId = 0U;
+            _brickDuelFrameAccumulator = 0f;
+            _brickDuelTerminalReportSubmitted = false;
+            LocalIsTop = false;
+        }
+
+        private PhaseMatchLoadout CreatePhaseLoadout(RoomPlayerSnapshot player)
+        {
+            var loadout = new PhaseMatchLoadout(player.PhaseHeroId, player.PhaseTechIds);
+            PhaseLoadoutValidation validation = PhaseLoadoutValidator.Validate(
+                _brickDuelCatalog,
+                loadout,
+                new HashSet<string>(loadout.TechIds, StringComparer.Ordinal));
+            if (!validation.IsValid) throw new InvalidOperationException("Invalid LAN phase loadout: " + validation.Error);
+            return loadout;
+        }
+
+        private void SubmitHostBrickDuelAiInputs(RoomSnapshot snapshot, int frameIndex)
+        {
+            if (!snapshot.IsHost) return;
+            foreach (RoomPlayerSnapshot player in snapshot.Players ?? Array.Empty<RoomPlayerSnapshot>())
+            {
+                if (player == null || !player.IsActive || !player.IsAi || player.SlotIndex < 0) continue;
+                _roomService.Lockstep.SubmitHostInputForSlot(player.SlotIndex, frameIndex, 0, 0, 0, 0);
+            }
+        }
+
+        private static LockstepInputFrame FindInput(LockstepFrameBundle bundle, int slotIndex)
+        {
+            if (bundle?.Inputs == null) return new LockstepInputFrame();
+            for (int i = 0; i < bundle.Inputs.Length; i++)
+                if (bundle.Inputs[i].SlotIndex == slotIndex) return bundle.Inputs[i];
+            return new LockstepInputFrame();
         }
 
         private void StartRuntime(RoomSnapshot snapshot)

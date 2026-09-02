@@ -28,6 +28,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
         private int _nextLocalInputFrame;
         private int _localSlotIndex = -1;
         private int _localPlayerId;
+        private uint _roundId;
         private bool _isHost;
         private string _error = string.Empty;
 
@@ -43,15 +44,16 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public int LocalTargetFrame => _nextLocalInputFrame;
         public int HostNextBundleFrame => _nextBundleFrame;
         public int NextRequiredFrame => LatestConfirmedFrame + 1;
+        public uint RoundId => _roundId;
 
-        public void StartHost(IEnumerable<RoomPlayerSnapshot> activePlayers, int localSlotIndex)
+        public void StartHost(IEnumerable<RoomPlayerSnapshot> activePlayers, int localSlotIndex, uint roundId = 0U)
         {
-            StartInternal(true, activePlayers, localSlotIndex);
+            StartInternal(true, activePlayers, localSlotIndex, roundId);
         }
 
-        public void StartClient(IEnumerable<RoomPlayerSnapshot> activePlayers, int localSlotIndex)
+        public void StartClient(IEnumerable<RoomPlayerSnapshot> activePlayers, int localSlotIndex, uint roundId = 0U)
         {
-            StartInternal(false, activePlayers, localSlotIndex);
+            StartInternal(false, activePlayers, localSlotIndex, roundId);
         }
 
         public void Reset()
@@ -71,6 +73,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
             _nextLocalInputFrame = 0;
             _localSlotIndex = -1;
             _localPlayerId = 0;
+            _roundId = 0U;
             _isHost = false;
             _error = string.Empty;
             State = LockstepSyncState.Idle;
@@ -78,11 +81,29 @@ namespace App.HotUpdate.GatebreakerArena.Network
             AbortReason = MatchAbortReason.None;
         }
 
+        public void Complete()
+        {
+            if (State == LockstepSyncState.Idle || State == LockstepSyncState.Completed)
+            {
+                return;
+            }
+
+            _inputsByFrame.Clear();
+            _pendingBundles.Clear();
+            _startupBundles.Clear();
+            _waitingSlots.Clear();
+            _waitingSeconds = 0f;
+            _error = string.Empty;
+            AbortReason = MatchAbortReason.None;
+            State = LockstepSyncState.Completed;
+        }
+
         public void Tick(float deltaTime)
         {
             if (State == LockstepSyncState.Idle ||
                 State == LockstepSyncState.Aborted ||
-                State == LockstepSyncState.Desync)
+                State == LockstepSyncState.Desync ||
+                State == LockstepSyncState.Completed)
             {
                 return;
             }
@@ -97,7 +118,10 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         public LockstepInputFrame SubmitLocalInput(short moveAxisQ, short aimXQ, short aimYQ, ushort buttons)
         {
-            if (State == LockstepSyncState.Idle || State == LockstepSyncState.Aborted)
+            if (State == LockstepSyncState.Idle ||
+                State == LockstepSyncState.Aborted ||
+                State == LockstepSyncState.Desync ||
+                State == LockstepSyncState.Completed)
             {
                 return new LockstepInputFrame();
             }
@@ -110,7 +134,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 moveAxisQ,
                 aimXQ,
                 aimYQ,
-                buttons);
+                buttons,
+                _roundId);
             SubmitInput(input);
             LocalInputReady?.Invoke(input);
             return input;
@@ -128,6 +153,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 State == LockstepSyncState.Idle ||
                 State == LockstepSyncState.Aborted ||
                 State == LockstepSyncState.Desync ||
+                State == LockstepSyncState.Completed ||
                 !_activeSlots.Contains(slotIndex) ||
                 frameIndex < _nextBundleFrame)
             {
@@ -155,14 +181,20 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 moveAxisQ,
                 aimXQ,
                 aimYQ,
-                buttons);
+                buttons,
+                _roundId);
             SubmitInput(input);
             return input;
         }
 
         public void SubmitInput(LockstepInputFrame input)
         {
-            if (!_activeSlots.Contains(input.SlotIndex) ||
+            if (State == LockstepSyncState.Idle ||
+                State == LockstepSyncState.Aborted ||
+                State == LockstepSyncState.Desync ||
+                State == LockstepSyncState.Completed ||
+                input.RoundId != _roundId ||
+                !_activeSlots.Contains(input.SlotIndex) ||
                 input.PlayerId != ResolvePlayerId(input.SlotIndex) ||
                 input.FrameIndex < 0)
             {
@@ -180,6 +212,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
         public void ReceiveFrameBundle(LockstepFrameBundle bundle)
         {
             if (bundle == null ||
+                State == LockstepSyncState.Idle ||
+                State == LockstepSyncState.Aborted ||
+                State == LockstepSyncState.Desync ||
+                State == LockstepSyncState.Completed ||
+                bundle.RoundId != _roundId ||
                 bundle.FrameIndex < NextRequiredFrame ||
                 !BundleMatchesActiveSlots(bundle))
             {
@@ -214,7 +251,11 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         public void SubmitChecksumReport(ChecksumReport report)
         {
-            if (report == null)
+            if (report == null ||
+                State == LockstepSyncState.Idle ||
+                State == LockstepSyncState.Aborted ||
+                State == LockstepSyncState.Completed ||
+                report.RoundId != _roundId)
             {
                 return;
             }
@@ -231,7 +272,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
 
         public void Abort(MatchAbortReason reason, string message)
         {
-            if (State == LockstepSyncState.Aborted)
+            if (State == LockstepSyncState.Aborted || State == LockstepSyncState.Completed)
             {
                 return;
             }
@@ -263,11 +304,16 @@ namespace App.HotUpdate.GatebreakerArena.Network
             };
         }
 
-        private void StartInternal(bool isHost, IEnumerable<RoomPlayerSnapshot> activePlayers, int localSlotIndex)
+        private void StartInternal(
+            bool isHost,
+            IEnumerable<RoomPlayerSnapshot> activePlayers,
+            int localSlotIndex,
+            uint roundId)
         {
             Reset();
             _isHost = isHost;
             _localSlotIndex = localSlotIndex;
+            _roundId = roundId;
             foreach (RoomPlayerSnapshot player in activePlayers ?? Array.Empty<RoomPlayerSnapshot>())
             {
                 if (player == null || !player.IsActive)
@@ -305,6 +351,7 @@ namespace App.HotUpdate.GatebreakerArena.Network
                 {
                     FrameIndex = _nextBundleFrame,
                     BundleSeq = ++_bundleSeq,
+                    RoundId = _roundId,
                     Inputs = inputs,
                 };
                 ReceiveFrameBundle(bundle);
@@ -347,12 +394,14 @@ namespace App.HotUpdate.GatebreakerArena.Network
                         0,
                         0,
                         0,
-                        0))
+                        0,
+                        _roundId))
                     .ToArray();
                 var bundle = new LockstepFrameBundle
                 {
                     FrameIndex = frameIndex,
                     BundleSeq = ++_bundleSeq,
+                    RoundId = _roundId,
                     Inputs = inputs,
                 };
                 _pendingBundles[frameIndex] = bundle;
@@ -417,7 +466,8 @@ namespace App.HotUpdate.GatebreakerArena.Network
             for (int i = 0; i < bundle.Inputs.Length; i++)
             {
                 LockstepInputFrame input = bundle.Inputs[i];
-                if (input.FrameIndex != bundle.FrameIndex ||
+                if (input.RoundId != _roundId ||
+                    input.FrameIndex != bundle.FrameIndex ||
                     !_activeSlots.Contains(input.SlotIndex) ||
                     input.PlayerId != ResolvePlayerId(input.SlotIndex) ||
                     !seen.Add(input.SlotIndex))

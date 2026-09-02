@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using App.HotUpdate.GatebreakerArena.Phase;
 using UnityEngine;
 
 namespace App.HotUpdate.GatebreakerArena.BrickDuel
@@ -37,11 +38,139 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
     public readonly struct BrickDuelFrameInput
     {
         public BrickDuelFrameInput(float playerMoveAxis)
+            : this(playerMoveAxis, 0f, false, false, true)
         {
-            PlayerMoveAxis = Mathf.Clamp(playerMoveAxis, -1f, 1f);
         }
 
-        public float PlayerMoveAxis { get; }
+        public BrickDuelFrameInput(
+            float bottomMoveAxis,
+            float topMoveAxis,
+            bool bottomAbilityPressed = false,
+            bool topAbilityPressed = false,
+            bool useTopAi = false)
+        {
+            BottomMoveAxis = Mathf.Clamp(bottomMoveAxis, -1f, 1f);
+            TopMoveAxis = Mathf.Clamp(topMoveAxis, -1f, 1f);
+            BottomAbilityPressed = bottomAbilityPressed;
+            TopAbilityPressed = topAbilityPressed;
+            UseTopAi = useTopAi;
+        }
+
+        public float BottomMoveAxis { get; }
+        public float TopMoveAxis { get; }
+        public bool BottomAbilityPressed { get; }
+        public bool TopAbilityPressed { get; }
+        public bool UseTopAi { get; }
+        public float PlayerMoveAxis => BottomMoveAxis;
+    }
+
+    public sealed class BrickDuelCollisionFrameTelemetry
+    {
+        private readonly List<BrickDuelCollisionEvent> _events =
+            new List<BrickDuelCollisionEvent>();
+        private readonly Action<BrickDuelCollisionEvent> _eventConsumer;
+
+        public BrickDuelCollisionFrameTelemetry()
+        {
+        }
+
+        internal BrickDuelCollisionFrameTelemetry(
+            Action<BrickDuelCollisionEvent> eventConsumer)
+        {
+            _eventConsumer = eventConsumer;
+        }
+
+        public int PaddleBounceCount { get; internal set; }
+        public int OwnOuterWallBounceCount { get; internal set; }
+        public int BrickHitCount { get; internal set; }
+        public int PiercedBrickHitCount { get; internal set; }
+        public float MaximumPaddleRedirectDegrees { get; internal set; }
+        public IReadOnlyList<BrickDuelCollisionEvent> Events => _events;
+
+        internal void RecordBrickHit(int brickId, bool pierced)
+        {
+            BrickHitCount++;
+            if (pierced) PiercedBrickHitCount++;
+            Record(new BrickDuelCollisionEvent(
+                BrickDuelCollisionEventType.BrickHit,
+                brickId,
+                pierced,
+                0f));
+        }
+
+        internal void RecordPaddleBounce(float redirectDegrees)
+        {
+            PaddleBounceCount++;
+            MaximumPaddleRedirectDegrees = Mathf.Max(
+                MaximumPaddleRedirectDegrees,
+                redirectDegrees);
+            Record(new BrickDuelCollisionEvent(
+                BrickDuelCollisionEventType.PaddleBounce,
+                0,
+                false,
+                redirectDegrees));
+        }
+
+        internal void RecordOwnOuterWallBounce()
+        {
+            OwnOuterWallBounceCount++;
+            Record(new BrickDuelCollisionEvent(
+                BrickDuelCollisionEventType.OwnOuterWallBounce,
+                0,
+                false,
+                0f));
+        }
+
+        private void Record(BrickDuelCollisionEvent collisionEvent)
+        {
+            _events.Add(collisionEvent);
+            _eventConsumer?.Invoke(collisionEvent);
+        }
+    }
+
+    public enum BrickDuelCollisionEventType
+    {
+        BrickHit = 1,
+        PaddleBounce = 2,
+        OwnOuterWallBounce = 3,
+    }
+
+    public readonly struct BrickDuelCollisionEvent
+    {
+        public BrickDuelCollisionEvent(
+            BrickDuelCollisionEventType eventType,
+            int brickId = 0,
+            bool pierced = false,
+            float paddleRedirectDegrees = 0f)
+        {
+            EventType = eventType;
+            BrickId = brickId;
+            Pierced = pierced;
+            PaddleRedirectDegrees = paddleRedirectDegrees;
+        }
+
+        public BrickDuelCollisionEventType EventType { get; }
+        public int BrickId { get; }
+        public bool Pierced { get; }
+        public float PaddleRedirectDegrees { get; }
+    }
+
+    public readonly struct BrickDuelHorizontalBarrier
+    {
+        public BrickDuelHorizontalBarrier(float y, float halfWidth, Vector2 normal)
+        {
+            Y = y;
+            HalfWidth = Mathf.Max(0f, halfWidth);
+            Normal = normal;
+        }
+
+        public float Y { get; }
+        public float HalfWidth { get; }
+        public Vector2 Normal { get; }
+        public bool IsValid =>
+            HalfWidth > 0f &&
+            Mathf.Abs(Normal.x) <= 0.0001f &&
+            Mathf.Abs(Mathf.Abs(Normal.y) - 1f) <= 0.0001f;
     }
 
     public sealed class BrickDuelPaddleState
@@ -116,6 +245,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public int DampingFramesRemaining { get; internal set; }
         public int CoreBufferFramesRemaining { get; internal set; }
         public bool HasCoreBuffer { get; internal set; }
+        public int MagnetPullRemaining { get; internal set; }
 
         public bool HasWidePaddle => WidePaddleFramesRemaining > 0;
         public bool HasLargeBall => LargeBallFramesRemaining > 0;
@@ -135,6 +265,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             DampingFramesRemaining = 0;
             CoreBufferFramesRemaining = 0;
             HasCoreBuffer = false;
+            MagnetPullRemaining = 0;
         }
 
         internal BrickDuelSideItemEffects Clone()
@@ -152,6 +283,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 DampingFramesRemaining = DampingFramesRemaining,
                 CoreBufferFramesRemaining = CoreBufferFramesRemaining,
                 HasCoreBuffer = HasCoreBuffer,
+                MagnetPullRemaining = MagnetPullRemaining,
             };
         }
     }
@@ -175,6 +307,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public bool PressureLevelChanged { get; internal set; }
         public bool BottomBallReset { get; internal set; }
         public bool TopBallReset { get; internal set; }
+        public bool BottomBreakCounterTriggered { get; internal set; }
+        public bool TopBreakCounterTriggered { get; internal set; }
         public IReadOnlyList<int> DestroyedBrickIds => _destroyedBrickIds;
         public IReadOnlyList<int> MysteryDestroyedBrickIds => _mysteryDestroyedBrickIds;
         public IReadOnlyList<BrickDuelItemCapsuleState> SpawnedCapsules => _spawnedCapsules;
@@ -193,6 +327,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             PressureLevelChanged = false;
             BottomBallReset = false;
             TopBallReset = false;
+            BottomBreakCounterTriggered = false;
+            TopBreakCounterTriggered = false;
             _destroyedBrickIds.Clear();
             _mysteryDestroyedBrickIds.Clear();
             _spawnedCapsules.Clear();
@@ -278,6 +414,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         public BrickDuelBallState TopBall { get; set; }
         public BrickDuelSideItemEffects BottomEffects { get; set; }
         public BrickDuelSideItemEffects TopEffects { get; set; }
+        public BrickDuelPhaseSideState BottomPhaseState { get; set; }
+        public BrickDuelPhaseSideState TopPhaseState { get; set; }
         public IReadOnlyList<BrickDuelBrickState> Bricks { get; set; }
         public IReadOnlyList<BrickDuelItemCapsuleState> Capsules { get; set; }
         public IReadOnlyList<BrickDuelBallState> SplitBalls { get; set; }

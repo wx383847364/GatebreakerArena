@@ -109,6 +109,17 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.AreEqual(hud.CurrentServeAmmo.ToString(), ballCountText.text);
                 IGatebreakerArenaSceneUiBinding sceneBinding = GatebreakerArenaSceneUiBindingRegistry.Current;
                 Assert.IsNotNull(sceneBinding, "BootstrapScene should register the scene UI binding bridge.");
+                var concreteBinding = sceneBinding as App.AOT.Bootstrap.GatebreakerArenaSceneUiBinding;
+                Assert.IsNotNull(concreteBinding, "BootstrapScene should use the AOT scene binding bridge.");
+                Assert.IsTrue(concreteBinding.HasRequiredBindings,
+                    "Awake should deterministically complete every generated v0.3 phase UI binding.");
+                Assert.IsNotNull(sceneBinding.LoadoutBackButtonObject);
+                Assert.IsNotNull(sceneBinding.LoadoutUnlockConfirmRootObject);
+                Assert.IsNotNull(sceneBinding.LoadoutUnlockConfirmButtonObject);
+                Assert.IsNotNull(sceneBinding.LoadoutUnlockCancelButtonObject);
+                Assert.IsNotNull(sceneBinding.BrickDuelAbilityButtonObject);
+                Assert.IsNotNull(sceneBinding.ResultBodyTextObject,
+                    "Awake should create the missing-only BrickDuel result body binding.");
                 AssertModeSelectVisible(sceneBinding);
                 AssertCountdownAndMovementBindings(sceneBinding, hud);
                 AssertTopPanelBindings(sceneBinding);

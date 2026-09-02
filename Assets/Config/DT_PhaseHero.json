@@ -6,6 +6,17 @@
     "CoreResource": "Combo",
     "CoreItem": "ItemSplit",
     "ResourceRule": "连击：主球命中砖块 +1 累积（临时球命中不计入连击）；主球碰底部墙壁即断连清零（球反弹不消失，无失球惩罚，仅资源重置）。",
+    "RuntimeTuning": {
+      "P1ComboThreshold": 8,
+      "P2ComboThreshold": 6,
+      "P5ComboThreshold": 4,
+      "P1SplitCount": 1,
+      "P4SplitCount": 2,
+      "SplitLifetimeSeconds": 6,
+      "P3MaxClones": 2,
+      "P5PaddlePercentPerExtraBall": 4,
+      "P5PaddlePercentCap": 12
+    },
     "PhaseLevels": [
       {
         "PhaseLevel": "P1",
@@ -23,10 +34,11 @@
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "「幻潮」：复制场上所有球，最多增加2颗临时球，持续6秒。冷却时间30秒",
+        "EffectText": "「幻潮」：复制场上所有球，最多增加2颗临时球，持续6秒。冷却时间12秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_MIRAGE_MIRAGE_TIDE",
-          "CooldownSeconds": 12
+          "CooldownSeconds": 12,
+          "DurationSeconds": 6
         }
       },
       {
@@ -81,6 +93,20 @@
     "Dimension": "速度",
     "CoreResource": "Tempo",
     "CoreItem": "ItemSpeed",
+    "ResourceRule": "节拍：挡板回球相对无操作镜面反射方向偏转至少10度时 +1；连续3秒无有效改向 -1。",
+    "RuntimeTuning": {
+      "RedirectMinDegrees": 10,
+      "TempoDecaySeconds": 3,
+      "P1TempoCap": 4,
+      "P2TempoCap": 5,
+      "P1SpeedPercentPerTempo": 3,
+      "P4SpeedPercentPerTempo": 5,
+      "P1SpeedPercentCap": 12,
+      "P4SpeedPercentCap": 20,
+      "P3AbsoluteSpeedCap": 6,
+      "P5HitThreshold": 3,
+      "P5PierceCap": 1
+    },
     "PhaseLevels": [
       {
         "PhaseLevel": "P1",
@@ -98,10 +124,11 @@
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "「爆点」：锁定当前最高节拍5秒，期间速度上限提高至6.0。冷却时间30秒",
+        "EffectText": "「爆点」：锁定当前最高节拍5秒，期间速度上限提高至6.0。冷却时间18秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_PULSE_BURST",
-          "CooldownSeconds": 18
+          "CooldownSeconds": 18,
+          "DurationSeconds": 5
         }
       },
       {
@@ -157,6 +184,16 @@
     "CoreResource": "Rift",
     "CoreItem": "ItemPierce",
     "ResourceRule": "蓄力：主球命中砖块蓄力（每次 +1），满阈值自动释放穿透；主球碰底部墙壁即蓄力清零（球反弹不消失，无失球惩罚，仅资源重置；与蜃影连击共用同一断连规则）。",
+    "RuntimeTuning": {
+      "P1ChargeThreshold": 5,
+      "P5ChargeThreshold": 4,
+      "P1PierceGrant": 1,
+      "P4PierceGrant": 2,
+      "P1PierceCap": 2,
+      "P2PierceCap": 3,
+      "P3MinimumPierce": 4,
+      "P3SpeedPercent": 12
+    },
     "PhaseLevels": [
       {
         "PhaseLevel": "P1",
@@ -174,7 +211,7 @@
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "「贯裂」：主球立即获得4次穿透并且增加12%速度，效果持续到穿透次数耗尽。冷却时间30秒",
+        "EffectText": "「贯裂」：主球立即获得4次穿透并且增加12%速度，效果持续到穿透次数耗尽。冷却时间20秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_RIFT_PIERCE",
           "CooldownSeconds": 20
@@ -233,6 +270,21 @@
     "CoreResource": "RefractMark",
     "CoreItem": "ItemWide",
     "ResourceRule": "折射标记：主球被挡板回球时获得标记；带标记命中砖块完成折射循环，完成后触发奖励（如挡板回球速度+X%）。标记有持续时间，超时未命中砖块则作废需重新回球装填。折射循环仅由主球完成，临时球不参与。",
+    "RuntimeTuning": {
+      "P1MarkSeconds": 2,
+      "P2MarkSeconds": 3,
+      "P4MarkSeconds": 4,
+      "P1BounceSpeedPercent": 8,
+      "P2BounceSpeedPercent": 12,
+      "P4StackSpeedPercent": 6,
+      "P4MaxStacks": 3,
+      "BounceBoostSeconds": 3,
+      "MirrorHalfFieldRatio": 0.55,
+      "MirrorWidthRatio": 0.6,
+      "P5CyclesPerCooldownReduction": 2,
+      "P5CooldownReductionSeconds": 3,
+      "P5MinimumCooldownSeconds": 4
+    },
     "PhaseLevels": [
       {
         "PhaseLevel": "P1",
@@ -250,10 +302,11 @@
         "PhaseLevel": "P3",
         "Nature": "Active",
         "PhiToReach": 50,
-        "EffectText": "「镜界」：本方半场生成一面6s镜面，只与本方弹球碰撞。冷却时间30秒",
+        "EffectText": "「镜界」：本方半场生成一面6s镜面，只与本方弹球碰撞。冷却时间16秒",
         "ActiveAbility": {
           "AbilityId": "ABILITY_REFRACT_MIRROR",
-          "CooldownSeconds": 16
+          "CooldownSeconds": 16,
+          "DurationSeconds": 6
         }
       },
       {

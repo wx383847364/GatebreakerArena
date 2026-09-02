@@ -249,8 +249,15 @@ namespace App.Shared.Contracts
         UnityEngine.Object[] LoadoutUniversalChipDropdownObjects { get; }
         UnityEngine.Object LoadoutUseDefaultButtonObject { get; }
         UnityEngine.Object LoadoutConfirmButtonObject { get; }
+        UnityEngine.Object LoadoutBackButtonObject { get; }
         UnityEngine.Object LoadoutErrorTextObject { get; }
+        UnityEngine.Object LoadoutUnlockConfirmRootObject { get; }
+        UnityEngine.Object LoadoutUnlockConfirmTextObject { get; }
+        UnityEngine.Object LoadoutUnlockConfirmButtonObject { get; }
+        UnityEngine.Object LoadoutUnlockCancelButtonObject { get; }
         UnityEngine.Object HeroHudTextObject { get; }
+        UnityEngine.Object BrickDuelAbilityButtonObject { get; }
+        UnityEngine.Object BrickDuelAbilityTextObject { get; }
         UnityEngine.Object LanMenuRootObject { get; }
         UnityEngine.Object LanRoomInfoRootObject { get; }
         UnityEngine.Object LanStatusRootObject { get; }

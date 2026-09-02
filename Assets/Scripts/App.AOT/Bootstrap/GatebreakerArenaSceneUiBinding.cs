@@ -86,8 +86,15 @@ namespace App.AOT.Bootstrap
         [SerializeField] private TMP_Dropdown[] _loadoutUniversalChipDropdowns;
         [SerializeField] private Button _loadoutUseDefaultButton;
         [SerializeField] private Button _loadoutConfirmButton;
+        [SerializeField] private Button _loadoutBackButton;
         [SerializeField] private TMP_Text _loadoutErrorText;
+        [SerializeField] private GameObject _loadoutUnlockConfirmRoot;
+        [SerializeField] private TMP_Text _loadoutUnlockConfirmText;
+        [SerializeField] private Button _loadoutUnlockConfirmButton;
+        [SerializeField] private Button _loadoutUnlockCancelButton;
         [SerializeField] private TMP_Text _heroHudText;
+        [SerializeField] private Button _brickDuelAbilityButton;
+        [SerializeField] private TMP_Text _brickDuelAbilityText;
         [SerializeField] private GameObject _lanMenuRoot;
         [SerializeField] private GameObject _lanRoomInfoRoot;
         [SerializeField] private GameObject _lanStatusRoot;
@@ -190,8 +197,15 @@ namespace App.AOT.Bootstrap
         public Object[] LoadoutUniversalChipDropdownObjects => _loadoutUniversalChipDropdowns;
         public Object LoadoutUseDefaultButtonObject => _loadoutUseDefaultButton;
         public Object LoadoutConfirmButtonObject => _loadoutConfirmButton;
+        public Object LoadoutBackButtonObject => _loadoutBackButton;
         public Object LoadoutErrorTextObject => _loadoutErrorText;
+        public Object LoadoutUnlockConfirmRootObject => _loadoutUnlockConfirmRoot;
+        public Object LoadoutUnlockConfirmTextObject => _loadoutUnlockConfirmText;
+        public Object LoadoutUnlockConfirmButtonObject => _loadoutUnlockConfirmButton;
+        public Object LoadoutUnlockCancelButtonObject => _loadoutUnlockCancelButton;
         public Object HeroHudTextObject => _heroHudText;
+        public Object BrickDuelAbilityButtonObject => _brickDuelAbilityButton;
+        public Object BrickDuelAbilityTextObject => _brickDuelAbilityText;
         public Object LanMenuRootObject => _lanMenuRoot;
         public Object LanRoomInfoRootObject => _lanRoomInfoRoot;
         public Object LanStatusRootObject => _lanStatusRoot;
@@ -219,6 +233,9 @@ namespace App.AOT.Bootstrap
         public Object StartCountdownTextObject => _startCountdownText;
 
         public bool HasRequiredBindings =>
+            HasStaticCoreBindings && HasPhaseV03Bindings && _resultBodyText != null;
+
+        public bool HasStaticCoreBindings =>
             _skillButton != null &&
             _ballCountText != null &&
             _movementPad != null &&
@@ -306,14 +323,303 @@ namespace App.AOT.Bootstrap
             _startCountdownRoot != null &&
             _startCountdownText != null;
 
+        private bool HasPhaseV03Bindings =>
+            _brickDuelAbilityButton != null &&
+            _brickDuelAbilityText != null &&
+            _loadoutRoot != null &&
+            _loadoutHeroDropdown != null &&
+            _loadoutPathDropdown != null &&
+            _loadoutSignatureDropdown != null &&
+            HasExactDropdownBindings(_loadoutUniversalChipDropdowns, 5) &&
+            _loadoutUseDefaultButton != null &&
+            _loadoutConfirmButton != null &&
+            _loadoutBackButton != null &&
+            _loadoutErrorText != null &&
+            _loadoutUnlockConfirmRoot != null &&
+            _loadoutUnlockConfirmText != null &&
+            _loadoutUnlockConfirmButton != null &&
+            _loadoutUnlockCancelButton != null &&
+            _heroHudText != null;
+
         private void Awake()
         {
+            EnsureResultBodyRuntimeBinding();
+            EnsurePhaseV03RuntimeBindings();
             GatebreakerArenaSceneUiBindingRegistry.Register(this);
         }
 
         private void OnDestroy()
         {
             GatebreakerArenaSceneUiBindingRegistry.Clear(this);
+        }
+
+        private void EnsurePhaseV03RuntimeBindings()
+        {
+            if (HasPhaseV03Bindings)
+            {
+                return;
+            }
+
+            if (_lanRoot == null || _lanRoomTypeDropdown == null || _brickDuelHudRoot == null)
+            {
+                return;
+            }
+
+            TMP_Text textTemplate = _lanErrorText != null
+                ? _lanErrorText
+                : _lanRoomTypeDropdown.captionText;
+            Transform panel = _loadoutRoot != null
+                ? _loadoutRoot.transform
+                : ResolveDirectParent(
+                    _loadoutHeroDropdown,
+                    _loadoutPathDropdown,
+                    _loadoutSignatureDropdown,
+                    _loadoutUseDefaultButton,
+                    _loadoutConfirmButton,
+                    _loadoutBackButton,
+                    _loadoutErrorText);
+            bool createdPanel = panel == null;
+            if (createdPanel)
+            {
+                panel = CreatePanel(
+                    _lanRoot.transform,
+                    "PhaseV03LoadoutPanel",
+                    new Vector2(560f, 650f),
+                    new Color(0f, 0f, 0f, 0.84f));
+                CreateText(panel, textTemplate, "Title", "英雄与相位科技", 26f,
+                    new Vector2(0f, 292f), new Vector2(500f, 36f));
+            }
+
+            _loadoutRoot = panel.gameObject;
+            if (_loadoutHeroDropdown == null)
+                _loadoutHeroDropdown = CloneDropdown(panel, "HeroDropdown", new Vector2(60f, 232f));
+            if (_loadoutPathDropdown == null)
+                _loadoutPathDropdown = CloneDropdown(panel, "DimensionDropdown", new Vector2(60f, 178f));
+            if (_loadoutSignatureDropdown == null)
+                _loadoutSignatureDropdown = CloneDropdown(panel, "AbilityDropdown", new Vector2(60f, 124f));
+
+            TMP_Dropdown[] phaseDropdowns = new TMP_Dropdown[5];
+            if (_loadoutUniversalChipDropdowns != null)
+            {
+                for (int i = 0; i < Mathf.Min(phaseDropdowns.Length, _loadoutUniversalChipDropdowns.Length); i++)
+                    phaseDropdowns[i] = _loadoutUniversalChipDropdowns[i];
+            }
+            for (int i = 0; i < phaseDropdowns.Length; i++)
+            {
+                if (phaseDropdowns[i] == null)
+                {
+                    phaseDropdowns[i] = CloneDropdown(
+                        panel,
+                        "PhaseTechDropdown" + (i + 1),
+                        new Vector2(60f, 70f - i * 54f));
+                }
+            }
+            _loadoutUniversalChipDropdowns = phaseDropdowns;
+
+            if (_loadoutUseDefaultButton == null)
+                _loadoutUseDefaultButton = CreateButton(panel, textTemplate, "UseDefaultButton", "一键使用",
+                    new Vector2(-112f, -236f), new Vector2(180f, 42f), new Color(0.12f, 0.38f, 0.72f, 1f));
+            if (_loadoutConfirmButton == null)
+                _loadoutConfirmButton = CreateButton(panel, textTemplate, "ConfirmButton", "确认构筑",
+                    new Vector2(112f, -236f), new Vector2(180f, 42f), new Color(0.08f, 0.62f, 0.22f, 1f));
+            if (_loadoutBackButton == null)
+                _loadoutBackButton = CreateButton(panel, textTemplate, "BackButton", "返回",
+                    new Vector2(-220f, 292f), new Vector2(92f, 36f), new Color(0.16f, 0.16f, 0.2f, 1f));
+            if (_loadoutErrorText == null)
+                _loadoutErrorText = CreateText(panel, textTemplate, "ErrorText", string.Empty, 13f,
+                    new Vector2(0f, -282f), new Vector2(500f, 42f));
+
+            Transform confirm = _loadoutUnlockConfirmRoot != null
+                ? _loadoutUnlockConfirmRoot.transform
+                : ResolveDirectParent(
+                    _loadoutUnlockConfirmText,
+                    _loadoutUnlockConfirmButton,
+                    _loadoutUnlockCancelButton);
+            if (confirm == null)
+            {
+                confirm = CreatePanel(
+                    panel,
+                    "UnlockConfirmRoot",
+                    Vector2.zero,
+                    new Color(0f, 0f, 0f, 0.9f),
+                    true);
+            }
+            _loadoutUnlockConfirmRoot = confirm.gameObject;
+            if (_loadoutUnlockConfirmText == null)
+                _loadoutUnlockConfirmText = CreateText(confirm, textTemplate, "ConfirmText", "确认解锁相位科技？", 20f,
+                    new Vector2(0f, 48f), new Vector2(470f, 100f));
+            if (_loadoutUnlockConfirmButton == null)
+                _loadoutUnlockConfirmButton = CreateButton(confirm, textTemplate, "ConfirmButton", "确认解锁",
+                    new Vector2(-105f, -42f), new Vector2(180f, 44f), new Color(0.08f, 0.62f, 0.22f, 1f));
+            if (_loadoutUnlockCancelButton == null)
+                _loadoutUnlockCancelButton = CreateButton(confirm, textTemplate, "CancelButton", "取消",
+                    new Vector2(105f, -42f), new Vector2(180f, 44f), new Color(0.32f, 0.32f, 0.36f, 1f));
+            confirm.gameObject.SetActive(false);
+            if (createdPanel) panel.gameObject.SetActive(false);
+
+            if (_brickDuelAbilityButton == null)
+            {
+                _brickDuelAbilityButton = CreateButton(
+                    _brickDuelHudRoot.transform,
+                    textTemplate,
+                    "BrickDuelAbilityButton",
+                    "主动技能 · P3解锁",
+                    new Vector2(250f, -360f),
+                    new Vector2(210f, 46f),
+                    new Color(0.42f, 0.16f, 0.68f, 1f),
+                    out _brickDuelAbilityText);
+            }
+            else if (_brickDuelAbilityText == null)
+            {
+                _brickDuelAbilityText = CreateText(
+                    _brickDuelAbilityButton.transform,
+                    textTemplate,
+                    "Text (TMP)",
+                    "主动技能 · P3解锁",
+                    20f,
+                    Vector2.zero,
+                    new Vector2(210f, 46f));
+            }
+
+            if (_heroHudText == null && _skillButton != null)
+            {
+                _heroHudText = CreateText(
+                    _skillButton.transform.parent,
+                    textTemplate,
+                    "PhaseHeroHudText",
+                    string.Empty,
+                    13f,
+                    new Vector2(0f, 82f),
+                    new Vector2(520f, 42f));
+            }
+        }
+
+        private void EnsureResultBodyRuntimeBinding()
+        {
+            if (_resultBodyText != null || _resultRoot == null || _resultTitleText == null)
+            {
+                return;
+            }
+
+            _resultBodyText = CreateText(
+                _resultRoot.transform,
+                _resultTitleText,
+                "BrickDuelResultBodyText",
+                string.Empty,
+                Mathf.Max(18f, _resultTitleText.fontSize * 0.55f),
+                new Vector2(0f, -72f),
+                new Vector2(520f, 92f));
+        }
+
+        private static Transform ResolveDirectParent(params Component[] components)
+        {
+            if (components == null) return null;
+            for (int i = 0; i < components.Length; i++)
+            {
+                if (components[i] != null && components[i].transform.parent != null)
+                    return components[i].transform.parent;
+            }
+            return null;
+        }
+
+        private TMP_Dropdown CloneDropdown(Transform parent, string name, Vector2 anchoredPosition)
+        {
+            TMP_Dropdown dropdown = Instantiate(_lanRoomTypeDropdown, parent, false);
+            dropdown.name = name;
+            dropdown.onValueChanged.RemoveAllListeners();
+            RectTransform rect = dropdown.transform as RectTransform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = new Vector2(360f, 36f);
+            return dropdown;
+        }
+
+        private static Transform CreatePanel(
+            Transform parent,
+            string name,
+            Vector2 size,
+            Color color,
+            bool stretch = false)
+        {
+            var gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            gameObject.layer = parent.gameObject.layer;
+            RectTransform rect = gameObject.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = stretch ? Vector2.zero : new Vector2(0.5f, 0.52f);
+            rect.anchorMax = stretch ? Vector2.one : new Vector2(0.5f, 0.52f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = stretch ? Vector2.zero : size;
+            gameObject.GetComponent<Image>().color = color;
+            return rect;
+        }
+
+        private static TMP_Text CreateText(
+            Transform parent,
+            TMP_Text template,
+            string name,
+            string value,
+            float fontSize,
+            Vector2 position,
+            Vector2 size)
+        {
+            var gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            gameObject.layer = parent.gameObject.layer;
+            RectTransform rect = gameObject.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            TMP_Text text = gameObject.GetComponent<TMP_Text>();
+            if (template != null)
+            {
+                text.font = template.font;
+                text.fontSharedMaterial = template.fontSharedMaterial;
+                text.color = template.color;
+            }
+            text.text = value ?? string.Empty;
+            text.fontSize = fontSize;
+            text.alignment = TextAlignmentOptions.Center;
+            text.raycastTarget = false;
+            return text;
+        }
+
+        private static Button CreateButton(
+            Transform parent,
+            TMP_Text textTemplate,
+            string name,
+            string label,
+            Vector2 position,
+            Vector2 size,
+            Color color)
+        {
+            return CreateButton(parent, textTemplate, name, label, position, size, color, out _);
+        }
+
+        private static Button CreateButton(
+            Transform parent,
+            TMP_Text textTemplate,
+            string name,
+            string label,
+            Vector2 position,
+            Vector2 size,
+            Color color,
+            out TMP_Text labelText)
+        {
+            var gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            gameObject.layer = parent.gameObject.layer;
+            RectTransform rect = gameObject.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            Image image = gameObject.GetComponent<Image>();
+            image.color = color;
+            Button button = gameObject.GetComponent<Button>();
+            button.targetGraphic = image;
+            button.onClick.RemoveAllListeners();
+            labelText = CreateText(rect, textTemplate, "Text (TMP)", label, 20f, Vector2.zero, size);
+            return button;
         }
 
 #if UNITY_EDITOR
@@ -342,10 +648,18 @@ namespace App.AOT.Bootstrap
             return true;
         }
 
-        private static bool HasExactDropdownBindings(TMP_Dropdown[] dropdowns, int count)
+        private static bool HasExactDropdownBindings(TMP_Dropdown[] dropdowns, int expected)
         {
-            if (dropdowns == null || dropdowns.Length != count) return false;
-            for (int i = 0; i < dropdowns.Length; i++) if (dropdowns[i] == null) return false;
+            if (dropdowns == null || dropdowns.Length != expected)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < dropdowns.Length; i++)
+            {
+                if (dropdowns[i] == null) return false;
+            }
+
             return true;
         }
 

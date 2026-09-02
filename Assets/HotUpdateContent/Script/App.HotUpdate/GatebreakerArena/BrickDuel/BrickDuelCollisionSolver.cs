@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using App.HotUpdate.GatebreakerArena.Mode;
 using UnityEngine;
@@ -24,7 +25,11 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             ISet<int> ignoredBrickIds,
             ISet<int> hitBrickIds,
             float targetBallSpeed = -1f,
-            Vector2? paddleBounceTarget = null)
+            Vector2? paddleBounceTarget = null,
+            BrickDuelCollisionFrameTelemetry telemetry = null,
+            BrickDuelHorizontalBarrier? horizontalBarrier = null,
+            float paddleBounceBallSpeed = -1f,
+            Func<float> paddleBounceBallSpeedProvider = null)
         {
             if (ball == null || !ball.IsActive || deltaTime <= 0f)
             {
@@ -32,6 +37,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             float resolvedBallSpeed = targetBallSpeed > 0f ? targetBallSpeed : rule.BallSpeed;
+            float resolvedPaddleBounceSpeed = paddleBounceBallSpeed > 0f
+                ? paddleBounceBallSpeed
+                : resolvedBallSpeed;
             if (ball.Velocity.sqrMagnitude > 0.0001f)
             {
                 ball.Velocity = ball.Velocity.normalized * resolvedBallSpeed;
@@ -53,7 +61,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     tideSpeed,
                     paddleHalfWidth,
                     ballRadius,
-                    ignoredBrickIds);
+                    ignoredBrickIds,
+                    horizontalBarrier);
                 if (!candidate.Hit)
                 {
                     ball.Position += ball.Velocity * remaining;
@@ -74,6 +83,19 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                         pierceBrick = true;
                         pierceCharges--;
                     }
+                    telemetry?.RecordBrickHit(candidate.Brick.BrickId, pierceBrick);
+                }
+
+                if (candidate.Brick == null &&
+                    !candidate.IsPaddle &&
+                    !candidate.IsMirror &&
+                    telemetry != null)
+                {
+                    Vector2 ownOuterNormal = ball.Side == BrickDuelSide.Bottom
+                        ? Vector2.up
+                        : Vector2.down;
+                    if (Vector2.Dot(candidate.Normal, ownOuterNormal) > 0.999f)
+                        telemetry.RecordOwnOuterWallBounce();
                 }
 
                 if (pierceBrick)
@@ -93,6 +115,9 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                     candidate.ColliderVelocity;
                 if (candidate.IsPaddle)
                 {
+                    Vector2 unassistedReflected = reflected.sqrMagnitude > 0.0001f
+                        ? reflected.normalized
+                        : candidate.Normal;
                     Vector2 aimedDirection = paddleBounceTarget.HasValue
                         ? paddleBounceTarget.Value - ball.Position
                         : Vector2.zero;
@@ -111,6 +136,16 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                             Mathf.Max(0.16f, 1f - tangentShare * tangentShare));
                         reflected = new Vector2(tangentShare, outwardY * verticalShare);
                     }
+
+                    float redirectDegrees = reflected.sqrMagnitude > 0.0001f
+                        ? Vector2.Angle(unassistedReflected, reflected.normalized)
+                        : 0f;
+                    telemetry?.RecordPaddleBounce(redirectDegrees);
+                    float dynamicPaddleBounceSpeed =
+                        paddleBounceBallSpeedProvider?.Invoke() ?? resolvedPaddleBounceSpeed;
+                    resolvedBallSpeed = dynamicPaddleBounceSpeed > 0f
+                        ? dynamicPaddleBounceSpeed
+                        : resolvedPaddleBounceSpeed;
                 }
 
                 Vector2 direction = reflected.sqrMagnitude > 0.0001f
@@ -244,7 +279,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             float tideSpeed,
             float paddleHalfWidth,
             float ballRadius,
-            ISet<int> ignoredBrickIds)
+            ISet<int> ignoredBrickIds,
+            BrickDuelHorizontalBarrier? horizontalBarrier)
         {
             CollisionCandidate best = CollisionCandidate.None(maxTime);
             Vector2 velocity = ball.Velocity;
@@ -303,6 +339,16 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 rule.PaddleHalfHeight + ballRadius,
                 ref best);
 
+            if (horizontalBarrier.HasValue && horizontalBarrier.Value.IsValid)
+            {
+                TryHorizontalBarrier(
+                    position,
+                    velocity,
+                    maxTime,
+                    horizontalBarrier.Value,
+                    ref best);
+            }
+
             Vector2 brickExtents = new Vector2(
                 rule.BrickWidth * 0.5f + ballRadius,
                 rule.BrickHeight * 0.5f + ballRadius);
@@ -335,6 +381,42 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             }
 
             return best;
+        }
+
+        private static void TryHorizontalBarrier(
+            Vector2 origin,
+            Vector2 velocity,
+            float maxTime,
+            BrickDuelHorizontalBarrier barrier,
+            ref CollisionCandidate best)
+        {
+            float normalVelocity = Vector2.Dot(velocity, barrier.Normal);
+            if (normalVelocity >= -0.000001f || Mathf.Abs(velocity.y) < 0.000001f)
+            {
+                return;
+            }
+
+            float hitTime = (barrier.Y - origin.y) / velocity.y;
+            if (hitTime < 0f || hitTime > maxTime || hitTime >= best.Time)
+            {
+                return;
+            }
+
+            float hitX = origin.x + velocity.x * hitTime;
+            if (Mathf.Abs(hitX) > barrier.HalfWidth)
+            {
+                return;
+            }
+
+            best = new CollisionCandidate(
+                true,
+                hitTime,
+                barrier.Normal,
+                null,
+                false,
+                Vector2.zero,
+                new Vector2(hitX, barrier.Y),
+                isMirror: true);
         }
 
         private static void TryPaddleFace(
@@ -641,7 +723,8 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 bool isPaddle,
                 Vector2 colliderVelocity,
                 Vector2 colliderCenter,
-                float separationDistance = 0f)
+                float separationDistance = 0f,
+                bool isMirror = false)
             {
                 Hit = hit;
                 Time = time;
@@ -651,6 +734,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 ColliderVelocity = colliderVelocity;
                 ColliderCenter = colliderCenter;
                 SeparationDistance = separationDistance;
+                IsMirror = isMirror;
             }
 
             public bool Hit { get; }
@@ -661,6 +745,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
             public Vector2 ColliderVelocity { get; }
             public Vector2 ColliderCenter { get; }
             public float SeparationDistance { get; }
+            public bool IsMirror { get; }
 
             public static CollisionCandidate None(float maxTime)
             {
