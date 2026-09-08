@@ -5,6 +5,7 @@ using App.HotUpdate.GatebreakerArena.Match;
 using App.HotUpdate.GatebreakerArena.Mode;
 using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Paddle;
+using App.HotUpdate.GatebreakerArena.Phase;
 using App.HotUpdate.GatebreakerArena.UI;
 using App.Shared.Contracts;
 using NUnit.Framework;
@@ -712,12 +713,65 @@ namespace Gatebreaker.Tests
             StringAssert.Contains("00:27", _binding.BrickDuelCenterText.text);
             StringAssert.Contains("Lv.0", _binding.BrickDuelCenterText.text);
             StringAssert.Contains("1.00", _binding.BrickDuelCenterText.text);
-            Assert.AreEqual("\u2665\u2665\u2665", _binding.BrickDuelPlayerHealthText.text);
-            Assert.AreEqual("\u2665\u2665\u2665\u2665", _binding.BrickDuelOpponentHealthText.text);
+            Assert.AreEqual("3", _binding.BrickDuelPlayerHealthText.text);
+            Assert.AreEqual("4", _binding.BrickDuelOpponentHealthText.text);
             StringAssert.Contains("危险", _binding.BrickDuelStatusText.text);
             Assert.IsTrue(_binding.BrickDuelHudRoot.activeSelf);
             Assert.IsFalse(_binding.TopPanel2PRoot.activeSelf);
             Assert.IsFalse(_binding.GmRoot.activeSelf);
+        }
+
+        [Test]
+        public void BrickDuelHudCorrectsLoadedTopBannerEvenWhenAlreadyVisible()
+        {
+            _binding.BrickDuelHudRoot.AddComponent<RectTransform>();
+            var strip = new GameObject("Strip", typeof(RectTransform)).GetComponent<RectTransform>();
+            strip.SetParent(_binding.BrickDuelHudRoot.transform, false);
+            var background = new GameObject("Background", typeof(RectTransform)).GetComponent<RectTransform>();
+            background.SetParent(strip, false);
+            _binding.BrickDuelCenterText.transform.SetParent(background, false);
+            _binding.BrickDuelStatusText.transform.SetParent(background, false);
+            strip.anchorMin = new Vector2(0f, 1f);
+            strip.anchorMax = Vector2.one;
+            strip.anchoredPosition = new Vector2(0f, -60f);
+            strip.sizeDelta = new Vector2(-24f, 70f);
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+            _binding.BrickDuelHudRoot.SetActive(true);
+
+            _service.ShowBrickDuelHud();
+
+            Assert.AreEqual(new Vector2(0.5f, 0.5f), strip.anchorMin);
+            Assert.AreEqual(strip.anchorMin, strip.anchorMax);
+            Assert.AreEqual(Vector2.zero, strip.anchoredPosition);
+            Assert.AreEqual(new Vector2(720f, 84f), strip.sizeDelta);
+            Assert.AreEqual(new Vector3(0.56f, 0.56f, 1f), strip.localScale);
+            Assert.AreEqual(strip.sizeDelta, background.sizeDelta);
+            // Repeated refreshes must not accumulate scaling.
+            _service.ShowBrickDuelHud();
+            Assert.AreEqual(new Vector3(0.56f, 0.56f, 1f), strip.localScale);
+        }
+
+        [Test]
+        public void BrickDuelPhaseStatusUsesTwoRowsAndPausePromptIsNotContradictory()
+        {
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks(), null);
+            var snapshot = new BrickDuelSnapshot
+            {
+                Phase = BrickDuelPhase.Playing,
+                BottomPhaseState = new BrickDuelPhaseSideState
+                {
+                    HeroId = "HERO_MIRAGE", PhaseLevel = 1, Combo = 4,
+                },
+            };
+            var rule = new BrickDuelRuleDefinition { SimulationFps = 30 };
+            _service.UpdateBrickDuel(snapshot, rule, null);
+            StringAssert.StartsWith("蜃影 · P1", _binding.BrickDuelStatusText.text);
+            Assert.AreEqual(2, _binding.BrickDuelStatusText.text.Split('\n').Length);
+            StringAssert.DoesNotContain("释放技能", _binding.BrickDuelStatusText.text);
+            snapshot.IsPaused = true;
+            _service.UpdateBrickDuel(snapshot, rule, null);
+            StringAssert.Contains("点击继续", _binding.BrickDuelStatusText.text);
+            StringAssert.DoesNotContain("点击暂停", _binding.BrickDuelStatusText.text);
         }
 
         [Test]

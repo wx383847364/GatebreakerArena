@@ -3707,7 +3707,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 _loadoutChipIndices[phase] = _phaseLoadoutPresenter.GetSelectedOptionIndex(phase);
             }
             PhaseHeroActiveAbilityDefinition ability = hero.PhaseLevels.FirstOrDefault(level => level.PhaseLevel == "P3")?.ActiveAbility;
-            string abilityText = ability == null ? "无主动技能" : $"P3 主动 · {ability.AbilityId} · CD {ability.CooldownSeconds:0.#}s";
+            string abilityName = hero.HeroId == "HERO_MIRAGE" ? "幻潮" :
+                hero.HeroId == "HERO_PULSE" ? "爆点" :
+                hero.HeroId == "HERO_RIFT" ? "贯裂" :
+                hero.HeroId == "HERO_REFRACT" ? "镜界" : "主动技能";
+            string abilityText = ability == null ? "无主动技能" : $"P3 解锁 · {abilityName} · 冷却 {ability.CooldownSeconds:0.#} 秒";
             _sceneBindingService?.ConfigurePhaseLoadout(heroes, "维度 · " + hero.Dimension, abilityText, options);
             int heroIndex = _phaseLoadoutPresenter.AvailableHeroes
                 .Select((item, index) => new { item.HeroId, Index = index })

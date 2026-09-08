@@ -345,6 +345,13 @@ namespace App.AOT.Bootstrap
         {
             EnsureResultBodyRuntimeBinding();
             EnsurePhaseV03RuntimeBindings();
+            if (_brickDuelAbilityButton != null)
+            {
+                var abilityRect = _brickDuelAbilityButton.transform as RectTransform;
+                abilityRect.anchorMin = abilityRect.anchorMax = new Vector2(1f, 0f);
+                abilityRect.pivot = new Vector2(1f, 0f);
+                abilityRect.anchoredPosition = new Vector2(-24f, 24f);
+            }
             GatebreakerArenaSceneUiBindingRegistry.Register(this);
         }
 
@@ -392,11 +399,11 @@ namespace App.AOT.Bootstrap
 
             _loadoutRoot = panel.gameObject;
             if (_loadoutHeroDropdown == null)
-                _loadoutHeroDropdown = CloneDropdown(panel, "HeroDropdown", new Vector2(60f, 232f));
+                _loadoutHeroDropdown = CloneDropdown(panel, "HeroDropdown", new Vector2(0f, 232f));
             if (_loadoutPathDropdown == null)
-                _loadoutPathDropdown = CloneDropdown(panel, "DimensionDropdown", new Vector2(60f, 178f));
+                _loadoutPathDropdown = CloneDropdown(panel, "DimensionDropdown", new Vector2(0f, 178f));
             if (_loadoutSignatureDropdown == null)
-                _loadoutSignatureDropdown = CloneDropdown(panel, "AbilityDropdown", new Vector2(60f, 124f));
+                _loadoutSignatureDropdown = CloneDropdown(panel, "AbilityDropdown", new Vector2(0f, 124f));
 
             TMP_Dropdown[] phaseDropdowns = new TMP_Dropdown[5];
             if (_loadoutUniversalChipDropdowns != null)
@@ -411,7 +418,7 @@ namespace App.AOT.Bootstrap
                     phaseDropdowns[i] = CloneDropdown(
                         panel,
                         "PhaseTechDropdown" + (i + 1),
-                        new Vector2(60f, 70f - i * 54f));
+                        new Vector2(0f, 70f - i * 54f));
                 }
             }
             _loadoutUniversalChipDropdowns = phaseDropdowns;
@@ -530,8 +537,48 @@ namespace App.AOT.Bootstrap
             RectTransform rect = dropdown.transform as RectTransform;
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(360f, 36f);
+            rect.localScale = Vector3.one;
+            rect.sizeDelta = new Vector2(460f, 42f);
+            ConfigureLoadoutText(dropdown.captionText, 20f, false);
+            if (dropdown.captionText != null)
+            {
+                RectTransform caption = dropdown.captionText.rectTransform;
+                caption.anchorMin = Vector2.zero;
+                caption.anchorMax = Vector2.one;
+                caption.offsetMin = new Vector2(18f, 4f);
+                caption.offsetMax = new Vector2(-42f, -4f);
+            }
+            ConfigureLoadoutText(dropdown.itemText, 17f, true);
+            if (dropdown.itemText != null)
+            {
+                RectTransform item = dropdown.itemText.rectTransform;
+                item.anchorMin = Vector2.zero;
+                item.anchorMax = Vector2.one;
+                item.offsetMin = new Vector2(24f, 6f);
+                item.offsetMax = new Vector2(-16f, -6f);
+                if (item.parent is RectTransform row)
+                    row.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 76f);
+            }
+            if (dropdown.template != null)
+            {
+                dropdown.template.localScale = Vector3.one;
+                dropdown.template.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 244f);
+            }
             return dropdown;
+        }
+
+        private static void ConfigureLoadoutText(TMP_Text text, float size, bool wrap)
+        {
+            if (text == null) return;
+            text.rectTransform.localScale = Vector3.one;
+            text.enableAutoSizing = true;
+            text.fontSize = size;
+            text.fontSizeMin = wrap ? 14f : 16f;
+            text.fontSizeMax = size;
+            text.enableWordWrapping = wrap;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+            text.alignment = TextAlignmentOptions.MidlineLeft;
+            text.raycastTarget = false;
         }
 
         private static Transform CreatePanel(

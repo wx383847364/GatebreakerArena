@@ -257,7 +257,7 @@ namespace Gatebreaker.Editor
             Transform singleSelectPanel = FindRequired(canvas, "SingleSelectPanel");
             Transform panelSingle = FindRequired(canvas, "Panel_Single");
             ConfigureBrickDuelHudLayout(panelSingle);
-            TMP_Text brickDuelStatusText = FindRequired<TMP_Text>(panelSingle, "TimeImage/Text");
+            TMP_Text brickDuelStatusText = FindRequired<TMP_Text>(panelSingle, "Title_bg/TimeImage/Text");
             Button brickDuelPauseButton = EnsureComponent<Button>(brickDuelStatusText.gameObject);
             brickDuelPauseButton.targetGraphic = brickDuelStatusText;
             brickDuelPauseButton.onClick.RemoveAllListeners();
@@ -376,7 +376,7 @@ namespace Gatebreaker.Editor
             Set(serializedBinding, "_brickDuelHudRoot", panelSingle.gameObject);
             Set(serializedBinding, "_brickDuelOpponentHealthText", FindRequired<TMP_Text>(panelSingle, "Title_bg/2PInfo/1PHP"));
             Set(serializedBinding, "_brickDuelPlayerHealthText", FindRequired<TMP_Text>(panelSingle, "Title_bg/1PInfo/1PHP"));
-            Set(serializedBinding, "_brickDuelCenterText", FindRequired<TMP_Text>(panelSingle, "TimeImage/Time"));
+            Set(serializedBinding, "_brickDuelCenterText", FindRequired<TMP_Text>(panelSingle, "Title_bg/TimeImage/Time"));
             Set(serializedBinding, "_brickDuelStatusText", brickDuelStatusText);
             Set(serializedBinding, "_brickDuelBottomCoreHitFeedback", brickDuelBottomCoreHitFeedback);
             Set(serializedBinding, "_brickDuelTopCoreHitFeedback", brickDuelTopCoreHitFeedback);
@@ -837,28 +837,44 @@ namespace Gatebreaker.Editor
 
         private static void ConfigureBrickDuelHudLayout(Transform panelSingle)
         {
-            var timeImage = FindRequired<RectTransform>(panelSingle, "TimeImage");
-            timeImage.sizeDelta = new Vector2(720f, 92f);
+            var root = (RectTransform)panelSingle;
+            root.anchorMin = Vector2.zero;
+            root.anchorMax = Vector2.one;
+            root.sizeDelta = Vector2.zero;
+            root.anchoredPosition = Vector2.zero;
+            var strip = FindRequired<RectTransform>(panelSingle, "Title_bg");
+            strip.anchorMin = strip.anchorMax = new Vector2(0.5f, 0.5f);
+            strip.anchoredPosition = Vector2.zero;
+            strip.sizeDelta = new Vector2(720f, 84f);
+            // Keep the full HUD within the narrow central lane, including its background.
+            strip.localScale = new Vector3(0.56f, 0.56f, 1f);
+            var movementPad = FindRequired<RectTransform>(panelSingle, "joystick_bg");
+            movementPad.anchorMin = movementPad.anchorMax = Vector2.zero;
+            movementPad.anchoredPosition = new Vector2(180f, 80f);
+            var timeImage = FindRequired<RectTransform>(strip, "TimeImage");
+            timeImage.sizeDelta = new Vector2(720f, 84f);
 
-            TMP_Text center = FindRequired<TMP_Text>(panelSingle, "TimeImage/Time");
-            center.rectTransform.anchoredPosition = new Vector2(0f, 18f);
-            center.rectTransform.sizeDelta = new Vector2(620f, 38f);
-            center.fontSize = 28f;
+            TMP_Text center = FindRequired<TMP_Text>(strip, "TimeImage/Time");
+            center.rectTransform.anchoredPosition = new Vector2(0f, 25f);
+            center.rectTransform.sizeDelta = new Vector2(440f, 30f);
+            center.fontSize = 24f;
             center.enableAutoSizing = true;
             center.fontSizeMin = 18f;
-            center.fontSizeMax = 30f;
+            center.fontSizeMax = 24f;
             center.enableWordWrapping = false;
-            center.overflowMode = TextOverflowModes.Overflow;
+            center.overflowMode = TextOverflowModes.Ellipsis;
 
-            TMP_Text status = FindRequired<TMP_Text>(panelSingle, "TimeImage/Text");
-            status.rectTransform.anchoredPosition = new Vector2(0f, -23f);
-            status.rectTransform.sizeDelta = new Vector2(680f, 30f);
-            status.fontSize = 20f;
+            TMP_Text status = FindRequired<TMP_Text>(strip, "TimeImage/Text");
+            status.rectTransform.anchoredPosition = new Vector2(0f, -14f);
+            status.rectTransform.sizeDelta = new Vector2(460f, 44f);
+            status.fontSize = 16f;
             status.enableAutoSizing = true;
             status.fontSizeMin = 13f;
-            status.fontSizeMax = 20f;
+            status.fontSizeMax = 16f;
             status.enableWordWrapping = false;
-            status.overflowMode = TextOverflowModes.Overflow;
+            status.overflowMode = TextOverflowModes.Ellipsis;
+            FindRequired<TMP_Text>(strip, "1PInfo/1PHP").fontSize = 28f;
+            FindRequired<TMP_Text>(strip, "2PInfo/1PHP").fontSize = 28f;
         }
 
         private static void ValidateBrickDuelHudLayout(
@@ -870,18 +886,21 @@ namespace Gatebreaker.Editor
             TMP_Text status = serializedBinding.FindProperty("_brickDuelStatusText")
                 ?.objectReferenceValue as TMP_Text;
             if (center != null &&
-                (center.rectTransform.rect.width < 600f ||
+                (center.rectTransform.rect.width < 440f ||
+                 center.fontSizeMax > 24f ||
                  !center.enableAutoSizing ||
                  center.enableWordWrapping))
             {
-                errors.Add("_brickDuelCenterText must be at least 600px wide, auto-sized, and single-line.");
+                errors.Add("_brickDuelCenterText must be at least 440px wide, auto-sized up to 24px, and single-line.");
             }
             if (status != null &&
-                (status.rectTransform.rect.width < 660f ||
+                (status.rectTransform.rect.width < 460f ||
+                 status.rectTransform.rect.height < 44f ||
+                 status.fontSizeMax > 16f ||
                  !status.enableAutoSizing ||
                  status.enableWordWrapping))
             {
-                errors.Add("_brickDuelStatusText must be at least 660px wide, auto-sized, and single-line.");
+                errors.Add("_brickDuelStatusText must reserve 460x44px for two explicit lines, auto-sized up to 16px, without automatic wrapping.");
             }
         }
 

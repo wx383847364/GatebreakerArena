@@ -114,10 +114,38 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.IsTrue(concreteBinding.HasRequiredBindings,
                     "Awake should deterministically complete every generated v0.3 phase UI binding.");
                 Assert.IsNotNull(sceneBinding.LoadoutBackButtonObject);
+                var heroDropdown = sceneBinding.LoadoutHeroDropdownObject as TMP_Dropdown;
+                Assert.IsNotNull(heroDropdown);
+                Assert.LessOrEqual(heroDropdown.captionText.fontSizeMax, 20f,
+                    "Generated loadout captions must not inherit the oversized LAN dropdown font.");
+                Assert.IsFalse(heroDropdown.captionText.enableWordWrapping,
+                    "Collapsed options must stay within their row.");
+                Assert.LessOrEqual(heroDropdown.itemText.fontSizeMax, 20f);
                 Assert.IsNotNull(sceneBinding.LoadoutUnlockConfirmRootObject);
                 Assert.IsNotNull(sceneBinding.LoadoutUnlockConfirmButtonObject);
                 Assert.IsNotNull(sceneBinding.LoadoutUnlockCancelButtonObject);
                 Assert.IsNotNull(sceneBinding.BrickDuelAbilityButtonObject);
+                var duelRoot = (sceneBinding.BrickDuelHudRootObject as GameObject).GetComponent<RectTransform>();
+                Assert.AreEqual(Vector2.zero, duelRoot.anchorMin);
+                Assert.AreEqual(Vector2.one, duelRoot.anchorMax);
+                var duelCenter = sceneBinding.BrickDuelCenterTextObject as TMP_Text;
+                var duelStatus = sceneBinding.BrickDuelStatusTextObject as TMP_Text;
+                Assert.LessOrEqual(duelCenter.fontSizeMax, 24f);
+                Assert.LessOrEqual(duelStatus.fontSizeMax, 16f);
+                Assert.GreaterOrEqual(duelStatus.rectTransform.rect.height, 44f);
+                var duelStrip = duelCenter.rectTransform.parent.parent as RectTransform;
+                Assert.AreEqual(new Vector2(0.5f, 0.5f), duelStrip.anchorMin);
+                Assert.AreEqual(duelStrip.anchorMin, duelStrip.anchorMax);
+                Assert.AreEqual(Vector2.zero, duelStrip.anchoredPosition,
+                    "Duel HUD must occupy the narrow central lane requested by the design.");
+                Assert.AreEqual(new Vector2(720f, 84f), duelStrip.sizeDelta);
+                Assert.AreEqual(new Vector3(0.56f, 0.56f, 1f), duelStrip.localScale);
+                var duelBackground = duelCenter.rectTransform.parent as RectTransform;
+                Assert.AreEqual(duelStrip.sizeDelta, duelBackground.sizeDelta,
+                    "Neither background may extend into a full-width banner.");
+                Assert.AreEqual(TextOverflowModes.Ellipsis, duelStatus.overflowMode);
+                var abilityRect = (sceneBinding.BrickDuelAbilityButtonObject as Button).transform as RectTransform;
+                Assert.AreEqual(new Vector2(1f, 0f), abilityRect.anchorMin);
                 Assert.IsNotNull(sceneBinding.ResultBodyTextObject,
                     "Awake should create the missing-only BrickDuel result body binding.");
                 AssertModeSelectVisible(sceneBinding);

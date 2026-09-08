@@ -538,6 +538,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
             SetDropdownOptions(_loadoutHeroDropdown, heroes);
             SetDropdownOptions(_loadoutPathDropdown, new[] { dimension ?? "相位维度" });
             SetDropdownOptions(_loadoutSignatureDropdown, new[] { activeAbility ?? "P3 主动技能" });
+            if (_loadoutPathDropdown != null) _loadoutPathDropdown.interactable = false;
+            if (_loadoutSignatureDropdown != null) _loadoutSignatureDropdown.interactable = false;
             for (int i = 0; i < _loadoutUniversalChipDropdowns.Length; i++)
             {
                 IReadOnlyList<string> options = phaseTechOptions != null && i < phaseTechOptions.Count
@@ -627,7 +629,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             string label = !unlocked
                 ? "主动技能 · P3解锁"
                 : available
-                    ? "主动技能"
+                    ? "主动技能 · E / 点击"
                     : "主动技能 · CD " + Mathf.CeilToInt(
                         state.AbilityCooldownFrames / (float)Mathf.Max(1, simulationFps)) + "s";
             SetText(_brickDuelAbilityText, label);
@@ -771,7 +773,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
             float secondsUntilPressure = snapshot.FramesUntilPressureIncrease /
                                          (float)Mathf.Max(1, rule.SimulationFps);
             bool isDanger = (localIsTop ? snapshot.TopDangerDistance : snapshot.BottomDangerDistance) <= rule.DangerDistance;
-            string phaseStatus = FormatPhaseStatus(snapshot, rule.SimulationFps, localIsTop);
+            string phaseStatus = FormatPhaseStatus(snapshot, localIsTop);
             bool localBreakTriggered = frameEvents != null && (localIsTop
                 ? frameEvents.TopBreakCounterTriggered
                 : frameEvents.BottomBreakCounterTriggered);
@@ -796,8 +798,8 @@ namespace App.HotUpdate.GatebreakerArena.UI
             SetText(
                 _brickDuelStatusText,
                 string.IsNullOrEmpty(phaseStatus)
-                    ? baseStatus + " · 点击暂停"
-                    : phaseStatus + " · " + baseStatus + " · E释放技能");
+                    ? baseStatus + (snapshot.IsPaused ? string.Empty : " · 点击暂停")
+                    : phaseStatus + "\n" + baseStatus + (snapshot.IsPaused ? string.Empty : " · 点击暂停"));
 
             Color currentColor = ResolvePressureColor(snapshot.PressureLevel);
             if (snapshot.Phase == BrickDuelPhase.Playing && secondsUntilPressure <= 3f)
@@ -1020,8 +1022,54 @@ namespace App.HotUpdate.GatebreakerArena.UI
                         : "挑战模式 · 配置未更新 · 返回");
         }
 
+        private void ApplyBrickDuelCompactLayout()
+        {
+            // These are the direct owners of the explicitly bound text nodes, not a
+            // name-based hierarchy search. Verify the composition before touching it.
+            var root = _brickDuelHudRoot != null ? _brickDuelHudRoot.transform as RectTransform : null;
+            var background = _brickDuelCenterText != null
+                ? _brickDuelCenterText.rectTransform.parent as RectTransform : null;
+            var strip = background != null ? background.parent as RectTransform : null;
+            if (root == null || strip == null || strip.parent != root ||
+                _brickDuelStatusText == null || _brickDuelStatusText.transform.parent != background)
+            {
+                return;
+            }
+
+            root.anchorMin = Vector2.zero;
+            root.anchorMax = Vector2.one;
+            root.pivot = new Vector2(0.5f, 0.5f);
+            root.sizeDelta = Vector2.zero;
+            root.anchoredPosition = Vector2.zero;
+            strip.anchorMin = strip.anchorMax = new Vector2(0.5f, 0.5f);
+            strip.pivot = new Vector2(0.5f, 0.5f);
+            strip.anchoredPosition = Vector2.zero;
+            strip.sizeDelta = new Vector2(720f, 84f);
+            strip.localScale = new Vector3(0.56f, 0.56f, 1f);
+            background.anchorMin = background.anchorMax = new Vector2(0.5f, 0.5f);
+            background.pivot = new Vector2(0.5f, 0.5f);
+            background.anchoredPosition = Vector2.zero;
+            background.sizeDelta = strip.sizeDelta;
+            background.localScale = Vector3.one;
+
+            // The input controls stay at the screen edges, outside the scaled strip.
+            if (_brickDuelMovementPad != null)
+            {
+                _brickDuelMovementPad.anchorMin = _brickDuelMovementPad.anchorMax = Vector2.zero;
+                _brickDuelMovementPad.anchoredPosition = new Vector2(180f, 80f);
+            }
+            if (_brickDuelAbilityButton != null)
+            {
+                var abilityRect = (RectTransform)_brickDuelAbilityButton.transform;
+                abilityRect.anchorMin = abilityRect.anchorMax = new Vector2(1f, 0f);
+                abilityRect.pivot = new Vector2(1f, 0f);
+                abilityRect.anchoredPosition = new Vector2(-24f, 24f);
+            }
+        }
+
         public void ShowBrickDuelHud()
         {
+            ApplyBrickDuelCompactLayout();
             if (_brickDuelHudRoot != null && _brickDuelHudRoot.activeSelf)
             {
                 return;
@@ -2076,7 +2124,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 : normalizedTitle + "\n" + _brickDuelSettlementStatus;
         }
 
-        private static string FormatPhaseStatus(BrickDuelSnapshot snapshot, int simulationFps, bool localIsTop)
+        private static string FormatPhaseStatus(BrickDuelSnapshot snapshot, bool localIsTop)
         {
             var state = localIsTop ? snapshot?.TopPhaseState : snapshot?.BottomPhaseState;
             if (state == null) return string.Empty;
@@ -2088,10 +2136,7 @@ namespace App.HotUpdate.GatebreakerArena.UI
                 state.HeroId == "HERO_PULSE" ? $"节拍 {state.Tempo}" :
                 state.HeroId == "HERO_RIFT" ? $"蓄力 {state.RiftCharge} / 穿透 {state.TotalPierceCharges}" :
                 $"折射 {state.RefractCycles} / 层数 {state.RefractSpeedStacks}";
-            float cooldown = state.AbilityCooldownFrames / (float)Mathf.Max(1, simulationFps);
-            string ability = state.PhaseLevel < 3 ? "技能未解锁" :
-                cooldown > 0f ? $"CD {cooldown:0.0}s" : "技能就绪";
-            return $"{hero} P{state.PhaseLevel} Φ{state.Phi:0.#} · {resource} · {ability}";
+            return $"{hero} · P{state.PhaseLevel} · Φ{state.Phi:0.#} · {resource}";
         }
 
         private static BrickDuelResult SwapBrickDuelResult(BrickDuelResult result)
