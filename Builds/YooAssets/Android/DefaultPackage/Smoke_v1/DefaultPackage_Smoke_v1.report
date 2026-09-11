@@ -1,0 +1,2772 @@
+{
+    "Summary": {
+        "YooVersion": "2.3.18",
+        "UnityVersion": "2022.3.62t9",
+        "BuildDate": "9/11/2026 4:14:07 PM",
+        "BuildSeconds": 5,
+        "BuildTarget": 13,
+        "BuildPipeline": "ScriptableBuildPipeline",
+        "BuildBundleType": 2,
+        "BuildPackageName": "DefaultPackage",
+        "BuildPackageVersion": "Smoke_v1",
+        "BuildPackageNote": "9/11/2026 4:14:01 PM",
+        "UniqueBundleName": false,
+        "EnableAddressable": false,
+        "SupportExtensionless": true,
+        "LocationToLower": false,
+        "IncludeAssetGUID": false,
+        "AutoCollectShaders": true,
+        "IgnoreRuleName": "YooAsset.Editor.NormalIgnoreRule",
+        "ClearBuildCacheFiles": true,
+        "UseAssetDependencyDB": true,
+        "EnableSharePackRule": true,
+        "SingleReferencedPackAlone": true,
+        "EncryptionServicesClassName": "null",
+        "ManifestProcessServicesClassName": "null",
+        "ManifestRestoreServicesClassName": "null",
+        "FileNameStyle": 0,
+        "CompressOption": 2,
+        "DisableWriteTypeTree": false,
+        "IgnoreTypeTreeChanges": true,
+        "ReplaceAssetPathWithAddress": false,
+        "WriteLinkXML": true,
+        "CacheServerHost": "",
+        "CacheServerPort": 0,
+        "BuiltinShadersBundleName": "DefaultPackage_unityshaders",
+        "MonoScriptsBundleName": "",
+        "AssetFileTotalCount": 144,
+        "MainAssetTotalCount": 140,
+        "AllBundleTotalCount": 22,
+        "AllBundleTotalSize": 8928000,
+        "EncryptedBundleTotalCount": 0,
+        "EncryptedBundleTotalSize": 0
+    },
+    "AssetInfos": [
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Config/gatebreaker_rules.bytes",
+            "AssetGUID": "03b0fe42c2024421088a8d8c94ccc110",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_config.bundle",
+            "MainBundleSize": 17612,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/GatebreakerFontRoleProfile.asset",
+            "AssetGUID": "c2255cc0461f34537b1f469e0f73164a",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts.bundle",
+            "MainBundleSize": 2957,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/DotGothic16-Regular.ttf",
+                    "AssetGUID": "ea846de54769249b49eceb2e27dc7fde"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PixelifySans-wght.ttf",
+                    "AssetGUID": "f839564e6671d4eb9ada6f1f82f613a1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PressStart2P-Regular.ttf",
+                    "AssetGUID": "8a92a91cb6b8740ef8262cd17f09a61a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_ArcadeTitle_PressStart2P_TMP.asset",
+                    "AssetGUID": "2739a9e44a02d41758c3237c10662c96"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+                    "AssetGUID": "38c99420381a74d6eb47b879f7528247"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelAlt_DotGothic16_TMP.asset",
+                    "AssetGUID": "51fcd09fd4bf84f20859ebc153da7a31"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelBody_PixelifySans_TMP.asset",
+                    "AssetGUID": "7257309967c564c78904b2d267bb78a2"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelChinese_FusionPixel12_TMP.asset",
+                    "AssetGUID": "4cf32bdb455cc4f75b4790e8501c7ec4"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "assets_hotupdatecontent_res_fonts_tmp.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/GatebreakerFontRuntimeSettings.asset",
+            "AssetGUID": "9bcc7f31edb334ad29ad2a95ca61ea15",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts.bundle",
+            "MainBundleSize": 2957,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/GatebreakerFontRoleProfile.asset",
+                    "AssetGUID": "c2255cc0461f34537b1f469e0f73164a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/DotGothic16-Regular.ttf",
+                    "AssetGUID": "ea846de54769249b49eceb2e27dc7fde"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PixelifySans-wght.ttf",
+                    "AssetGUID": "f839564e6671d4eb9ada6f1f82f613a1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PressStart2P-Regular.ttf",
+                    "AssetGUID": "8a92a91cb6b8740ef8262cd17f09a61a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_ArcadeTitle_PressStart2P_TMP.asset",
+                    "AssetGUID": "2739a9e44a02d41758c3237c10662c96"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+                    "AssetGUID": "38c99420381a74d6eb47b879f7528247"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelAlt_DotGothic16_TMP.asset",
+                    "AssetGUID": "51fcd09fd4bf84f20859ebc153da7a31"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelBody_PixelifySans_TMP.asset",
+                    "AssetGUID": "7257309967c564c78904b2d267bb78a2"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelChinese_FusionPixel12_TMP.asset",
+                    "AssetGUID": "4cf32bdb455cc4f75b4790e8501c7ec4"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "assets_hotupdatecontent_res_fonts_tmp.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/ark-pixel.txt",
+            "AssetGUID": "f6eef235b38e547358c0e70649eb9e7e",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "MainBundleSize": 5594,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/cubic-11.txt",
+            "AssetGUID": "7346b397f9e6b4968a529093666ce3fb",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "MainBundleSize": 5594,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/galmuri.txt",
+            "AssetGUID": "5ec79c46008db4cc492d877dd5e6e4a0",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "MainBundleSize": 5594,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_DotGothic16.txt",
+            "AssetGUID": "055b510d4b6644b20874c190dc72da77",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "MainBundleSize": 5594,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_FusionPixel.txt",
+            "AssetGUID": "1ce13189b5ba34a74b7e86157349cf91",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "MainBundleSize": 5594,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_PixelifySans.txt",
+            "AssetGUID": "92c194123bebc40e2ae717df48d5dd96",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "MainBundleSize": 5594,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_PressStart2P.txt",
+            "AssetGUID": "c44c3e0bed4234d4a8a598e4611ffc11",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "MainBundleSize": 5594,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/preview/GatebreakerFontPreview.html",
+            "AssetGUID": "c0d37cad760c94e5a8e30912161af9c8",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_preview.bundle",
+            "MainBundleSize": 8521,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/preview/GatebreakerFontPreview.prefab",
+            "AssetGUID": "4ddc5bab5769f463894476e9c9ab8b3a",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_preview.bundle",
+            "MainBundleSize": 8521,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/DotGothic16-Regular.ttf",
+                    "AssetGUID": "ea846de54769249b49eceb2e27dc7fde"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PixelifySans-wght.ttf",
+                    "AssetGUID": "f839564e6671d4eb9ada6f1f82f613a1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PressStart2P-Regular.ttf",
+                    "AssetGUID": "8a92a91cb6b8740ef8262cd17f09a61a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_ArcadeTitle_PressStart2P_TMP.asset",
+                    "AssetGUID": "2739a9e44a02d41758c3237c10662c96"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+                    "AssetGUID": "38c99420381a74d6eb47b879f7528247"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelAlt_DotGothic16_TMP.asset",
+                    "AssetGUID": "51fcd09fd4bf84f20859ebc153da7a31"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelBody_PixelifySans_TMP.asset",
+                    "AssetGUID": "7257309967c564c78904b2d267bb78a2"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelChinese_FusionPixel12_TMP.asset",
+                    "AssetGUID": "4cf32bdb455cc4f75b4790e8501c7ec4"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset",
+                    "AssetGUID": "2e498d1c8094910479dc3e1b768306a4"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset",
+                    "AssetGUID": "8f586378b4e144a9851e7b34d9b748ee"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "assets_hotupdatecontent_res_fonts_tmp.bundle",
+                "share_assets_textmesh_pro_fonts.bundle",
+                "share_assets_textmesh_pro_resources_fonts_&_materials.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/DotGothic16-Regular.ttf",
+            "AssetGUID": "ea846de54769249b49eceb2e27dc7fde",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_source.bundle",
+            "MainBundleSize": 2488930,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+            "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_source.bundle",
+            "MainBundleSize": 2488930,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PixelifySans-wght.ttf",
+            "AssetGUID": "f839564e6671d4eb9ada6f1f82f613a1",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_source.bundle",
+            "MainBundleSize": 2488930,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PressStart2P-Regular.ttf",
+            "AssetGUID": "8a92a91cb6b8740ef8262cd17f09a61a",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_source.bundle",
+            "MainBundleSize": 2488930,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_ArcadeTitle_PressStart2P_TMP.asset",
+            "AssetGUID": "2739a9e44a02d41758c3237c10662c96",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_tmp.bundle",
+            "MainBundleSize": 1051460,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PressStart2P-Regular.ttf",
+                    "AssetGUID": "8a92a91cb6b8740ef8262cd17f09a61a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+                    "AssetGUID": "38c99420381a74d6eb47b879f7528247"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+            "AssetGUID": "38c99420381a74d6eb47b879f7528247",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_tmp.bundle",
+            "MainBundleSize": 1051460,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelAlt_DotGothic16_TMP.asset",
+            "AssetGUID": "51fcd09fd4bf84f20859ebc153da7a31",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_tmp.bundle",
+            "MainBundleSize": 1051460,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/DotGothic16-Regular.ttf",
+                    "AssetGUID": "ea846de54769249b49eceb2e27dc7fde"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+                    "AssetGUID": "38c99420381a74d6eb47b879f7528247"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelBody_PixelifySans_TMP.asset",
+            "AssetGUID": "7257309967c564c78904b2d267bb78a2",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_tmp.bundle",
+            "MainBundleSize": 1051460,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PixelifySans-wght.ttf",
+                    "AssetGUID": "f839564e6671d4eb9ada6f1f82f613a1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+                    "AssetGUID": "38c99420381a74d6eb47b879f7528247"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelChinese_FusionPixel12_TMP.asset",
+            "AssetGUID": "4cf32bdb455cc4f75b4790e8501c7ec4",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_fonts_tmp.bundle",
+            "MainBundleSize": 1051460,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "unityshaders.bundle"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/App.HotUpdate.dll.bytes",
+            "AssetGUID": "949bd2b5b6d674d6887c601c33a33d36",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate.bundle",
+            "MainBundleSize": 373477,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/App.Shared.dll.bytes",
+            "AssetGUID": "ec615dff67235447eae3a6d87dce59af",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/mscorlib.dll.bytes",
+            "AssetGUID": "f7b218f926ffc4e18a7cbce59ea87748",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/System.Core.dll.bytes",
+            "AssetGUID": "e67235d2693244ba2a48f0498a2262bd",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/System.dll.bytes",
+            "AssetGUID": "a4cbfac5a5bc644a8b9b2e95259978f6",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/Unity.TextMeshPro.dll.bytes",
+            "AssetGUID": "ad61b35a032cb4ae9b197fbcdd0da595",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.CoreModule.dll.bytes",
+            "AssetGUID": "b8da9e6596d584fd5a87bd691de8efc6",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.InputLegacyModule.dll.bytes",
+            "AssetGUID": "0d9f6b3dfd7584e79a498bcdbbb8b48e",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.JSONSerializeModule.dll.bytes",
+            "AssetGUID": "70f94a1bba42a413ca78dd3d038290c8",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.TextRenderingModule.dll.bytes",
+            "AssetGUID": "03a66f3d160d34e158879fa6031004c1",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.UI.dll.bytes",
+            "AssetGUID": "9c65583b1363541b99d1fb5c174f2411",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.UIModule.dll.bytes",
+            "AssetGUID": "6a7f72e5d59174bbfa98a0a0a3cc8a3a",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "MainBundleSize": 1850480,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/Materials/item_frame.mat",
+            "AssetGUID": "756e89daa640d094288c3912e6aeb503",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_materials.bundle",
+            "MainBundleSize": 3286,
+            "DependAssets": [],
+            "DependBundles": [
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/Materials/item01.mat",
+            "AssetGUID": "a77ca270cd17afa459cd5aea9f13d25c",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_materials.bundle",
+            "MainBundleSize": 3286,
+            "DependAssets": [],
+            "DependBundles": [
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/Materials/New Material.mat",
+            "AssetGUID": "157342f827ca7954989547ac69d4e643",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_materials.bundle",
+            "MainBundleSize": 3286,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Ball001.png",
+                    "AssetGUID": "a0493adecd3c00442aeeefe334cd96f7"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+            "AssetGUID": "09724c2260760ac40937a3f4ee54f7b7",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Baffle001.png",
+                    "AssetGUID": "3b8241d2f72a9524c904de468aeeba67"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
+            "AssetGUID": "cf60958611f66ad4f996b4ee80b05c6b",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Ball001.png",
+                    "AssetGUID": "a0493adecd3c00442aeeefe334cd96f7"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball02.prefab",
+            "AssetGUID": "7d4d5ce97f3f71443b0c6456f82650a4",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Ball001.png",
+                    "AssetGUID": "a0493adecd3c00442aeeefe334cd96f7"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball03.prefab",
+            "AssetGUID": "869fd3be11d631743a1c38eb85d68376",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Ball001.png",
+                    "AssetGUID": "a0493adecd3c00442aeeefe334cd96f7"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball04.prefab",
+            "AssetGUID": "99d55f07e15094e378cf8e324bf1fb9c",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Ball001.png",
+                    "AssetGUID": "a0493adecd3c00442aeeefe334cd96f7"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_01.prefab",
+            "AssetGUID": "592e24725b4cb3847ae0722d6a155bc3",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_01.png",
+                    "AssetGUID": "7cb6e0d5d67770a4d8f3d2925b4e247c"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_02.prefab",
+            "AssetGUID": "1d9e1901902ab9247b94fd8b0e0ba52f",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_02.png",
+                    "AssetGUID": "66ea22d655192794ea1b0a8ecdce13af"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_03.prefab",
+            "AssetGUID": "ce4ece86cf77f484a8210b7765b1740b",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_03.png",
+                    "AssetGUID": "d23ab67049628044bae82961823edcd6"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_04.prefab",
+            "AssetGUID": "a1b6de5e877b2c142b1fb94a6fc00243",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_04.png",
+                    "AssetGUID": "55499de26b55afc4b864f1e9ba6e7cd5"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
+            "AssetGUID": "6ce1b66ff9ba72a41b4976f032c285b8",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item01.png",
+                    "AssetGUID": "1ae98f652d38d3d4caa4aafe8793f28b"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item02.prefab",
+            "AssetGUID": "4f66942d3c99a444985221554469d00d",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item02.png",
+                    "AssetGUID": "129051940266ae44e80b337fadf69e5f"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item03.prefab",
+            "AssetGUID": "f3a3308a7ba96b746b6dec603d87d5ab",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item04.png",
+                    "AssetGUID": "ef9e042d34cfe364a98c1cd970981b6e"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item04.prefab",
+            "AssetGUID": "c1da907bf8e070643a80149643aad771",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item05.png",
+                    "AssetGUID": "53d6f0b80fa7f1347be6b51d24e687c8"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item05.prefab",
+            "AssetGUID": "e4b7c040965c060438c1cb557eac403d",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item05.png",
+                    "AssetGUID": "53d6f0b80fa7f1347be6b51d24e687c8"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
+            "AssetGUID": "f75860568b73f0646b2f0cbd914e085c",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item06.png",
+                    "AssetGUID": "ebd0a711cb3071e4fb2efdea630028b1"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
+            "AssetGUID": "2a17d2b07a6c53242bfb5ad3ebbe0b28",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item07.png",
+                    "AssetGUID": "b8479a628ea751e47b95d9bf70161aab"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
+            "AssetGUID": "aa2dad1340b61bc4a9ba7ec748368975",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item08.png",
+                    "AssetGUID": "cd86887f6868d0745b141c9d45c21434"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Scene2P.prefab",
+            "AssetGUID": "326dca5afb1d4fa449f4524ae45cc24d",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick001.png",
+                    "AssetGUID": "65efd6f20a7cbfc409eba7bba1baeb96"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab",
+            "AssetGUID": "73487bf71b4982b41aebd0075611278a",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick001.png",
+                    "AssetGUID": "65efd6f20a7cbfc409eba7bba1baeb96"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Scene4P.prefab",
+            "AssetGUID": "7b52a242080e3764bbd2f810592acdc3",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick001.png",
+                    "AssetGUID": "65efd6f20a7cbfc409eba7bba1baeb96"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab",
+            "AssetGUID": "6551e2ab17e021540943eff4833be455",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "MainBundleSize": 53845,
+            "DependAssets": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick001.png",
+                    "AssetGUID": "65efd6f20a7cbfc409eba7bba1baeb96"
+                }
+            ],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ]
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/sounds/gameBGM.mp3",
+            "AssetGUID": "90f043b6428404e488f7305087455876",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_sounds.bundle",
+            "MainBundleSize": 1772456,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Arrow.png",
+            "AssetGUID": "563e40c63e9557644ad6d5ad4938df46",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Arrow1.png",
+            "AssetGUID": "5b7c92c8df7b5314086735cd0390ee89",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Baffle001.png",
+            "AssetGUID": "3b8241d2f72a9524c904de468aeeba67",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Ball001.png",
+            "AssetGUID": "a0493adecd3c00442aeeefe334cd96f7",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_01.png",
+            "AssetGUID": "7cb6e0d5d67770a4d8f3d2925b4e247c",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_02.png",
+            "AssetGUID": "66ea22d655192794ea1b0a8ecdce13af",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_03.png",
+            "AssetGUID": "d23ab67049628044bae82961823edcd6",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_04.png",
+            "AssetGUID": "55499de26b55afc4b864f1e9ba6e7cd5",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick001.png",
+            "AssetGUID": "65efd6f20a7cbfc409eba7bba1baeb96",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/btn001.png",
+            "AssetGUID": "5d075bba9a97cfd4fb5239ebcdf3aaf2",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/btn002.png",
+            "AssetGUID": "91b9e638e44773e409c06c5c7c781250",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/mirage.png",
+            "AssetGUID": "356433108d2e89e4bb56051f03a3ad45",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_heroes.bundle",
+            "MainBundleSize": 119981,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/pulse.png",
+            "AssetGUID": "395ae8dabc8a67847a87f8ff0f01721e",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_heroes.bundle",
+            "MainBundleSize": 119981,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/refraction.png",
+            "AssetGUID": "e9ea23e5388fbe14093014e158ce1b94",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_heroes.bundle",
+            "MainBundleSize": 119981,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/rift.png",
+            "AssetGUID": "8b10d0bba1057c749bb2d86d818fc191",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_heroes.bundle",
+            "MainBundleSize": 119981,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Info.png",
+            "AssetGUID": "e6b9e81f831486b449f5b810cd01d9b9",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item_frame_common.png",
+            "AssetGUID": "41ad3991e77b6b24ab7293c96e56d6b9",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item01.png",
+            "AssetGUID": "1ae98f652d38d3d4caa4aafe8793f28b",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item02.png",
+            "AssetGUID": "129051940266ae44e80b337fadf69e5f",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item03.png",
+            "AssetGUID": "9a4972338dc1ab5488abfb3873e55741",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item04.png",
+            "AssetGUID": "ef9e042d34cfe364a98c1cd970981b6e",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item05.png",
+            "AssetGUID": "53d6f0b80fa7f1347be6b51d24e687c8",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item06.png",
+            "AssetGUID": "ebd0a711cb3071e4fb2efdea630028b1",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item07.png",
+            "AssetGUID": "b8479a628ea751e47b95d9bf70161aab",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/item08.png",
+            "AssetGUID": "cd86887f6868d0745b141c9d45c21434",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
+            "AssetGUID": "1b362c5e07ea47f499ce15c304e15149",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_items_duel.bundle",
+            "MainBundleSize": 26413,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
+            "AssetGUID": "bafad07279ff5aa438e05e6649db93aa",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_items_duel.bundle",
+            "MainBundleSize": 26413,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
+            "AssetGUID": "9e3769d457c55864abb14a4021e87ed3",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_items_duel.bundle",
+            "MainBundleSize": 26413,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+            "AssetGUID": "34a6e35c79af6014ea75206b21b418e1",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_items_duel.bundle",
+            "MainBundleSize": 26413,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
+            "AssetGUID": "715846ec3652ef04aba5438077f20f0f",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_items_duel.bundle",
+            "MainBundleSize": 26413,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Joystick.png",
+            "AssetGUID": "9b5bddc1d47ebaf43823ae5558f63756",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo01.png",
+            "AssetGUID": "cf97ea998c121da4d9f16ca3baadf085",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo02.png",
+            "AssetGUID": "a466a25adb537c943b3b072bc7ba8c49",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo03.png",
+            "AssetGUID": "fa1f5f0fdd27f3e4c80c96d2e2cc4695",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo04.png",
+            "AssetGUID": "1bb2717c2813d0a44a4c2a10141df2b4",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Skill_Bg.png",
+            "AssetGUID": "ef53c2216952d8e4faa4df4646774a89",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_core.png",
+            "AssetGUID": "2c26a79af244e3d41aeb9bc843b795b8",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_devour.png",
+            "AssetGUID": "456f6335e75e0b548a0455563434bac3",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_fission.png",
+            "AssetGUID": "9e70db41b9556704486cbb52ca617c29",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_flood.png",
+            "AssetGUID": "d4d133d41aa33ed4485cd9be77eb68a1",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_fullnest.png",
+            "AssetGUID": "93b96c5adc07515449dd8639d07049fa",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_hive.png",
+            "AssetGUID": "f922a8ccc3035304389764a406418c8f",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_homecoming.png",
+            "AssetGUID": "8589b0ac4c3b86845b38e36426029f30",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_lonewolf.png",
+            "AssetGUID": "c11decfbead6a44419553433f6cad0eb",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_proliferate.png",
+            "AssetGUID": "4e684b2c35bc78640b32e528d2a5e5e9",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_starburst.png",
+            "AssetGUID": "e1e3ad49f89e1cf4c9918111433ac874",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_swarm.png",
+            "AssetGUID": "3e6ba47f7da21d9408f894aa045fdfa9",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "MainBundleSize": 82553,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_armorbreak.png",
+            "AssetGUID": "6482c150756ae7a4bb61b9803c381bd8",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_brake.png",
+            "AssetGUID": "f339ff3846e7f7e40a746b6c1dbafb58",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_cloudpierce.png",
+            "AssetGUID": "49bbfeb9ec9a55b408fadb2c764bfbae",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_core.png",
+            "AssetGUID": "3acb7a97f478fb540b5c5971ce7f636b",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_maxspeed.png",
+            "AssetGUID": "56c2828e51a9478468c05eb1607bc72c",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_overclock.png",
+            "AssetGUID": "80c7e08b5bc95f94e8d56d0dc7a2a418",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_pierce.png",
+            "AssetGUID": "a563e627ab39e8949a439dab5ae8cce9",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_rampage.png",
+            "AssetGUID": "532043c3d2dc9084387fec622246d408",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_redline.png",
+            "AssetGUID": "4a04779f8afa79740a31e8f2b67e69c3",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_sprint.png",
+            "AssetGUID": "b7eb3ac32657d614e84e3a5c3188a57e",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_stasis.png",
+            "AssetGUID": "d7430824605822046b9ac28a9dee280d",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "MainBundleSize": 138298,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_calibrate.png",
+            "AssetGUID": "8a928cbae9788e2449a2570ac33f9723",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_core.png",
+            "AssetGUID": "cc7d79af6a5e52e45a4d9d5538189b0a",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_corridor.png",
+            "AssetGUID": "dc1f504608d1f7e42b0d1614dafeeeb3",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_expandfield.png",
+            "AssetGUID": "a9f133f05c10d5d4499ec18c654c4bb0",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_fulldomain.png",
+            "AssetGUID": "04c999180730ac347a3f71c1b509fa93",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_gravity.png",
+            "AssetGUID": "5ada59445c7006a4e925d6ac3ff754a3",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_infinite.png",
+            "AssetGUID": "2311769f552aff4409eeeff437c94557",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_magnetstar.png",
+            "AssetGUID": "e428fdf79d3fb5440a355e9d18d73adf",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_returnflow.png",
+            "AssetGUID": "97e0dbb3f81d86245bf9c2a3c08a382a",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_splitlight.png",
+            "AssetGUID": "69b4bd1136e8f374f82185ca4a6b6b42",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_steadymirror.png",
+            "AssetGUID": "1ccca54f6be3018488f2fdb4960241d9",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "MainBundleSize": 83417,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_boundless.png",
+            "AssetGUID": "6a13c7a81dd294d47a500fcc5ead0180",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_breakarray.png",
+            "AssetGUID": "978424edaf7702244aaf50a134cbb13b",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_core.png",
+            "AssetGUID": "648a75624f2cb0c42b9e47e6a2778323",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_deepdrill.png",
+            "AssetGUID": "30817706db16bf447ad07ead82c45c26",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_drilldown.png",
+            "AssetGUID": "e8b14af61f9e11249ad44c8320ed54c0",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_penetrate.png",
+            "AssetGUID": "3e3f34d6b67fbed40a4372023c732719",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_starchatter.png",
+            "AssetGUID": "52e2d1558624101478de8bc35aed6854",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_starpierce.png",
+            "AssetGUID": "9f250f9065d887f41be6c34c34dcc5ea",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_steady.png",
+            "AssetGUID": "a559239ca19477740b9c208b50abac23",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_wallstab.png",
+            "AssetGUID": "55cf0dfc341ade746abb938d69297b74",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_widefield.png",
+            "AssetGUID": "7492fd8093dff3140b4c25e3b6feae13",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "MainBundleSize": 77387,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Tip.png",
+            "AssetGUID": "0cd2ba36aedc7be4db7b9a5cac7a8c53",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/HotUpdateContent/Res/textures/Title.png",
+            "AssetGUID": "9b0866a0661028d4a8a5da24324acc60",
+            "AssetTags": [],
+            "MainBundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "MainBundleSize": 80252,
+            "DependAssets": [],
+            "DependBundles": []
+        }
+    ],
+    "BundleInfos": [
+        {
+            "BundleName": "assets_hotupdatecontent_config.bundle",
+            "FileName": "3c45858b9544bcfd70059098a343a45b.bundle",
+            "FileHash": "3c45858b9544bcfd70059098a343a45b",
+            "FileCRC": 1366505889,
+            "FileSize": 17612,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Config/gatebreaker_rules.bytes",
+                    "AssetGUID": "03b0fe42c2024421088a8d8c94ccc110"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_fonts.bundle",
+            "FileName": "72a2119eecbc7b0966fa5fd19e747c33.bundle",
+            "FileHash": "72a2119eecbc7b0966fa5fd19e747c33",
+            "FileCRC": 3128536824,
+            "FileSize": 2957,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "assets_hotupdatecontent_res_fonts_tmp.bundle",
+                "unityshaders.bundle"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/GatebreakerFontRoleProfile.asset",
+                    "AssetGUID": "c2255cc0461f34537b1f469e0f73164a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/GatebreakerFontRuntimeSettings.asset",
+                    "AssetGUID": "9bcc7f31edb334ad29ad2a95ca61ea15"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_fonts_licenses.bundle",
+            "FileName": "59b0108b76ef55babca4f3cfee894c44.bundle",
+            "FileHash": "59b0108b76ef55babca4f3cfee894c44",
+            "FileCRC": 3194364523,
+            "FileSize": 5594,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/ark-pixel.txt",
+                    "AssetGUID": "f6eef235b38e547358c0e70649eb9e7e"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/cubic-11.txt",
+                    "AssetGUID": "7346b397f9e6b4968a529093666ce3fb"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/galmuri.txt",
+                    "AssetGUID": "5ec79c46008db4cc492d877dd5e6e4a0"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_DotGothic16.txt",
+                    "AssetGUID": "055b510d4b6644b20874c190dc72da77"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_FusionPixel.txt",
+                    "AssetGUID": "1ce13189b5ba34a74b7e86157349cf91"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_PixelifySans.txt",
+                    "AssetGUID": "92c194123bebc40e2ae717df48d5dd96"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/licenses/OFL_PressStart2P.txt",
+                    "AssetGUID": "c44c3e0bed4234d4a8a598e4611ffc11"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_fonts_preview.bundle",
+            "FileName": "7c92c44174c8d296acaa78e08d19ab8e.bundle",
+            "FileHash": "7c92c44174c8d296acaa78e08d19ab8e",
+            "FileCRC": 1141388534,
+            "FileSize": 8521,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "assets_hotupdatecontent_res_fonts_tmp.bundle",
+                "share_assets_textmesh_pro_fonts.bundle",
+                "share_assets_textmesh_pro_resources_fonts_&_materials.bundle",
+                "unityshaders.bundle"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/preview/GatebreakerFontPreview.html",
+                    "AssetGUID": "c0d37cad760c94e5a8e30912161af9c8"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/preview/GatebreakerFontPreview.prefab",
+                    "AssetGUID": "4ddc5bab5769f463894476e9c9ab8b3a"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_fonts_source.bundle",
+            "FileName": "1883f1e0ce6664ffc1bf5e2479d8d220.bundle",
+            "FileHash": "1883f1e0ce6664ffc1bf5e2479d8d220",
+            "FileCRC": 3577082862,
+            "FileSize": 2488930,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "assets_hotupdatecontent_res_fonts.bundle",
+                "assets_hotupdatecontent_res_fonts_preview.bundle",
+                "assets_hotupdatecontent_res_fonts_tmp.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/DotGothic16-Regular.ttf",
+                    "AssetGUID": "ea846de54769249b49eceb2e27dc7fde"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/FusionPixel12-Proportional-zh_hans.otf",
+                    "AssetGUID": "30856cf78f3454c2d9f5174d3f46270c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PixelifySans-wght.ttf",
+                    "AssetGUID": "f839564e6671d4eb9ada6f1f82f613a1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/source/PressStart2P-Regular.ttf",
+                    "AssetGUID": "8a92a91cb6b8740ef8262cd17f09a61a"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_fonts_tmp.bundle",
+            "FileName": "2726c0d20b1575ed19e37948ed98fc2a.bundle",
+            "FileHash": "2726c0d20b1575ed19e37948ed98fc2a",
+            "FileCRC": 1898066578,
+            "FileSize": 1051460,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_fonts_source.bundle",
+                "unityshaders.bundle"
+            ],
+            "ReferenceBundles": [
+                "assets_hotupdatecontent_res_fonts.bundle",
+                "assets_hotupdatecontent_res_fonts_preview.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_ArcadeTitle_PressStart2P_TMP.asset",
+                    "AssetGUID": "2739a9e44a02d41758c3237c10662c96"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_Fallback_FusionPixel12-Proportional-zh_hans.asset",
+                    "AssetGUID": "38c99420381a74d6eb47b879f7528247"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelAlt_DotGothic16_TMP.asset",
+                    "AssetGUID": "51fcd09fd4bf84f20859ebc153da7a31"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelBody_PixelifySans_TMP.asset",
+                    "AssetGUID": "7257309967c564c78904b2d267bb78a2"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/fonts/tmp/Gatebreaker_PixelChinese_FusionPixel12_TMP.asset",
+                    "AssetGUID": "4cf32bdb455cc4f75b4790e8501c7ec4"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_hotupdate.bundle",
+            "FileName": "af7ee6dcb3ff86024d6cc57c3d8e1dc3.bundle",
+            "FileHash": "af7ee6dcb3ff86024d6cc57c3d8e1dc3",
+            "FileCRC": 1333121369,
+            "FileSize": 373477,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/App.HotUpdate.dll.bytes",
+                    "AssetGUID": "949bd2b5b6d674d6887c601c33a33d36"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_hotupdate_metadata.bundle",
+            "FileName": "b310b8c762bf1a8c3b516c7b9dc97a8e.bundle",
+            "FileHash": "b310b8c762bf1a8c3b516c7b9dc97a8e",
+            "FileCRC": 4122408831,
+            "FileSize": 1850480,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/App.Shared.dll.bytes",
+                    "AssetGUID": "ec615dff67235447eae3a6d87dce59af"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/mscorlib.dll.bytes",
+                    "AssetGUID": "f7b218f926ffc4e18a7cbce59ea87748"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/System.Core.dll.bytes",
+                    "AssetGUID": "e67235d2693244ba2a48f0498a2262bd"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/System.dll.bytes",
+                    "AssetGUID": "a4cbfac5a5bc644a8b9b2e95259978f6"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/Unity.TextMeshPro.dll.bytes",
+                    "AssetGUID": "ad61b35a032cb4ae9b197fbcdd0da595"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.CoreModule.dll.bytes",
+                    "AssetGUID": "b8da9e6596d584fd5a87bd691de8efc6"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.InputLegacyModule.dll.bytes",
+                    "AssetGUID": "0d9f6b3dfd7584e79a498bcdbbb8b48e"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.JSONSerializeModule.dll.bytes",
+                    "AssetGUID": "70f94a1bba42a413ca78dd3d038290c8"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.TextRenderingModule.dll.bytes",
+                    "AssetGUID": "03a66f3d160d34e158879fa6031004c1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.UI.dll.bytes",
+                    "AssetGUID": "9c65583b1363541b99d1fb5c174f2411"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/HotUpdate/Metadata/UnityEngine.UIModule.dll.bytes",
+                    "AssetGUID": "6a7f72e5d59174bbfa98a0a0a3cc8a3a"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_materials.bundle",
+            "FileName": "89fd5e32f09eeb47bccc7dd003720858.bundle",
+            "FileHash": "89fd5e32f09eeb47bccc7dd003720858",
+            "FileCRC": 3832774279,
+            "FileSize": 3286,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/Materials/item_frame.mat",
+                    "AssetGUID": "756e89daa640d094288c3912e6aeb503"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/Materials/item01.mat",
+                    "AssetGUID": "a77ca270cd17afa459cd5aea9f13d25c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/Materials/New Material.mat",
+                    "AssetGUID": "157342f827ca7954989547ac69d4e643"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_prefabs.bundle",
+            "FileName": "f36f02e6585fd47ed2ead40e72ae7154.bundle",
+            "FileHash": "f36f02e6585fd47ed2ead40e72ae7154",
+            "FileCRC": 4264218528,
+            "FileSize": 53845,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "assets_hotupdatecontent_res_textures.bundle",
+                "DefaultPackage_unityshaders"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Baffle.prefab",
+                    "AssetGUID": "09724c2260760ac40937a3f4ee54f7b7"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball01.prefab",
+                    "AssetGUID": "cf60958611f66ad4f996b4ee80b05c6b"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball02.prefab",
+                    "AssetGUID": "7d4d5ce97f3f71443b0c6456f82650a4"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball03.prefab",
+                    "AssetGUID": "869fd3be11d631743a1c38eb85d68376"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Ball04.prefab",
+                    "AssetGUID": "99d55f07e15094e378cf8e324bf1fb9c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_01.prefab",
+                    "AssetGUID": "592e24725b4cb3847ae0722d6a155bc3"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_02.prefab",
+                    "AssetGUID": "1d9e1901902ab9247b94fd8b0e0ba52f"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_03.prefab",
+                    "AssetGUID": "ce4ece86cf77f484a8210b7765b1740b"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Brick_04.prefab",
+                    "AssetGUID": "a1b6de5e877b2c142b1fb94a6fc00243"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item01.prefab",
+                    "AssetGUID": "6ce1b66ff9ba72a41b4976f032c285b8"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item02.prefab",
+                    "AssetGUID": "4f66942d3c99a444985221554469d00d"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item03.prefab",
+                    "AssetGUID": "f3a3308a7ba96b746b6dec603d87d5ab"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item04.prefab",
+                    "AssetGUID": "c1da907bf8e070643a80149643aad771"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item05.prefab",
+                    "AssetGUID": "e4b7c040965c060438c1cb557eac403d"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item06.prefab",
+                    "AssetGUID": "f75860568b73f0646b2f0cbd914e085c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item07.prefab",
+                    "AssetGUID": "2a17d2b07a6c53242bfb5ad3ebbe0b28"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Item08.prefab",
+                    "AssetGUID": "aa2dad1340b61bc4a9ba7ec748368975"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Scene2P.prefab",
+                    "AssetGUID": "326dca5afb1d4fa449f4524ae45cc24d"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Scene3P.prefab",
+                    "AssetGUID": "73487bf71b4982b41aebd0075611278a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/Scene4P.prefab",
+                    "AssetGUID": "7b52a242080e3764bbd2f810592acdc3"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/prefabs/SceneSingle.prefab",
+                    "AssetGUID": "6551e2ab17e021540943eff4833be455"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_sounds.bundle",
+            "FileName": "ed65a8586f957945bd859c47abb99d20.bundle",
+            "FileHash": "ed65a8586f957945bd859c47abb99d20",
+            "FileCRC": 2028262934,
+            "FileSize": 1772456,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/sounds/gameBGM.mp3",
+                    "AssetGUID": "90f043b6428404e488f7305087455876"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_textures.bundle",
+            "FileName": "78a23d4bd25afb2522e9ad4a27c63e69.bundle",
+            "FileHash": "78a23d4bd25afb2522e9ad4a27c63e69",
+            "FileCRC": 66585139,
+            "FileSize": 80252,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "assets_hotupdatecontent_res_materials.bundle",
+                "assets_hotupdatecontent_res_prefabs.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Arrow.png",
+                    "AssetGUID": "563e40c63e9557644ad6d5ad4938df46"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Arrow1.png",
+                    "AssetGUID": "5b7c92c8df7b5314086735cd0390ee89"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Baffle001.png",
+                    "AssetGUID": "3b8241d2f72a9524c904de468aeeba67"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Ball001.png",
+                    "AssetGUID": "a0493adecd3c00442aeeefe334cd96f7"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_01.png",
+                    "AssetGUID": "7cb6e0d5d67770a4d8f3d2925b4e247c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_02.png",
+                    "AssetGUID": "66ea22d655192794ea1b0a8ecdce13af"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_03.png",
+                    "AssetGUID": "d23ab67049628044bae82961823edcd6"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick_04.png",
+                    "AssetGUID": "55499de26b55afc4b864f1e9ba6e7cd5"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Brick001.png",
+                    "AssetGUID": "65efd6f20a7cbfc409eba7bba1baeb96"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/btn001.png",
+                    "AssetGUID": "5d075bba9a97cfd4fb5239ebcdf3aaf2"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/btn002.png",
+                    "AssetGUID": "91b9e638e44773e409c06c5c7c781250"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Info.png",
+                    "AssetGUID": "e6b9e81f831486b449f5b810cd01d9b9"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item_frame_common.png",
+                    "AssetGUID": "41ad3991e77b6b24ab7293c96e56d6b9"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item01.png",
+                    "AssetGUID": "1ae98f652d38d3d4caa4aafe8793f28b"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item02.png",
+                    "AssetGUID": "129051940266ae44e80b337fadf69e5f"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item03.png",
+                    "AssetGUID": "9a4972338dc1ab5488abfb3873e55741"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item04.png",
+                    "AssetGUID": "ef9e042d34cfe364a98c1cd970981b6e"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item05.png",
+                    "AssetGUID": "53d6f0b80fa7f1347be6b51d24e687c8"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item06.png",
+                    "AssetGUID": "ebd0a711cb3071e4fb2efdea630028b1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item07.png",
+                    "AssetGUID": "b8479a628ea751e47b95d9bf70161aab"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/item08.png",
+                    "AssetGUID": "cd86887f6868d0745b141c9d45c21434"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Joystick.png",
+                    "AssetGUID": "9b5bddc1d47ebaf43823ae5558f63756"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo01.png",
+                    "AssetGUID": "cf97ea998c121da4d9f16ca3baadf085"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo02.png",
+                    "AssetGUID": "a466a25adb537c943b3b072bc7ba8c49"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo03.png",
+                    "AssetGUID": "fa1f5f0fdd27f3e4c80c96d2e2cc4695"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/PlayerInfo04.png",
+                    "AssetGUID": "1bb2717c2813d0a44a4c2a10141df2b4"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Skill_Bg.png",
+                    "AssetGUID": "ef53c2216952d8e4faa4df4646774a89"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Tip.png",
+                    "AssetGUID": "0cd2ba36aedc7be4db7b9a5cac7a8c53"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/Title.png",
+                    "AssetGUID": "9b0866a0661028d4a8a5da24324acc60"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_textures_heroes.bundle",
+            "FileName": "e03b6e8548ab88b657c249361ed9d314.bundle",
+            "FileHash": "e03b6e8548ab88b657c249361ed9d314",
+            "FileCRC": 2898247682,
+            "FileSize": 119981,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/mirage.png",
+                    "AssetGUID": "356433108d2e89e4bb56051f03a3ad45"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/pulse.png",
+                    "AssetGUID": "395ae8dabc8a67847a87f8ff0f01721e"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/refraction.png",
+                    "AssetGUID": "e9ea23e5388fbe14093014e158ce1b94"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/heroes/rift.png",
+                    "AssetGUID": "8b10d0bba1057c749bb2d86d818fc191"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_textures_items_duel.bundle",
+            "FileName": "84369cc241e0eb35b0a03d7746ede269.bundle",
+            "FileHash": "84369cc241e0eb35b0a03d7746ede269",
+            "FileCRC": 2988295577,
+            "FileSize": 26413,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_core_buffer.png",
+                    "AssetGUID": "1b362c5e07ea47f499ce15c304e15149"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_damping_pulse.png",
+                    "AssetGUID": "bafad07279ff5aa438e05e6649db93aa"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_large_ball.png",
+                    "AssetGUID": "9e3769d457c55864abb14a4021e87ed3"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_phase_drill.png",
+                    "AssetGUID": "34a6e35c79af6014ea75206b21b418e1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/items/duel/duel_item_wide_paddle.png",
+                    "AssetGUID": "715846ec3652ef04aba5438077f20f0f"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_textures_tech_mirage.bundle",
+            "FileName": "73b7e12fa9b5640fd31ab36a22010440.bundle",
+            "FileHash": "73b7e12fa9b5640fd31ab36a22010440",
+            "FileCRC": 1897012146,
+            "FileSize": 82553,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_core.png",
+                    "AssetGUID": "2c26a79af244e3d41aeb9bc843b795b8"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_devour.png",
+                    "AssetGUID": "456f6335e75e0b548a0455563434bac3"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_fission.png",
+                    "AssetGUID": "9e70db41b9556704486cbb52ca617c29"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_flood.png",
+                    "AssetGUID": "d4d133d41aa33ed4485cd9be77eb68a1"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_fullnest.png",
+                    "AssetGUID": "93b96c5adc07515449dd8639d07049fa"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_hive.png",
+                    "AssetGUID": "f922a8ccc3035304389764a406418c8f"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_homecoming.png",
+                    "AssetGUID": "8589b0ac4c3b86845b38e36426029f30"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_lonewolf.png",
+                    "AssetGUID": "c11decfbead6a44419553433f6cad0eb"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_proliferate.png",
+                    "AssetGUID": "4e684b2c35bc78640b32e528d2a5e5e9"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_starburst.png",
+                    "AssetGUID": "e1e3ad49f89e1cf4c9918111433ac874"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/mirage/mirage_swarm.png",
+                    "AssetGUID": "3e6ba47f7da21d9408f894aa045fdfa9"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_textures_tech_pulse.bundle",
+            "FileName": "23a843d5475423a6a25282b1e7a565ff.bundle",
+            "FileHash": "23a843d5475423a6a25282b1e7a565ff",
+            "FileCRC": 2219976155,
+            "FileSize": 138298,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_armorbreak.png",
+                    "AssetGUID": "6482c150756ae7a4bb61b9803c381bd8"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_brake.png",
+                    "AssetGUID": "f339ff3846e7f7e40a746b6c1dbafb58"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_cloudpierce.png",
+                    "AssetGUID": "49bbfeb9ec9a55b408fadb2c764bfbae"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_core.png",
+                    "AssetGUID": "3acb7a97f478fb540b5c5971ce7f636b"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_maxspeed.png",
+                    "AssetGUID": "56c2828e51a9478468c05eb1607bc72c"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_overclock.png",
+                    "AssetGUID": "80c7e08b5bc95f94e8d56d0dc7a2a418"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_pierce.png",
+                    "AssetGUID": "a563e627ab39e8949a439dab5ae8cce9"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_rampage.png",
+                    "AssetGUID": "532043c3d2dc9084387fec622246d408"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_redline.png",
+                    "AssetGUID": "4a04779f8afa79740a31e8f2b67e69c3"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_sprint.png",
+                    "AssetGUID": "b7eb3ac32657d614e84e3a5c3188a57e"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/pulse/pulse_stasis.png",
+                    "AssetGUID": "d7430824605822046b9ac28a9dee280d"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_textures_tech_refract.bundle",
+            "FileName": "1ce6f786f46530e0a7b60f3eb8c78e8b.bundle",
+            "FileHash": "1ce6f786f46530e0a7b60f3eb8c78e8b",
+            "FileCRC": 2551757176,
+            "FileSize": 83417,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_calibrate.png",
+                    "AssetGUID": "8a928cbae9788e2449a2570ac33f9723"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_core.png",
+                    "AssetGUID": "cc7d79af6a5e52e45a4d9d5538189b0a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_corridor.png",
+                    "AssetGUID": "dc1f504608d1f7e42b0d1614dafeeeb3"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_expandfield.png",
+                    "AssetGUID": "a9f133f05c10d5d4499ec18c654c4bb0"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_fulldomain.png",
+                    "AssetGUID": "04c999180730ac347a3f71c1b509fa93"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_gravity.png",
+                    "AssetGUID": "5ada59445c7006a4e925d6ac3ff754a3"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_infinite.png",
+                    "AssetGUID": "2311769f552aff4409eeeff437c94557"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_magnetstar.png",
+                    "AssetGUID": "e428fdf79d3fb5440a355e9d18d73adf"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_returnflow.png",
+                    "AssetGUID": "97e0dbb3f81d86245bf9c2a3c08a382a"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_splitlight.png",
+                    "AssetGUID": "69b4bd1136e8f374f82185ca4a6b6b42"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/refract/refract_steadymirror.png",
+                    "AssetGUID": "1ccca54f6be3018488f2fdb4960241d9"
+                }
+            ]
+        },
+        {
+            "BundleName": "assets_hotupdatecontent_res_textures_tech_rift.bundle",
+            "FileName": "dd11c92686c552f340d3e6923a956686.bundle",
+            "FileHash": "dd11c92686c552f340d3e6923a956686",
+            "FileCRC": 2684120331,
+            "FileSize": 77387,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_boundless.png",
+                    "AssetGUID": "6a13c7a81dd294d47a500fcc5ead0180"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_breakarray.png",
+                    "AssetGUID": "978424edaf7702244aaf50a134cbb13b"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_core.png",
+                    "AssetGUID": "648a75624f2cb0c42b9e47e6a2778323"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_deepdrill.png",
+                    "AssetGUID": "30817706db16bf447ad07ead82c45c26"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_drilldown.png",
+                    "AssetGUID": "e8b14af61f9e11249ad44c8320ed54c0"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_penetrate.png",
+                    "AssetGUID": "3e3f34d6b67fbed40a4372023c732719"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_starchatter.png",
+                    "AssetGUID": "52e2d1558624101478de8bc35aed6854"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_starpierce.png",
+                    "AssetGUID": "9f250f9065d887f41be6c34c34dcc5ea"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_steady.png",
+                    "AssetGUID": "a559239ca19477740b9c208b50abac23"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_wallstab.png",
+                    "AssetGUID": "55cf0dfc341ade746abb938d69297b74"
+                },
+                {
+                    "AssetPath": "Assets/HotUpdateContent/Res/textures/tech/rift/rift_widefield.png",
+                    "AssetGUID": "7492fd8093dff3140b4c25e3b6feae13"
+                }
+            ]
+        },
+        {
+            "BundleName": "DefaultPackage_unityshaders",
+            "FileName": "b7bf6306d4bbabcab8b31d639dbf5b20",
+            "FileHash": "b7bf6306d4bbabcab8b31d639dbf5b20",
+            "FileCRC": 2541588784,
+            "FileSize": 63975,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "assets_hotupdatecontent_res_materials.bundle",
+                "assets_hotupdatecontent_res_prefabs.bundle"
+            ],
+            "BundleContents": []
+        },
+        {
+            "BundleName": "share_assets_textmesh_pro_fonts.bundle",
+            "FileName": "3c010acee33d7d5251fcd448215b2fcd.bundle",
+            "FileHash": "3c010acee33d7d5251fcd448215b2fcd",
+            "FileCRC": 3068678303,
+            "FileSize": 227673,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "assets_hotupdatecontent_res_fonts_preview.bundle",
+                "share_assets_textmesh_pro_resources_fonts_&_materials.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Fonts/LiberationSans.ttf",
+                    "AssetGUID": "e3265ab4bf004d28a9537516768c1c75"
+                }
+            ]
+        },
+        {
+            "BundleName": "share_assets_textmesh_pro_resources_fonts_&_materials.bundle",
+            "FileName": "8559ac9247402b0a2e3ca2bea3f2e6f4.bundle",
+            "FileHash": "8559ac9247402b0a2e3ca2bea3f2e6f4",
+            "FileCRC": 1142723053,
+            "FileSize": 373808,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "share_assets_textmesh_pro_fonts.bundle",
+                "unityshaders.bundle"
+            ],
+            "ReferenceBundles": [
+                "assets_hotupdatecontent_res_fonts_preview.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset",
+                    "AssetGUID": "2e498d1c8094910479dc3e1b768306a4"
+                },
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset",
+                    "AssetGUID": "8f586378b4e144a9851e7b34d9b748ee"
+                }
+            ]
+        },
+        {
+            "BundleName": "unityshaders.bundle",
+            "FileName": "65eb734807fee5d3db0c45b93f837d60.bundle",
+            "FileHash": "65eb734807fee5d3db0c45b93f837d60",
+            "FileCRC": 1443170678,
+            "FileSize": 25625,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "assets_hotupdatecontent_res_fonts.bundle",
+                "assets_hotupdatecontent_res_fonts_preview.bundle",
+                "assets_hotupdatecontent_res_fonts_tmp.bundle",
+                "share_assets_textmesh_pro_resources_fonts_&_materials.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader",
+                    "AssetGUID": "fe393ace9b354375a9cb14cdbbc28be4"
+                }
+            ]
+        }
+    ],
+    "IndependAssets": []
+}

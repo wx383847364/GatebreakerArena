@@ -1,0 +1,37 @@
+﻿2026-09-11 16:14:01.311 [INFO] Begin to build package : DefaultPackage by ScriptableBuildPipeline
+2026-09-11 16:14:01.312 [INFO] --------------------------------------------->TaskPrepare<--------------------------------------------
+2026-09-11 16:14:01.383 [INFO] Delete package root directory: Builds/YooAssets/Android/DefaultPackage
+2026-09-11 16:14:01.384 [INFO] Create pipeline output directory: Builds/YooAssets/Android/DefaultPackage/OutputCache
+2026-09-11 16:14:01.384 [INFO] TaskPrepare It takes 0 seconds in total
+2026-09-11 16:14:01.384 [INFO] --------------------------------------------->TaskGetBuildMap<--------------------------------------------
+2026-09-11 16:14:01.439 [INFO] TaskGetBuildMap It takes 0 seconds in total
+2026-09-11 16:14:01.439 [INFO] --------------------------------------------->TaskBuilding<--------------------------------------------
+2026-09-11 16:14:07.295 [INFO] UnityEngine build success!
+2026-09-11 16:14:07.295 [INFO] TaskBuilding It takes 5 seconds in total
+2026-09-11 16:14:07.295 [INFO] --------------------------------------------->TaskVerifyBuildResult<--------------------------------------------
+2026-09-11 16:14:07.297 [INFO] Build results verify success!
+2026-09-11 16:14:07.297 [INFO] TaskVerifyBuildResult It takes 0 seconds in total
+2026-09-11 16:14:07.297 [INFO] --------------------------------------------->TaskEncryption<--------------------------------------------
+2026-09-11 16:14:07.297 [INFO] TaskEncryption It takes 0 seconds in total
+2026-09-11 16:14:07.297 [INFO] --------------------------------------------->TaskUpdateBundleInfo<--------------------------------------------
+2026-09-11 16:14:07.344 [INFO] TaskUpdateBundleInfo It takes 0 seconds in total
+2026-09-11 16:14:07.344 [INFO] --------------------------------------------->TaskCreateManifest<--------------------------------------------
+2026-09-11 16:14:07.348 [WARN] [ErrorCode601] Found stray bundle ! Bundle ID : 18 Bundle name : DefaultPackage_unityshaders
+2026-09-11 16:14:07.350 [INFO] Create package manifest file: Builds/YooAssets/Android/DefaultPackage/Smoke_v1/DefaultPackage_Smoke_v1.json
+2026-09-11 16:14:07.359 [INFO] Create package manifest file: Builds/YooAssets/Android/DefaultPackage/Smoke_v1/DefaultPackage_Smoke_v1.bytes
+2026-09-11 16:14:07.360 [INFO] Create package manifest hash file: Builds/YooAssets/Android/DefaultPackage/Smoke_v1/DefaultPackage_Smoke_v1.hash
+2026-09-11 16:14:07.360 [INFO] Create package manifest version file: Builds/YooAssets/Android/DefaultPackage/Smoke_v1/DefaultPackage.version
+2026-09-11 16:14:07.362 [INFO] TaskCreateManifest It takes 0 seconds in total
+2026-09-11 16:14:07.363 [INFO] --------------------------------------------->TaskCreateReport<--------------------------------------------
+2026-09-11 16:14:07.366 [INFO] Create build report file: Builds/YooAssets/Android/DefaultPackage/Smoke_v1/DefaultPackage_Smoke_v1.report
+2026-09-11 16:14:07.366 [INFO] TaskCreateReport It takes 0 seconds in total
+2026-09-11 16:14:07.366 [INFO] --------------------------------------------->TaskCreatePackage<--------------------------------------------
+2026-09-11 16:14:07.367 [INFO] Start making patch package: Builds/YooAssets/Android/DefaultPackage/Smoke_v1
+2026-09-11 16:14:07.380 [INFO] TaskCreatePackage It takes 0 seconds in total
+2026-09-11 16:14:07.380 [INFO] --------------------------------------------->TaskCopyBuildinFiles<--------------------------------------------
+2026-09-11 16:14:08.120 [INFO] Buildin files copy complete: /Users/bruce/work/GatebreakerArena/Client/Assets/StreamingAssets/yoo/DefaultPackage
+2026-09-11 16:14:08.120 [INFO] TaskCopyBuildinFiles It takes 0 seconds in total
+2026-09-11 16:14:08.120 [INFO] --------------------------------------------->TaskCreateCatalog<--------------------------------------------
+2026-09-11 16:14:08.453 [INFO] TaskCreateCatalog It takes 0 seconds in total
+2026-09-11 16:14:08.453 [INFO] Total build process time: 5 seconds
+2026-09-11 16:14:08.453 [INFO] Resource pipeline build success

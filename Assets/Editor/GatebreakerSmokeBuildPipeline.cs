@@ -28,7 +28,11 @@ public static class GatebreakerSmokeBuildPipeline
     private const string YooPackageName = "DefaultPackage";
     private const string YooPackageVersion = "Smoke_v1";
     private const string YooBuildOutputRoot = "Builds/YooAssets";
-    private const string YooCollectPath = "Assets/HotUpdateContent/Res";
+    private static readonly string[] YooCollectPaths =
+    {
+        "Assets/HotUpdateContent/Res",
+        "Assets/HotUpdateContent/Config",
+    };
 
     private static readonly string[] AotMetadataAssemblyNames =
     {
@@ -228,9 +232,10 @@ public static class GatebreakerSmokeBuildPipeline
     private static void InvokeHybridClrPrebuild(BuildTarget target)
     {
         Debug.Log($"Gatebreaker smoke build: running HybridCLR prebuild for {target}.");
-        InvokeStatic("HybridCLR.Editor.Commands.CompileDllCommand, HybridCLR.Editor", "CompileDll", target, true);
-        InvokeStatic("HybridCLR.Editor.Commands.LinkGeneratorCommand, HybridCLR.Editor", "GenerateLinkXml", target);
         EnsureHybridClrLocalRuntimeInstalled();
+        InvokeStatic("HybridCLR.Editor.Commands.CompileDllCommand, HybridCLR.Editor", "CompileDll", target, true);
+        InvokeStatic("HybridCLR.Editor.Commands.Il2CppDefGeneratorCommand, HybridCLR.Editor", "GenerateIl2CppDef");
+        InvokeStatic("HybridCLR.Editor.Commands.LinkGeneratorCommand, HybridCLR.Editor", "GenerateLinkXml", target);
         InvokeStatic("HybridCLR.Editor.Commands.StripAOTDllCommand, HybridCLR.Editor", "GenerateStripedAOTDlls", target);
         InvokeStatic("HybridCLR.Editor.Commands.MethodBridgeGeneratorCommand, HybridCLR.Editor", "GenerateMethodBridgeAndReversePInvokeWrapper", target);
         InvokeStatic("HybridCLR.Editor.Commands.AOTReferenceGeneratorCommand, HybridCLR.Editor", "GenerateAOTGenericReference", target);
@@ -344,23 +349,27 @@ public static class GatebreakerSmokeBuildPipeline
             group = AssetBundleCollectorSettingData.CreateGroup(package, "Smoke Builtin");
         }
 
-        AssetBundleCollector collector = group.Collectors.FirstOrDefault(item => item.CollectPath == YooCollectPath);
-        if (collector == null)
+        foreach (string collectPath in YooCollectPaths)
         {
-            collector = new AssetBundleCollector();
-            AssetBundleCollectorSettingData.CreateCollector(group, collector);
+            AssetBundleCollector collector = group.Collectors.FirstOrDefault(item => item.CollectPath == collectPath);
+            if (collector == null)
+            {
+                collector = new AssetBundleCollector();
+                AssetBundleCollectorSettingData.CreateCollector(group, collector);
+            }
+
+            collector.CollectPath = collectPath;
+            collector.CollectorGUID = AssetDatabase.AssetPathToGUID(collectPath);
+            collector.CollectorType = ECollectorType.MainAssetCollector;
+            collector.AddressRuleName = nameof(AddressByFileName);
+            collector.PackRuleName = nameof(PackDirectory);
+            collector.FilterRuleName = nameof(CollectAll);
+            collector.AssetTags = string.Empty;
+            collector.UserData = string.Empty;
+
+            AssetBundleCollectorSettingData.ModifyCollector(group, collector);
         }
 
-        collector.CollectPath = YooCollectPath;
-        collector.CollectorGUID = AssetDatabase.AssetPathToGUID(YooCollectPath);
-        collector.CollectorType = ECollectorType.MainAssetCollector;
-        collector.AddressRuleName = nameof(AddressByFileName);
-        collector.PackRuleName = nameof(PackDirectory);
-        collector.FilterRuleName = nameof(CollectAll);
-        collector.AssetTags = string.Empty;
-        collector.UserData = string.Empty;
-
-        AssetBundleCollectorSettingData.ModifyCollector(group, collector);
         AssetBundleCollectorSettingData.SaveFile();
         package.CheckConfigError();
     }
@@ -392,7 +401,8 @@ public static class GatebreakerSmokeBuildPipeline
                 return false;
             }
 
-            return item.Groups.Any(group => group.Collectors.Any(collector => collector.CollectPath == YooCollectPath));
+            return YooCollectPaths.All(path =>
+                item.Groups.Any(group => group.Collectors.Any(collector => collector.CollectPath == path)));
         });
     }
 
