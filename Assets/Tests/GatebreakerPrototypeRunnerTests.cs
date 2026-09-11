@@ -1,5 +1,10 @@
 using App.HotUpdate.GatebreakerArena.Application;
 using App.HotUpdate.GatebreakerArena.Ball;
+using App.HotUpdate.GatebreakerArena.Core;
+using App.HotUpdate.GatebreakerArena.Match;
+using App.HotUpdate.GatebreakerArena.Mode;
+using App.HotUpdate.GatebreakerArena.Serve;
+using App.HotUpdate.GatebreakerArena.Zone;
 using App.HotUpdate.GatebreakerArena.Network;
 using App.HotUpdate.GatebreakerArena.Prototype;
 using NUnit.Framework;
@@ -14,6 +19,151 @@ namespace Gatebreaker.Tests
 {
     public sealed class GatebreakerPrototypeRunnerTests
     {
+        // 校验真实对局状态门禁，菜单、倒计时及结算均不得接受移动。
+        [TestCase("ModeSelect", MatchPhase.Playing, false)]
+        [TestCase("LocalCountdown", MatchPhase.Playing, false)]
+        [TestCase("LocalPlaying", MatchPhase.Countdown, false)]
+        [TestCase("LocalPlaying", MatchPhase.Result, false)]
+        [TestCase("LocalPlaying", MatchPhase.Playing, true)]
+        [TestCase("LocalPlaying", MatchPhase.Overtime, true)]
+        public void MovementRequiresPlayableMatchAndPage(string page, MatchPhase phase, bool expected)
+        {
+            var root = new GameObject("Movement state gate test");
+            try
+            {
+                var runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                var runtime = new GatebreakerMatchRuntime(GatebreakerModeCatalog.CreateDefault(),
+                    new BallSimulationSystem(), new ServeResourceSystem(), new GoalJudgeSystem(), new ScoreSystem(), null);
+                runtime.StartLocalPrototype();
+                SetPrivateField(runtime, "<Phase>k__BackingField", phase);
+                SetPrivateField(runner, "_runtime", runtime);
+                SetPrivateField(runner, "_initialized", true);
+                SetStartupUiState(runner, page);
+                Assert.AreEqual(expected, InvokePrivate<bool>(runner, "CanReadMovement"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        // 各玩家视角的屏幕左移，经现有轴转换后都必须向视图左侧位移。
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void ScreenLeftMovesPaddleLeftInLocalView(int playerId)
+        {
+            var root = new GameObject("Movement perspective test");
+            try
+            {
+                var runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                var runtime = new GatebreakerMatchRuntime(GatebreakerModeCatalog.CreateDefault(),
+                    new BallSimulationSystem(), new ServeResourceSystem(), new GoalJudgeSystem(), new ScoreSystem(), null);
+                runtime.StartLocalPrototype();
+                runtime.SetLocalPlayer(playerId);
+                SetPrivateField(runner, "_runtime", runtime);
+                SetPrivateField(runner, "_localPlayerId", playerId);
+                float sign = InvokePrivate<float>(runner, "GetLocalMoveAxisSign");
+                Vector2 right = InvokePrivate<Vector2>(runner, "GetLocalViewRight");
+                Vector2 before = runtime.FindPlayer(playerId).Paddle.Position;
+                runtime.ApplyInputFrame(new PlayerInputFrame(playerId, -sign, false, Vector2.zero));
+                runtime.TickLocalPrototype(1f / 30f);
+                Assert.Less(Vector2.Dot(runtime.FindPlayer(playerId).Paddle.Position - before, right), 0f);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        // 失焦要通过真实锁步提交事件发送零轴，重复后台通知不能追加重复释放帧。
+        [Test]
+        public void LosingFocusSubmitsNeutralLanInputOnlyOnce()
+        {
+            var root = new GameObject("Movement LAN release test");
+            try
+            {
+                var runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                var room = new LanRoomService();
+                SetPrivateField(room, "<State>k__BackingField", LanRoomState.Playing);
+                room.Lockstep.StartClient(new[]
+                {
+                    new RoomPlayerSnapshot { SlotIndex = 0, PlayerId = 1, IsActive = true },
+                    new RoomPlayerSnapshot { SlotIndex = 1, PlayerId = 2, IsActive = true },
+                }, 0);
+                var sent = new List<LockstepInputFrame>();
+                // 记录既有通道发出的输入，验证远端可收到释放而非仅清空本地缓存。
+                room.Lockstep.LocalInputReady += frame => sent.Add(frame);
+                SetPrivateField(runner, "_lanRoomService", room);
+                SetPrivateField(runner, "_lanInputAccumulator", 1f / 30f);
+                InvokePrivate(runner, "SubmitLanInputAtFixedRate", new PlayerInputFrame(1, 1f, false, Vector2.zero));
+                Assert.Greater(sent.Last().MoveAxisQ, 0);
+                int beforeRelease = sent.Count;
+                InvokePrivate(runner, "OnApplicationFocus", false);
+                Assert.AreEqual(beforeRelease + 1, sent.Count);
+                Assert.AreEqual(0, sent.Last().MoveAxisQ);
+                InvokePrivate(runner, "OnApplicationPause", true);
+                Assert.AreEqual(beforeRelease + 1, sent.Count);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        // 生命周期停止必须同时清空两个模式的轴和输入服务中的实际帧。
+        [TestCase("OnApplicationFocus", false)]
+        [TestCase("OnApplicationPause", true)]
+        [TestCase("OnDisable", false)]
+        public void LifecycleClearsMovementFrames(string callback, bool value)
+        {
+            var root = new GameObject("Movement lifecycle test");
+            try
+            {
+                var runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                var input = new GatebreakerInputService();
+                int playerId = GetPrivateField<int>(runner, "_localPlayerId");
+                input.SetFrame(new PlayerInputFrame(playerId, 1f, false, Vector2.zero));
+                SetPrivateField(runner, "_inputService", input);
+                SetPrivateField(runner, "_guiMoveAxis", 1f);
+                SetPrivateField(runner, "_brickDuelMoveAxis", -1f);
+                SetPrivateField(runner, "_screenMoveAxis", 1f);
+                if (callback == "OnDisable") InvokePrivate(runner, callback);
+                else InvokePrivate(runner, callback, value);
+                Assert.AreEqual(0f, input.GetFrame(playerId).MoveAxis);
+                Assert.AreEqual(0f, GetPrivateField<float>(runner, "_guiMoveAxis"));
+                Assert.AreEqual(0f, GetPrivateField<float>(runner, "_brickDuelMoveAxis"));
+                Assert.AreEqual(0f, GetPrivateField<float>(runner, "_screenMoveAxis"));
+                Assert.IsTrue(GetPrivateField<bool>(runner, "_pointerOwnsMovement"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        // 原 UI 的延后按下或释放回调不能覆写已采集的全屏触摸轴。
+        [TestCase("SetGuiMoveAxis", "_guiMoveAxis")]
+        [TestCase("SetBrickDuelMoveAxis", "_brickDuelMoveAxis")]
+        public void UiMovementCannotOverridePointerOwnership(string callback, string field)
+        {
+            var root = new GameObject("Movement priority test");
+            try
+            {
+                var runner = root.AddComponent<GatebreakerPrototypeRunner>();
+                SetPrivateField(runner, "_pointerOwnsMovement", true);
+                SetPrivateField(runner, "_screenMoveAxis", -1f);
+                InvokePrivate(runner, callback, 1f);
+                Assert.AreEqual(0f, GetPrivateField<float>(runner, field));
+                InvokePrivate(runner, callback, 0f);
+                Assert.AreEqual(-1f, GetPrivateField<float>(runner, "_screenMoveAxis"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
         [Test]
         public void SetLocalInputFrameDoesNotThrowWhenInputServiceIsMissing()
         {

@@ -102,6 +102,17 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private int _localPlayerId = DefaultLocalPlayerId;
         private bool _initialized;
         private bool _guiServePressed;
+        private readonly GatebreakerArenaInputPresenter _movementPresenter = new GatebreakerArenaInputPresenter();
+        private readonly List<Touch> _screenTouches = new List<Touch>();
+        private bool _pointerOwnsMovement = true;
+        private bool _inputFocused = true;
+        private bool _inputPaused;
+        private float _screenMoveAxis;
+        private bool _movementWasAllowed;
+        private short _lastSubmittedMoveAxisQ;
+#if UNITY_EDITOR
+        private bool _hadRealTouches;
+#endif
         private float _guiMoveAxis;
         private ulong _lanClientInstanceId;
         private string _lanPlayerName = "Player";
@@ -272,8 +283,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _initialized = true;
         }
 
+        // 先采集全屏移动输入，再交给当前模式消费，UI 命中不参与移动优先级判定。
         private void Update()
         {
+            CaptureScreenMovement();
             if (!_initialized)
             {
                 return;
@@ -328,7 +341,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
-            float screenMoveAxis = ReadMoveAxis();
+            float screenMoveAxis = _screenMoveAxis;
             _sceneBindingService?.PreviewMoveAxis(screenMoveAxis);
             float moveAxis = screenMoveAxis * GetLocalMoveAxisSign();
             bool servePressed = Input.GetKeyDown(KeyCode.Space) || _guiServePressed;
@@ -636,6 +649,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
+        // 沿用固定采样频率，并记录最后提交的轴供生命周期中断时释放。
         private void SubmitLanInputAtFixedRate(PlayerInputFrame frame)
         {
             if (frame.ServePressed) _pendingLanButtons |= GatebreakerLockstepInputConverter.ServeButton;
@@ -658,6 +672,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             for (int i = 0; i < submitCount; i++)
             {
                 _lanRoomService.Lockstep.SubmitLocalInput(moveAxisQ, aimXQ, aimYQ, buttons);
+                _lastSubmittedMoveAxisQ = moveAxisQ;
                 buttons = 0;
             }
         }
@@ -683,8 +698,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             return submitCount;
         }
 
+        // 对局或 UI 在本帧结束操作状态时立即释放输入，再执行既有镜头刷新。
         private void LateUpdate()
         {
+            if (_movementWasAllowed && !CanReadMovement())
+                ResetMovementInput();
             if (!_initialized)
             {
                 return;
@@ -2567,21 +2585,117 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _ballViewPools.Clear();
         }
 
+        // 仅在可操作战斗中开启移动；页面、生命周期和对局状态共同约束输入。
+        private bool CanReadMovement()
+        {
+            if (!_initialized || !_inputFocused || _inputPaused || !isActiveAndEnabled ||
+                _brickDuelStarting || _sceneReloadInProgress)
+                return false;
+            if (_brickDuelSession != null && _brickDuelSession.IsActive)
+            {
+                BrickDuelRuntime duel = _brickDuelSession.Runtime;
+                return duel != null && duel.Phase == BrickDuelPhase.Playing && !duel.IsPaused &&
+                       !(IsLanPlaying() && (_lanRoomService?.CurrentSnapshot.MatchCompleted ?? false));
+            }
+            return (_startupUiState == StartupUiState.LocalPlaying || IsLanPlaying()) &&
+                   _runtime != null && (_runtime.Phase == MatchPhase.Playing || _runtime.Phase == MatchPhase.Overtime);
+        }
+
+        // 每帧直接读取原始触摸，编辑器鼠标复用同一判定路径，不创建遮挡按钮的 UI。
+        private void CaptureScreenMovement()
+        {
+            bool allowed = CanReadMovement();
+            if (_movementWasAllowed && !allowed)
+                ResetMovementInput();
+            _movementWasAllowed = allowed;
+            CollectScreenTouches();
+            float fallbackAxis = ReadMoveAxis();
+            _screenMoveAxis = _movementPresenter.ResolveMoveAxis(
+                _screenTouches, Screen.width, allowed, fallbackAxis, out _pointerOwnsMovement);
+            if (_pointerOwnsMovement)
+            {
+                // 清除旧 UI 轴，防止 UI 的延后释放回调或另一手指改变触摸方向。
+                _guiMoveAxis = 0f;
+                _brickDuelMoveAxis = 0f;
+            }
+        }
+
+        // 复用原始触点采样，状态切换时也记录当前手指，防止恢复按钮的 Began 穿透。
+        private void CollectScreenTouches()
+        {
+            _screenTouches.Clear();
+            int touchCount = Input.touchCount;
+            for (int i = 0; i < touchCount; i++)
+                _screenTouches.Add(Input.GetTouch(i));
+#if UNITY_EDITOR
+            // 真实触摸及其结束后一帧屏蔽模拟鼠标，避免触摸转鼠标重复输入。
+            if (touchCount == 0 && !_hadRealTouches && (Input.GetMouseButton(0) || Input.GetMouseButtonUp(0)))
+            {
+                _screenTouches.Add(new Touch
+                {
+                    fingerId = -1,
+                    position = Input.mousePosition,
+                    phase = Input.GetMouseButtonUp(0) ? TouchPhase.Ended :
+                        Input.GetMouseButtonDown(0) ? TouchPhase.Began : TouchPhase.Stationary,
+                });
+            }
+            _hadRealTouches = touchCount > 0;
+#endif
+        }
+
+        // 无触摸时沿用键盘和当前模式的显式 UI 输入。
         private float ReadMoveAxis()
         {
             float moveAxis = 0f;
             if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            {
                 moveAxis -= 1f;
-            }
-
             if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            {
                 moveAxis += 1f;
-            }
-
-            moveAxis += _guiMoveAxis;
+            moveAxis += _brickDuelSession != null && _brickDuelSession.IsActive ? _brickDuelMoveAxis : _guiMoveAxis;
             return Mathf.Clamp(moveAxis, -1f, 1f);
+        }
+
+        // 生命周期中断须清空实际输入；联机立即发送中性帧，避免停更后远端继续沿用旧轴。
+        private void ResetMovementInput()
+        {
+            _movementWasAllowed = false;
+            CollectScreenTouches();
+            _movementPresenter.ResetMovement(_screenTouches);
+            _screenTouches.Clear();
+            _pointerOwnsMovement = true;
+            _screenMoveAxis = _guiMoveAxis = _brickDuelMoveAxis = 0f;
+            var neutral = new PlayerInputFrame(_localPlayerId, 0f, false, Vector2.zero);
+            _inputService?.SetFrame(neutral);
+            _runtime?.ApplyInputFrame(neutral);
+            _sceneBindingService?.PreviewMoveAxis(0f);
+            _sceneBindingService?.PreviewBrickDuelMoveAxis(0f);
+            _pendingLanButtons = 0;
+            if (_lastSubmittedMoveAxisQ != 0 && IsLanPlaying() && !_lanRoomService.CurrentSnapshot.MatchCompleted)
+            {
+                // Update 可能不再执行，使用既有提交通道排入零轴；恢复后仍保持固定频率采样。
+                _lanRoomService.Lockstep.SubmitLocalInput(0, 0, 0, 0);
+                _lastSubmittedMoveAxisQ = 0;
+            }
+        }
+
+        // 失焦清空控制手指，恢复焦点不能继续使用原按住状态。
+        private void OnApplicationFocus(bool focused)
+        {
+            _inputFocused = focused;
+            ResetMovementInput();
+        }
+
+        // 切后台立即归零，返回前台后等待新的按下事件。
+        private void OnApplicationPause(bool paused)
+        {
+            _inputPaused = paused;
+            ResetMovementInput();
+        }
+
+        // 组件停用时 Update 不再执行，必须主动释放输入。
+        private void OnDisable()
+        {
+            ResetMovementInput();
         }
 
         private Vector2 BuildServeAimDirection(float moveAxis)
@@ -2611,8 +2725,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             ResetPrototypeMatchForEntryUi();
         }
 
+        // 重置比赛并释放旧输入，进入页面后等待新一轮战斗。
         private void ResetPrototypeMatchForEntryUi()
         {
+            ResetMovementInput();
             _runtime?.StartLocalPrototype(localLoadout: _selectedLocalLoadout);
             _runtime?.SetLocalPlayer(_localPlayerId);
             EnsureSceneMatchesRuntime();
@@ -2625,9 +2741,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             RefreshBoundHud();
         }
 
+        // UI 仅在没有全屏触摸接管时提供后备移动，不能覆盖触摸方向。
         private void SetGuiMoveAxis(float moveAxis)
         {
-            _guiMoveAxis = Mathf.Clamp(moveAxis, -1f, 1f);
+            _guiMoveAxis = !_pointerOwnsMovement && CanReadMovement() ? Mathf.Clamp(moveAxis, -1f, 1f) : 0f;
         }
 
         private bool EnsureSceneMatchesRuntime()
@@ -3301,6 +3418,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
+        // 消费统一屏幕输入；联机仍通过现有方向转换与固定频率通道提交。
         private void TickBrickDuel()
         {
             BrickDuelRuntime runtime = _brickDuelSession.Runtime;
@@ -3313,18 +3431,10 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             if (!isLanBrickDuel && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P)))
             {
                 _brickDuelSession.SetPaused(!runtime.IsPaused);
+                ResetMovementInput();
             }
 
-            float keyboardAxis = 0f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            {
-                keyboardAxis -= 1f;
-            }
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            {
-                keyboardAxis += 1f;
-            }
-            float moveAxis = Mathf.Clamp(keyboardAxis + _brickDuelMoveAxis, -1f, 1f);
+            float moveAxis = CanReadMovement() ? _screenMoveAxis : 0f;
             bool abilityPressed = Input.GetKeyDown(KeyCode.E) || _brickDuelAbilityPressed;
             _brickDuelAbilityPressed = false;
             if (isLanBrickDuel)
@@ -3386,17 +3496,20 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
+        // 双向砖潮 UI 轴遵循与普通对局相同的触摸优先级。
         private void SetBrickDuelMoveAxis(float moveAxis)
         {
-            _brickDuelMoveAxis = Mathf.Clamp(moveAxis, -1f, 1f);
+            _brickDuelMoveAxis = !_pointerOwnsMovement && CanReadMovement() ? Mathf.Clamp(moveAxis, -1f, 1f) : 0f;
         }
 
+        // 暂停与恢复都释放当前手指，按钮点击不能在恢复后形成残留移动。
         private void ToggleBrickDuelPause()
         {
             BrickDuelRuntime runtime = _brickDuelSession?.Runtime;
             if (runtime != null && runtime.Phase == BrickDuelPhase.Playing)
             {
                 _brickDuelSession.SetPaused(!runtime.IsPaused);
+                ResetMovementInput();
             }
         }
 
@@ -3409,6 +3522,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             }
         }
 
+        // 重开双向砖潮并重新加载资源，旧手指不得带入新对局。
         private async void RestartBrickDuel()
         {
             if (_brickDuelStarting || _brickDuelRule == null || _modeCatalog == null)
@@ -3416,6 +3530,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 return;
             }
 
+            ResetMovementInput();
             _brickDuelStarting = true;
             _sceneBindingService?.UpdateBrickDuelResult(BrickDuelResult.None);
             _sceneBindingService?.ShowStartCountdown("资源重新加载中");

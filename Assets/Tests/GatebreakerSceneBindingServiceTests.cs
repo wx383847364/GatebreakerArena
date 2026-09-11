@@ -40,6 +40,23 @@ namespace Gatebreaker.Tests
             }
         }
 
+        // 全屏移动预览不占用按钮事件，技能仍能独立响应。
+        [Test]
+        public void FullScreenMovementPreviewKeepsSkillButtonResponsive()
+        {
+            int serveRequests = 0;
+            _service.Bind(_binding, new GatebreakerArenaSceneUiCallbacks
+            {
+                // 记录技能按钮事件，确认移动预览期间仍正常转发。
+                ServeRequested = () => serveRequests++,
+            }, null);
+            _service.PreviewMoveAxis(-1f);
+            _binding.SkillButton.onClick.Invoke();
+            _service.PreviewMoveAxis(1f);
+            Assert.AreEqual(1, serveRequests);
+            _service.PreviewMoveAxis(0f);
+        }
+
         [Test]
         public void SkillButtonClickRequestsServeAndBallCountDisplaysSnapshotAmmo()
         {
