@@ -537,6 +537,17 @@ namespace Gatebreaker.Tests
             }
         }
 
+        [TestCase(9f / 16f, 5.4f)]
+        [TestCase(10f / 16f, 5f)]
+        [TestCase(3f / 4f, 5f)]
+        [TestCase(1f / 2f, 6.075f)]
+        public void BrickDuelCameraSizePreservesNarrowPortraitWidth(float aspect, float expectedSize)
+        {
+            float size = InvokePrivateStatic<float>("CalculateBrickDuelOrthographicSize", aspect);
+
+            Assert.AreEqual(expectedSize, size, 0.0001f);
+        }
+
         private static void SetPrivateField(object target, string fieldName, object value)
         {
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);

@@ -1871,6 +1871,12 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
+        public void SplitBallVisualScale_IsHalfOfNormalBall()
+        {
+            Assert.AreEqual(0.5f, BrickDuelSessionController.SplitBallVisualScaleMultiplier);
+        }
+
+        [Test]
         public void CapsuleCap_ExpiresOldestWhenThirdSpawns()
         {
             BrickDuelRuntime runtime = CreateRuntime();

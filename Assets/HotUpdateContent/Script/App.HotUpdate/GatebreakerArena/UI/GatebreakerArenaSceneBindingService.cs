@@ -1044,15 +1044,15 @@ namespace App.HotUpdate.GatebreakerArena.UI
             strip.anchorMin = strip.anchorMax = new Vector2(0.5f, 0.5f);
             strip.pivot = new Vector2(0.5f, 0.5f);
             strip.anchoredPosition = Vector2.zero;
-            strip.sizeDelta = new Vector2(720f, 84f);
-            strip.localScale = new Vector3(0.56f, 0.56f, 1f);
+            strip.sizeDelta = new Vector2(1080f, 160f);
+            strip.localScale = Vector3.one;
             background.anchorMin = background.anchorMax = new Vector2(0.5f, 0.5f);
             background.pivot = new Vector2(0.5f, 0.5f);
             background.anchoredPosition = Vector2.zero;
             background.sizeDelta = strip.sizeDelta;
             background.localScale = Vector3.one;
 
-            // The input controls stay at the screen edges, outside the scaled strip.
+            // The input controls stay at the screen edges, outside the center strip.
             if (_brickDuelMovementPad != null)
             {
                 _brickDuelMovementPad.anchorMin = _brickDuelMovementPad.anchorMax = Vector2.zero;

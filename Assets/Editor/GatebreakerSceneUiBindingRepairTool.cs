@@ -845,14 +845,18 @@ namespace Gatebreaker.Editor
             var strip = FindRequired<RectTransform>(panelSingle, "Title_bg");
             strip.anchorMin = strip.anchorMax = new Vector2(0.5f, 0.5f);
             strip.anchoredPosition = Vector2.zero;
-            strip.sizeDelta = new Vector2(720f, 84f);
-            // Keep the full HUD within the narrow central lane, including its background.
-            strip.localScale = new Vector3(0.56f, 0.56f, 1f);
+            strip.sizeDelta = new Vector2(1080f, 160f);
+            strip.localScale = Vector3.one;
             var movementPad = FindRequired<RectTransform>(panelSingle, "joystick_bg");
             movementPad.anchorMin = movementPad.anchorMax = Vector2.zero;
             movementPad.anchoredPosition = new Vector2(180f, 80f);
             var timeImage = FindRequired<RectTransform>(strip, "TimeImage");
-            timeImage.sizeDelta = new Vector2(720f, 84f);
+            timeImage.sizeDelta = new Vector2(1080f, 160f);
+
+            var playerInfo = FindRequired<RectTransform>(strip, "1PInfo");
+            playerInfo.anchoredPosition = new Vector2(-498f, 0f);
+            var opponentInfo = FindRequired<RectTransform>(strip, "2PInfo");
+            opponentInfo.anchoredPosition = new Vector2(498f, 0f);
 
             TMP_Text center = FindRequired<TMP_Text>(strip, "TimeImage/Time");
             center.rectTransform.anchoredPosition = new Vector2(0f, 25f);

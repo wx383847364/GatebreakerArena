@@ -137,12 +137,12 @@ namespace Gatebreaker.Tests.PlayMode
                 Assert.AreEqual(new Vector2(0.5f, 0.5f), duelStrip.anchorMin);
                 Assert.AreEqual(duelStrip.anchorMin, duelStrip.anchorMax);
                 Assert.AreEqual(Vector2.zero, duelStrip.anchoredPosition,
-                    "Duel HUD must occupy the narrow central lane requested by the design.");
-                Assert.AreEqual(new Vector2(720f, 84f), duelStrip.sizeDelta);
-                Assert.AreEqual(new Vector3(0.56f, 0.56f, 1f), duelStrip.localScale);
+                    "Duel HUD must remain centered in the playfield.");
+                Assert.AreEqual(new Vector2(1080f, 160f), duelStrip.sizeDelta);
+                Assert.AreEqual(Vector3.one, duelStrip.localScale);
                 var duelBackground = duelCenter.rectTransform.parent as RectTransform;
                 Assert.AreEqual(duelStrip.sizeDelta, duelBackground.sizeDelta,
-                    "Neither background may extend into a full-width banner.");
+                    "The background must match the requested center-banner size.");
                 Assert.AreEqual(TextOverflowModes.Ellipsis, duelStatus.overflowMode);
                 var abilityRect = (sceneBinding.BrickDuelAbilityButtonObject as Button).transform as RectTransform;
                 Assert.AreEqual(new Vector2(1f, 0f), abilityRect.anchorMin);

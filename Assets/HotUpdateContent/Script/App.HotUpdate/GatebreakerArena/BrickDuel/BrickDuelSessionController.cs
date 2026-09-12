@@ -14,6 +14,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
         private const int SceneDebugLayerFallback = 6;
         private const int DebugOverlaySortingOrder = 1200;
         private const float DebugOverlayDepth = -0.08f;
+        internal const float SplitBallVisualScaleMultiplier = 0.5f;
         private readonly BrickDuelVisualAssetService _assetService;
         private readonly Dictionary<int, BrickView> _brickViews = new Dictionary<int, BrickView>();
         private readonly Dictionary<int, CapsuleView> _capsuleViews = new Dictionary<int, CapsuleView>();
@@ -490,7 +491,7 @@ namespace App.HotUpdate.GatebreakerArena.BrickDuel
                 ? _assets.PlayerBall.Prefab
                 : _assets.AiBall.Prefab;
             GameObject gameObject = InstantiateRuntimeObject(prefab, $"SplitBall_{side}");
-            gameObject.transform.localScale *= 0.85f;
+            gameObject.transform.localScale *= SplitBallVisualScaleMultiplier;
             return new SplitBallView(gameObject, gameObject.transform.localScale);
         }
 

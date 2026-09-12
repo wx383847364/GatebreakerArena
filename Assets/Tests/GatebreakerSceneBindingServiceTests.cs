@@ -739,7 +739,7 @@ namespace Gatebreaker.Tests
         }
 
         [Test]
-        public void BrickDuelHudCorrectsLoadedTopBannerEvenWhenAlreadyVisible()
+        public void BrickDuelHudKeepsRequestedCenterBannerSizeEvenWhenAlreadyVisible()
         {
             _binding.BrickDuelHudRoot.AddComponent<RectTransform>();
             var strip = new GameObject("Strip", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -760,12 +760,12 @@ namespace Gatebreaker.Tests
             Assert.AreEqual(new Vector2(0.5f, 0.5f), strip.anchorMin);
             Assert.AreEqual(strip.anchorMin, strip.anchorMax);
             Assert.AreEqual(Vector2.zero, strip.anchoredPosition);
-            Assert.AreEqual(new Vector2(720f, 84f), strip.sizeDelta);
-            Assert.AreEqual(new Vector3(0.56f, 0.56f, 1f), strip.localScale);
+            Assert.AreEqual(new Vector2(1080f, 160f), strip.sizeDelta);
+            Assert.AreEqual(Vector3.one, strip.localScale);
             Assert.AreEqual(strip.sizeDelta, background.sizeDelta);
             // Repeated refreshes must not accumulate scaling.
             _service.ShowBrickDuelHud();
-            Assert.AreEqual(new Vector3(0.56f, 0.56f, 1f), strip.localScale);
+            Assert.AreEqual(Vector3.one, strip.localScale);
         }
 
         [Test]

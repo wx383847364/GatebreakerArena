@@ -28,7 +28,11 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
         private const int DefaultLocalPlayerId = 1;
         private const float GuardDepth = 0.55f;
         private const float CameraHeight = 20f;
-        private const float CameraMargin = 0.9f;
+        private const float MainCameraOrthographicSize = 5f;
+        private const float NarrowPortraitAspect = 9f / 16f;
+        private const float NarrowPortraitOrthographicSize = 5.4f;
+        private const float BrickDuelMinimumVisibleHalfWidth =
+            NarrowPortraitAspect * NarrowPortraitOrthographicSize;
         private const string ArenaRootName = "ArenaRoot";
         private const string ObjPoolRootName = "ObjPool";
         private const string DebugCollisionOverlayName = "DebugCollisionOverlay";
@@ -4292,7 +4296,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
                 _visualRoot.localScale = GetPrototypeVisualScale(viewHalfHeight, viewHalfWidth, aspect);
             }
 
-            _prototypeCamera.orthographicSize = CalculateOrthographicSize(viewHalfHeight, viewHalfWidth, aspect);
+            _prototypeCamera.orthographicSize = MainCameraOrthographicSize;
             _prototypeCamera.nearClipPlane = 0.1f;
             _prototypeCamera.farClipPlane = CameraHeight + 10f;
             _prototypeCamera.cullingMask &= ~(1 << GetSceneDebugLayer());
@@ -4322,10 +4326,7 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _prototypeCamera.transform.position = new Vector3(0f, 0f, -CameraHeight);
             _prototypeCamera.transform.rotation = Quaternion.identity;
             _prototypeCamera.orthographic = true;
-            float aspect = Mathf.Max(0.1f, _prototypeCamera.aspect);
-            float vertical = _brickDuelRule.CoreLineY + CameraMargin;
-            float horizontal = (_brickDuelRule.ArenaHalfWidth + CameraMargin) / aspect;
-            _prototypeCamera.orthographicSize = Mathf.Max(vertical, horizontal);
+            _prototypeCamera.orthographicSize = CalculateBrickDuelOrthographicSize(_prototypeCamera.aspect);
             _prototypeCamera.nearClipPlane = 0.1f;
             _prototypeCamera.farClipPlane = CameraHeight + 10f;
             _prototypeCamera.cullingMask &= ~(1 << GetSceneDebugLayer());
@@ -4333,17 +4334,12 @@ namespace App.HotUpdate.GatebreakerArena.Prototype
             _prototypeCamera.backgroundColor = new Color(0.03f, 0.04f, 0.05f);
         }
 
-        private float CalculateOrthographicSize(float viewHalfHeight, float viewHalfWidth, float aspect)
+        private static float CalculateBrickDuelOrthographicSize(float aspect)
         {
             float safeAspect = Mathf.Max(0.1f, aspect);
-            if (_usePrefabVisuals)
-            {
-                return Mathf.Max(0.001f, viewHalfWidth / safeAspect);
-            }
-
             return Mathf.Max(
-                viewHalfHeight + CameraMargin,
-                (viewHalfWidth + CameraMargin) / safeAspect);
+                MainCameraOrthographicSize,
+                BrickDuelMinimumVisibleHalfWidth / safeAspect);
         }
 
         private float CalculatePrefabViewportScale(float viewHalfHeight, float viewHalfWidth, float aspect)
